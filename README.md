@@ -7,6 +7,15 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
  - fully GPU accelerated
  - multi-threaded resource acquisition for no hitches
 
+### Widget list:
+ - background: png image
+ - input-field: password input field
+ - more to come :)
+
+## How it looks
+
+![](https://i.ibb.co/HXF8pY3/20240218-23h08m26s.png)
+
 ## Example config
 
 ```ini
