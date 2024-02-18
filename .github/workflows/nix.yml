@@ -1,0 +1,21 @@
+name: Build
+
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+
+    # not needed (yet)
+    # - uses: cachix/cachix-action@v12
+    #   with:
+    #     name: hyprland
+    #     authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - name: Build
+      run: nix flake check --print-build-logs --keep-going
+
