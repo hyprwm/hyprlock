@@ -18,6 +18,8 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
 
 ## Example config
 
+`~/.config/hypr/hyprlock.conf`:
+
 ```ini
 general {
     disable_loading_bar = false
