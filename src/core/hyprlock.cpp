@@ -7,8 +7,8 @@
 #include <sys/mman.h>
 #include <cuchar>
 
-CHyprlock::CHyprlock() {
-    m_sWaylandState.display = wl_display_connect(nullptr);
+CHyprlock::CHyprlock(const std::string& wlDisplay) {
+    m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
         exit(1);

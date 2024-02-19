@@ -14,7 +14,7 @@
 
 class CHyprlock {
   public:
-    CHyprlock();
+    CHyprlock(const std::string& wlDisplay);
 
     void                            run();
 
