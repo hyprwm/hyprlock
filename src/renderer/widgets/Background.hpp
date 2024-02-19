@@ -10,7 +10,7 @@ class CBackground : public IWidget {
   public:
     CBackground(const Vector2D& viewport, const std::string& resourceID);
 
-    virtual bool draw();
+    virtual bool draw(const SRenderData& data);
 
   private:
     Vector2D         viewport;

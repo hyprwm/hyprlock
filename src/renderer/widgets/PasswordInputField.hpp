@@ -10,7 +10,7 @@ class CPasswordInputField : public IWidget {
   public:
     CPasswordInputField(const Vector2D& viewport, const Vector2D& size, const CColor& outer, const CColor& inner, int out_thick, bool fade_empty);
 
-    virtual bool draw();
+    virtual bool draw(const SRenderData& data);
 
   private:
     void     updateDots();

@@ -72,7 +72,7 @@ void CPasswordInputField::updateDots() {
     std::erase_if(dots, [](const auto& dot) { return !dot.appearing && dot.a == 0.0; });
 }
 
-bool CPasswordInputField::draw() {
+bool CPasswordInputField::draw(const SRenderData& data) {
     CBox inputFieldBox = {pos, size};
     CBox outerBox      = {pos - Vector2D{out_thick, out_thick}, size + Vector2D{out_thick * 2, out_thick * 2}};
 
@@ -80,9 +80,9 @@ bool CPasswordInputField::draw() {
     updateDots();
 
     CColor outerCol = outer;
-    outer.a         = fade.a;
+    outer.a         = fade.a * data.opacity;
     CColor innerCol = inner;
-    innerCol.a      = fade.a;
+    innerCol.a      = fade.a * data.opacity;
 
     g_pRenderer->renderRect(outerBox, outerCol, outerBox.h / 2.0);
     g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
@@ -93,7 +93,7 @@ bool CPasswordInputField::draw() {
     for (size_t i = 0; i < dots.size(); ++i) {
         Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * dots[i].idx, 0};
         CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        g_pRenderer->renderRect(box, CColor{0, 0, 0, dots[i].a}, PASS_SIZE / 2.0);
+        g_pRenderer->renderRect(box, CColor{0, 0, 0, dots[i].a * data.opacity}, PASS_SIZE / 2.0);
     }
 
     return std::ranges::any_of(dots.begin(), dots.end(), [](const auto& dot) { return dot.animated; }) || fade.animated;

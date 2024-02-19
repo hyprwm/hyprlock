@@ -33,6 +33,16 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "outline_thickness", Hyprlang::INT{4});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
 
+    m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("label", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("label", "position", Hyprlang::VEC2{400, 90});
+    m_config.addSpecialConfigValue("label", "color", Hyprlang::INT{0xFFFFFFFF});
+    m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
+    m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});
+    m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
+    m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
+    m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
+
     m_config.commence();
 
     auto result = m_config.parse();
@@ -77,6 +87,25 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
                 {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},
                 {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
+            }
+        });
+        // clang-format on
+    }
+
+    keys = m_config.listKeysForSpecialCategory("label");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            "label",
+            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("label", "monitor", k.c_str())),
+            {
+                {"position", m_config.getSpecialConfigValue("label", "position", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("label", "color", k.c_str())},
+                {"font_size", m_config.getSpecialConfigValue("label", "font_size", k.c_str())},
+                {"font_family", m_config.getSpecialConfigValue("label", "font_family", k.c_str())},
+                {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
             }
         });
         // clang-format on

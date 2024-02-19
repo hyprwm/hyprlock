@@ -5,17 +5,16 @@ CBackground::CBackground(const Vector2D& viewport_, const std::string& resourceI
     ;
 }
 
-bool CBackground::draw() {
+bool CBackground::draw(const SRenderData& data) {
     if (!asset)
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
     if (!asset)
         return false;
 
-    float bga    = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - g_pRenderer->gatheredAt).count() / 500000.0, 0.0, 1.0);
-    CBox  monbox = {0, 0, viewport.x, viewport.y};
+    CBox monbox = {0, 0, viewport.x, viewport.y};
 
-    g_pRenderer->renderTexture(monbox, asset->texture, bga);
+    g_pRenderer->renderTexture(monbox, asset->texture, data.opacity);
 
-    return bga < 1.0;
+    return data.opacity < 1.0;
 }

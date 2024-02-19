@@ -8,6 +8,8 @@
 #include <atomic>
 #include <vector>
 #include <unordered_map>
+#include <condition_variable>
+#include <any>
 
 struct SPreloadedAsset {
     CTexture texture;
@@ -21,16 +23,44 @@ class CAsyncResourceGatherer {
 
     std::atomic<float> progress = 0;
 
-    SPreloadedAsset*   getAssetByID(const std::string& id);
+    /* only call from ogl thread */
+    SPreloadedAsset* getAssetByID(const std::string& id);
 
-    void               apply();
-
-  private:
-    std::thread thread;
+    void             apply();
 
     enum eTargetType {
         TARGET_IMAGE = 0,
+        TARGET_TEXT
     };
+
+    struct SPreloadRequest {
+        eTargetType                               type;
+        std::string                               asset;
+        std::string                               id;
+
+        std::unordered_map<std::string, std::any> props;
+    };
+
+    void requestAsyncAssetPreload(const SPreloadRequest& request);
+
+  private:
+    std::thread initThread;
+    std::thread asyncLoopThread;
+
+    void        asyncAssetSpinLock();
+    void        renderText(const SPreloadRequest& rq);
+
+    struct {
+        std::condition_variable      loopGuard;
+        std::mutex                   loopMutex;
+
+        std::mutex                   requestMutex;
+
+        std::vector<SPreloadRequest> requests;
+        bool                         pending = false;
+
+        bool                         busy = false;
+    } asyncLoopState;
 
     struct SPreloadTarget {
         eTargetType type = TARGET_IMAGE;

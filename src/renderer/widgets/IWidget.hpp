@@ -2,5 +2,9 @@
 
 class IWidget {
   public:
-    virtual bool draw() = 0;
+    struct SRenderData {
+        float opacity = 1;
+    };
+
+    virtual bool draw(const SRenderData& data) = 0;
 };

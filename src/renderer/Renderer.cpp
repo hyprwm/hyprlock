@@ -14,6 +14,7 @@
 
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
+#include "widgets/Label.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -131,6 +132,10 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     SRenderFeedback feedback;
 
+    const float     bga = asyncResourceGatherer->applied ?
+            std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - gatheredAt).count() / 500000.0, 0.0, 1.0) :
+            0.0;
+
     if (!asyncResourceGatherer->ready) {
         // render status
         if (!**PDISABLEBAR) {
@@ -147,7 +152,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         // render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(&surf);
         for (auto& w : *WIDGETS) {
-            feedback.needsFrame = w->draw() || feedback.needsFrame;
+            feedback.needsFrame = w->draw({bga}) || feedback.needsFrame;
         }
     }
 
@@ -155,7 +160,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     Debug::log(TRACE, "frame {}", frames);
 
-    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->ready;
+    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->ready || bga < 1.0;
 
     return feedback;
 }
@@ -248,11 +253,13 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
             // by type
             if (c.type == "background")
                 widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, std::string{"background:"} + std::any_cast<Hyprlang::STRING>(c.values.at("path"))));
-            if (c.type == "input-field") {
+            else if (c.type == "input-field") {
                 const auto SIZE = std::any_cast<Hyprlang::VEC2>(c.values.at("size"));
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(
                     surf->size, Vector2D{SIZE.x, SIZE.y}, std::any_cast<Hyprlang::INT>(c.values.at("outer_color")), std::any_cast<Hyprlang::INT>(c.values.at("inner_color")),
                     std::any_cast<Hyprlang::INT>(c.values.at("outline_thickness")), std::any_cast<Hyprlang::INT>(c.values.at("fade_on_empty"))));
+            } else if (c.type == "label") {
+                widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values));
             }
         }
     }
