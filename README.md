@@ -7,46 +7,12 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
  - fully GPU accelerated
  - multi-threaded resource acquisition for no hitches
 
-### Widget list:
- - background: png image
- - input-field: password input field
- - more to come :)
-
 ## How it looks
 
 ![](https://i.ibb.co/HXF8pY3/20240218-23h08m26s.png)
 
-## Example config
-
-`~/.config/hypr/hyprlock.conf`:
-
-```ini
-general {
-    disable_loading_bar = false
-}
-
-background {
-    monitor = DP-2
-    path = /home/me/someImage.png
-}
-
-background {
-    monitor = WL-2
-    path = /home/me/someImage2.png
-}
-
-input-field {
-    monitor =
-    size = 200, 50
-    outline_thickness = 3
-    outer_color = rgb(151515)
-    inner_color = rgb(200, 200, 200)
-}
-```
-
-## Docs
-
-soon:tm:
+## Docs / Configuration
+[See the wiki](https://wiki.hyprland.org/Hypr-Ecosystem/hyprlock/)
 
 ## Building
 
