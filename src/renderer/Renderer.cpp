@@ -258,7 +258,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
             } else if (c.type == "input-field") {
                 const auto SIZE = std::any_cast<Hyprlang::VEC2>(c.values.at("size"));
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(
-                    surf->size, Vector2D{SIZE.x, SIZE.y}, std::any_cast<Hyprlang::INT>(c.values.at("outer_color")), std::any_cast<Hyprlang::INT>(c.values.at("inner_color")),
+                    surf->size, Vector2D{SIZE.x, SIZE.y}, std::any_cast<Hyprlang::INT>(c.values.at("dot_color")), std::any_cast<Hyprlang::INT>(c.values.at("outer_color")), std::any_cast<Hyprlang::INT>(c.values.at("inner_color")),
                     std::any_cast<Hyprlang::INT>(c.values.at("outline_thickness")), std::any_cast<Hyprlang::INT>(c.values.at("fade_on_empty"))));
             } else if (c.type == "label") {
                 widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values));

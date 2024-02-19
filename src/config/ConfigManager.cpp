@@ -29,6 +29,7 @@ void CConfigManager::init() {
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("input-field", "size", Hyprlang::VEC2{400, 90});
+    m_config.addSpecialConfigValue("input-field", "dot_color", Hyprlang::INT{0xFF000000});
     m_config.addSpecialConfigValue("input-field", "inner_color", Hyprlang::INT{0xFFDDDDDD});
     m_config.addSpecialConfigValue("input-field", "outer_color", Hyprlang::INT{0xFF111111});
     m_config.addSpecialConfigValue("input-field", "outline_thickness", Hyprlang::INT{4});
@@ -85,6 +86,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
             std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("input-field", "monitor", k.c_str())),
             {
                 {"size", m_config.getSpecialConfigValue("input-field", "size", k.c_str())},
+                {"dot_color", m_config.getSpecialConfigValue("input-field", "dot_color", k.c_str())},
                 {"inner_color", m_config.getSpecialConfigValue("input-field", "inner_color", k.c_str())},
                 {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
                 {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},

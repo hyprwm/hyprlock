@@ -3,9 +3,10 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const Vector2D& size_, const CColor& outer_, const CColor& inner_, int out_thick_, bool fadeEmpty) {
+CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const Vector2D& size_, const CColor& dot_color_, const CColor& outer_, const CColor& inner_, int out_thick_, bool fadeEmpty) {
     size        = size_;
     pos         = viewport / 2.f - size_ / 2.f;
+    dot_color   = dot_color_;
     inner       = inner_;
     outer       = outer_;
     out_thick   = out_thick_;
@@ -87,14 +88,18 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
         Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
         CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        g_pRenderer->renderRect(box, CColor{0, 0, 0, data.opacity}, PASS_SIZE / 2.0);
+        CColor dotCol = dot_color;
+        dotCol.a = data.opacity;
+        g_pRenderer->renderRect(box, dotCol, PASS_SIZE / 2.0);
     }
 
     if (dots.currentAmount != std::floor(dots.currentAmount)) {
         Vector2D currentPos =
             inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
         CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        g_pRenderer->renderRect(box, CColor{0, 0, 0, (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity}, PASS_SIZE / 2.0);
+        CColor dotCol = dot_color;
+        dotCol.a = (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
+        g_pRenderer->renderRect(box, dotCol, PASS_SIZE / 2.0);
     }
 
     const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
