@@ -66,7 +66,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
 }
 
 void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
-    Debug::log(LOG, "configure with serial {}", serial);
+    Debug::log(LOG, "configure with serial {}", serial_);
 
     serial      = serial_;
     size        = (size_ * fractionalScale).floor();
