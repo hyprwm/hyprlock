@@ -23,13 +23,11 @@ class CPasswordInputField : public IWidget {
 
     CColor   inner, outer;
 
-    struct dot {
-        size_t                                idx       = 0;
-        bool                                  appearing = false;
-        bool                                  animated  = false;
-        float                                 a         = 0;
-        std::chrono::system_clock::time_point start;
-    };
+    struct {
+        float                                 currentAmount  = 0;
+        float                                 speedPerSecond = 5; // actually per... something. I am unsure xD
+        std::chrono::system_clock::time_point lastFrame;
+    } dots;
 
     struct {
         std::chrono::system_clock::time_point start;
@@ -38,7 +36,5 @@ class CPasswordInputField : public IWidget {
         bool                                  animated  = false;
     } fade;
 
-    bool             fadeOnEmpty;
-
-    std::vector<dot> dots;
+    bool fadeOnEmpty;
 };

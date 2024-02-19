@@ -298,6 +298,8 @@ void CHyprlock::onKey(uint32_t key) {
 
         if (RESULT.success)
             unlockSession();
+
+        m_sPasswordState.passBuffer = "";
     } else {
         char buf[16] = {0};
         int  len     = xkb_keysym_to_utf8(SYM, buf, 16);

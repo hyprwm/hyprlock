@@ -46,30 +46,24 @@ void CPasswordInputField::updateFade() {
 void CPasswordInputField::updateDots() {
     const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
 
-    size_t     dotsAppearingOrPresent = std::count_if(dots.begin(), dots.end(), [](const auto& dot) { return dot.appearing || !dot.animated; });
+    if (PASSLEN == dots.currentAmount)
+        return;
 
-    if (dotsAppearingOrPresent < PASSLEN) {
-        dots.push_back(dot{.idx = dotsAppearingOrPresent + 1, .appearing = true, .animated = true, .a = 0, .start = std::chrono::system_clock::now()});
-    } else if (dotsAppearingOrPresent > PASSLEN) {
-        dots[dots.size() - 1].animated  = true;
-        dots[dots.size() - 1].appearing = false;
-        dots[dots.size() - 1].start     = std::chrono::system_clock::now();
+    const auto  DELTA = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count();
+
+    const float TOADD = DELTA / 1000000.0 * (dots.speedPerSecond * std::clamp(std::abs(PASSLEN - dots.currentAmount), 0.5f, INFINITY));
+
+    if (PASSLEN > dots.currentAmount) {
+        dots.currentAmount += TOADD;
+        if (dots.currentAmount > PASSLEN)
+            dots.currentAmount = PASSLEN;
+    } else if (PASSLEN < dots.currentAmount) {
+        dots.currentAmount -= TOADD;
+        if (dots.currentAmount < PASSLEN)
+            dots.currentAmount = PASSLEN;
     }
 
-    for (auto& dot : dots) {
-        if (dot.appearing) {
-            if (dot.a < 1.0)
-                dot.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dot.start).count() / 100000.0, 0.0, 1.0);
-        } else {
-            if (dot.a > 0.0)
-                dot.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dot.start).count() / 100000.0, 0.0, 1.0);
-        }
-
-        if (dot.appearing && dot.a == 1.0)
-            dot.animated = false;
-    }
-
-    std::erase_if(dots, [](const auto& dot) { return !dot.appearing && dot.a == 0.0; });
+    dots.lastFrame = std::chrono::system_clock::now();
 }
 
 bool CPasswordInputField::draw(const SRenderData& data) {
@@ -90,11 +84,20 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     constexpr int PASS_SPACING = 3;
     constexpr int PASS_SIZE    = 8;
 
-    for (size_t i = 0; i < dots.size(); ++i) {
-        Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * dots[i].idx, 0};
+    for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
+        Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
         CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        g_pRenderer->renderRect(box, CColor{0, 0, 0, dots[i].a * data.opacity}, PASS_SIZE / 2.0);
+        g_pRenderer->renderRect(box, CColor{0, 0, 0, data.opacity}, PASS_SIZE / 2.0);
     }
 
-    return std::ranges::any_of(dots.begin(), dots.end(), [](const auto& dot) { return dot.animated; }) || fade.animated;
+    if (dots.currentAmount != std::floor(dots.currentAmount)) {
+        Vector2D currentPos =
+            inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
+        CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
+        g_pRenderer->renderRect(box, CColor{0, 0, 0, (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity}, PASS_SIZE / 2.0);
+    }
+
+    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
+
+    return dots.currentAmount != PASSLEN || data.opacity < 1.0 || fade.a < 1.0;
 }
