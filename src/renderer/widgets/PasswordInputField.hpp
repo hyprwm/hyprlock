@@ -8,12 +8,13 @@
 
 class CPasswordInputField : public IWidget {
   public:
-    CPasswordInputField(const Vector2D& viewport, const Vector2D& size, const CColor& outer, const CColor& inner, int out_thick);
+    CPasswordInputField(const Vector2D& viewport, const Vector2D& size, const CColor& outer, const CColor& inner, int out_thick, bool fade_empty);
 
     virtual bool draw();
 
   private:
     void     updateDots();
+    void     updateFade();
 
     Vector2D size;
     Vector2D pos;
@@ -29,6 +30,15 @@ class CPasswordInputField : public IWidget {
         float                                 a         = 0;
         std::chrono::system_clock::time_point start;
     };
+
+    struct {
+        std::chrono::system_clock::time_point start;
+        float                                 a         = 0;
+        bool                                  appearing = true;
+        bool                                  animated  = false;
+    } fade;
+
+    bool             fadeOnEmpty;
 
     std::vector<dot> dots;
 };

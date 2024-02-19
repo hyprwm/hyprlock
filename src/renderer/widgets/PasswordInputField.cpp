@@ -3,12 +3,44 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const Vector2D& size_, const CColor& outer_, const CColor& inner_, int out_thick_) {
-    size      = size_;
-    pos       = viewport / 2.f - size_ / 2.f;
-    inner     = inner_;
-    outer     = outer_;
-    out_thick = out_thick_;
+CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const Vector2D& size_, const CColor& outer_, const CColor& inner_, int out_thick_, bool fadeEmpty) {
+    size        = size_;
+    pos         = viewport / 2.f - size_ / 2.f;
+    inner       = inner_;
+    outer       = outer_;
+    out_thick   = out_thick_;
+    fadeOnEmpty = fadeEmpty;
+}
+
+void CPasswordInputField::updateFade() {
+    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
+
+    if (!fadeOnEmpty) {
+        fade.a = 1.0;
+        return;
+    }
+
+    if (PASSLEN == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
+        fade.a         = 1.0;
+        fade.animated  = true;
+        fade.appearing = false;
+        fade.start     = std::chrono::system_clock::now();
+    } else if (PASSLEN > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
+        fade.a         = 0.0;
+        fade.animated  = true;
+        fade.appearing = true;
+        fade.start     = std::chrono::system_clock::now();
+    }
+
+    if (fade.animated) {
+        if (fade.appearing)
+            fade.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
+        else
+            fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
+
+        if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0))
+            fade.animated = false;
+    }
 }
 
 void CPasswordInputField::updateDots() {
@@ -44,10 +76,16 @@ bool CPasswordInputField::draw() {
     CBox inputFieldBox = {pos, size};
     CBox outerBox      = {pos - Vector2D{out_thick, out_thick}, size + Vector2D{out_thick * 2, out_thick * 2}};
 
+    updateFade();
     updateDots();
 
-    g_pRenderer->renderRect(outerBox, outer, outerBox.h / 2.0);
-    g_pRenderer->renderRect(inputFieldBox, inner, inputFieldBox.h / 2.0);
+    CColor outerCol = outer;
+    outer.a         = fade.a;
+    CColor innerCol = inner;
+    innerCol.a      = fade.a;
+
+    g_pRenderer->renderRect(outerBox, outerCol, outerBox.h / 2.0);
+    g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
 
     constexpr int PASS_SPACING = 3;
     constexpr int PASS_SIZE    = 8;
@@ -58,5 +96,5 @@ bool CPasswordInputField::draw() {
         g_pRenderer->renderRect(box, CColor{0, 0, 0, dots[i].a}, PASS_SIZE / 2.0);
     }
 
-    return std::ranges::any_of(dots.begin(), dots.end(), [](const auto& dot) { return dot.animated; });
+    return std::ranges::any_of(dots.begin(), dots.end(), [](const auto& dot) { return dot.animated; }) || fade.animated;
 }

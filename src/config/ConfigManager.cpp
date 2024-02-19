@@ -31,6 +31,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "inner_color", Hyprlang::INT{0xFFDDDDDD});
     m_config.addSpecialConfigValue("input-field", "outer_color", Hyprlang::INT{0xFF111111});
     m_config.addSpecialConfigValue("input-field", "outline_thickness", Hyprlang::INT{4});
+    m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
 
     m_config.commence();
 
@@ -75,6 +76,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"inner_color", m_config.getSpecialConfigValue("input-field", "inner_color", k.c_str())},
                 {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
                 {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},
+                {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
             }
         });
         // clang-format on
