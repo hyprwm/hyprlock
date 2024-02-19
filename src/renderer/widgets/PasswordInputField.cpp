@@ -5,12 +5,14 @@
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props) {
     size        = std::any_cast<Hyprlang::VEC2>(props.at("size"));
-    pos         = viewport / 2.f - size / 2.f;
     inner       = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
     outer       = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     out_thick   = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     fadeOnEmpty = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     font        = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    pos         = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+
+    pos = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
 }
 
 void CPasswordInputField::updateFade() {

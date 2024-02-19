@@ -54,23 +54,7 @@ bool CLabel::draw(const SRenderData& data) {
             return true;
 
         // calc pos
-        if (halign == "center")
-            pos.x += viewport.x / 2.0 - asset->texture.m_vSize.x / 2.0;
-        else if (halign == "left")
-            pos.x += 0;
-        else if (halign == "right")
-            pos.x += viewport.x - asset->texture.m_vSize.x;
-        else if (halign != "none")
-            Debug::log(ERR, "Label: invalid halign {}", halign);
-
-        if (valign == "center")
-            pos.y += viewport.y / 2.0 - asset->texture.m_vSize.y / 2.0;
-        else if (valign == "top")
-            pos.y += viewport.y - asset->texture.m_vSize.y;
-        else if (valign == "bottom")
-            pos.y += asset->texture.m_vSize.y;
-        else if (valign != "none")
-            Debug::log(ERR, "Label: invalid halign {}", halign);
+        pos = posFromHVAlign(viewport, asset->texture.m_vSize, pos, halign, valign);
     }
 
     CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
