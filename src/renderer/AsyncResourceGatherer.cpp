@@ -129,13 +129,31 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     auto              CAIRO        = cairo_create(CAIROSURFACE);
 
     // draw title using Pango
-    PangoLayout* layout = pango_cairo_create_layout(CAIRO);
-    pango_layout_set_text(layout, rq.asset.c_str(), -1);
+    PangoLayout*          layout = pango_cairo_create_layout(CAIRO);
 
     PangoFontDescription* fontDesc = pango_font_description_from_string(FONTFAMILY.c_str());
     pango_font_description_set_size(fontDesc, FONTSIZE * PANGO_SCALE);
     pango_layout_set_font_description(layout, fontDesc);
     pango_font_description_free(fontDesc);
+
+    PangoAttrList* attrList = nullptr;
+    GError*        gError   = nullptr;
+    char*          buf      = nullptr;
+    if (pango_parse_markup(rq.asset.c_str(), -1, 0, &attrList, &buf, nullptr, &gError))
+        pango_layout_set_text(layout, buf, -1);
+    else {
+        Debug::log(ERR, "Pango markup parsing for {} failed: {}", rq.asset, gError->message);
+        g_error_free(gError);
+        pango_layout_set_text(layout, rq.asset.c_str(), -1);
+    }
+
+    if (!attrList)
+        attrList = pango_attr_list_new();
+
+    pango_attr_list_insert(attrList, pango_attr_scale_new(1));
+    pango_layout_set_attributes(layout, attrList);
+    pango_attr_list_unref(attrList);
+
     int layoutWidth, layoutHeight;
     pango_layout_get_size(layout, &layoutWidth, &layoutHeight);
 
