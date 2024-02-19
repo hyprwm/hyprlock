@@ -155,7 +155,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     frames++;
 
-    Debug::log(LOG, "frame {}", frames);
+    Debug::log(TRACE, "frame {}", frames);
 
     feedback.needsFrame = feedback.needsFrame || bga < 1.0;
     return feedback;

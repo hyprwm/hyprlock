@@ -124,7 +124,7 @@ static const wl_callback_listener callbackListener = {
 };
 
 void CSessionLockSurface::render() {
-    Debug::log(LOG, "render lock");
+    Debug::log(TRACE, "render lock");
 
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
     frameCallback       = wl_surface_frame(surface);
