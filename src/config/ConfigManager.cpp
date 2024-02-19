@@ -24,6 +24,7 @@ void CConfigManager::init() {
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "path", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("background", "color", Hyprlang::INT{0xFF111111});
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
@@ -70,6 +71,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
             std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("background", "monitor", k.c_str())),
             {
                 {"path", m_config.getSpecialConfigValue("background", "path", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("background", "color", k.c_str())},
             }
         });
         // clang-format on

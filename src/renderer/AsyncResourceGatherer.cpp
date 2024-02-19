@@ -57,7 +57,11 @@ void CAsyncResourceGatherer::gather() {
             progress += 1.0 / (preloads + 1.0);
 
             std::string path = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-            std::string id   = std::string{"background:"} + path;
+
+            if (path.empty())
+                continue;
+
+            std::string id = std::string{"background:"} + path;
 
             // preload bg img
             const auto CAIROISURFACE = cairo_image_surface_create_from_png(path.c_str());
