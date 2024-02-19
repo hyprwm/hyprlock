@@ -3,14 +3,14 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const Vector2D& size_, const CColor& outer_, const CColor& inner_, int out_thick_, bool fadeEmpty, const CColor& font_) {
-    size        = size_;
-    pos         = viewport / 2.f - size_ / 2.f;
-    inner       = inner_;
-    outer       = outer_;
-    out_thick   = out_thick_;
-    fadeOnEmpty = fadeEmpty;
-    font        = font_;
+CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props) {
+    size        = std::any_cast<Hyprlang::VEC2>(props.at("size"));
+    pos         = viewport / 2.f - size / 2.f;
+    inner       = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+    outer       = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+    out_thick   = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
+    fadeOnEmpty = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
+    font        = std::any_cast<Hyprlang::INT>(props.at("font_color"));
 }
 
 void CPasswordInputField::updateFade() {
@@ -88,14 +88,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
         Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
         CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        CColor fontCol  = font;
+        CColor   fontCol = font;
         g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
     }
 
     if (dots.currentAmount != std::floor(dots.currentAmount)) {
         Vector2D currentPos =
             inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
-        CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
+        CBox   box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
         CColor fontCol = font;
         fontCol.a      = (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
         g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);

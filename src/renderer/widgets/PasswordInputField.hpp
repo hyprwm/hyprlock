@@ -5,10 +5,12 @@
 #include "../../helpers/Color.hpp"
 #include <chrono>
 #include <vector>
+#include <any>
+#include <unordered_map>
 
 class CPasswordInputField : public IWidget {
   public:
-    CPasswordInputField(const Vector2D& viewport, const Vector2D& size, const CColor& outer, const CColor& inner, int out_thick, bool fade_empty, const CColor& font);
+    CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props);
 
     virtual bool draw(const SRenderData& data);
 

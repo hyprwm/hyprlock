@@ -2,11 +2,16 @@
 
 #include <cmath>
 #include <format>
+#include <hyprlang.hpp>
 
 class Vector2D {
   public:
     Vector2D(double, double);
     Vector2D();
+    Vector2D(const Hyprlang::VEC2& v) {
+        x = v.x;
+        y = v.y;
+    }
     ~Vector2D();
 
     double x = 0;
