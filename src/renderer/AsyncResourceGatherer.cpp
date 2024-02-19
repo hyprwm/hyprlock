@@ -200,6 +200,8 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
         asyncLoopState.requestMutex.lock();
 
+        asyncLoopState.pending = false;
+
         if (asyncLoopState.requests.empty()) {
             asyncLoopState.requestMutex.unlock();
             continue;
