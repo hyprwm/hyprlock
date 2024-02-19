@@ -8,7 +8,7 @@
 
 class CPasswordInputField : public IWidget {
   public:
-    CPasswordInputField(const Vector2D& viewport, const Vector2D& size, const CColor& outer, const CColor& inner, int out_thick, bool fade_empty);
+    CPasswordInputField(const Vector2D& viewport, const Vector2D& size, const CColor& outer, const CColor& inner, int out_thick, bool fade_empty, const CColor& font);
 
     virtual bool draw(const SRenderData& data);
 
@@ -21,7 +21,7 @@ class CPasswordInputField : public IWidget {
 
     int      out_thick;
 
-    CColor   inner, outer;
+    CColor   inner, outer, font;
 
     struct {
         float                                 currentAmount  = 0;
