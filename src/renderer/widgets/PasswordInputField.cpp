@@ -13,6 +13,19 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const std::un
     pos         = std::any_cast<Hyprlang::VEC2>(props.at("position"));
 
     pos = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
+
+    std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
+    if (!placeholderText.empty()) {
+        placeholder.resourceID = "placeholder:" + std::to_string((uintptr_t)this);
+        CAsyncResourceGatherer::SPreloadRequest request;
+        request.id                   = placeholder.resourceID;
+        request.asset                = placeholderText;
+        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+        request.props["font_family"] = std::string{"Sans"};
+        request.props["color"]       = CColor{1.0 - font.r, 1.0 - font.g, 1.0 - font.b, 0.5};
+        request.props["font_size"]   = 12;
+        g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    }
 }
 
 void CPasswordInputField::updateFade() {
@@ -104,6 +117,18 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     }
 
     const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
+
+    if (PASSLEN == 0 && !placeholder.resourceID.empty()) {
+        if (!placeholder.asset)
+            placeholder.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(placeholder.resourceID);
+
+        if (placeholder.asset) {
+            Vector2D pos = outerBox.pos() + outerBox.size() / 2.f;
+            pos          = pos - placeholder.asset->texture.m_vSize / 2.f;
+            CBox textbox{pos, placeholder.asset->texture.m_vSize};
+            g_pRenderer->renderTexture(textbox, placeholder.asset->texture, data.opacity * fade.a, 0);
+        }
+    }
 
     return dots.currentAmount != PASSLEN || data.opacity < 1.0 || fade.a < 1.0;
 }

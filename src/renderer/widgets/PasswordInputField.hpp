@@ -8,6 +8,8 @@
 #include <any>
 #include <unordered_map>
 
+struct SPreloadedAsset;
+
 class CPasswordInputField : public IWidget {
   public:
     CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props);
@@ -37,6 +39,11 @@ class CPasswordInputField : public IWidget {
         bool                                  appearing = true;
         bool                                  animated  = false;
     } fade;
+
+    struct {
+        std::string      resourceID = "";
+        SPreloadedAsset* asset      = nullptr;
+    } placeholder;
 
     bool fadeOnEmpty;
 };
