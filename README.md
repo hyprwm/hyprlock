@@ -9,7 +9,7 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
 
 ## How it looks
 
-![](https://i.ibb.co/HXF8pY3/20240218-23h08m26s.png)
+![](https://i.ibb.co/8Bd98BP/20240220-00h12m46s.png)
 
 ## Docs / Configuration
 [See the wiki](https://wiki.hyprland.org/Hypr-Ecosystem/hyprlock/)
