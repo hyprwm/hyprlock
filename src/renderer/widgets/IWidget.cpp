@@ -46,6 +46,7 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     IWidget::SFormatResult result;
     replaceAll(in, "$USER", std::string{getlogin()});
+    replaceAll(in, "<br/>", std::string{"\n"});
 
     if (in.contains("$TIME")) {
         replaceAll(in, "$TIME", getTime());
