@@ -41,6 +41,12 @@ in {
             type = str;
             default = "echo 'timeout reached'";
           };
+
+          color = mkOption {
+            description = "Background color";
+            type = str;
+            default = "rgba(25, 20, 20, 1.0)";
+          };
         };
       });
     };
@@ -229,6 +235,7 @@ in {
           background {
             monitor = ${background.monitor}
             path = ${background.path}
+            color = ${background.color}
           }
         '')
         cfg.backgrounds)}
