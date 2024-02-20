@@ -41,6 +41,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "position", Hyprlang::VEC2{0, -20});
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
+    m_config.addSpecialConfigValue("input-field", "placeholder_color", Hyprlang::INT{0xFF000000});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -105,6 +106,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"valign", m_config.getSpecialConfigValue("input-field", "valign", k.c_str())},
                 {"position", m_config.getSpecialConfigValue("input-field", "position", k.c_str())},
                 {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
+                {"placeholder_color", m_config.getSpecialConfigValue("input-field", "placeholder_color", k.c_str())},
                 {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
             }
         });

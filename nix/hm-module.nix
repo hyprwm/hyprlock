@@ -116,9 +116,14 @@ in {
       };
 
       placeholder_text = mkOption {
-        description = "The placeholder text of the input field";
+        description = "The placeholder text color of the input field";
         type = str;
         default = "<i>Input Password...</i>";
+      };
+      font_color = mkOption {
+        description = "The font color of the input field";
+        type = str;
+        default = "rgb(120, 120, 120)";
       };
 
       hide_input = mkOption {
