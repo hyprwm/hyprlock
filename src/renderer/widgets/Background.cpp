@@ -25,7 +25,7 @@ bool CBackground::draw(const SRenderData& data) {
 
     Vector2D size   = asset->texture.m_vSize;
     float    scaleX = viewport.x / asset->texture.m_vSize.x;
-    float    scaleY = viewport.y / asset->texture.m_vSize.x;
+    float    scaleY = viewport.y / asset->texture.m_vSize.y;
 
     texbox.w *= std::max(scaleX, scaleY);
     texbox.h *= std::max(scaleX, scaleY);
