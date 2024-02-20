@@ -233,6 +233,9 @@ void CHyprlock::run() {
             ret = wl_display_dispatch_pending(m_sWaylandState.display);
             wl_display_flush(m_sWaylandState.display);
         } while (ret > 0);
+
+        if (m_bTerminate)
+            break;
     }
 
     std::lock_guard<std::mutex> lg2(m_sLoopState.timerRequestMutex);
