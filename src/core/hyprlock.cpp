@@ -482,6 +482,8 @@ void CHyprlock::unlockSession() {
     Debug::log(LOG, "Unlocked, exiting!");
 
     m_bTerminate = true;
+
+    wl_display_roundtrip(m_sWaylandState.display);
 }
 
 void CHyprlock::onLockLocked() {
