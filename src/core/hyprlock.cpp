@@ -239,6 +239,8 @@ void CHyprlock::run() {
     m_sLoopState.timerCV.notify_all();
     g_pRenderer->asyncResourceGatherer->notify();
 
+    m_vOutputs.clear();
+
     wl_display_disconnect(m_sWaylandState.display);
 
     Debug::log(LOG, "Reached the end, exiting");

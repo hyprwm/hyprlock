@@ -31,6 +31,8 @@ CSessionLockSurface::~CSessionLockSurface() {
     wl_egl_window_destroy(eglWindow);
     ext_session_lock_surface_v1_destroy(lockSurface);
     wl_surface_destroy(surface);
+    if (frameCallback)
+        wl_callback_destroy(frameCallback);
 }
 
 CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
@@ -116,6 +118,10 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 
 static void handleDone(void* data, wl_callback* wl_callback, uint32_t callback_data) {
     const auto PSURF = (CSessionLockSurface*)data;
+
+    if (g_pHyprlock->m_bTerminate)
+        return;
+
     PSURF->onCallback();
 }
 
