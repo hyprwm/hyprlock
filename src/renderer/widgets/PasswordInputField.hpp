@@ -20,9 +20,11 @@ class CPasswordInputField : public IWidget {
     void     updateDots();
     void     updateFade();
     void     updateFailTex();
+    void     updateHiddenInputState();
 
     Vector2D size;
     Vector2D pos;
+    Vector2D viewport;
 
     int      out_thick;
 
@@ -49,6 +51,13 @@ class CPasswordInputField : public IWidget {
         SPreloadedAsset* failAsset     = nullptr;
         bool             canGetNewFail = true;
     } placeholder;
+
+    struct {
+        CColor lastColor;
+        int    lastQuadrant       = 0;
+        int    lastPasswordLength = 0;
+        bool   enabled            = false;
+    } hiddenInputState;
 
     bool fadeOnEmpty;
 };

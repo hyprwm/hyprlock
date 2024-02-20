@@ -3,14 +3,16 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props) {
-    size        = std::any_cast<Hyprlang::VEC2>(props.at("size"));
-    inner       = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
-    outer       = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
-    out_thick   = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
-    fadeOnEmpty = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
-    font        = std::any_cast<Hyprlang::INT>(props.at("font_color"));
-    pos         = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) {
+    size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
+    inner                    = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+    outer                    = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+    out_thick                = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
+    fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
+    font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+    hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
+    viewport                 = viewport_;
 
     pos = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
 
@@ -96,6 +98,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updateFade();
     updateDots();
     updateFailTex();
+    updateHiddenInputState();
 
     float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
 
@@ -107,26 +110,44 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
     g_pRenderer->renderRect(outerBox, outerCol, outerBox.h / 2.0);
+
+    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
+
+    if (PASSLEN != 0 && hiddenInputState.enabled) {
+        CBox     outerBoxScaled = outerBox;
+        Vector2D p              = outerBox.pos();
+        outerBoxScaled.translate(-p).scale(0.5).translate(p);
+        if (hiddenInputState.lastQuadrant > 1)
+            outerBoxScaled.y += outerBoxScaled.h;
+        if (hiddenInputState.lastQuadrant % 2 == 1)
+            outerBoxScaled.x += outerBoxScaled.w;
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
+        g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, outerBox.h / 2.0);
+        glScissor(0, 0, viewport.x, viewport.y);
+        glDisable(GL_SCISSOR_TEST);
+    }
+
     g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
 
     constexpr int PASS_SPACING = 3;
     constexpr int PASS_SIZE    = 8;
 
-    for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
-        Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
-        CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
-    }
+    if (!hiddenInputState.enabled) {
+        for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
+            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
+            CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
+            g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
+        }
 
-    if (dots.currentAmount != std::floor(dots.currentAmount)) {
-        Vector2D currentPos =
-            inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
-        CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-        fontCol.a = (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
-        g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
+        if (dots.currentAmount != std::floor(dots.currentAmount)) {
+            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
+                Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
+            CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
+            fontCol.a = (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
+            g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
+        }
     }
-
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
 
     if (PASSLEN == 0 && !placeholder.resourceID.empty()) {
         SPreloadedAsset* currAsset = nullptr;
@@ -185,4 +206,30 @@ void CPasswordInputField::updateFailTex() {
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
     placeholder.canGetNewFail = false;
+}
+
+void CPasswordInputField::updateHiddenInputState() {
+    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == g_pHyprlock->getPasswordBufferLen())
+        return;
+
+    // randomize new thang
+    hiddenInputState.lastPasswordLength = g_pHyprlock->getPasswordBufferLen();
+
+    float r1 = (rand() % 100) / 255.0;
+    float r2 = (rand() % 100) / 255.0;
+    int   r3 = rand() % 3;
+    int   r4 = rand() % 2;
+    int   r5 = rand() % 2;
+
+    ((float*)&hiddenInputState.lastColor.r)[r3]            = r1 + 155 / 255.0;
+    ((float*)&hiddenInputState.lastColor.r)[(r3 + r4) % 3] = r2 + 155 / 255.0;
+
+    for (int i = 0; i < 3; ++i) {
+        if (i != r3 && i != ((r3 + r4) % 3)) {
+            ((float*)&hiddenInputState.lastColor.r)[i] = 1.0 - ((float*)&hiddenInputState.lastColor.r)[r5 ? r3 : ((r3 + r4) % 3)];
+        }
+    }
+
+    hiddenInputState.lastColor.a  = 1.0;
+    hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
