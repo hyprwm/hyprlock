@@ -30,7 +30,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.asset                = placeholderText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = std::string{"Sans"};
-        request.props["color"]  = CColor{placeholder_color.r,placeholder_color.g,placeholder_color.b,0.5};
+        request.props["color"]  = CColor{placeholder_color.r,placeholder_color.g,placeholder_color.b,placeholder_color.a};
         request.props["font_size"]   = (int)size.y / 4;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
