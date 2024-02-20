@@ -43,6 +43,7 @@ class CAsyncResourceGatherer {
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
     void unloadAsset(SPreloadedAsset* asset);
+    void notify();
 
   private:
     std::thread initThread;

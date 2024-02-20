@@ -124,6 +124,10 @@ void CHyprlock::run() {
     std::thread pollThr([this, &pollfds]() {
         while (1) {
             int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. It's because we might need to terminate */);
+
+            if (m_bTerminate)
+                break;
+
             if (ret < 0) {
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
                 m_bTerminate = true;
@@ -137,9 +141,6 @@ void CHyprlock::run() {
                     exit(1);
                 }
             }
-
-            if (m_bTerminate)
-                break;
 
             if (ret != 0) {
                 Debug::log(TRACE, "[core] got poll event");
@@ -236,6 +237,9 @@ void CHyprlock::run() {
 
     std::lock_guard<std::mutex> lg2(m_sLoopState.timerRequestMutex);
     m_sLoopState.timerCV.notify_all();
+    g_pRenderer->asyncResourceGatherer->notify();
+
+    wl_display_disconnect(m_sWaylandState.display);
 
     Debug::log(LOG, "Reached the end, exiting");
 }
@@ -464,10 +468,6 @@ void CHyprlock::unlockSession() {
     Debug::log(LOG, "Unlocked, exiting!");
 
     m_bTerminate = true;
-
-    wl_display_roundtrip(m_sWaylandState.display);
-
-    exit(0);
 }
 
 void CHyprlock::onLockLocked() {

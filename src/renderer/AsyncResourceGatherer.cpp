@@ -231,7 +231,6 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
     std::lock_guard<std::mutex> lg(asyncLoopState.requestMutex);
     asyncLoopState.requests.push_back(request);
-    std::unique_lock lk(cvmtx);
     asyncLoopState.pending = true;
     asyncLoopState.loopGuard.notify_all();
 }
@@ -240,4 +239,9 @@ void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
     std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
 
     std::erase_if(assets, [asset](const auto& a) { return &a.second == asset; });
+}
+
+void CAsyncResourceGatherer::notify() {
+    asyncLoopState.pending = true;
+    asyncLoopState.loopGuard.notify_all();
 }
