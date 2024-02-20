@@ -9,6 +9,7 @@ self: {
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
 
+  boolToString = x: if x then "true" else "false";
   cfg = config.programs.hyprlock;
 in {
   options.programs.hyprlock = {
@@ -51,11 +52,18 @@ in {
       });
     };
 
-    general.disable_loading_bar =
-      mkEnableOption ""
-      // {
+    general = {
+      disable_loading_bar = mkOption {
         description = "Whether to disable loading bar";
+        type = bool;
+        default = false;
       };
+      hide_cursor = mkOption {
+        description = "Hides the cursor instead of making it visible";
+        type = bool;
+        default = true;
+      };      
+    };
 
     input_field = {
       monitor = mkOption {
@@ -111,6 +119,12 @@ in {
         description = "The placeholder text of the input field";
         type = str;
         default = "<i>Input Password...</i>";
+      };
+
+      hide_input = mkOption {
+        description = "Hide input typed into the input field";
+        type = bool;
+        default = false;
       };
 
       position = {
@@ -203,7 +217,8 @@ in {
 
     xdg.configFile."hypr/hyprlock.conf".text = ''
       general {
-        disable_loading_bar = ${toString cfg.general.disable_loading_bar}
+        disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
+        hide_cursor = ${boolToString cfg.general.hide_cursor}
       }
 
       label {
@@ -213,22 +228,23 @@ in {
         font_size = ${toString cfg.label.font_size}
         font_family = ${cfg.label.font_family}
 
-        position = ${toString cfg.label.position.x} ${toString cfg.label.position.y}
+        position = ${toString cfg.label.position.x}, ${toString cfg.label.position.y}
         halign = ${cfg.label.halign}
         valign = ${cfg.label.valign}
       }
 
       input-field {
         monitor = ${cfg.input_field.monitor}
-        size = ${toString cfg.input_field.size.width} ${toString cfg.input_field.size.height}
+        size = ${toString cfg.input_field.size.width}, ${toString cfg.input_field.size.height}
         outline_thickness = ${toString cfg.input_field.outline_thickness}
         outer_color = ${cfg.input_field.outer_color}
         inner_color = ${cfg.input_field.inner_color}
         font_color = ${cfg.input_field.font_color}
-        fade_on_empty = ${toString cfg.input_field.fade_on_empty}
+        fade_on_empty = ${boolToString cfg.input_field.fade_on_empty}
         placeholder-text = ${cfg.input_field.placeholder_text}
+        hide_input = ${boolToString cfg.input_field.hide_input}
 
-        position = ${toString cfg.input_field.position.x} ${toString cfg.input_field.position.y}
+        position = ${toString cfg.input_field.position.x}, ${toString cfg.input_field.position.y}
         halign = ${cfg.input_field.halign}
         valign = ${cfg.input_field.valign}
       }
