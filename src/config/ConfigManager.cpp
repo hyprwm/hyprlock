@@ -1,5 +1,21 @@
 #include "ConfigManager.hpp"
+#include "../helpers/MiscFunctions.hpp"
 #include <filesystem>
+#include <glob.h>
+#include <cstring>
+
+static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
+    const std::string      VALUE   = v;
+    const std::string      COMMAND = c;
+
+    const auto             RESULT = g_pConfigManager->handleSource(COMMAND, VALUE);
+
+    Hyprlang::CParseResult result;
+    if (RESULT.has_value())
+        result.setError(RESULT.value().c_str());
+    return result;
+}
+
 
 static std::string getConfigDir() {
     static const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
@@ -15,7 +31,7 @@ static std::string getMainConfigPath() {
 }
 
 CConfigManager::CConfigManager() : m_config(getMainConfigPath().c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = true}) {
-    ;
+    configCurrentPath = getMainConfigPath();
 }
 
 void CConfigManager::init() {
@@ -52,6 +68,8 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
+
+    m_config.registerHandler(&::handleSource, "source", {false});
 
     m_config.commence();
 
@@ -131,4 +149,39 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     }
 
     return result;
+}
+
+
+std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
+    if (rawpath.length() < 2) {
+        Debug::log(ERR, "source= path garbage");
+        return "source path " + rawpath + " bogus!";
+    }
+    std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
+    memset(glob_buf.get(), 0, sizeof(glob_t));
+
+    if (auto r = glob(absolutePath(rawpath, configCurrentPath).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
+        std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
+        Debug::log(ERR, "{}", err);
+        return err;
+    }
+
+    for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
+        auto value = absolutePath(glob_buf->gl_pathv[i], configCurrentPath);
+
+        if (!std::filesystem::is_regular_file(value)) {
+            if (std::filesystem::exists(value)) {
+                Debug::log(WARN, "source= skipping non-file {}", value);
+                continue;
+            }
+
+            Debug::log(ERR, "source= file doesnt exist");
+            return "source file " + value + " doesn't exist!";
+        }
+
+        m_config.parseFile(value.c_str());
+
+    }
+
+    return {};
 }
