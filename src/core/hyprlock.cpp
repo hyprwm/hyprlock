@@ -134,7 +134,7 @@ void CHyprlock::run() {
                 exit(1);
             }
 
-            for (size_t i = 0; i < 3; ++i) {
+            for (size_t i = 0; i < 1; ++i) {
                 if (pollfds[i].revents & POLLHUP) {
                     Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
                     m_bTerminate = true;
