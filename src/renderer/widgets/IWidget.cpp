@@ -36,9 +36,11 @@ static void replaceAll(std::string& str, const std::string& from, const std::str
 }
 
 static std::string getTime() {
-    const auto HHMMSS = std::chrono::hh_mm_ss{std::chrono::system_clock::now() - std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())};
-    const auto HRS    = HHMMSS.hours().count();
-    const auto MINS   = HHMMSS.minutes().count();
+    const auto current_zone = std::chrono::current_zone();
+    const auto HHMMSS       = std::chrono::hh_mm_ss{current_zone->to_local(std::chrono::system_clock::now()) -
+                                              std::chrono::floor<std::chrono::days>(current_zone->to_local(std::chrono::system_clock::now()))};
+    const auto HRS          = HHMMSS.hours().count();
+    const auto MINS         = HHMMSS.minutes().count();
     return (HRS < 10 ? "0" : "") + std::to_string(HRS) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS);
 }
 
