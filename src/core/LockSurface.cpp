@@ -73,6 +73,9 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     serial      = serial_;
     size        = (size_ * fractionalScale).floor();
     logicalSize = size_;
+
+    Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
+
     if (serial != 0)
         ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
 
