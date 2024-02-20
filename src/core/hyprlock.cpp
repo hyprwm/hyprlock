@@ -405,6 +405,27 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 // end session_lock
 
+void CHyprlock::onPasswordCheckTimer() {
+    // check result
+    if (m_sPasswordState.result->success) {
+        unlockSession();
+    } else {
+        Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
+        m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
+        m_sPasswordState.passBuffer     = "";
+    }
+
+    m_sPasswordState.result.reset();
+}
+
+bool CHyprlock::passwordCheckWaiting() {
+    return m_sPasswordState.result.get();
+}
+
+std::optional<std::string> CHyprlock::passwordLastFailReason() {
+    return m_sPasswordState.lastFailReason;
+}
+
 void CHyprlock::onKey(uint32_t key) {
     const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
@@ -414,14 +435,7 @@ void CHyprlock::onKey(uint32_t key) {
     } else if (SYM == XKB_KEY_Return) {
         Debug::log(LOG, "Authenticating");
 
-        const auto RESULT = g_pPassword->verify(m_sPasswordState.passBuffer);
-
-        Debug::log(LOG, "Password auth result: {}", RESULT.failReason);
-
-        if (RESULT.success)
-            unlockSession();
-
-        m_sPasswordState.passBuffer = "";
+        m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
     } else {
         char buf[16] = {0};
         int  len     = xkb_keysym_to_utf8(SYM, buf, 16);

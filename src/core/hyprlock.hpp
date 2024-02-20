@@ -7,10 +7,12 @@
 #include "Output.hpp"
 #include "CursorShape.hpp"
 #include "Timer.hpp"
+#include "Password.hpp"
 
 #include <memory>
 #include <vector>
 #include <condition_variable>
+#include <optional>
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -32,6 +34,9 @@ class CHyprlock {
     void                            unlockSession();
 
     void                            onKey(uint32_t key);
+    void                            onPasswordCheckTimer();
+    bool                            passwordCheckWaiting();
+    std::optional<std::string>      passwordLastFailReason();
 
     size_t                          getPasswordBufferLen();
 
@@ -69,7 +74,9 @@ class CHyprlock {
     } m_sLockState;
 
     struct {
-        std::string passBuffer = "";
+        std::string                                     passBuffer = "";
+        std::shared_ptr<CPassword::SVerificationResult> result;
+        std::optional<std::string>                      lastFailReason;
     } m_sPasswordState;
 
     struct {

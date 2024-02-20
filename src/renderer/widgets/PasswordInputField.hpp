@@ -19,6 +19,7 @@ class CPasswordInputField : public IWidget {
   private:
     void     updateDots();
     void     updateFade();
+    void     updateFailTex();
 
     Vector2D size;
     Vector2D pos;
@@ -43,6 +44,10 @@ class CPasswordInputField : public IWidget {
     struct {
         std::string      resourceID = "";
         SPreloadedAsset* asset      = nullptr;
+
+        std::string      failID        = "";
+        SPreloadedAsset* failAsset     = nullptr;
+        bool             canGetNewFail = true;
     } placeholder;
 
     bool fadeOnEmpty;
