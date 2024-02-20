@@ -4,8 +4,12 @@
 #include "../renderer/Renderer.hpp"
 #include "Password.hpp"
 #include "Egl.hpp"
+
+#include <sys/wait.h>
+#include <sys/poll.h>
 #include <sys/mman.h>
-#include <cuchar>
+#include <fcntl.h>
+#include <unistd.h>
 
 CHyprlock::CHyprlock(const std::string& wlDisplay) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -110,9 +114,120 @@ void CHyprlock::run() {
 
     lockSession();
 
-    while (wl_display_dispatch(m_sWaylandState.display) != -1) {
+    pollfd pollfds[] = {
+        {
+            .fd     = wl_display_get_fd(m_sWaylandState.display),
+            .events = POLLIN,
+        },
+    };
+
+    std::thread pollThr([this, &pollfds]() {
+        while (1) {
+            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. It's because we might need to terminate */);
+            if (ret < 0) {
+                Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
+                m_bTerminate = true;
+                exit(1);
+            }
+
+            for (size_t i = 0; i < 3; ++i) {
+                if (pollfds[i].revents & POLLHUP) {
+                    Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                    m_bTerminate = true;
+                    exit(1);
+                }
+            }
+
+            if (m_bTerminate)
+                break;
+
+            if (ret != 0) {
+                Debug::log(TRACE, "[core] got poll event");
+                std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
+                m_sLoopState.event = true;
+                m_sLoopState.loopCV.notify_all();
+            }
+        }
+    });
+
+    std::thread timersThr([this]() {
+        while (1) {
+            // calc nearest thing
+            m_sLoopState.timersMutex.lock();
+
+            float least = 10000;
+            for (auto& t : m_vTimers) {
+                const auto TIME = t->leftMs();
+                if (TIME < least)
+                    least = TIME;
+            }
+
+            m_sLoopState.timersMutex.unlock();
+
+            std::unique_lock lk(m_sLoopState.timerRequestMutex);
+            m_sLoopState.timerCV.wait_for(lk, std::chrono::milliseconds((int)least + 1), [this] { return m_sLoopState.event; });
+
+            // notify main
+            std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
+            Debug::log(TRACE, "timer thread firing");
+            m_sLoopState.event = true;
+            m_sLoopState.loopCV.notify_all();
+        }
+    });
+
+    m_sLoopState.event = true; // let it process once
+
+    while (1) {
+        std::unique_lock lk(m_sLoopState.eventRequestMutex);
+        if (m_sLoopState.event == false)
+            m_sLoopState.loopCV.wait(lk, [this] { return m_sLoopState.event; });
+
         if (m_bTerminate)
             break;
+
+        std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
+
+        m_sLoopState.event = false;
+
+        if (pollfds[0].revents & POLLIN /* dbus */) {
+            Debug::log(TRACE, "got wl event");
+            wl_display_flush(m_sWaylandState.display);
+            if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
+                wl_display_read_events(m_sWaylandState.display);
+                wl_display_dispatch_pending(m_sWaylandState.display);
+            } else {
+                wl_display_dispatch(m_sWaylandState.display);
+            }
+        }
+
+        m_sLoopState.timersMutex.lock();
+        auto timerscpy = m_vTimers;
+        m_sLoopState.timersMutex.unlock();
+
+        std::vector<std::shared_ptr<CTimer>> passed;
+
+        for (auto& t : timerscpy) {
+            if (t->passed() && !t->cancelled()) {
+                t->call(t);
+                passed.push_back(t);
+            }
+
+            if (t->cancelled())
+                passed.push_back(t);
+        }
+
+        m_sLoopState.timersMutex.lock();
+        std::erase_if(m_vTimers, [passed](const auto& timer) { return std::find(passed.begin(), passed.end(), timer) != passed.end(); });
+        m_sLoopState.timersMutex.unlock();
+
+        passed.clear();
+
+        // finalize wayland dispatching. Dispatch pending on the queue
+        int ret = 0;
+        do {
+            ret = wl_display_dispatch_pending(m_sWaylandState.display);
+            wl_display_flush(m_sWaylandState.display);
+        } while (ret > 0);
     }
 
     Debug::log(LOG, "Reached the end, exiting");
@@ -374,4 +489,9 @@ wp_viewporter* CHyprlock::getViewporter() {
 
 size_t CHyprlock::getPasswordBufferLen() {
     return m_sPasswordState.passBuffer.length();
+}
+
+std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data) {
+    std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
+    return m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data));
 }

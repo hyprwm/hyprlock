@@ -6,9 +6,11 @@
 #include "viewporter-protocol.h"
 #include "Output.hpp"
 #include "CursorShape.hpp"
+#include "Timer.hpp"
 
 #include <memory>
 #include <vector>
+#include <condition_variable>
 
 #include <xkbcommon/xkbcommon.h>
 
@@ -20,6 +22,8 @@ class CHyprlock {
 
     void                            onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     void                            onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
+
+    std::shared_ptr<CTimer>         addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data);
 
     void                            onLockLocked();
     void                            onLockFinished();
@@ -68,7 +72,20 @@ class CHyprlock {
         std::string passBuffer = "";
     } m_sPasswordState;
 
+    struct {
+        std::mutex              timersMutex;
+        std::mutex              eventRequestMutex;
+        std::mutex              eventLoopMutex;
+        std::condition_variable loopCV;
+        bool                    event = false;
+
+        std::condition_variable timerCV;
+        std::mutex              timerRequestMutex;
+    } m_sLoopState;
+
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
+
+    std::vector<std::shared_ptr<CTimer>>  m_vTimers;
 };
 
 inline std::unique_ptr<CHyprlock> g_pHyprlock;

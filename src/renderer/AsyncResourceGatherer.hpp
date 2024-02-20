@@ -42,6 +42,7 @@ class CAsyncResourceGatherer {
     };
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
+    void unloadAsset(SPreloadedAsset* asset);
 
   private:
     std::thread initThread;
@@ -55,6 +56,8 @@ class CAsyncResourceGatherer {
         std::mutex                   loopMutex;
 
         std::mutex                   requestMutex;
+
+        std::mutex                   assetsMutex;
 
         std::vector<SPreloadRequest> requests;
         bool                         pending = false;

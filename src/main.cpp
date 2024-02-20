@@ -14,8 +14,10 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
 
-        else if (arg == "--display" && i + 1 < argc)
+        else if (arg == "--display" && i + 1 < argc) {
             wlDisplay = argv[i + 1];
+            i++;
+        }
     }
 
     try {

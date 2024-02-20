@@ -89,12 +89,13 @@ void CAsyncResourceGatherer::apply() {
 
     for (auto& t : preloadTargets) {
         if (t.type == TARGET_IMAGE) {
-            const auto  ASSET = &assets[t.id];
+            std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
+            const auto                  ASSET = &assets[t.id];
 
-            const auto  CAIROFORMAT = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
-            const GLint glIFormat   = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
-            const GLint glFormat    = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
-            const GLint glType      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
+            const auto                  CAIROFORMAT = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
+            const GLint                 glIFormat   = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
+            const GLint                 glFormat    = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
+            const GLint                 glType      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
             ASSET->texture.m_vSize = t.size;
             ASSET->texture.allocate();
@@ -233,4 +234,10 @@ void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& req
     std::unique_lock lk(cvmtx);
     asyncLoopState.pending = true;
     asyncLoopState.loopGuard.notify_all();
+}
+
+void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
+    std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
+
+    std::erase_if(assets, [asset](const auto& a) { return &a.second == asset; });
 }
