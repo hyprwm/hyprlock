@@ -9,7 +9,7 @@ self: {
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
 
-  cfg = config.services.hyprlock;
+  cfg = config.programs.hyprlock;
 in {
   options.programs.hyprlock = {
     enable = mkEnableOption "Hyprlock, Hyprland's GPU-accelerated lock screen utility";
