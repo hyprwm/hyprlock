@@ -1,10 +1,9 @@
-{
+self: {
   config,
   pkgs,
   lib,
   ...
 }:
-with lib;
 let
   inherit (builtins) toString;
   inherit (lib.types) int listOf package str bool submodule;
