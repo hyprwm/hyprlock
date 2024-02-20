@@ -165,7 +165,11 @@ void CHyprlock::run() {
             m_sLoopState.timersMutex.unlock();
 
             std::unique_lock lk(m_sLoopState.timerRequestMutex);
-            m_sLoopState.timerCV.wait_for(lk, std::chrono::milliseconds((int)least + 1), [this] { return m_sLoopState.event; });
+            m_sLoopState.timerCV.wait_for(lk, std::chrono::milliseconds((int)least + 1), [this] { return m_sLoopState.timerEvent; });
+            m_sLoopState.timerEvent = false;
+
+            if (m_bTerminate)
+                break;
 
             // notify main
             std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
@@ -229,6 +233,9 @@ void CHyprlock::run() {
             wl_display_flush(m_sWaylandState.display);
         } while (ret > 0);
     }
+
+    std::lock_guard<std::mutex> lg2(m_sLoopState.timerRequestMutex);
+    m_sLoopState.timerCV.notify_all();
 
     Debug::log(LOG, "Reached the end, exiting");
 }
@@ -493,5 +500,8 @@ size_t CHyprlock::getPasswordBufferLen() {
 
 std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data) {
     std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
-    return m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data));
+    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data));
+    m_sLoopState.timerEvent       = true;
+    m_sLoopState.timerCV.notify_all();
+    return T;
 }

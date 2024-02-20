@@ -81,6 +81,7 @@ class CHyprlock {
 
         std::condition_variable timerCV;
         std::mutex              timerRequestMutex;
+        bool                    timerEvent = false;
     } m_sLoopState;
 
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
