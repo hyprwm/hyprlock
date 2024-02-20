@@ -26,6 +26,8 @@ class CPasswordInputField : public IWidget {
     Vector2D pos;
     Vector2D viewport;
 
+    float    dt_size, dt_space;
+
     int      out_thick;
 
     CColor   inner, outer, font;

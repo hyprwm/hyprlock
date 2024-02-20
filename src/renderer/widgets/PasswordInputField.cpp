@@ -8,13 +8,17 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     inner                    = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
     outer                    = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     out_thick                = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
+    dt_size                  = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
+    dt_space                 = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
     pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
     viewport                 = viewport_;
 
-    pos = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
+    pos      = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
+    dt_size  = std::clamp(dt_size, 0.2f, 0.8f);
+    dt_space = std::clamp(dt_space, 0.f, 1.f);
 
     std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     if (!placeholderText.empty()) {
@@ -130,18 +134,18 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
 
-    constexpr int PASS_SPACING = 3;
-    constexpr int PASS_SIZE    = 8;
+    const int PASS_SIZE    = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
+    const int PASS_SPACING = std::floor(PASS_SIZE * dt_space);
 
     if (!hiddenInputState.enabled) {
         for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
-            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
+            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
             CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
             g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
         }
 
         if (dots.currentAmount != std::floor(dots.currentAmount)) {
-            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
+            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
                 Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
             CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
             fontCol.a *= (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
