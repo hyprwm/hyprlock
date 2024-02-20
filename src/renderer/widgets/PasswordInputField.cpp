@@ -103,10 +103,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
 
     CColor outerCol = outer;
-    outer.a         = fade.a * data.opacity;
+    outer.a *= fade.a * data.opacity;
     CColor innerCol = inner;
-    innerCol.a      = fade.a * data.opacity;
-    CColor fontCol  = font;
+    innerCol.a *= fade.a * data.opacity;
+    CColor fontCol = font;
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
     g_pRenderer->renderRect(outerBox, outerCol, outerBox.h / 2.0);
@@ -144,7 +144,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
                 Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
             CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-            fontCol.a = (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
+            fontCol.a *= (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
             g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
         }
     }

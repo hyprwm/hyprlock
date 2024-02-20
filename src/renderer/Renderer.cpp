@@ -128,7 +128,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glClear(GL_COLOR_BUFFER_BIT);
 
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
 
@@ -161,6 +161,8 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     Debug::log(TRACE, "frame {}", frames);
 
     feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->ready || bga < 1.0;
+
+    glDisable(GL_BLEND);
 
     return feedback;
 }
