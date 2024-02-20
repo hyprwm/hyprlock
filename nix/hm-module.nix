@@ -11,7 +11,7 @@ self: {
 
   cfg = config.services.hyprlock;
 in {
-  options.services.hyprlock = {
+  options.programs.hyprlock = {
     enable = mkEnableOption "Hyprlock, Hyprland's GPU-accelerated lock screen utility";
 
     package = mkOption {
