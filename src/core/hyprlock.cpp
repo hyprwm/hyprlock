@@ -158,7 +158,7 @@ void CHyprlock::run() {
 
             float least = 10000;
             for (auto& t : m_vTimers) {
-                const auto TIME = t->leftMs();
+                const auto TIME = std::clamp(t->leftMs(), 1.f, INFINITY);
                 if (TIME < least)
                     least = TIME;
             }
@@ -238,7 +238,7 @@ void CHyprlock::run() {
             break;
     }
 
-    std::lock_guard<std::mutex> lg2(m_sLoopState.timerRequestMutex);
+    m_sLoopState.timerEvent = true;
     m_sLoopState.timerCV.notify_all();
     g_pRenderer->asyncResourceGatherer->notify();
 
