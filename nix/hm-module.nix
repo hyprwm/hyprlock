@@ -199,6 +199,8 @@ in {
   };
 
   config = mkIf cfg.enable {
+    home.packages = [ cfg.package ];
+
     xdg.configFile."hypr/hyprlock.conf".text = ''
       general {
         disable_loading_bar = ${toString cfg.general.disable_loading_bar}
