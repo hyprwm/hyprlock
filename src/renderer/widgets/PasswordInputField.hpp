@@ -17,16 +17,18 @@ class CPasswordInputField : public IWidget {
     virtual bool draw(const SRenderData& data);
 
   private:
-    void     updateDots();
-    void     updateFade();
-    void     updateFailTex();
+    void        updateDots();
+    void        updateFade();
+    void        updateFailTex();
 
-    Vector2D size;
-    Vector2D pos;
+    Vector2D    size;
+    Vector2D    pos;
 
-    int      out_thick;
+    int         out_thick, font_size;
 
-    CColor   inner, outer, font;
+    CColor      inner, outer, font_color;
+
+    std::string font_family;
 
     struct {
         float                                 currentAmount  = 0;

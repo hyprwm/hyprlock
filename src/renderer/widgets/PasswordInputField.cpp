@@ -9,7 +9,9 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const std::un
     outer       = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     out_thick   = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     fadeOnEmpty = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
-    font        = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    font_color  = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    font_family = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
+    font_size   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
     pos         = std::any_cast<Hyprlang::VEC2>(props.at("position"));
 
     pos = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
@@ -21,9 +23,9 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport, const std::un
         request.id                   = placeholder.resourceID;
         request.asset                = placeholderText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = std::string{"Sans"};
-        request.props["color"]       = CColor{1.0 - font.r, 1.0 - font.g, 1.0 - font.b, 0.5};
-        request.props["font_size"]   = (int)size.y / 4;
+        request.props["font_family"] = font_family;
+        request.props["color"]       = CColor{1.0 - font_color.r, 1.0 - font_color.g, 1.0 - font_color.b, 0.5};
+        request.props["font_size"]   = font_size;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
 }
@@ -103,7 +105,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     outer.a         = fade.a * data.opacity;
     CColor innerCol = inner;
     innerCol.a      = fade.a * data.opacity;
-    CColor fontCol  = font;
+    CColor fontCol  = font_color;
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
     g_pRenderer->renderRect(outerBox, outerCol, outerBox.h / 2.0);
@@ -179,9 +181,9 @@ void CPasswordInputField::updateFailTex() {
     placeholder.failID           = request.id;
     request.asset                = "<span style=\"italic\">" + FAIL.value() + "</span>";
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = std::string{"Sans"};
-    request.props["color"]       = CColor{1.0 - font.r, 1.0 - font.g, 1.0 - font.b, 0.5};
-    request.props["font_size"]   = (int)size.y / 4;
+    request.props["font_family"] = font_family;
+    request.props["color"]       = CColor{1.0 - font_color.r, 1.0 - font_color.g, 1.0 - font_color.b, 0.5};
+    request.props["font_size"]   = font_size;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
     placeholder.canGetNewFail = false;
