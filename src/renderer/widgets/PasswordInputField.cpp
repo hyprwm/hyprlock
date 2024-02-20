@@ -103,7 +103,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
 
     CColor outerCol = outer;
-    outer.a *= fade.a * data.opacity;
+    outerCol.a *= fade.a * data.opacity;
     CColor innerCol = inner;
     innerCol.a *= fade.a * data.opacity;
     CColor fontCol = font;
