@@ -185,7 +185,7 @@ void CHyprlock::run() {
     while (1) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
         if (m_sLoopState.event == false)
-            m_sLoopState.loopCV.wait(lk, [this] { return m_sLoopState.event; });
+            m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
 
         if (m_bTerminate)
             break;
