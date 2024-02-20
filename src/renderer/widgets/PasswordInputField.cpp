@@ -65,9 +65,14 @@ void CPasswordInputField::updateDots() {
     if (PASSLEN == dots.currentAmount)
         return;
 
-    const auto  DELTA = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count();
+    if (std::abs(PASSLEN - dots.currentAmount) > 1) {
+        dots.currentAmount = std::clamp(dots.currentAmount, PASSLEN - 1.f, PASSLEN + 1.f);
+        dots.lastFrame     = std::chrono::system_clock::now();
+    }
 
-    const float TOADD = DELTA / 1000000.0 * (dots.speedPerSecond * std::clamp(std::abs(PASSLEN - dots.currentAmount), 0.5f, INFINITY));
+    const auto  DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count(), 0, 20000);
+
+    const float TOADD = DELTA / 1000000.0 * dots.speedPerSecond;
 
     if (PASSLEN > dots.currentAmount) {
         dots.currentAmount += TOADD;
@@ -108,14 +113,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     constexpr int PASS_SIZE    = 8;
 
     for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
-        Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
+        Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
         CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
         g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
     }
 
     if (dots.currentAmount != std::floor(dots.currentAmount)) {
         Vector2D currentPos =
-            inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
+            inputFieldBox.pos() + Vector2D{PASS_SPACING * 4, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
         CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
         fontCol.a = (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
         g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
