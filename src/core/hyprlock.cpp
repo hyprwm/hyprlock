@@ -255,7 +255,12 @@ static void handlePointerEnter(void* data, struct wl_pointer* wl_pointer, uint32
     if (!g_pHyprlock->m_pCursorShape)
         return;
 
-    g_pHyprlock->m_pCursorShape->setShape(serial, wp_cursor_shape_device_v1_shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
+    static auto* const PHIDE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:hide_cursor");
+
+    if (**PHIDE)
+        g_pHyprlock->m_pCursorShape->hideCursor(serial);
+    else
+        g_pHyprlock->m_pCursorShape->setShape(serial, wp_cursor_shape_device_v1_shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
 }
 
 static void handlePointerLeave(void* data, struct wl_pointer* wl_pointer, uint32_t serial, struct wl_surface* surface) {

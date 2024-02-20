@@ -14,3 +14,7 @@ void CCursorShape::setShape(const uint32_t serial, const wp_cursor_shape_device_
 
     wp_cursor_shape_device_v1_set_shape(dev, serial, shape);
 }
+
+void CCursorShape::hideCursor(const uint32_t serial) {
+    wl_pointer_set_cursor(g_pHyprlock->m_pPointer, serial, nullptr, 0, 0);
+}

@@ -20,6 +20,7 @@ CConfigManager::CConfigManager() : m_config(getMainConfigPath().c_str(), Hyprlan
 
 void CConfigManager::init() {
     m_config.addConfigValue("general:disable_loading_bar", Hyprlang::INT{0});
+    m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
