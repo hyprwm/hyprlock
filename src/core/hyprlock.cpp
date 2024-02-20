@@ -246,6 +246,10 @@ void CHyprlock::run() {
 
     wl_display_disconnect(m_sWaylandState.display);
 
+    // wait for threads to exit cleanly to avoid a coredump
+    pollThr.join();
+    timersThr.join();
+
     Debug::log(LOG, "Reached the end, exiting");
 }
 
