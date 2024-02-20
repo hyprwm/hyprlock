@@ -4,6 +4,7 @@ self: {
   lib,
   ...
 }:
+
 let
   inherit (builtins) toString;
   inherit (lib.types) int listOf package str bool submodule;
@@ -180,7 +181,7 @@ in {
   config = mkIf cfg.enable {
     xdg.configFile."hypr/hyprlock.conf".text = ''
       general {
-        disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
+        disable_loading_bar = ${toString cfg.general.disable_loading_bar}
       }
       label {
         monitor = ${cfg.label.monitor}
@@ -200,7 +201,7 @@ in {
         outer_color = ${cfg.input_field.outer_color}
         inner_color = ${cfg.input_field.inner_color}
         font_color = ${cfg.input_field.font_color}
-        fade_on_empty = ${boolToString cfg.input_field.fade_on_empty}
+        fade_on_empty = ${toString cfg.input_field.fade_on_empty}
         placeholder-text = ${cfg.input_field.placeholder_text}
 
         position = ${toString cfg.input_field.position.x} ${toString cfg.input_field.position.y}
