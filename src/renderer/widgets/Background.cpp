@@ -21,9 +21,21 @@ bool CBackground::draw(const SRenderData& data) {
     if (!asset)
         return false;
 
-    CBox monbox = {0, 0, viewport.x, viewport.y};
+    CBox     texbox = {{}, asset->texture.m_vSize};
 
-    g_pRenderer->renderTexture(monbox, asset->texture, data.opacity);
+    Vector2D size   = asset->texture.m_vSize;
+    float    scaleX = viewport.x / asset->texture.m_vSize.x;
+    float    scaleY = viewport.y / asset->texture.m_vSize.x;
+
+    texbox.w *= std::max(scaleX, scaleY);
+    texbox.h *= std::max(scaleX, scaleY);
+
+    if (scaleX > scaleY)
+        texbox.y = -(texbox.h - viewport.y) / 2.f;
+    else
+        texbox.x = -(texbox.w - viewport.x) / 2.f;
+
+    g_pRenderer->renderTexture(texbox, asset->texture, data.opacity);
 
     return data.opacity < 1.0;
 }
