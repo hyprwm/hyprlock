@@ -11,7 +11,13 @@ static void handleGeometry(void* data, wl_output* output, int32_t x, int32_t y, 
 
 static void handleMode(void* data, wl_output* output, uint32_t flags, int32_t width, int32_t height, int32_t refresh) {
     const auto POUTPUT = (COutput*)data;
-    POUTPUT->size      = {width, height};
+
+    // handle portrait mode and flipped cases
+    if (POUTPUT->transform == WL_OUTPUT_TRANSFORM_270 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_90 ||
+        POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90)
+        POUTPUT->size = {height, width};
+    else
+        POUTPUT->size = {width, height};
 }
 
 static void handleDone(void* data, wl_output* output) {
