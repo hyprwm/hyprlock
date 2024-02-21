@@ -1,6 +1,7 @@
 #include "ConfigManager.hpp"
 #include <filesystem>
 
+
 static std::string getConfigDir() {
     static const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
 
@@ -41,6 +42,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "position", Hyprlang::VEC2{0, -20});
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
+    m_config.addSpecialConfigValue("input-field", "text_align", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -105,6 +107,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"valign", m_config.getSpecialConfigValue("input-field", "valign", k.c_str())},
                 {"position", m_config.getSpecialConfigValue("input-field", "position", k.c_str())},
                 {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
+                {"text_align", m_config.getSpecialConfigValue("input-field", "text_align", k.c_str())},
                 {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
             }
         });
