@@ -454,6 +454,10 @@ void CHyprlock::onKey(uint32_t key) {
         Debug::log(LOG, "Authenticating");
 
         m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+    } else if (SYM == XKB_KEY_Escape) {
+        Debug::log(LOG, "Clearing password buffer");
+
+        m_sPasswordState.passBuffer = "";
     } else {
         char buf[16] = {0};
         int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
