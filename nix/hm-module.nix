@@ -31,7 +31,7 @@ in {
         description = "Hides the cursor instead of making it visible";
         type = bool;
         default = true;
-      };      
+      };
     };
 
     backgrounds = mkOption {
@@ -101,6 +101,12 @@ in {
             description = "The spacing between the dots in the input field (scale of dot's absolute size, 0.0 - 1.0)";
             type = float;
             default = 0.15;
+          };
+
+          dots_center = mkOption {
+            description = "Center position of the dots in the input field";
+            type = bool;
+            default = true;
           };
 
           outer_color = mkOption {
@@ -262,6 +268,7 @@ in {
             outline_thickness = ${toString input-field.outline_thickness}
             dots_size = ${toString input-field.dots_size}
             dots_spacing = ${toString input-field.dots_spacing}
+            dots_center = ${boolToString input-field.dots_center}
             outer_color = ${input-field.outer_color}
             inner_color = ${input-field.inner_color}
             font_color = ${input-field.font_color}
