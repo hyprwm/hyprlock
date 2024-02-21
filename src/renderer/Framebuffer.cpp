@@ -17,10 +17,10 @@ static uint32_t glFormatToType(uint32_t gl) {
     return gl != GL_RGBA ? GL_UNSIGNED_INT_2_10_10_10_REV : GL_UNSIGNED_BYTE;
 }
 
-bool CFramebuffer::alloc(int w, int h, uint32_t drmFormat) {
+bool CFramebuffer::alloc(int w, int h) {
     bool     firstAlloc = false;
 
-    uint32_t glFormat = drmFormatToGL(drmFormat);
+    uint32_t glFormat = drmFormatToGL(DRM_FORMAT_XRGB2101010); // TODO: revise only 10b when I find a way to figure out without sc whether display is 10b
     uint32_t glType   = glFormatToType(glFormat);
 
     if (m_iFb == (uint32_t)-1) {
