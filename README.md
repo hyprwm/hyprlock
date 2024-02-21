@@ -21,10 +21,12 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
  - wayland-protocols
  - cairo
  - gles3.2
+ - libdrm
  - pango
  - hyprlang>=0.4.0
  - xkbcommon
  - pam
+ - mesa
 
 ### Building
 
