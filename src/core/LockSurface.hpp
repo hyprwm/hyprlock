@@ -7,7 +7,6 @@
 #include <wayland-egl.h>
 #include "../helpers/Vector2D.hpp"
 #include <EGL/egl.h>
-#include <optional>
 
 class COutput;
 class CRenderer;
@@ -17,7 +16,7 @@ class CSessionLockSurface {
     CSessionLockSurface(COutput* output);
     ~CSessionLockSurface();
 
-    void  configure(const Vector2D& size, std::optional<uint32_t> serial);
+    void  configure(const Vector2D& size, uint32_t serial);
 
     bool  readyForFrame = false;
 

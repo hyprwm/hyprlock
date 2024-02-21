@@ -58,22 +58,19 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         exit(1);
     }
 
-    configure(output->size, {});
-
     ext_session_lock_surface_v1_add_listener(lockSurface, &lockListener, this);
 }
 
-void CSessionLockSurface::configure(const Vector2D& size_, std::optional<uint32_t> serial_) {
-    Debug::log(LOG, "configure with serial {}", serial_.value_or(0));
+void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
+    Debug::log(LOG, "configure with serial {}", serial_);
 
-    serial      = serial_.value_or(0);
+    serial      = serial_;
     size        = (size_ * fractionalScale).floor();
     logicalSize = size_;
 
     Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
-    if (serial_.has_value())
-        ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
+    ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
 
     if (fractional)
         wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
@@ -101,10 +98,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, std::optional<uint32_
 
     readyForFrame = true;
 
-    if (serial_.has_value())
-        render();
-    else
-        eglSwapBuffers(g_pEGL->eglDisplay, eglSurface);
+    render();
 }
 
 static void handleDone(void* data, wl_callback* wl_callback, uint32_t callback_data) {
