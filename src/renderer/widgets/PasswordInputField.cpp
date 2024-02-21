@@ -13,6 +13,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    placeholder_color        = std::any_cast<Hyprlang::INT>(props.at("placeholder_color"));
     pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
     viewport                 = viewport_;
@@ -22,6 +23,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dt_space = std::clamp(dt_space, 0.f, 1.f);
 
     std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
+    
     if (!placeholderText.empty()) {
         placeholder.resourceID = "placeholder:" + std::to_string((uintptr_t)this);
         CAsyncResourceGatherer::SPreloadRequest request;
@@ -29,7 +31,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.asset                = placeholderText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = std::string{"Sans"};
-        request.props["color"]       = CColor{1.0 - font.r, 1.0 - font.g, 1.0 - font.b, 0.5};
+        request.props["color"]  = CColor(placeholder_color);
         request.props["font_size"]   = (int)size.y / 4;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
