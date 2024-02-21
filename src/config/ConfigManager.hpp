@@ -22,6 +22,9 @@ class CConfigManager {
     };
 
     std::vector<SWidgetConfig> getWidgetConfigs();
+    std::optional<std::string> handleSource(const std::string&, const std::string&);
+
+    std::string                configCurrentPath;
 
   private:
     Hyprlang::CConfig m_config;
