@@ -644,6 +644,13 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 void CHyprlock::onKey(uint32_t key) {
     const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
+    if (m_sPasswordState.result) {
+        for (auto& o : m_vOutputs) {
+            o->sessionLockSurface->render();
+        }
+        return;
+    }
+
     if (SYM == XKB_KEY_BackSpace) {
         if (m_sPasswordState.passBuffer.length() > 0)
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
