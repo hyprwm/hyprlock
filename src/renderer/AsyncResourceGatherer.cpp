@@ -5,6 +5,7 @@
 #include <pango/pangocairo.h>
 #include <algorithm>
 #include "../core/hyprlock.hpp"
+#include "../helpers/Log.hpp"
 
 std::mutex cvmtx;
 
@@ -61,12 +62,18 @@ void CAsyncResourceGatherer::gather() {
             if (path.empty())
                 continue;
 
-            std::string id = std::string{"background:"} + path;
-
             // preload bg img
             const auto CAIROISURFACE = cairo_image_surface_create_from_png(path.c_str());
 
-            const auto CAIRO = cairo_create(CAIROISURFACE);
+            // Make sure the img was actually loaded
+            if (cairo_surface_status(CAIROISURFACE) != CAIRO_STATUS_SUCCESS) {
+                Debug::log(WARN, "Background image could not be loaded: {}", path);
+                continue;
+            }
+
+            std::string id = std::string{"background:"} + path;
+
+            const auto  CAIRO = cairo_create(CAIROISURFACE);
             cairo_scale(CAIRO, 1, 1);
 
             const auto TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
