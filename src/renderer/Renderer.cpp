@@ -9,6 +9,7 @@
 #include <GLES3/gl3ext.h>
 
 #include <algorithm>
+#include <filesystem>
 
 #include "Shaders.hpp"
 
@@ -255,8 +256,8 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
             // by type
             if (c.type == "background") {
                 const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-                widgets[surf].emplace_back(
-                    std::make_unique<CBackground>(surf->size, PATH.empty() ? "" : std::string{"background:"} + PATH, std::any_cast<Hyprlang::INT>(c.values.at("color"))));
+                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, PATH.empty() || !std::filesystem::exists(PATH) ? "" : std::string{"background:"} + PATH,
+                                                                         std::any_cast<Hyprlang::INT>(c.values.at("color"))));
             } else if (c.type == "input-field") {
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
             } else if (c.type == "label") {
