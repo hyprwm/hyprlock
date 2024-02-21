@@ -25,6 +25,9 @@ CHyprlock::CHyprlock(const std::string& wlDisplay) {
         Debug::log(ERR, "Failed to create xkb context");
 
     g_pRenderer = std::make_unique<CRenderer>();
+
+    const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
+    m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
 }
 
 // wl_seat
@@ -265,6 +268,8 @@ static void handlePointerEnter(void* data, struct wl_pointer* wl_pointer, uint32
         g_pHyprlock->m_pCursorShape->hideCursor(serial);
     else
         g_pHyprlock->m_pCursorShape->setShape(serial, wp_cursor_shape_device_v1_shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
+
+    g_pHyprlock->m_vLastEnterCoords = {wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)};
 }
 
 static void handlePointerLeave(void* data, struct wl_pointer* wl_pointer, uint32_t serial, struct wl_surface* surface) {
@@ -276,7 +281,12 @@ static void handlePointerAxis(void* data, wl_pointer* wl_pointer, uint32_t time,
 }
 
 static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
-    ;
+    if (g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5 &&
+        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds) {
+
+        Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
+        g_pHyprlock->unlockSession();
+    }
 }
 
 static void handlePointerButton(void* data, struct wl_pointer* wl_pointer, uint32_t serial, uint32_t time, uint32_t button, uint32_t button_state) {

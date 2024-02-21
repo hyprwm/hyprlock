@@ -61,6 +61,10 @@ class CHyprlock {
 
     bool                            m_bTerminate = false;
 
+    //
+    std::chrono::system_clock::time_point m_tGraceEnds;
+    Vector2D                              m_vLastEnterCoords = {};
+
   private:
     struct {
         wl_display*                     display     = nullptr;
