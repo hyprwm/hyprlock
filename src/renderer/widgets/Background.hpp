@@ -18,4 +18,6 @@ class CBackground : public IWidget {
     std::string      resourceID;
     CColor           color;
     SPreloadedAsset* asset = nullptr;
+
+    bool             draw_color_bg(const SRenderData& data);
 };

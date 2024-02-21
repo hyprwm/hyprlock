@@ -13,6 +13,7 @@
 
 struct SPreloadedAsset {
     CTexture texture;
+    bool     valid;
 };
 
 class CAsyncResourceGatherer {
@@ -69,6 +70,7 @@ class CAsyncResourceGatherer {
     struct SPreloadTarget {
         eTargetType type = TARGET_IMAGE;
         std::string id   = "";
+        bool        valid;
 
         void*       data;
         void*       cairo;

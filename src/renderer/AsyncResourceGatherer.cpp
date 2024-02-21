@@ -5,6 +5,7 @@
 #include <pango/pangocairo.h>
 #include <algorithm>
 #include "../core/hyprlock.hpp"
+#include "../helpers/Log.hpp"
 
 std::mutex cvmtx;
 
@@ -63,22 +64,37 @@ void CAsyncResourceGatherer::gather() {
 
             std::string id = std::string{"background:"} + path;
 
-            // preload bg img
-            const auto CAIROISURFACE = cairo_image_surface_create_from_png(path.c_str());
+            const auto  TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
 
-            const auto CAIRO = cairo_create(CAIROISURFACE);
-            cairo_scale(CAIRO, 1, 1);
-
-            const auto TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
-
-            TARGET->size = {cairo_image_surface_get_width(CAIROISURFACE), cairo_image_surface_get_height(CAIROISURFACE)};
             TARGET->type = TARGET_IMAGE;
             TARGET->id   = id;
 
-            const auto DATA      = cairo_image_surface_get_data(CAIROISURFACE);
-            TARGET->cairo        = CAIRO;
-            TARGET->cairosurface = CAIROISURFACE;
-            TARGET->data         = DATA;
+            // preload bg img
+            const auto CAIROISURFACE = cairo_image_surface_create_from_png(path.c_str());
+
+            // Make sure the img was actually loaded before generating the preload asset
+            if (cairo_surface_status(CAIROISURFACE) == CAIRO_STATUS_SUCCESS) {
+                const auto CAIRO = cairo_create(CAIROISURFACE);
+                cairo_scale(CAIRO, 1, 1);
+
+                TARGET->size = {cairo_image_surface_get_width(CAIROISURFACE), cairo_image_surface_get_height(CAIROISURFACE)};
+
+                const auto DATA      = cairo_image_surface_get_data(CAIROISURFACE);
+                TARGET->cairo        = CAIRO;
+                TARGET->cairosurface = CAIROISURFACE;
+                TARGET->data         = DATA;
+
+                TARGET->valid = true;
+            } else {
+                Debug::log(WARN, "Background image could not be loaded: {}", path);
+
+                TARGET->size         = {0, 0};
+                TARGET->cairo        = nullptr;
+                TARGET->cairosurface = nullptr;
+                TARGET->data         = nullptr;
+
+                TARGET->valid = false;
+            }
         }
     }
 
@@ -92,10 +108,17 @@ void CAsyncResourceGatherer::apply() {
             std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
             const auto                  ASSET = &assets[t.id];
 
-            const auto                  CAIROFORMAT = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
-            const GLint                 glIFormat   = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
-            const GLint                 glFormat    = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
-            const GLint                 glType      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
+            // Cairo wasn't able to generate a surface for this asset during resource
+            // gathering. Invalidate this asset and skip generating a GL texture
+            if (!t.valid) {
+                ASSET->valid = false;
+                continue;
+            }
+
+            const auto  CAIROFORMAT = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
+            const GLint glIFormat   = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
+            const GLint glFormat    = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
+            const GLint glType      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
             ASSET->texture.m_vSize = t.size;
             ASSET->texture.allocate();
@@ -190,6 +213,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     target.cairosurface = CAIROSURFACE;
     target.data         = cairo_image_surface_get_data(CAIROSURFACE);
     target.size         = {layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE};
+    target.valid        = true;
 
     preloadTargets.push_back(target);
 }

@@ -7,19 +7,17 @@ CBackground::CBackground(const Vector2D& viewport_, const std::string& resourceI
 
 bool CBackground::draw(const SRenderData& data) {
 
+    // Early fallback to background color if image does not exist
     if (resourceID.empty()) {
-        CBox   monbox = {0, 0, viewport.x, viewport.y};
-        CColor col    = color;
-        col.a *= data.opacity;
-        g_pRenderer->renderRect(monbox, col, 0);
-        return data.opacity < 1.0;
+        return draw_color_bg(data);
     }
 
     if (!asset)
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
-    if (!asset)
-        return false;
+    // Fallback to background color if texture is invalid
+    if (!asset || asset->valid)
+        return draw_color_bg(data);
 
     CBox     texbox = {{}, asset->texture.m_vSize};
 
@@ -37,5 +35,13 @@ bool CBackground::draw(const SRenderData& data) {
 
     g_pRenderer->renderTexture(texbox, asset->texture, data.opacity);
 
+    return data.opacity < 1.0;
+}
+
+bool CBackground::draw_color_bg(const SRenderData& data) {
+    CBox   monbox = {0, 0, viewport.x, viewport.y};
+    CColor col    = color;
+    col.a *= data.opacity;
+    g_pRenderer->renderRect(monbox, col, 0);
     return data.opacity < 1.0;
 }
