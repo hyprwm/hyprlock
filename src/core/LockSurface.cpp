@@ -48,12 +48,8 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
         viewport = wp_viewporter_get_viewport(g_pHyprlock->getViewporter(), surface);
         wl_display_roundtrip(g_pHyprlock->getDisplay());
-    } else {
+    } else
         Debug::log(LOG, "No fractional-scale support! Oops, won't be able to scale!");
-    }
-
-    configure(output->size, 0);
-    g_pRenderer->renderLock(*this);
 
     lockSurface = ext_session_lock_v1_get_lock_surface(g_pHyprlock->getSessionLock(), surface, output->output);
 
@@ -62,21 +58,21 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         exit(1);
     }
 
+    configure(output->size, {});
+
     ext_session_lock_surface_v1_add_listener(lockSurface, &lockListener, this);
-    wl_display_roundtrip(g_pHyprlock->getDisplay());
-    wl_display_flush(g_pHyprlock->getDisplay());
 }
 
-void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
-    Debug::log(LOG, "configure with serial {}", serial_);
+void CSessionLockSurface::configure(const Vector2D& size_, std::optional<uint32_t> serial_) {
+    Debug::log(LOG, "configure with serial {}", serial_.value_or(0));
 
-    serial      = serial_;
+    serial      = serial_.value_or(0);
     size        = (size_ * fractionalScale).floor();
     logicalSize = size_;
 
     Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
-    if (serial != 0)
+    if (serial_.has_value())
         ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
 
     if (fractional)
@@ -95,7 +91,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
         exit(1);
     }
 
-    if (serial == 0)
+    if (!eglSurface)
         eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
 
     if (!eglSurface) {
@@ -105,18 +101,10 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 
     readyForFrame = true;
 
-    if (serial != 0)
+    if (serial_.has_value())
         render();
-
-    if (fractional)
-        wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
-
-    wl_surface_set_buffer_scale(surface, 1);
-    wl_surface_damage_buffer(surface, 0, 0, 0xFFFF, 0xFFFF);
-
-    wl_surface_commit(surface);
-    wl_display_roundtrip(g_pHyprlock->getDisplay());
-    wl_display_flush(g_pHyprlock->getDisplay());
+    else
+        eglSwapBuffers(g_pEGL->eglDisplay, eglSurface);
 }
 
 static void handleDone(void* data, wl_callback* wl_callback, uint32_t callback_data) {
@@ -138,14 +126,8 @@ void CSessionLockSurface::render() {
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
     frameCallback       = wl_surface_frame(surface);
     wl_callback_add_listener(frameCallback, &callbackListener, this);
+
     eglSwapBuffers(g_pEGL->eglDisplay, eglSurface);
-
-    if (fractional)
-        wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
-
-    wl_surface_damage_buffer(surface, 0, 0, 0xFFFF, 0xFFFF);
-    wl_surface_set_buffer_scale(surface, 1);
-    wl_surface_commit(surface);
 
     needsFrame = FEEDBACK.needsFrame;
 }
