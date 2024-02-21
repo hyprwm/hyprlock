@@ -6,17 +6,20 @@ CBackground::CBackground(const Vector2D& viewport_, const std::string& resourceI
 }
 
 bool CBackground::draw(const SRenderData& data) {
-    if (!asset)
-        asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
-    // If background image does not exist, for whatever reason, fallback to color
-    if (!asset) {
+    if (resourceID.empty()) {
         CBox   monbox = {0, 0, viewport.x, viewport.y};
         CColor col    = color;
         col.a *= data.opacity;
         g_pRenderer->renderRect(monbox, col, 0);
         return data.opacity < 1.0;
     }
+
+    if (!asset)
+        asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
+
+    if (!asset)
+        return false;
 
     CBox     texbox = {{}, asset->texture.m_vSize};
 
