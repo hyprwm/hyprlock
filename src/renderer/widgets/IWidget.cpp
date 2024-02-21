@@ -1,5 +1,6 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
+#include "../../helpers/VarList.hpp"
 #include <chrono>
 
 Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign) {
@@ -53,6 +54,25 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     if (in.contains("$TIME")) {
         replaceAll(in, "$TIME", getTime());
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+
+    if (in.starts_with("cmd[") && in.contains("]")) {
+        // this is a command
+        CVarList vars(in.substr(4, in.find_first_of(']') - 4));
+
+        for (const auto& v : vars) {
+            if (v.starts_with("update:")) {
+                try {
+                    result.updateEveryMs = std::stoull(v.substr(7));
+                } catch (std::exception& e) { Debug::log(ERR, "Error parsing {} in cmd[]", v); }
+            } else {
+                Debug::log(ERR, "Unknown prop in string format {}", v);
+            }
+        }
+
+        result.alwaysUpdate = true;
+        in                  = in.substr(in.find_first_of(']') + 1);
+        result.cmd          = true;
     }
 
     result.formatted = in;

@@ -26,7 +26,7 @@ void CLabel::onTimerUpdate() {
 
     label = formatString(labelPreFormat);
 
-    if (label.formatted == oldFormatted)
+    if (label.formatted == oldFormatted && !label.alwaysUpdate)
         return;
 
     if (!pendingResourceID.empty())
@@ -60,6 +60,7 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
     request.props["font_family"] = fontFamily;
     request.props["color"]       = labelColor;
     request.props["font_size"]   = fontSize;
+    request.props["cmd"]         = label.cmd;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 

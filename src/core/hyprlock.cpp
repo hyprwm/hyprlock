@@ -539,3 +539,73 @@ std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::dur
     m_sLoopState.timerCV.notify_all();
     return T;
 }
+
+void CHyprlock::spawnAsync(const std::string& args) {
+    Debug::log(LOG, "Executing (async) {}", args);
+
+    int socket[2];
+    if (pipe(socket) != 0)
+        Debug::log(LOG, "Unable to create pipe for fork");
+
+    pid_t child, grandchild;
+    child = fork();
+
+    if (child < 0) {
+        close(socket[0]);
+        close(socket[1]);
+        Debug::log(LOG, "Fail to create the first fork");
+        return;
+    }
+
+    if (child == 0) {
+        // run in child
+
+        sigset_t set;
+        sigemptyset(&set);
+        sigprocmask(SIG_SETMASK, &set, NULL);
+
+        grandchild = fork();
+
+        if (grandchild == 0) {
+            // run in grandchild
+            close(socket[0]);
+            close(socket[1]);
+            execl("/bin/sh", "/bin/sh", "-c", args.c_str(), nullptr);
+            // exit grandchild
+            _exit(0);
+        }
+
+        close(socket[0]);
+        write(socket[1], &grandchild, sizeof(grandchild));
+        close(socket[1]);
+        // exit child
+        _exit(0);
+    }
+
+    // run in parent
+    close(socket[1]);
+    read(socket[0], &grandchild, sizeof(grandchild));
+    close(socket[0]);
+    // clear child and leave child to init
+    waitpid(child, NULL, 0);
+
+    if (child < 0) {
+        Debug::log(LOG, "Failed to create the second fork");
+        return;
+    }
+
+    Debug::log(LOG, "Process Created with pid {}", grandchild);
+}
+
+std::string CHyprlock::spawnSync(const std::string& cmd) {
+    std::array<char, 128>                          buffer;
+    std::string                                    result;
+    const std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe)
+        return "";
+
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
