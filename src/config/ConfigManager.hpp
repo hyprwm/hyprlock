@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 class CConfigManager {
-public:
+  public:
     CConfigManager();
     void         init();
     void* const* getValuePtr(const std::string& name);
@@ -25,7 +25,8 @@ public:
     std::optional<std::string> handleSource(const std::string&, const std::string&);
 
     std::string                configCurrentPath;
-private:
+
+  private:
     Hyprlang::CConfig m_config;
 };
 

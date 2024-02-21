@@ -16,7 +16,6 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     return result;
 }
 
-
 static std::string getConfigDir() {
     static const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
 
@@ -151,7 +150,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     return result;
 }
 
-
 std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
     if (rawpath.length() < 2) {
         Debug::log(ERR, "source= path garbage");
@@ -160,34 +158,38 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
     std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
     memset(glob_buf.get(), 0, sizeof(glob_t));
 
-    if (auto r = glob(absolutePath(rawpath, configCurrentPath).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
+    if (auto r = glob(absolutePath(rawpath, configCurrentPath)->c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
         std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
         Debug::log(ERR, "{}", err);
         return err;
     }
 
     for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
-        auto value = absolutePath(glob_buf->gl_pathv[i], configCurrentPath);
+        auto pathValueOpt = absolutePath(glob_buf->gl_pathv[i], configCurrentPath);
+        if (pathValueOpt->empty()) {
+            Debug::log(WARN, "source= skipping invalid path");
+            continue;
+        }
 
-        if (!std::filesystem::is_regular_file(value)) {
-            if (std::filesystem::exists(value)) {
-                Debug::log(WARN, "source= skipping non-file {}", value);
+        auto pathValue = pathValueOpt.value();
+
+        if (!std::filesystem::is_regular_file(pathValue)) {
+            if (std::filesystem::exists(pathValue)) {
+                Debug::log(WARN, "source= skipping non-file {}", pathValue);
                 continue;
             }
 
             Debug::log(ERR, "source= file doesnt exist");
-            return "source file " + value + " doesn't exist!";
+            return "source file " + pathValue + " doesn't exist!";
         }
 
         // allow for nested config parsing
         auto backupConfigPath = configCurrentPath;
-        configCurrentPath = value;
+        configCurrentPath     = pathValue;
 
-        m_config.parseFile(value.c_str());
+        m_config.parseFile(pathValue.c_str());
 
         configCurrentPath = backupConfigPath;
-
-
     }
 
     return {};
