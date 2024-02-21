@@ -47,7 +47,6 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
     if (fractional) {
         wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
         viewport = wp_viewporter_get_viewport(g_pHyprlock->getViewporter(), surface);
-        wl_display_roundtrip(g_pHyprlock->getDisplay());
     } else
         Debug::log(LOG, "No fractional-scale support! Oops, won't be able to scale!");
 
