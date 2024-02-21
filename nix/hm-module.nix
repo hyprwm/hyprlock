@@ -27,6 +27,11 @@ in {
         type = bool;
         default = false;
       };
+      grace = mkOption {
+        description = "Seconds to wait for user input before locking";
+        type = int;
+        default = 0;
+      };
       hide_cursor = mkOption {
         description = "Hides the cursor instead of making it visible";
         type = bool;
@@ -249,6 +254,7 @@ in {
     xdg.configFile."hypr/hyprlock.conf".text = ''
       general {
         disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
+        grace = ${toString cfg.general.grace}
         hide_cursor = ${boolToString cfg.general.hide_cursor}
       }
 
