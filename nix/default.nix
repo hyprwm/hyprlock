@@ -7,6 +7,7 @@
   libdrm,
   libGL,
   libxkbcommon,
+  mesa,
   hyprlang,
   pam,
   pango,
@@ -29,6 +30,7 @@ stdenv.mkDerivation {
     libdrm
     libGL
     libxkbcommon
+    mesa
     hyprlang
     pam
     pango
