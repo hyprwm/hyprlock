@@ -179,7 +179,14 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
             return "source file " + value + " doesn't exist!";
         }
 
+        // allow for nested config parsing
+        auto backupConfigPath = configCurrentPath;
+        configCurrentPath = value;
+
         m_config.parseFile(value.c_str());
+
+        configCurrentPath = backupConfigPath;
+
 
     }
 
