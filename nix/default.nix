@@ -4,6 +4,7 @@
   cmake,
   pkg-config,
   cairo,
+  libdrm,
   libGL,
   libxkbcommon,
   hyprlang,
@@ -25,6 +26,7 @@ stdenv.mkDerivation {
 
   buildInputs = [
     cairo
+    libdrm
     libGL
     libxkbcommon
     hyprlang
