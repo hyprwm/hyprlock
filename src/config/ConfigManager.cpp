@@ -27,6 +27,13 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "path", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "color", Hyprlang::INT{0xFF111111});
+    m_config.addSpecialConfigValue("background", "blur_size", Hyprlang::INT{8});
+    m_config.addSpecialConfigValue("background", "blur_passes", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("background", "noise", Hyprlang::FLOAT{0.0117});
+    m_config.addSpecialConfigValue("background", "contrast", Hyprlang::FLOAT{0.8917});
+    m_config.addSpecialConfigValue("background", "brightness", Hyprlang::FLOAT{0.8172});
+    m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
+    m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
@@ -83,6 +90,13 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
             {
                 {"path", m_config.getSpecialConfigValue("background", "path", k.c_str())},
                 {"color", m_config.getSpecialConfigValue("background", "color", k.c_str())},
+                {"blur_size", m_config.getSpecialConfigValue("background", "blur_size", k.c_str())},
+                {"blur_passes", m_config.getSpecialConfigValue("background", "blur_passes", k.c_str())},
+                {"noise", m_config.getSpecialConfigValue("background", "noise", k.c_str())},
+                {"contrast", m_config.getSpecialConfigValue("background", "contrast", k.c_str())},
+                {"vibrancy", m_config.getSpecialConfigValue("background", "vibrancy", k.c_str())},
+                {"brightness", m_config.getSpecialConfigValue("background", "brightness", k.c_str())},
+                {"vibrancy_darkness", m_config.getSpecialConfigValue("background", "vibrancy_darkness", k.c_str())},
             }
         });
         // clang-format on

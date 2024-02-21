@@ -106,6 +106,47 @@ CRenderer::CRenderer() {
     texShader.tint              = glGetUniformLocation(prog, "tint");
     texShader.useAlphaMatte     = glGetUniformLocation(prog, "useAlphaMatte");
 
+    prog                          = createProgram(TEXVERTSRC, FRAGBLUR1);
+    blurShader1.program           = prog;
+    blurShader1.tex               = glGetUniformLocation(prog, "tex");
+    blurShader1.alpha             = glGetUniformLocation(prog, "alpha");
+    blurShader1.proj              = glGetUniformLocation(prog, "proj");
+    blurShader1.posAttrib         = glGetAttribLocation(prog, "pos");
+    blurShader1.texAttrib         = glGetAttribLocation(prog, "texcoord");
+    blurShader1.radius            = glGetUniformLocation(prog, "radius");
+    blurShader1.halfpixel         = glGetUniformLocation(prog, "halfpixel");
+    blurShader1.passes            = glGetUniformLocation(prog, "passes");
+    blurShader1.vibrancy          = glGetUniformLocation(prog, "vibrancy");
+    blurShader1.vibrancy_darkness = glGetUniformLocation(prog, "vibrancy_darkness");
+
+    prog                  = createProgram(TEXVERTSRC, FRAGBLUR2);
+    blurShader2.program   = prog;
+    blurShader2.tex       = glGetUniformLocation(prog, "tex");
+    blurShader2.alpha     = glGetUniformLocation(prog, "alpha");
+    blurShader2.proj      = glGetUniformLocation(prog, "proj");
+    blurShader2.posAttrib = glGetAttribLocation(prog, "pos");
+    blurShader2.texAttrib = glGetAttribLocation(prog, "texcoord");
+    blurShader2.radius    = glGetUniformLocation(prog, "radius");
+    blurShader2.halfpixel = glGetUniformLocation(prog, "halfpixel");
+
+    prog                         = createProgram(TEXVERTSRC, FRAGBLURPREPARE);
+    blurPrepareShader.program    = prog;
+    blurPrepareShader.tex        = glGetUniformLocation(prog, "tex");
+    blurPrepareShader.proj       = glGetUniformLocation(prog, "proj");
+    blurPrepareShader.posAttrib  = glGetAttribLocation(prog, "pos");
+    blurPrepareShader.texAttrib  = glGetAttribLocation(prog, "texcoord");
+    blurPrepareShader.contrast   = glGetUniformLocation(prog, "contrast");
+    blurPrepareShader.brightness = glGetUniformLocation(prog, "brightness");
+
+    prog                        = createProgram(TEXVERTSRC, FRAGBLURFINISH);
+    blurFinishShader.program    = prog;
+    blurFinishShader.tex        = glGetUniformLocation(prog, "tex");
+    blurFinishShader.proj       = glGetUniformLocation(prog, "proj");
+    blurFinishShader.posAttrib  = glGetAttribLocation(prog, "pos");
+    blurFinishShader.texAttrib  = glGetAttribLocation(prog, "texcoord");
+    blurFinishShader.brightness = glGetUniformLocation(prog, "brightness");
+    blurFinishShader.noise      = glGetUniformLocation(prog, "noise");
+
     wlr_matrix_identity(projMatrix.data());
 
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
@@ -199,9 +240,9 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     glDisableVertexAttribArray(rectShader.posAttrib);
 }
 
-void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding) {
+void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, bool noTransform) {
     float matrix[9];
-    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_FLIPPED_180 /* ugh coordinate spaces */, 0,
+    wlr_matrix_project_box(matrix, &box, noTransform ? WL_OUTPUT_TRANSFORM_NORMAL : WL_OUTPUT_TRANSFORM_FLIPPED_180 /* ugh coordinate spaces */, 0,
                            projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
@@ -262,7 +303,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 
-                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, resourceID, std::any_cast<Hyprlang::INT>(c.values.at("color"))));
+                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, resourceID, c.values));
             } else if (c.type == "input-field") {
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
             } else if (c.type == "label") {
@@ -272,4 +313,171 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
     }
 
     return &widgets[surf];
+}
+
+void CRenderer::blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlurParams params) {
+    glDisable(GL_BLEND);
+    glDisable(GL_STENCIL_TEST);
+
+    float matrix[9];
+    CBox  box{0, 0, tex.m_vSize.x, tex.m_vSize.y};
+    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+                           projMatrix.data()); // TODO: write own, don't use WLR here
+
+    float glMatrix[9];
+    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+
+    CFramebuffer mirrors[2];
+    mirrors[0].alloc(tex.m_vSize.x, tex.m_vSize.y);
+    mirrors[1].alloc(tex.m_vSize.x, tex.m_vSize.y);
+
+    CFramebuffer* currentRenderToFB = &mirrors[0];
+
+    // Begin with base color adjustments - global brightness and contrast
+    // TODO: make this a part of the first pass maybe to save on a drawcall?
+    {
+        mirrors[1].bind();
+
+        glActiveTexture(GL_TEXTURE0);
+
+        glBindTexture(tex.m_iTarget, tex.m_iTexID);
+
+        glTexParameteri(tex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        glUseProgram(blurPrepareShader.program);
+
+#ifndef GLES2
+        glUniformMatrix3fv(blurPrepareShader.proj, 1, GL_TRUE, glMatrix);
+#else
+        wlr_matrix_transpose(glMatrix, glMatrix);
+        glUniformMatrix3fv(blurPrepareShader.proj, 1, GL_FALSE, glMatrix);
+#endif
+        glUniform1f(blurPrepareShader.contrast, params.contrast);
+        glUniform1f(blurPrepareShader.brightness, params.brightness);
+        glUniform1i(blurPrepareShader.tex, 0);
+
+        glVertexAttribPointer(blurPrepareShader.posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+        glVertexAttribPointer(blurPrepareShader.texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+
+        glEnableVertexAttribArray(blurPrepareShader.posAttrib);
+        glEnableVertexAttribArray(blurPrepareShader.texAttrib);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        glDisableVertexAttribArray(blurPrepareShader.posAttrib);
+        glDisableVertexAttribArray(blurPrepareShader.texAttrib);
+
+        currentRenderToFB = &mirrors[1];
+    }
+
+    // declare the draw func
+    auto drawPass = [&](CShader* pShader) {
+        if (currentRenderToFB == &mirrors[0])
+            mirrors[1].bind();
+        else
+            mirrors[0].bind();
+
+        glActiveTexture(GL_TEXTURE0);
+
+        glBindTexture(currentRenderToFB->m_cTex.m_iTarget, currentRenderToFB->m_cTex.m_iTexID);
+
+        glTexParameteri(currentRenderToFB->m_cTex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        glUseProgram(pShader->program);
+
+        // prep two shaders
+#ifndef GLES2
+        glUniformMatrix3fv(pShader->proj, 1, GL_TRUE, glMatrix);
+#else
+        wlr_matrix_transpose(glMatrix, glMatrix);
+        glUniformMatrix3fv(pShader->proj, 1, GL_FALSE, glMatrix);
+#endif
+        glUniform1f(pShader->radius, params.size);
+        if (pShader == &blurShader1) {
+            glUniform2f(blurShader1.halfpixel, 0.5f / (tex.m_vSize.x / 2.f), 0.5f / (tex.m_vSize.y / 2.f));
+            glUniform1i(blurShader1.passes, params.passes);
+            glUniform1f(blurShader1.vibrancy, params.vibrancy);
+            glUniform1f(blurShader1.vibrancy_darkness, params.vibrancy_darkness);
+        } else
+            glUniform2f(blurShader2.halfpixel, 0.5f / (tex.m_vSize.x * 2.f), 0.5f / (tex.m_vSize.y * 2.f));
+        glUniform1i(pShader->tex, 0);
+
+        glVertexAttribPointer(pShader->posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+        glVertexAttribPointer(pShader->texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+
+        glEnableVertexAttribArray(pShader->posAttrib);
+        glEnableVertexAttribArray(pShader->texAttrib);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        glDisableVertexAttribArray(pShader->posAttrib);
+        glDisableVertexAttribArray(pShader->texAttrib);
+
+        if (currentRenderToFB != &mirrors[0])
+            currentRenderToFB = &mirrors[0];
+        else
+            currentRenderToFB = &mirrors[1];
+    };
+
+    // draw the things.
+    // first draw is swap -> mirr
+    mirrors[0].bind();
+    glBindTexture(mirrors[1].m_cTex.m_iTarget, mirrors[1].m_cTex.m_iTexID);
+
+    for (int i = 1; i <= params.passes; ++i) {
+        drawPass(&blurShader1); // down
+    }
+
+    for (int i = params.passes - 1; i >= 0; --i) {
+        drawPass(&blurShader2); // up
+    }
+
+    // finalize the image
+    {
+        if (currentRenderToFB == &mirrors[0])
+            mirrors[1].bind();
+        else
+            mirrors[0].bind();
+
+        glActiveTexture(GL_TEXTURE0);
+
+        glBindTexture(currentRenderToFB->m_cTex.m_iTarget, currentRenderToFB->m_cTex.m_iTexID);
+
+        glTexParameteri(currentRenderToFB->m_cTex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        glUseProgram(blurFinishShader.program);
+
+#ifndef GLES2
+        glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix);
+#else
+        wlr_matrix_transpose(glMatrix, glMatrix);
+        glUniformMatrix3fv(blurFinishShader.proj, 1, GL_FALSE, glMatrix);
+#endif
+        glUniform1f(blurFinishShader.noise, params.noise);
+        glUniform1f(blurFinishShader.brightness, params.brightness);
+
+        glUniform1i(blurFinishShader.tex, 0);
+
+        glVertexAttribPointer(blurFinishShader.posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+        glVertexAttribPointer(blurFinishShader.texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+
+        glEnableVertexAttribArray(blurFinishShader.posAttrib);
+        glEnableVertexAttribArray(blurFinishShader.texAttrib);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        glDisableVertexAttribArray(blurFinishShader.posAttrib);
+        glDisableVertexAttribArray(blurFinishShader.texAttrib);
+
+        if (currentRenderToFB != &mirrors[0])
+            currentRenderToFB = &mirrors[0];
+        else
+            currentRenderToFB = &mirrors[1];
+    }
+
+    // finish
+    outfb.bind();
+    renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, true);
+
+    glEnable(GL_BLEND);
 }
