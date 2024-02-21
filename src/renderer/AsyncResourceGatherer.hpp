@@ -3,6 +3,7 @@
 #include "Shader.hpp"
 #include "../helpers/Box.hpp"
 #include "../helpers/Color.hpp"
+#include "DMAFrame.hpp"
 #include "Texture.hpp"
 #include <thread>
 #include <atomic>
@@ -10,10 +11,7 @@
 #include <unordered_map>
 #include <condition_variable>
 #include <any>
-
-struct SPreloadedAsset {
-    CTexture texture;
-};
+#include "Shared.hpp"
 
 class CAsyncResourceGatherer {
   public:
@@ -44,6 +42,7 @@ class CAsyncResourceGatherer {
     void requestAsyncAssetPreload(const SPreloadRequest& request);
     void unloadAsset(SPreloadedAsset* asset);
     void notify();
+    void await();
 
   private:
     std::thread initThread;
@@ -76,6 +75,8 @@ class CAsyncResourceGatherer {
 
         Vector2D    size;
     };
+
+    std::vector<std::unique_ptr<CDMAFrame>>          dmas;
 
     std::vector<SPreloadTarget>                      preloadTargets;
     std::unordered_map<std::string, SPreloadedAsset> assets;

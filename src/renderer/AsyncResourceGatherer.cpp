@@ -15,6 +15,42 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
         this->asyncLoopThread.detach();
     });
     initThread.detach();
+
+    // some things can't be done async :(
+    // gather background textures when needed
+
+    const auto               CWIDGETS = g_pConfigManager->getWidgetConfigs();
+
+    std::vector<std::string> mons;
+
+    for (auto& c : CWIDGETS) {
+        if (c.type != "background")
+            continue;
+
+        if (std::string{std::any_cast<Hyprlang::STRING>(c.values.at("path"))} != "screenshot")
+            continue;
+
+        // mamma mia
+        if (c.monitor.empty()) {
+            mons.clear();
+            for (auto& m : g_pHyprlock->m_vOutputs) {
+                mons.push_back(m->stringPort);
+            }
+            break;
+        } else
+            mons.push_back(c.monitor);
+    }
+
+    for (auto& mon : mons) {
+        const auto MON = std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(), [mon](const auto& other) { return other->stringPort == mon; });
+
+        if (MON == g_pHyprlock->m_vOutputs.end())
+            continue;
+
+        const auto PMONITOR = MON->get();
+
+        dmas.emplace_back(std::make_unique<CDMAFrame>(PMONITOR));
+    }
 }
 
 SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
@@ -34,6 +70,11 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
             if (a.first == id)
                 return &a.second;
         }
+    }
+
+    for (auto& dma : dmas) {
+        if (id == "dma:" + dma->name)
+            return dma->asset.ready ? &dma->asset : nullptr;
     }
 
     return nullptr;
@@ -228,6 +269,8 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
         asyncLoopState.busy = false;
     }
+
+    dmas.clear();
 }
 
 void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
@@ -246,4 +289,9 @@ void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
 void CAsyncResourceGatherer::notify() {
     asyncLoopState.pending = true;
     asyncLoopState.loopGuard.notify_all();
+}
+
+void CAsyncResourceGatherer::await() {
+    if (asyncLoopThread.joinable())
+        asyncLoopThread.join();
 }

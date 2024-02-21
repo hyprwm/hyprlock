@@ -10,6 +10,9 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <assert.h>
+#include <string.h>
+#include <xf86drm.h>
 
 CHyprlock::CHyprlock(const std::string& wlDisplay) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -23,8 +26,6 @@ CHyprlock::CHyprlock(const std::string& wlDisplay) {
     m_pXKBContext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if (!m_pXKBContext)
         Debug::log(ERR, "Failed to create xkb context");
-
-    g_pRenderer = std::make_unique<CRenderer>();
 
     const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
     m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
@@ -41,6 +42,177 @@ inline const wl_seat_listener seatListener = {
 };
 
 // end wl_seat
+
+// dmabuf
+
+static void handleDMABUFFormat(void* data, struct zwp_linux_dmabuf_v1* zwp_linux_dmabuf_v1, uint32_t format) {
+    ;
+}
+
+static void handleDMABUFModifier(void* data, struct zwp_linux_dmabuf_v1* zwp_linux_dmabuf_v1, uint32_t format, uint32_t modifier_hi, uint32_t modifier_lo) {
+    g_pHyprlock->dma.dmabufMods.push_back({format, (((uint64_t)modifier_hi) << 32) | modifier_lo});
+}
+
+inline const zwp_linux_dmabuf_v1_listener dmabufListener = {
+    .format   = handleDMABUFFormat,
+    .modifier = handleDMABUFModifier,
+};
+
+static void dmabufFeedbackMainDevice(void* data, zwp_linux_dmabuf_feedback_v1* feedback, wl_array* device_arr) {
+    Debug::log(LOG, "[core] dmabufFeedbackMainDevice");
+
+    RASSERT(!g_pHyprlock->dma.gbm, "double dmabuf feedback");
+
+    dev_t device;
+    assert(device_arr->size == sizeof(device));
+    memcpy(&device, device_arr->data, sizeof(device));
+
+    drmDevice* drmDev;
+    if (drmGetDeviceFromDevId(device, /* flags */ 0, &drmDev) != 0) {
+        Debug::log(WARN, "[dmabuf] unable to open main device?");
+        exit(1);
+    }
+
+    g_pHyprlock->dma.gbmDevice = g_pHyprlock->createGBMDevice(drmDev);
+}
+
+static void dmabufFeedbackFormatTable(void* data, zwp_linux_dmabuf_feedback_v1* feedback, int fd, uint32_t size) {
+    Debug::log(TRACE, "[core] dmabufFeedbackFormatTable");
+
+    g_pHyprlock->dma.dmabufMods.clear();
+
+    g_pHyprlock->dma.formatTable = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+    if (g_pHyprlock->dma.formatTable == MAP_FAILED) {
+        Debug::log(ERR, "[core] format table failed to mmap");
+        g_pHyprlock->dma.formatTable     = nullptr;
+        g_pHyprlock->dma.formatTableSize = 0;
+        return;
+    }
+
+    g_pHyprlock->dma.formatTableSize = size;
+}
+
+static void dmabufFeedbackDone(void* data, zwp_linux_dmabuf_feedback_v1* feedback) {
+    Debug::log(TRACE, "[core] dmabufFeedbackDone");
+
+    if (g_pHyprlock->dma.formatTable)
+        munmap(g_pHyprlock->dma.formatTable, g_pHyprlock->dma.formatTableSize);
+
+    g_pHyprlock->dma.formatTable     = nullptr;
+    g_pHyprlock->dma.formatTableSize = 0;
+}
+
+static void dmabufFeedbackTrancheTargetDevice(void* data, zwp_linux_dmabuf_feedback_v1* feedback, wl_array* device_arr) {
+    Debug::log(TRACE, "[core] dmabufFeedbackTrancheTargetDevice");
+
+    dev_t device;
+    assert(device_arr->size == sizeof(device));
+    memcpy(&device, device_arr->data, sizeof(device));
+
+    drmDevice* drmDev;
+    if (drmGetDeviceFromDevId(device, /* flags */ 0, &drmDev) != 0)
+        return;
+
+    if (g_pHyprlock->dma.gbmDevice) {
+        drmDevice* drmDevRenderer = NULL;
+        drmGetDevice2(gbm_device_get_fd(g_pHyprlock->dma.gbmDevice), /* flags */ 0, &drmDevRenderer);
+        g_pHyprlock->dma.deviceUsed = drmDevicesEqual(drmDevRenderer, drmDev);
+    } else {
+        g_pHyprlock->dma.gbmDevice  = g_pHyprlock->createGBMDevice(drmDev);
+        g_pHyprlock->dma.deviceUsed = g_pHyprlock->dma.gbm;
+    }
+}
+
+static void dmabufFeedbackTrancheFlags(void* data, zwp_linux_dmabuf_feedback_v1* feedback, uint32_t flags) {
+    ;
+}
+
+static void dmabufFeedbackTrancheFormats(void* data, zwp_linux_dmabuf_feedback_v1* feedback, wl_array* indices) {
+    Debug::log(TRACE, "[core] dmabufFeedbackTrancheFormats");
+
+    if (!g_pHyprlock->dma.deviceUsed || !g_pHyprlock->dma.formatTable)
+        return;
+
+    struct fm_entry {
+        uint32_t format;
+        uint32_t padding;
+        uint64_t modifier;
+    };
+    // An entry in the table has to be 16 bytes long
+    assert(sizeof(fm_entry) == 16);
+
+    uint32_t  n_modifiers = g_pHyprlock->dma.formatTableSize / sizeof(fm_entry);
+    fm_entry* fm_entry    = (struct fm_entry*)g_pHyprlock->dma.formatTable;
+    uint16_t* idx;
+
+    for (idx = (uint16_t*)indices->data; (const char*)idx < (const char*)indices->data + indices->size; idx++) {
+        if (*idx >= n_modifiers)
+            continue;
+
+        g_pHyprlock->dma.dmabufMods.push_back({(fm_entry + *idx)->format, (fm_entry + *idx)->modifier});
+    }
+}
+
+static void dmabufFeedbackTrancheDone(void* data, struct zwp_linux_dmabuf_feedback_v1* zwp_linux_dmabuf_feedback_v1) {
+    Debug::log(TRACE, "[core] dmabufFeedbackTrancheDone");
+
+    g_pHyprlock->dma.deviceUsed = false;
+}
+
+inline const zwp_linux_dmabuf_feedback_v1_listener dmabufFeedbackListener = {
+    .done                  = dmabufFeedbackDone,
+    .format_table          = dmabufFeedbackFormatTable,
+    .main_device           = dmabufFeedbackMainDevice,
+    .tranche_done          = dmabufFeedbackTrancheDone,
+    .tranche_target_device = dmabufFeedbackTrancheTargetDevice,
+    .tranche_formats       = dmabufFeedbackTrancheFormats,
+    .tranche_flags         = dmabufFeedbackTrancheFlags,
+};
+
+static char* gbm_find_render_node(drmDevice* device) {
+    drmDevice* devices[64];
+    char*      render_node = NULL;
+
+    int        n = drmGetDevices2(0, devices, sizeof(devices) / sizeof(devices[0]));
+    for (int i = 0; i < n; ++i) {
+        drmDevice* dev = devices[i];
+        if (device && !drmDevicesEqual(device, dev)) {
+            continue;
+        }
+        if (!(dev->available_nodes & (1 << DRM_NODE_RENDER)))
+            continue;
+
+        render_node = strdup(dev->nodes[DRM_NODE_RENDER]);
+        break;
+    }
+
+    drmFreeDevices(devices, n);
+    return render_node;
+}
+
+gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
+    char* renderNode = gbm_find_render_node(dev);
+
+    if (!renderNode) {
+        Debug::log(ERR, "[core] Couldn't find a render node");
+        return nullptr;
+    }
+
+    Debug::log(TRACE, "[core] createGBMDevice: render node {}", renderNode);
+
+    int fd = open(renderNode, O_RDWR | O_CLOEXEC);
+    if (fd < 0) {
+        Debug::log(ERR, "[core] couldn't open render node");
+        free(renderNode);
+        return NULL;
+    }
+
+    free(renderNode);
+    return gbm_create_device(fd);
+}
+
+// end dmabuf
 
 // wl_registry
 
@@ -75,11 +247,9 @@ void CHyprlock::onGlobal(void* data, struct wl_registry* registry, uint32_t name
         Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
     } else if (IFACE == wl_output_interface.name) {
         m_vOutputs.emplace_back(std::make_unique<COutput>((wl_output*)wl_registry_bind(registry, name, &wl_output_interface, version), name));
-
         Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
     } else if (IFACE == wp_cursor_shape_manager_v1_interface.name) {
         m_pCursorShape = std::make_unique<CCursorShape>((wp_cursor_shape_manager_v1*)wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface, version));
-
         Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
     } else if (IFACE == wl_compositor_interface.name) {
         m_sWaylandState.compositor = (wl_compositor*)wl_registry_bind(registry, name, &wl_compositor_interface, version);
@@ -89,6 +259,19 @@ void CHyprlock::onGlobal(void* data, struct wl_registry* registry, uint32_t name
         Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
     } else if (IFACE == wp_viewporter_interface.name) {
         m_sWaylandState.viewporter = (wp_viewporter*)wl_registry_bind(registry, name, &wp_viewporter_interface, version);
+        Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
+    } else if (IFACE == zwp_linux_dmabuf_v1_interface.name) {
+        if (version < 4) {
+            Debug::log(ERR, "cannot use linux_dmabuf with ver < 4");
+            return;
+        }
+
+        dma.linuxDmabuf         = wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, version);
+        dma.linuxDmabufFeedback = zwp_linux_dmabuf_v1_get_default_feedback((zwp_linux_dmabuf_v1*)dma.linuxDmabuf);
+        zwp_linux_dmabuf_feedback_v1_add_listener((zwp_linux_dmabuf_feedback_v1*)dma.linuxDmabufFeedback, &dmabufFeedbackListener, nullptr);
+        Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
+    } else if (IFACE == zwlr_screencopy_manager_v1_interface.name) {
+        m_sWaylandState.screencopy = (zwlr_screencopy_manager_v1*)wl_registry_bind(registry, name, &zwlr_screencopy_manager_v1_interface, version);
         Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
     }
 }
@@ -114,6 +297,8 @@ void CHyprlock::run() {
 
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
+
+    g_pRenderer = std::make_unique<CRenderer>();
 
     lockSession();
 
@@ -244,8 +429,10 @@ void CHyprlock::run() {
     m_sLoopState.timerEvent = true;
     m_sLoopState.timerCV.notify_all();
     g_pRenderer->asyncResourceGatherer->notify();
+    g_pRenderer->asyncResourceGatherer->await();
 
     m_vOutputs.clear();
+    g_pEGL.reset();
 
     wl_display_disconnect(m_sWaylandState.display);
 
@@ -491,8 +678,6 @@ void CHyprlock::unlockSession() {
     ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
     m_sLockState.lock = nullptr;
 
-    m_vOutputs.clear();
-    g_pEGL.reset();
     Debug::log(LOG, "Unlocked, exiting!");
 
     m_bTerminate = true;
@@ -618,4 +803,8 @@ std::string CHyprlock::spawnSync(const std::string& cmd) {
         result += buffer.data();
     }
     return result;
+}
+
+zwlr_screencopy_manager_v1* CHyprlock::getScreencopy() {
+    return m_sWaylandState.screencopy;
 }

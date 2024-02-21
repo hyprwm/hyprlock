@@ -3,6 +3,8 @@
 #include <wayland-client.h>
 #include "ext-session-lock-v1-protocol.h"
 #include "fractional-scale-v1-protocol.h"
+#include "linux-dmabuf-unstable-v1-protocol.h"
+#include "wlr-screencopy-unstable-v1-protocol.h"
 #include "viewporter-protocol.h"
 #include "Output.hpp"
 #include "CursorShape.hpp"
@@ -15,6 +17,14 @@
 #include <optional>
 
 #include <xkbcommon/xkbcommon.h>
+
+#include <gbm.h>
+#include <xf86drm.h>
+
+struct SDMABUFModifier {
+    uint32_t fourcc = 0;
+    uint64_t mod    = 0;
+};
 
 class CHyprlock {
   public:
@@ -49,6 +59,7 @@ class CHyprlock {
     wl_display*                     getDisplay();
     wp_fractional_scale_manager_v1* getFractionalMgr();
     wp_viewporter*                  getViewporter();
+    zwlr_screencopy_manager_v1*     getScreencopy();
 
     wl_pointer*                     m_pPointer = nullptr;
     wl_keyboard*                    m_pKeeb    = nullptr;
@@ -65,6 +76,23 @@ class CHyprlock {
     std::chrono::system_clock::time_point m_tGraceEnds;
     Vector2D                              m_vLastEnterCoords = {};
 
+    std::vector<std::unique_ptr<COutput>> m_vOutputs;
+
+    struct {
+        void*                        linuxDmabuf         = nullptr;
+        void*                        linuxDmabufFeedback = nullptr;
+
+        gbm_bo*                      gbm       = nullptr;
+        gbm_device*                  gbmDevice = nullptr;
+
+        void*                        formatTable     = nullptr;
+        size_t                       formatTableSize = 0;
+        bool                         deviceUsed      = false;
+
+        std::vector<SDMABUFModifier> dmabufMods;
+    } dma;
+    gbm_device* createGBMDevice(drmDevice* dev);
+
   private:
     struct {
         wl_display*                     display     = nullptr;
@@ -74,6 +102,7 @@ class CHyprlock {
         wl_compositor*                  compositor  = nullptr;
         wp_fractional_scale_manager_v1* fractional  = nullptr;
         wp_viewporter*                  viewporter  = nullptr;
+        zwlr_screencopy_manager_v1*     screencopy  = nullptr;
     } m_sWaylandState;
 
     struct {
@@ -98,9 +127,7 @@ class CHyprlock {
         bool                    timerEvent = false;
     } m_sLoopState;
 
-    std::vector<std::unique_ptr<COutput>> m_vOutputs;
-
-    std::vector<std::shared_ptr<CTimer>>  m_vTimers;
+    std::vector<std::shared_ptr<CTimer>> m_vTimers;
 };
 
 inline std::unique_ptr<CHyprlock> g_pHyprlock;

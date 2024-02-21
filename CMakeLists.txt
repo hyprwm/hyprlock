@@ -33,7 +33,7 @@ message(STATUS "Checking deps...")
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
-pkg_check_modules(deps REQUIRED IMPORTED_TARGET wayland-client wayland-protocols wayland-egl hyprlang>=0.4.0 egl opengl xkbcommon cairo pangocairo pam)
+pkg_check_modules(deps REQUIRED IMPORTED_TARGET wayland-client wayland-protocols wayland-egl hyprlang>=0.4.0 egl opengl xkbcommon cairo pangocairo pam libdrm gbm)
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
@@ -75,6 +75,8 @@ protocol("staging/cursor-shape/cursor-shape-v1.xml" "cursor-shape-v1" false)
 protocol("unstable/tablet/tablet-unstable-v2.xml" "tablet-unstable-v2" false)
 protocol("staging/fractional-scale/fractional-scale-v1.xml" "fractional-scale-v1" false)
 protocol("stable/viewporter/viewporter.xml" "viewporter" false)
+protocol("protocols/wlr-screencopy-unstable-v1.xml" "wlr-screencopy-unstable-v1" true)
+protocol("unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml" "linux-dmabuf-unstable-v1" false)
 
 # Installation
 install(TARGETS hyprlock)

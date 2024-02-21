@@ -255,8 +255,14 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
             // by type
             if (c.type == "background") {
                 const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-                widgets[surf].emplace_back(
-                    std::make_unique<CBackground>(surf->size, PATH.empty() ? "" : std::string{"background:"} + PATH, std::any_cast<Hyprlang::INT>(c.values.at("color"))));
+
+                std::string       resourceID = "";
+                if (PATH == "screenshot")
+                    resourceID = "dma:" + surf->output->stringPort;
+                else if (!PATH.empty())
+                    resourceID = "background:" + PATH;
+
+                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, resourceID, std::any_cast<Hyprlang::INT>(c.values.at("color"))));
             } else if (c.type == "input-field") {
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
             } else if (c.type == "label") {
