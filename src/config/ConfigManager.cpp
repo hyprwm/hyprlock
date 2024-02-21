@@ -34,6 +34,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "outer_color", Hyprlang::INT{0xFF111111});
     m_config.addSpecialConfigValue("input-field", "outline_thickness", Hyprlang::INT{4});
     m_config.addSpecialConfigValue("input-field", "dots_size", Hyprlang::FLOAT{0.25});
+    m_config.addSpecialConfigValue("input-field", "dots_center", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "dots_spacing", Hyprlang::FLOAT{0.2});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "font_color", Hyprlang::INT{0xFF000000});
@@ -99,6 +100,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},
                 {"dots_size", m_config.getSpecialConfigValue("input-field", "dots_size", k.c_str())},
                 {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
+                {"dots_center", m_config.getSpecialConfigValue("input-field", "dots_center", k.c_str())},
                 {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
                 {"font_color", m_config.getSpecialConfigValue("input-field", "font_color", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("input-field", "halign", k.c_str())},

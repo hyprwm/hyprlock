@@ -10,6 +10,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     out_thick                = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     dt_size                  = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
     dt_space                 = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
+    dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
     pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
@@ -138,14 +139,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     const int PASS_SPACING = std::floor(PASS_SIZE * dt_space);
 
     if (!hiddenInputState.enabled) {
+        int xback = dots.center ? (PASS_SIZE + PASS_SPACING) * std::ceil(dots.currentAmount) / 2.0 - inputFieldBox.w / 2.0 + PASS_SPACING * 2 : 0;
+
         for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
-            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
+            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2 - xback, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
             CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
             g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
         }
 
         if (dots.currentAmount != std::floor(dots.currentAmount)) {
-            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
+            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2 - xback, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
                 Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
             CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
             fontCol.a *= (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;

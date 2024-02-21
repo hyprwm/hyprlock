@@ -36,6 +36,7 @@ class CPasswordInputField : public IWidget {
         float                                 currentAmount  = 0;
         float                                 speedPerSecond = 5; // actually per... something. I am unsure xD
         std::chrono::system_clock::time_point lastFrame;
+        bool                                  center = false;
     } dots;
 
     struct {
