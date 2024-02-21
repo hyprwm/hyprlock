@@ -450,7 +450,7 @@ void CHyprlock::onKey(uint32_t key) {
     if (SYM == XKB_KEY_BackSpace) {
         if (m_sPasswordState.passBuffer.length() > 0)
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
-    } else if (SYM == XKB_KEY_Return) {
+    } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
         Debug::log(LOG, "Authenticating");
 
         m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
