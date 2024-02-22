@@ -37,6 +37,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:disable_loading_bar", Hyprlang::INT{0});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
+    m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});

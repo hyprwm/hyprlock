@@ -157,6 +157,7 @@ static int frames = 0;
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
+    static auto* const PNOFADEIN   = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
 
     matrixProjection(projection.data(), surf.size.x, surf.size.y, WL_OUTPUT_TRANSFORM_NORMAL);
 
@@ -171,9 +172,9 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     SRenderFeedback feedback;
 
-    const float     bga = asyncResourceGatherer->applied ?
-            std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - gatheredAt).count() / 500000.0, 0.0, 1.0) :
-            0.0;
+    float           bga = asyncResourceGatherer->applied ?
+                  std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - gatheredAt).count() / 500000.0, 0.0, 1.0) :
+                  0.0;
 
     if (!asyncResourceGatherer->ready) {
         // render status
@@ -187,6 +188,9 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
             asyncResourceGatherer->apply();
             gatheredAt = std::chrono::system_clock::now();
         }
+
+        if (**PNOFADEIN)
+            bga = 1.0;
 
         // render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(&surf);
