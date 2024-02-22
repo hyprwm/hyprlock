@@ -37,6 +37,11 @@ in {
         type = bool;
         default = true;
       };
+      no_fade_in = mkOption {
+        description = "Do not fade in";
+        type = bool;
+        default = false;
+      };
     };
 
     backgrounds = mkOption {
@@ -59,6 +64,48 @@ in {
             description = "Background color";
             type = str;
             default = "rgba(25, 20, 20, 1.0)";
+          };
+
+          blur_size = mkOption {
+            description = "Blur size";
+            type = int;
+            default = 8;
+          };
+
+          blur_passes = mkOption {
+            description = "Blur passes";
+            type = int;
+            default = 0;
+          };
+
+          noise = mkOption {
+            description = "Noise applied to blur";
+            type = float;
+            default = 0.0117;
+          };
+
+          contrast = mkOption {
+            description = "Contrast applied to blur";
+            type = float;
+            default = 0.8917;
+          };
+
+          brightness = mkOption {
+            description = "Brightness applied to blur";
+            type = float;
+            default = 0.8172;
+          };
+
+          vibrancy = mkOption {
+            description = "Vibrancy applied to blur";
+            type = float;
+            default = 0.1686;
+          };
+
+          vibrancy_darkness = mkOption {
+            description = "Vibrancy darkness applied to blur";
+            type = float;
+            default = 0.05;
           };
         };
       });
@@ -256,6 +303,7 @@ in {
         disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
         grace = ${toString cfg.general.grace}
         hide_cursor = ${boolToString cfg.general.hide_cursor}
+        no_fade_in = ${boolToString cfg.general.no_fade_in}
       }
 
       ${builtins.concatStringsSep "\n" (map (background: ''
@@ -263,6 +311,13 @@ in {
             monitor = ${background.monitor}
             path = ${background.path}
             color = ${background.color}
+            blur_size = ${toString background.blur_size}
+            blur_passes = ${toString background.blur_passes}
+            noise = ${toString background.noise}
+            contrast = ${toString background.contrast}
+            brightness = ${toString background.brightness}
+            vibrancy = ${toString background.vibrancy}
+            vibrancy_darkness = ${toString background.vibrancy_darkness}
           }
         '')
         cfg.backgrounds)}
