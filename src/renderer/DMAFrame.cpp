@@ -142,7 +142,11 @@ bool CDMAFrame::onBufferDone() {
                 goodMods.push_back(mods[i]);
             }
 
-            bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, goodMods.data(), goodMods.size(), flags);
+            uint64_t zero      = 0;
+            bool     hasLinear = std::find(goodMods.begin(), goodMods.end(), 0) != goodMods.end();
+
+            bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, hasLinear ? &zero : goodMods.data(), hasLinear ? 1 : goodMods.size(),
+                                               flags);
         }
     }
 
