@@ -30,7 +30,7 @@ class CRenderer {
 
     void                                    renderRect(const CBox& box, const CColor& col, int rounding = 0);
     void                                    renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, bool noTransform = false);
-    void                                    blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlurParams params);
+    void                                    blurFB(const CFramebuffer& outfb, SBlurParams params);
 
     std::unique_ptr<CAsyncResourceGatherer> asyncResourceGatherer;
     std::chrono::system_clock::time_point   gatheredAt;

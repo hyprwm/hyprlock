@@ -163,8 +163,6 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     g_pEGL->makeCurrent(surf.eglSurface);
     glViewport(0, 0, surf.size.x, surf.size.y);
 
-    glScissor(frames, 0, surf.size.x, surf.size.y);
-
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -315,12 +313,12 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
     return &widgets[surf];
 }
 
-void CRenderer::blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlurParams params) {
+void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     glDisable(GL_BLEND);
     glDisable(GL_STENCIL_TEST);
 
     float matrix[9];
-    CBox  box{0, 0, tex.m_vSize.x, tex.m_vSize.y};
+    CBox  box{0, 0, outfb.m_vSize.x, outfb.m_vSize.y};
     wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
                            projMatrix.data()); // TODO: write own, don't use WLR here
 
@@ -328,8 +326,8 @@ void CRenderer::blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlu
     wlr_matrix_multiply(glMatrix, projection.data(), matrix);
 
     CFramebuffer mirrors[2];
-    mirrors[0].alloc(tex.m_vSize.x, tex.m_vSize.y);
-    mirrors[1].alloc(tex.m_vSize.x, tex.m_vSize.y);
+    mirrors[0].alloc(outfb.m_vSize.x, outfb.m_vSize.y);
+    mirrors[1].alloc(outfb.m_vSize.x, outfb.m_vSize.y);
 
     CFramebuffer* currentRenderToFB = &mirrors[0];
 
@@ -340,18 +338,13 @@ void CRenderer::blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlu
 
         glActiveTexture(GL_TEXTURE0);
 
-        glBindTexture(tex.m_iTarget, tex.m_iTexID);
+        glBindTexture(outfb.m_cTex.m_iTarget, outfb.m_cTex.m_iTexID);
 
-        glTexParameteri(tex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(outfb.m_cTex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
         glUseProgram(blurPrepareShader.program);
 
-#ifndef GLES2
         glUniformMatrix3fv(blurPrepareShader.proj, 1, GL_TRUE, glMatrix);
-#else
-        wlr_matrix_transpose(glMatrix, glMatrix);
-        glUniformMatrix3fv(blurPrepareShader.proj, 1, GL_FALSE, glMatrix);
-#endif
         glUniform1f(blurPrepareShader.contrast, params.contrast);
         glUniform1f(blurPrepareShader.brightness, params.brightness);
         glUniform1i(blurPrepareShader.tex, 0);
@@ -386,20 +379,15 @@ void CRenderer::blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlu
         glUseProgram(pShader->program);
 
         // prep two shaders
-#ifndef GLES2
         glUniformMatrix3fv(pShader->proj, 1, GL_TRUE, glMatrix);
-#else
-        wlr_matrix_transpose(glMatrix, glMatrix);
-        glUniformMatrix3fv(pShader->proj, 1, GL_FALSE, glMatrix);
-#endif
         glUniform1f(pShader->radius, params.size);
         if (pShader == &blurShader1) {
-            glUniform2f(blurShader1.halfpixel, 0.5f / (tex.m_vSize.x / 2.f), 0.5f / (tex.m_vSize.y / 2.f));
+            glUniform2f(blurShader1.halfpixel, 0.5f / (outfb.m_vSize.x / 2.f), 0.5f / (outfb.m_vSize.y / 2.f));
             glUniform1i(blurShader1.passes, params.passes);
             glUniform1f(blurShader1.vibrancy, params.vibrancy);
             glUniform1f(blurShader1.vibrancy_darkness, params.vibrancy_darkness);
         } else
-            glUniform2f(blurShader2.halfpixel, 0.5f / (tex.m_vSize.x * 2.f), 0.5f / (tex.m_vSize.y * 2.f));
+            glUniform2f(blurShader2.halfpixel, 0.5f / (outfb.m_vSize.x * 2.f), 0.5f / (outfb.m_vSize.y * 2.f));
         glUniform1i(pShader->tex, 0);
 
         glVertexAttribPointer(pShader->posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
@@ -447,12 +435,7 @@ void CRenderer::blurTexture(const CFramebuffer& outfb, const CTexture& tex, SBlu
 
         glUseProgram(blurFinishShader.program);
 
-#ifndef GLES2
         glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix);
-#else
-        wlr_matrix_transpose(glMatrix, glMatrix);
-        glUniformMatrix3fv(blurFinishShader.proj, 1, GL_FALSE, glMatrix);
-#endif
         glUniform1f(blurFinishShader.noise, params.noise);
         glUniform1f(blurFinishShader.brightness, params.brightness);
 

@@ -32,19 +32,35 @@ bool CBackground::draw(const SRenderData& data) {
 
     if (blurPasses > 0 && !blurredFB.isAllocated()) {
         // make it brah
+        CBox     texbox = {{}, asset->texture.m_vSize};
+
+        Vector2D size   = asset->texture.m_vSize;
+        float    scaleX = viewport.x / asset->texture.m_vSize.x;
+        float    scaleY = viewport.y / asset->texture.m_vSize.y;
+
+        texbox.w *= std::max(scaleX, scaleY);
+        texbox.h *= std::max(scaleX, scaleY);
+
+        if (scaleX > scaleY)
+            texbox.y = -(texbox.h - viewport.y) / 2.f;
+        else
+            texbox.x = -(texbox.w - viewport.x) / 2.f;
+        texbox.round();
         blurredFB.alloc(viewport.x, viewport.y); // TODO 10 bit
         blurredFB.bind();
-        g_pRenderer->blurTexture(blurredFB, asset->texture, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
+        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
+                                   true); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
+        g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     }
 
     CTexture* tex = blurredFB.isAllocated() ? &blurredFB.m_cTex : &asset->texture;
 
-    CBox      texbox = {{}, asset->texture.m_vSize};
+    CBox      texbox = {{}, tex->m_vSize};
 
-    Vector2D  size   = asset->texture.m_vSize;
-    float     scaleX = viewport.x / asset->texture.m_vSize.x;
-    float     scaleY = viewport.y / asset->texture.m_vSize.y;
+    Vector2D  size   = tex->m_vSize;
+    float     scaleX = viewport.x / tex->m_vSize.x;
+    float     scaleY = viewport.y / tex->m_vSize.y;
 
     texbox.w *= std::max(scaleX, scaleY);
     texbox.h *= std::max(scaleX, scaleY);
@@ -53,7 +69,7 @@ bool CBackground::draw(const SRenderData& data) {
         texbox.y = -(texbox.h - viewport.y) / 2.f;
     else
         texbox.x = -(texbox.w - viewport.x) / 2.f;
-
+    texbox.round();
     g_pRenderer->renderTexture(texbox, *tex, data.opacity);
 
     return data.opacity < 1.0;
