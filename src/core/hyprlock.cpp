@@ -150,6 +150,8 @@ static void dmabufFeedbackTrancheFormats(void* data, zwp_linux_dmabuf_feedback_v
         if (*idx >= n_modifiers)
             continue;
 
+        Debug::log(TRACE, "GPU Reports supported format {:x} with modifier {:x}", (fm_entry + *idx)->format, (fm_entry + *idx)->modifier);
+
         g_pHyprlock->dma.dmabufMods.push_back({(fm_entry + *idx)->format, (fm_entry + *idx)->modifier});
     }
 }

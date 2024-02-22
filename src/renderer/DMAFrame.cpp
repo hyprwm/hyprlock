@@ -11,6 +11,7 @@
 #include <GLES2/gl2ext.h>
 
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
+static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
 
 static void                                wlrOnBuffer(void* data, zwlr_screencopy_frame_v1* frame, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
     const auto PDATA = (SScreencopyData*)data;
@@ -54,6 +55,8 @@ static void wlrOnDmabuf(void* data, zwlr_screencopy_frame_v1* frame, uint32_t fo
     PDATA->w   = width;
     PDATA->h   = height;
     PDATA->fmt = format;
+
+    Debug::log(TRACE, "[sc] DMABUF format reported: {:x}", format);
 }
 
 static void wlrOnBufferDone(void* data, zwlr_screencopy_frame_v1* frame) {
@@ -91,6 +94,9 @@ CDMAFrame::CDMAFrame(COutput* output) {
         }
     }
 
+    if (!eglQueryDmaBufModifiersEXT)
+        eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
+
     // firstly, plant a listener for the frame
     frameCb = zwlr_screencopy_manager_v1_capture_output(g_pHyprlock->getScreencopy(), false, output->output);
 
@@ -104,12 +110,41 @@ CDMAFrame::CDMAFrame(COutput* output) {
 CDMAFrame::~CDMAFrame() {
     if (g_pEGL)
         eglDestroyImage(g_pEGL->eglDisplay, image);
+
+    // leaks bo and stuff but lives throughout so for now who cares
 }
 
 bool CDMAFrame::onBufferDone() {
     uint32_t flags = GBM_BO_USE_RENDERING;
 
-    bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, flags);
+    if (!eglQueryDmaBufModifiersEXT) {
+        Debug::log(WARN, "Querying modifiers without eglQueryDmaBufModifiersEXT support");
+        bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, flags);
+    } else {
+        std::vector<uint64_t> mods;
+        mods.resize(64);
+        std::vector<EGLBoolean> externalOnly;
+        externalOnly.resize(64);
+        int num = 0;
+        if (!eglQueryDmaBufModifiersEXT(g_pEGL->eglDisplay, scdata.fmt, 64, mods.data(), externalOnly.data(), &num) || num == 0) {
+            Debug::log(WARN, "eglQueryDmaBufModifiersEXT failed, falling back to regular bo");
+            bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, flags);
+        } else {
+            Debug::log(LOG, "eglQueryDmaBufModifiersEXT found {} mods", num);
+            std::vector<uint64_t> goodMods;
+            for (int i = 0; i < num; ++i) {
+                if (externalOnly[i]) {
+                    Debug::log(TRACE, "Modifier {:x} failed test", mods[i]);
+                    continue;
+                }
+
+                Debug::log(TRACE, "Modifier {:x} passed test", mods[i]);
+                goodMods.push_back(mods[i]);
+            }
+
+            bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, goodMods.data(), goodMods.size(), flags);
+        }
+    }
 
     if (!bo) {
         Debug::log(ERR, "Couldn't create a drm buffer");
@@ -117,6 +152,9 @@ bool CDMAFrame::onBufferDone() {
     }
 
     planes = gbm_bo_get_plane_count(bo);
+
+    uint64_t mod = gbm_bo_get_modifier(bo);
+    Debug::log(LOG, "bo chose modifier {:x}", mod);
 
     zwp_linux_buffer_params_v1* params = zwp_linux_dmabuf_v1_create_params((zwp_linux_dmabuf_v1*)g_pHyprlock->dma.linuxDmabuf);
     if (!params) {
@@ -129,7 +167,6 @@ bool CDMAFrame::onBufferDone() {
         size[plane]   = 0;
         stride[plane] = gbm_bo_get_stride_for_plane(bo, plane);
         offset[plane] = gbm_bo_get_offset(bo, plane);
-        uint64_t mod  = gbm_bo_get_modifier(bo);
         fd[plane]     = gbm_bo_get_fd_for_plane(bo, plane);
 
         if (fd[plane] < 0) {
