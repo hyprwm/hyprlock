@@ -48,8 +48,13 @@ static std::string getTime() {
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
+    char* username = getlogin();
+
+    if (!username)
+        Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
+
     IWidget::SFormatResult result;
-    replaceAll(in, "$USER", std::string{getlogin()});
+    replaceAll(in, "$USER", std::string{username ? username : ""});
     replaceAll(in, "<br/>", std::string{"\n"});
 
     if (in.contains("$TIME")) {
