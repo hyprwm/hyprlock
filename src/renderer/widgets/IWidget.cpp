@@ -2,6 +2,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../helpers/VarList.hpp"
 #include <chrono>
+#include <unistd.h>
 
 Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign) {
     Vector2D pos = offset;

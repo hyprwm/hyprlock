@@ -7,6 +7,7 @@
 #include <security/pam_misc.h>
 #endif
 
+#include <cstring>
 #include <thread>
 
 struct pam_response* reply;
