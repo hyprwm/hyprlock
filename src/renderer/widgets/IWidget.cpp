@@ -4,6 +4,16 @@
 #include <chrono>
 #include <unistd.h>
 
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 190100
+#pragma comment(lib, "date-tz")
+#include <date/tz.h>
+namespace std {
+    namespace chrono {
+        using date::current_zone;
+    }
+}
+#endif
+
 Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign) {
     Vector2D pos = offset;
     if (halign == "center")
