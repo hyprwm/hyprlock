@@ -9,6 +9,7 @@
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
 #include <GLES2/gl2ext.h>
+#include <unistd.h>
 
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;

@@ -9,6 +9,7 @@
 #include <sys/poll.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
