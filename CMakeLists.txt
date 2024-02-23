@@ -33,11 +33,11 @@ message(STATUS "Checking deps...")
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
-pkg_check_modules(deps REQUIRED IMPORTED_TARGET wayland-client wayland-protocols wayland-egl hyprlang>=0.4.0 egl opengl xkbcommon cairo pangocairo pam libdrm gbm)
+pkg_check_modules(deps REQUIRED IMPORTED_TARGET wayland-client wayland-protocols wayland-egl hyprlang>=0.4.0 egl opengl xkbcommon cairo pangocairo libdrm gbm)
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
-target_link_libraries(hyprlock PRIVATE rt Threads::Threads PkgConfig::deps OpenGL::EGL OpenGL::GL)
+target_link_libraries(hyprlock PRIVATE pam rt Threads::Threads PkgConfig::deps OpenGL::EGL OpenGL::GL)
 
 # protocols
 find_program(WaylandScanner NAMES wayland-scanner)

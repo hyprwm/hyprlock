@@ -3,7 +3,9 @@
 
 #include <unistd.h>
 #include <security/pam_appl.h>
+#if __has_include(<security/pam_misc.h>)
 #include <security/pam_misc.h>
+#endif
 
 #include <thread>
 
