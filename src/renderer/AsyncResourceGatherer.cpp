@@ -95,7 +95,11 @@ void CAsyncResourceGatherer::gather() {
     progress = 0;
     for (auto& c : CWIDGETS) {
         if (c.type == "background") {
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 180100
+            progress = progress + 1.0 / (preloads + 1.0);
+#else
             progress += 1.0 / (preloads + 1.0);
+#endif
 
             std::string path = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 
