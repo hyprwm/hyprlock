@@ -135,23 +135,23 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
 
-    const int PASS_SIZE    = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
-    const int PASS_SPACING = std::floor(PASS_SIZE * dt_space);
+    const int PASS_SIZE      = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
+    const int PASS_SPACING   = std::floor(PASS_SIZE * dt_space);
+    const int DOT_AREA_WIDTH = inputFieldBox.w - PASS_SPACING * 2;          // avail width for dots
+    const int MAX_DOTS       = DOT_AREA_WIDTH / (PASS_SIZE + PASS_SPACING); // max amount of dots that can fit in the area
+    // Calculate the total width required for all dots including spaces between them
+    const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
 
     if (!hiddenInputState.enabled) {
-        int xback = dots.center ? (PASS_SIZE + PASS_SPACING) * std::ceil(dots.currentAmount) / 2.0 - inputFieldBox.w / 2.0 + PASS_SPACING * 2 : 0;
+        // Calculate starting x-position to ensure dots stay centered within the input field
+        int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 : PASS_SPACING;
 
-        for (size_t i = 0; i < std::floor(dots.currentAmount); ++i) {
-            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2 - xback, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} + Vector2D{(PASS_SIZE + PASS_SPACING) * i, 0};
-            CBox     box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-            g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
-        }
+        // Clamp xstart to be no less than PASS_SPACING to avoid drawing outside
+        xstart = std::max(xstart, PASS_SPACING);
 
-        if (dots.currentAmount != std::floor(dots.currentAmount)) {
-            Vector2D currentPos = inputFieldBox.pos() + Vector2D{PASS_SPACING * 2 - xback, inputFieldBox.h / 2.f - PASS_SIZE / 2.f} +
-                Vector2D{(PASS_SIZE + PASS_SPACING) * std::floor(dots.currentAmount), 0};
-            CBox box{currentPos, Vector2D{PASS_SIZE, PASS_SIZE}};
-            fontCol.a *= (dots.currentAmount - std::floor(dots.currentAmount)) * data.opacity;
+        for (size_t i = 0; i < dots.currentAmount && i < MAX_DOTS; ++i) {
+            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + i * (PASS_SIZE + PASS_SPACING), inputFieldBox.h / 2.f - PASS_SIZE / 2.f};
+            CBox     box{dotPosition, Vector2D{PASS_SIZE, PASS_SIZE}};
             g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
         }
     }
