@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
+#include <mutex>
 
 static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     const std::string      VALUE   = v;
