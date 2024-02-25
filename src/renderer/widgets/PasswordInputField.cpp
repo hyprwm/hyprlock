@@ -135,24 +135,35 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
 
-    const int PASS_SIZE      = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
-    const int PASS_SPACING   = std::floor(PASS_SIZE * dt_space);
-    const int DOT_AREA_WIDTH = inputFieldBox.w - PASS_SPACING * 2;          // avail width for dots
-    const int MAX_DOTS       = DOT_AREA_WIDTH / (PASS_SIZE + PASS_SPACING); // max amount of dots that can fit in the area
+    const int    PASS_SIZE      = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
+    const int    PASS_SPACING   = std::floor(PASS_SIZE * dt_space);
+    const int    DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
+    const int    DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD;                   // avail width for dots
+    const size_t MAX_DOTS       = DOT_AREA_WIDTH / (PASS_SIZE + PASS_SPACING); // max amount of dots that can fit in the area
+    const size_t DOT_FLOORED    = std::floor(dots.currentAmount);
+    const float  DOT_ALPHA      = fontCol.a;
     // Calculate the total width required for all dots including spaces between them
     const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
 
     if (!hiddenInputState.enabled) {
         // Calculate starting x-position to ensure dots stay centered within the input field
-        int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 : PASS_SPACING;
+        int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH + DOT_PAD) / 2 : DOT_PAD;
 
-        // Clamp xstart to be no less than PASS_SPACING to avoid drawing outside
-        xstart = std::max(xstart, PASS_SPACING);
+        if (dots.currentAmount > MAX_DOTS)
+            xstart = DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH;
 
-        for (size_t i = 0; i < dots.currentAmount && i < MAX_DOTS; ++i) {
+        for (size_t i = 0; i < dots.currentAmount; ++i) {
+            if (dots.currentAmount != DOT_FLOORED) {
+                if (i == DOT_FLOORED)
+                    fontCol.a *= (dots.currentAmount - DOT_FLOORED) * data.opacity;
+                else if (i == DOT_FLOORED - MAX_DOTS)
+                    fontCol.a *= (1 - dots.currentAmount + DOT_FLOORED) * data.opacity;
+            }
+
             Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + i * (PASS_SIZE + PASS_SPACING), inputFieldBox.h / 2.f - PASS_SIZE / 2.f};
             CBox     box{dotPosition, Vector2D{PASS_SIZE, PASS_SIZE}};
             g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
+            fontCol.a = DOT_ALPHA;
         }
     }
 
