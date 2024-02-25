@@ -286,6 +286,13 @@ void CHyprlock::onGlobalRemoved(void* data, struct wl_registry* registry, uint32
 
 // end wl_registry
 
+static void handleUnlockSignal(int sig) {
+    if (sig == SIGUSR1) {
+        Debug::log(LOG, "Unlocking with a SIGUSR1");
+        g_pHyprlock->unlockSession();
+    }
+}
+
 void CHyprlock::run() {
     m_sWaylandState.registry = wl_display_get_registry(m_sWaylandState.display);
 
@@ -304,6 +311,8 @@ void CHyprlock::run() {
     g_pRenderer = std::make_unique<CRenderer>();
 
     lockSession();
+
+    signal(SIGUSR1, handleUnlockSignal);
 
     pollfd pollfds[] = {
         {
