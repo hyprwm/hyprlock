@@ -43,7 +43,12 @@ inline const wl_seat_listener seatListener = {
 };
 
 // end wl_seat
-
+static void handleUnlockSignal(int sigNum){
+    if (sigNum==SIGUSR1){
+        g_pHyprlock->unlockSession();
+        Debug::log(TRACE,"Unlock by singal");
+    }
+}
 // dmabuf
 
 static void handleDMABUFFormat(void* data, struct zwp_linux_dmabuf_v1* zwp_linux_dmabuf_v1, uint32_t format) {
@@ -304,7 +309,7 @@ void CHyprlock::run() {
     g_pRenderer = std::make_unique<CRenderer>();
 
     lockSession();
-
+    signal(SIGUSR1, handleUnlockSignal);
     pollfd pollfds[] = {
         {
             .fd     = wl_display_get_fd(m_sWaylandState.display),
