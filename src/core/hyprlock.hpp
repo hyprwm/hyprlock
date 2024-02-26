@@ -46,7 +46,7 @@ class CHyprlock {
     void                            spawnAsync(const std::string& cmd);
     std::string                     spawnSync(const std::string& cmd);
 
-    void                            onKey(uint32_t key);
+    void                            onKey(uint32_t key, bool down);
     void                            onPasswordCheckTimer();
     bool                            passwordCheckWaiting();
     std::optional<std::string>      passwordLastFailReason();
@@ -128,6 +128,8 @@ class CHyprlock {
     } m_sLoopState;
 
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
+
+    std::vector<uint32_t>                m_vPressedKeys;
 };
 
 inline std::unique_ptr<CHyprlock> g_pHyprlock;

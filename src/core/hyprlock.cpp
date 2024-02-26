@@ -563,10 +563,7 @@ static void handleKeyboardKeymap(void* data, wl_keyboard* wl_keyboard, uint form
 }
 
 static void handleKeyboardKey(void* data, struct wl_keyboard* keyboard, uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
-    if (state != WL_KEYBOARD_KEY_STATE_PRESSED)
-        return;
-
-    g_pHyprlock->onKey(key);
+    g_pHyprlock->onKey(key, state == WL_KEYBOARD_KEY_STATE_PRESSED);
 }
 
 static void handleKeyboardEnter(void* data, wl_keyboard* wl_keyboard, uint serial, wl_surface* surface, wl_array* keys) {
@@ -653,8 +650,24 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
     return m_sPasswordState.lastFailReason;
 }
 
-void CHyprlock::onKey(uint32_t key) {
+void CHyprlock::onKey(uint32_t key, bool down) {
     const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
+
+    if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), SYM) != m_vPressedKeys.end()) {
+        Debug::log(ERR, "Invalid key down event (key already pressed?)");
+        return;
+    } else if (!down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), SYM) == m_vPressedKeys.end()) {
+        Debug::log(ERR, "Invalid key down event (stray release event?)");
+        return;
+    }
+
+    if (down)
+        m_vPressedKeys.push_back(SYM);
+    else
+        std::erase(m_vPressedKeys, SYM);
+
+    if (!down) // we dont care about up events
+        return;
 
     if (m_sPasswordState.result) {
         for (auto& o : m_vOutputs) {
