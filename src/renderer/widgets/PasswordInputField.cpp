@@ -135,24 +135,27 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
 
-    const int    PASS_SIZE      = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
-    const int    PASS_SPACING   = std::floor(PASS_SIZE * dt_space);
-    const int    DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
-    const int    DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD;                   // avail width for dots
-    const size_t MAX_DOTS       = DOT_AREA_WIDTH / (PASS_SIZE + PASS_SPACING); // max amount of dots that can fit in the area
-    const size_t DOT_FLOORED    = std::floor(dots.currentAmount);
-    const float  DOT_ALPHA      = fontCol.a;
+    const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
+    const int   PASS_SPACING   = std::floor(PASS_SIZE * dt_space);
+    const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
+    const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
+    const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
+    const int   DOT_FLOORED    = std::floor(dots.currentAmount);
+    const float DOT_ALPHA      = fontCol.a;
     // Calculate the total width required for all dots including spaces between them
     const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
 
     if (!hiddenInputState.enabled) {
         // Calculate starting x-position to ensure dots stay centered within the input field
-        int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH + DOT_PAD) / 2 : DOT_PAD;
+        int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 + DOT_PAD : DOT_PAD;
 
         if (dots.currentAmount > MAX_DOTS)
-            xstart = DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH;
+            xstart = (inputFieldBox.w + MAX_DOTS * (PASS_SIZE + PASS_SPACING) - PASS_SPACING - 2 * TOTAL_DOTS_WIDTH) / 2;
 
-        for (size_t i = 0; i < dots.currentAmount; ++i) {
+        for (int i = 0; i < dots.currentAmount; ++i) {
+            if (i < DOT_FLOORED - MAX_DOTS)
+                continue;
+
             if (dots.currentAmount != DOT_FLOORED) {
                 if (i == DOT_FLOORED)
                     fontCol.a *= (dots.currentAmount - DOT_FLOORED) * data.opacity;
