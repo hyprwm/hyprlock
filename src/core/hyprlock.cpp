@@ -652,21 +652,20 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    const auto SYM      = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
-    const auto LOWERSYM = xkb_keysym_to_lower(SYM);
+    const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
-    if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), LOWERSYM) != m_vPressedKeys.end()) {
+    if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) != m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (key already pressed?)");
         return;
-    } else if (!down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), LOWERSYM) == m_vPressedKeys.end()) {
+    } else if (!down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) == m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (stray release event?)");
         return;
     }
 
     if (down)
-        m_vPressedKeys.push_back(LOWERSYM);
+        m_vPressedKeys.push_back(key);
     else
-        std::erase(m_vPressedKeys, LOWERSYM);
+        std::erase(m_vPressedKeys, key);
 
     if (!down) // we dont care about up events
         return;
