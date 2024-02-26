@@ -53,6 +53,30 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
     }
 }
 
+void CAsyncResourceGatherer::recheckDMAFramesFor(COutput* output) {
+    const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
+
+    bool       shouldMake = false;
+
+    for (auto& c : CWIDGETS) {
+        if (c.type != "background")
+            continue;
+
+        if (std::string{std::any_cast<Hyprlang::STRING>(c.values.at("path"))} != "screenshot")
+            continue;
+
+        if (c.monitor.empty() || c.monitor == output->stringPort) {
+            shouldMake = true;
+            break;
+        }
+    }
+
+    if (!shouldMake)
+        return;
+
+    dmas.emplace_back(std::make_unique<CDMAFrame>(output));
+}
+
 SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     if (asyncLoopState.busy)
         return nullptr;

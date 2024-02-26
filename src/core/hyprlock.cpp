@@ -713,6 +713,7 @@ void CHyprlock::unlockSession() {
     Debug::log(LOG, "Unlocked, exiting!");
 
     m_bTerminate = true;
+    m_bLocked    = false;
 
     wl_display_roundtrip(m_sWaylandState.display);
 }
@@ -723,6 +724,8 @@ void CHyprlock::onLockLocked() {
     for (auto& o : m_vOutputs) {
         o->sessionLockSurface = std::make_unique<CSessionLockSurface>(o.get());
     }
+
+    m_bLocked = true;
 }
 
 void CHyprlock::onLockFinished() {

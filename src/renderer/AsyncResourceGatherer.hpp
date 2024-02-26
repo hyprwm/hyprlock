@@ -43,6 +43,7 @@ class CAsyncResourceGatherer {
     void unloadAsset(SPreloadedAsset* asset);
     void notify();
     void await();
+    void recheckDMAFramesFor(COutput* output);
 
   private:
     std::thread initThread;
