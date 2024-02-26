@@ -405,6 +405,14 @@ void CHyprlock::run() {
             }
         }
 
+        // finalize wayland dispatching. Dispatch pending on the queue
+        int ret = 0;
+        do {
+            ret = wl_display_dispatch_pending(m_sWaylandState.display);
+            wl_display_flush(m_sWaylandState.display);
+        } while (ret > 0);
+
+        // do timers
         m_sLoopState.timersMutex.lock();
         auto timerscpy = m_vTimers;
         m_sLoopState.timersMutex.unlock();
@@ -426,13 +434,6 @@ void CHyprlock::run() {
         m_sLoopState.timersMutex.unlock();
 
         passed.clear();
-
-        // finalize wayland dispatching. Dispatch pending on the queue
-        int ret = 0;
-        do {
-            ret = wl_display_dispatch_pending(m_sWaylandState.display);
-            wl_display_flush(m_sWaylandState.display);
-        } while (ret > 0);
 
         if (m_bTerminate)
             break;

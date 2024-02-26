@@ -16,9 +16,13 @@ static void onTimer(std::shared_ptr<CTimer> self, void* data) {
     // update label
     PLABEL->onTimerUpdate();
 
-    // render and replant
-    PLABEL->renderSuper();
+    // plant new timer
     PLABEL->plantTimer();
+}
+
+static void onAssetCallback(void* data) {
+    const auto PLABEL = (CLabel*)data;
+    PLABEL->renderSuper();
 }
 
 void CLabel::onTimerUpdate() {
@@ -36,6 +40,9 @@ void CLabel::onTimerUpdate() {
     request.id        = std::string{"label:"} + std::to_string((uintptr_t)this) + ",time:" + std::to_string(time(nullptr));
     pendingResourceID = request.id;
     request.asset     = label.formatted;
+
+    request.callback     = onAssetCallback;
+    request.callbackData = this;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }

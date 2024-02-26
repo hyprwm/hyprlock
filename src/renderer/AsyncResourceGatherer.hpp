@@ -37,6 +37,10 @@ class CAsyncResourceGatherer {
         std::string                               id;
 
         std::unordered_map<std::string, std::any> props;
+
+        // optional
+        void (*callback)(void*) = nullptr;
+        void* callbackData      = nullptr;
     };
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
