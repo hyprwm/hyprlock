@@ -7,7 +7,7 @@ void help(){
                     "Options:\n"
                     "  -v, --verbose            - Enable verbose logging\n"
                     "  -q, --quiet              - Disable logging\n"
-                    "  -d, --display (display)  - Specify the Wayland display to connect to\n"
+                    "  --display (display)  - Specify the Wayland display to connect to\n"
                     "  -h, --help               - Show this help message\n";
 }
 int main(int argc, char** argv, char** envp) {
@@ -22,7 +22,7 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
 
-        else if ((arg == "--display" || arg == "-d" ) && i + 1 < argc) {
+        else if (arg == "--display" && i + 1 < argc) {
             wlDisplay = argv[i + 1];
             i++;
         }
