@@ -7,7 +7,7 @@ void help(){
                     "Options:\n"
                     "  -v, --verbose            - Enable verbose logging\n"
                     "  -q, --quiet              - Disable logging\n"
-                    "  --display (display)  - Specify the Wayland display to connect to\n"
+                    "  --display (display)      - Specify the Wayland display to connect to\n"
                     "  -h, --help               - Show this help message\n";
 }
 int main(int argc, char** argv, char** envp) {
