@@ -2,6 +2,14 @@
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
 
+void help(){
+    std::cout <<    "Usage: hyprlock [options]\n\n"
+                    "Options:\n"
+                    "  -v, --verbose            - Enable verbose logging\n"
+                    "  -q, --quiet              - Disable logging\n"
+                    "  -d, --display (display)  - Specify the Wayland display to connect to\n"
+                    "  -h, --help               - Show this help message\n";
+}
 int main(int argc, char** argv, char** envp) {
     std::string wlDisplay;
 
@@ -19,12 +27,7 @@ int main(int argc, char** argv, char** envp) {
             i++;
         }
         else if (arg == "--help" || arg == "-h") {
-            std::cout << "Usage: hyprlock [options]\n\n"
-                         "Options:\n"
-                         "  -v, --verbose            - Enable verbose logging\n"
-                         "  -q, --quiet              - Disable logging\n"
-                         "  -d, --display (display)  - Specify the Wayland display to connect to\n"
-                         "  -h, --help               - Show this help message\n";
+            help();
             return 0;
         }
     }
