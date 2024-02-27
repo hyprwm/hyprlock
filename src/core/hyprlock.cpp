@@ -405,6 +405,14 @@ void CHyprlock::run() {
             }
         }
 
+        // finalize wayland dispatching. Dispatch pending on the queue
+        int ret = 0;
+        do {
+            ret = wl_display_dispatch_pending(m_sWaylandState.display);
+            wl_display_flush(m_sWaylandState.display);
+        } while (ret > 0);
+
+        // do timers
         m_sLoopState.timersMutex.lock();
         auto timerscpy = m_vTimers;
         m_sLoopState.timersMutex.unlock();
@@ -426,13 +434,6 @@ void CHyprlock::run() {
         m_sLoopState.timersMutex.unlock();
 
         passed.clear();
-
-        // finalize wayland dispatching. Dispatch pending on the queue
-        int ret = 0;
-        do {
-            ret = wl_display_dispatch_pending(m_sWaylandState.display);
-            wl_display_flush(m_sWaylandState.display);
-        } while (ret > 0);
 
         if (m_bTerminate)
             break;
@@ -541,7 +542,7 @@ static void handleKeyboardKeymap(void* data, wl_keyboard* wl_keyboard, uint form
 
     const char* buf = (const char*)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
     if (buf == MAP_FAILED) {
-        Debug::log(ERR, "Failed to mmap xkb keymap: %d", errno);
+        Debug::log(ERR, "Failed to mmap xkb keymap: {}", errno);
         return;
     }
 
@@ -653,18 +654,18 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 void CHyprlock::onKey(uint32_t key, bool down) {
     const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
-    if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), SYM) != m_vPressedKeys.end()) {
+    if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) != m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (key already pressed?)");
         return;
-    } else if (!down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), SYM) == m_vPressedKeys.end()) {
+    } else if (!down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) == m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (stray release event?)");
         return;
     }
 
     if (down)
-        m_vPressedKeys.push_back(SYM);
+        m_vPressedKeys.push_back(key);
     else
-        std::erase(m_vPressedKeys, SYM);
+        std::erase(m_vPressedKeys, key);
 
     if (!down) // we dont care about up events
         return;
@@ -713,8 +714,9 @@ void CHyprlock::unlockSession() {
     Debug::log(LOG, "Unlocked, exiting!");
 
     m_bTerminate = true;
+    m_bLocked    = false;
 
-    wl_display_roundtrip(m_sWaylandState.display);
+    wl_display_dispatch(m_sWaylandState.display);
 }
 
 void CHyprlock::onLockLocked() {
@@ -723,6 +725,8 @@ void CHyprlock::onLockLocked() {
     for (auto& o : m_vOutputs) {
         o->sessionLockSurface = std::make_unique<CSessionLockSurface>(o.get());
     }
+
+    m_bLocked = true;
 }
 
 void CHyprlock::onLockFinished() {

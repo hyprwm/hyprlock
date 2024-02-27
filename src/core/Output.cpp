@@ -1,5 +1,7 @@
 #include "Output.hpp"
 #include "../helpers/Log.hpp"
+#include "hyprlock.hpp"
+#include "../renderer/Renderer.hpp"
 
 static void handleGeometry(void* data, wl_output* output, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make,
                            const char* model, int32_t transform) {
@@ -13,15 +15,23 @@ static void handleMode(void* data, wl_output* output, uint32_t flags, int32_t wi
     const auto POUTPUT = (COutput*)data;
 
     // handle portrait mode and flipped cases
-    if (POUTPUT->transform == WL_OUTPUT_TRANSFORM_270 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_90 ||
-        POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90)
+    if (POUTPUT->transform == WL_OUTPUT_TRANSFORM_270 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_90 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270 ||
+        POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90)
         POUTPUT->size = {height, width};
     else
         POUTPUT->size = {width, height};
 }
 
 static void handleDone(void* data, wl_output* output) {
-    ;
+    const auto POUTPUT = (COutput*)data;
+    Debug::log(LOG, "output {} done", POUTPUT->name);
+    if (g_pHyprlock->m_bLocked && !POUTPUT->sessionLockSurface) {
+        // if we are already locked, create a surface dynamically after a small timeout
+        // we also need to request a dma frame for screenshots
+        Debug::log(LOG, "Creating a surface dynamically for output as we are already locked");
+        POUTPUT->sessionLockSurface = std::make_unique<CSessionLockSurface>(POUTPUT);
+        g_pRenderer->asyncResourceGatherer->recheckDMAFramesFor(POUTPUT);
+    }
 }
 
 static void handleScale(void* data, wl_output* output, int32_t factor) {

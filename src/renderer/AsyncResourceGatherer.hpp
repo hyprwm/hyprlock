@@ -37,12 +37,19 @@ class CAsyncResourceGatherer {
         std::string                               id;
 
         std::unordered_map<std::string, std::any> props;
+
+        // optional. Callbacks will be dispatched from the main thread,
+        // so wayland/gl calls are OK.
+        // will fire once the resource is fully loaded and ready.
+        void (*callback)(void*) = nullptr;
+        void* callbackData      = nullptr;
     };
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
     void unloadAsset(SPreloadedAsset* asset);
     void notify();
     void await();
+    void recheckDMAFramesFor(COutput* output);
 
   private:
     std::thread initThread;

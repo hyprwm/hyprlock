@@ -194,7 +194,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != PASSLEN || data.opacity < 1.0 || fade.a < 1.0 || forceReload;
+    return dots.currentAmount != PASSLEN || data.opacity < 1.0 || forceReload;
 }
 
 void CPasswordInputField::updateFailTex() {
