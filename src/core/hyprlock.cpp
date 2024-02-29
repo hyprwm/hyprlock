@@ -638,6 +638,10 @@ void CHyprlock::onPasswordCheckTimer() {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
         m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
         m_sPasswordState.passBuffer     = "";
+
+        for (auto& o : m_vOutputs) {
+            o->sessionLockSurface->render();
+        }
     }
 
     m_sPasswordState.result.reset();
