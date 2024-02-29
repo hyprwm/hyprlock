@@ -1,6 +1,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../helpers/VarList.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include <chrono>
 #include <unistd.h>
 
@@ -58,13 +59,13 @@ static std::string getTime() {
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
-    char* username = getlogin();
+  auto username = getUserName();
 
     if (!username)
         Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
 
     IWidget::SFormatResult result;
-    replaceAll(in, "$USER", std::string{username ? username : ""});
+    replaceAll(in, "$USER", username ? *username : std::string{""});
     replaceAll(in, "<br/>", std::string{"\n"});
 
     if (in.contains("$TIME")) {
