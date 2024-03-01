@@ -80,3 +80,5 @@ protocol("unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml" "linux-dmabuf-unst
 
 # Installation
 install(TARGETS hyprlock)
+
+install(FILES "pam/hyprlock" DESTINATION "/etc/pam.d")

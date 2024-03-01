@@ -30,7 +30,7 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
         const pam_conv localConv = {conv, NULL};
         pam_handle_t*  handle    = NULL;
 
-        int            ret = pam_start("su", getlogin(), &localConv, &handle);
+        int            ret = pam_start("hyprlock", getlogin(), &localConv, &handle);
 
         if (ret != PAM_SUCCESS) {
             result->success    = false;
