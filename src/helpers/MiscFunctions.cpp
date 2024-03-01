@@ -5,15 +5,15 @@
 #include "MiscFunctions.hpp"
 
 std::optional<std::string> getUserName() {
-  auto username = getlogin();
-  if (!username) {
-    auto pwd = getpwuid(getuid());
-    username = pwd->pw_name;
-  }
-  if (username)
-    return username;
-  // in theory, this could very well happen, and no unlocking can be done
-  return {};
+    auto username = getlogin();
+    if (!username) {
+        auto pwd = getpwuid(getuid());
+        username = pwd->pw_name;
+    }
+    if (username)
+        return username;
+    // in theory, this could very well happen, and no unlocking can be done
+    return {};
 }
 
 std::optional<std::string> absolutePath(const std::string& rawpath, const std::string& rawcurrentpath) {

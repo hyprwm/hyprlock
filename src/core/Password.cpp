@@ -31,17 +31,17 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
     std::thread([this, result, pass]() {
         const pam_conv localConv = {conv, NULL};
         pam_handle_t*  handle    = NULL;
-        auto username = getUserName();
-        
+        auto           username  = getUserName();
+
         if (!username) {
-          result->success = false;
-          result->failReason = "Username could not be determined";
-          result->realized = true;
-          g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
-          return;
+            result->success    = false;
+            result->failReason = "Username could not be determined";
+            result->realized   = true;
+            g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
+            return;
         }
 
-        int            ret = pam_start("su", username->c_str(), &localConv, &handle);
+        int ret = pam_start("su", username->c_str(), &localConv, &handle);
 
         if (ret != PAM_SUCCESS) {
             result->success    = false;

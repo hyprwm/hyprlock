@@ -59,7 +59,7 @@ static std::string getTime() {
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
-  auto username = getUserName();
+    auto username = getUserName();
 
     if (!username)
         Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
