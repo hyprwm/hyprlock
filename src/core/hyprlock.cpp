@@ -725,7 +725,7 @@ void CHyprlock::unlockSession() {
     m_bTerminate = true;
     m_bLocked    = false;
 
-    wl_display_dispatch(m_sWaylandState.display);
+    wl_display_roundtrip(m_sWaylandState.display);
 }
 
 void CHyprlock::onLockLocked() {
