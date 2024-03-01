@@ -658,7 +658,7 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 void CHyprlock::onKey(uint32_t key, bool down) {
     const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
-    if (std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnd) {
+    if (down && std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds) {
         unlockSession();
         return;
     }
