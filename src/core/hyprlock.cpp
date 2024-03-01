@@ -658,6 +658,11 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 void CHyprlock::onKey(uint32_t key, bool down) {
     const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
+    if (std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnd) {
+        unlockSession();
+        return;
+    }
+
     if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) != m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (key already pressed?)");
         return;
