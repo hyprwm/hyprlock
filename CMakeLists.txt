@@ -22,6 +22,8 @@ include_directories(
   "protocols/"
 )
 
+include(GNUInstallDirs)
+
 # configure
 set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-unused-value
@@ -81,4 +83,5 @@ protocol("unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml" "linux-dmabuf-unst
 # Installation
 install(TARGETS hyprlock)
 
-install(FILES "pam/hyprlock" DESTINATION "/etc/pam.d")
+install(FILES "pam/hyprlock" DESTINATION "${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d")
+
