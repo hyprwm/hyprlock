@@ -322,11 +322,8 @@ void CHyprlock::run() {
     };
 
     std::thread pollThr([this, &pollfds]() {
-        while (1) {
+        while (!m_bTerminate) {
             int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. It's because we might need to terminate */);
-
-            if (m_bTerminate)
-                break;
 
             if (ret < 0) {
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
@@ -352,7 +349,7 @@ void CHyprlock::run() {
     });
 
     std::thread timersThr([this]() {
-        while (1) {
+        while (!m_bTerminate) {
             // calc nearest thing
             m_sLoopState.timersMutex.lock();
 
@@ -368,9 +365,6 @@ void CHyprlock::run() {
             std::unique_lock lk(m_sLoopState.timerRequestMutex);
             m_sLoopState.timerCV.wait_for(lk, std::chrono::milliseconds((int)least + 1), [this] { return m_sLoopState.timerEvent; });
             m_sLoopState.timerEvent = false;
-
-            if (m_bTerminate)
-                break;
 
             // notify main
             std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
@@ -410,7 +404,7 @@ void CHyprlock::run() {
         do {
             ret = wl_display_dispatch_pending(m_sWaylandState.display);
             wl_display_flush(m_sWaylandState.display);
-        } while (ret > 0);
+        } while (ret > 0 && !m_bTerminate);
 
         // do timers
         m_sLoopState.timersMutex.lock();
@@ -717,6 +711,11 @@ void CHyprlock::lockSession() {
 
 void CHyprlock::unlockSession() {
     Debug::log(LOG, "Unlocking session");
+    if (m_bTerminate && !m_sLockState.lock) {
+        Debug::log(ERR, "Unlock already happend?");
+        return;
+    }
+
     ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
     m_sLockState.lock = nullptr;
 
