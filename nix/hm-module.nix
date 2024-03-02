@@ -9,11 +9,31 @@ self: {
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
 
-  boolToString = x: if x then "true" else "false";
+  boolToString = x:
+    if x
+    then "true"
+    else "false";
   cfg = config.programs.hyprlock;
 in {
   options.programs.hyprlock = {
-    enable = mkEnableOption "Hyprlock, Hyprland's GPU-accelerated lock screen utility";
+    enable =
+      mkEnableOption ""
+      // {
+        description = ''
+          Whether to enable Hyprlock, Hyprland's GPU-accelerated lock screen utility.
+
+          Note that PAM must be configured to enable hyprlock to perform
+          authentication. The package installed through home-manager
+          will *not* be able to unlock the session without this
+          configuration.
+
+          On NixOS, it can be enabled using:
+
+          ```nix
+          security.pam.services.hyprlock = {};
+          ```
+        '';
+      };
 
     package = mkOption {
       description = "The hyprlock package";
@@ -110,7 +130,7 @@ in {
         };
       });
       default = [
-        { }
+        {}
       ];
     };
 
@@ -224,7 +244,7 @@ in {
         };
       });
       default = [
-        { }
+        {}
       ];
     };
 
@@ -290,13 +310,13 @@ in {
         };
       });
       default = [
-        { }
+        {}
       ];
     };
   };
 
   config = mkIf cfg.enable {
-    home.packages = [ cfg.package ];
+    home.packages = [cfg.package];
 
     xdg.configFile."hypr/hyprlock.conf".text = ''
       general {
