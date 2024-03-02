@@ -717,6 +717,11 @@ void CHyprlock::lockSession() {
 
 void CHyprlock::unlockSession() {
     Debug::log(LOG, "Unlocking session");
+    if (m_bTerminate && !m_sLockState.lock) {
+        Debug::log(ERR, "Unlock already happend?");
+        return;
+    }
+
     ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
     m_sLockState.lock = nullptr;
 
