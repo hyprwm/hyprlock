@@ -15,6 +15,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
     pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
+    rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     viewport                 = viewport_;
 
     pos      = posFromHVAlign(viewport, size, pos, std::any_cast<Hyprlang::STRING>(props.at("halign")), std::any_cast<Hyprlang::STRING>(props.at("valign")));
@@ -119,7 +120,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     CColor fontCol = font;
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
-    g_pRenderer->renderRect(outerBox, outerCol, outerBox.h / 2.0);
+    g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
 
     const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
 
@@ -133,12 +134,12 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             outerBoxScaled.x += outerBoxScaled.w;
         glEnable(GL_SCISSOR_TEST);
         glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-        g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, outerBox.h / 2.0);
+        g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
         glScissor(0, 0, viewport.x, viewport.y);
         glDisable(GL_SCISSOR_TEST);
     }
 
-    g_pRenderer->renderRect(inputFieldBox, innerCol, inputFieldBox.h / 2.0);
+    g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - out_thick);
 
     const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dt_size * 0.5f) * 2.f;
     const int   PASS_SPACING   = std::floor(PASS_SIZE * dt_space);
