@@ -217,6 +217,12 @@ in {
             default = false;
           };
 
+          rounding = mkOption {
+            description = "The rounding of the input field";
+            type = int;
+            default = -1;
+          };
+
           position = {
             x = mkOption {
               description = "X position of the label";
