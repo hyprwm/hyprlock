@@ -3,6 +3,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Vector2D.hpp"
 #include "../../helpers/Color.hpp"
+#include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
 #include <chrono>
 #include <vector>
@@ -16,6 +17,7 @@ class CPasswordInputField : public IWidget {
     CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props);
 
     virtual bool draw(const SRenderData& data);
+    void         onFadeOutTimer();
 
   private:
     void     updateDots();
@@ -45,9 +47,11 @@ class CPasswordInputField : public IWidget {
 
     struct {
         std::chrono::system_clock::time_point start;
-        float                                 a         = 0;
-        bool                                  appearing = true;
-        bool                                  animated  = false;
+        float                                 a            = 0;
+        bool                                  appearing    = true;
+        bool                                  animated     = false;
+        std::shared_ptr<CTimer>               fadeOutTimer = nullptr;
+        bool                                  allowFadeOut = false;
     } fade;
 
     struct {
@@ -67,6 +71,7 @@ class CPasswordInputField : public IWidget {
     } hiddenInputState;
 
     bool        fadeOnEmpty;
+    uint64_t    fadeTimeoutMs;
 
     CShadowable shadow;
 };
