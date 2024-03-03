@@ -241,6 +241,7 @@ void CPasswordInputField::updateHiddenInputState() {
     // randomize new thang
     hiddenInputState.lastPasswordLength = g_pHyprlock->getPasswordBufferLen();
 
+    srand(std::chrono::system_clock::now().time_since_epoch().count());
     float r1 = (rand() % 100) / 255.0;
     float r2 = (rand() % 100) / 255.0;
     int   r3 = rand() % 3;
