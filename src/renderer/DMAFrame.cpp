@@ -14,7 +14,8 @@
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
 
-static void                                wlrOnBuffer(void* data, zwlr_screencopy_frame_v1* frame, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
+//
+static void wlrOnBuffer(void* data, zwlr_screencopy_frame_v1* frame, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
     const auto PDATA = (SScreencopyData*)data;
 
     Debug::log(TRACE, "[sc] wlrOnBuffer for {}", (void*)PDATA);
@@ -85,7 +86,7 @@ static const zwlr_screencopy_frame_v1_listener wlrFrameListener = {
     .buffer_done  = wlrOnBufferDone,
 };
 
-CDMAFrame::CDMAFrame(COutput* output) {
+CDMAFrame::CDMAFrame(COutput* output_) : output(output_) {
 
     if (!glEGLImageTargetTexture2DOES) {
         glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
@@ -208,19 +209,21 @@ bool CDMAFrame::onBufferReady() {
     static const int entries_per_attrib = 2;
     EGLAttrib        attribs[(general_attribs + plane_attribs * 4) * entries_per_attrib + 1];
     int              attr = 0;
-    attribs[attr++]       = EGL_WIDTH;
-    attribs[attr++]       = scdata.w;
-    attribs[attr++]       = EGL_HEIGHT;
-    attribs[attr++]       = scdata.h;
-    attribs[attr++]       = EGL_LINUX_DRM_FOURCC_EXT;
-    attribs[attr++]       = scdata.fmt;
-    attribs[attr++]       = EGL_DMA_BUF_PLANE0_FD_EXT;
-    attribs[attr++]       = fd[0];
-    attribs[attr++]       = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
-    attribs[attr++]       = offset[0];
-    attribs[attr++]       = EGL_DMA_BUF_PLANE0_PITCH_EXT;
-    attribs[attr++]       = stride[0];
-    attribs[attr]         = EGL_NONE;
+    Vector2D         size{scdata.w, scdata.h};
+
+    attribs[attr++] = EGL_WIDTH;
+    attribs[attr++] = size.x;
+    attribs[attr++] = EGL_HEIGHT;
+    attribs[attr++] = size.y;
+    attribs[attr++] = EGL_LINUX_DRM_FOURCC_EXT;
+    attribs[attr++] = scdata.fmt;
+    attribs[attr++] = EGL_DMA_BUF_PLANE0_FD_EXT;
+    attribs[attr++] = fd[0];
+    attribs[attr++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+    attribs[attr++] = offset[0];
+    attribs[attr++] = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+    attribs[attr++] = stride[0];
+    attribs[attr]   = EGL_NONE;
 
     image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
 
@@ -230,7 +233,7 @@ bool CDMAFrame::onBufferReady() {
     }
 
     asset.texture.allocate();
-    asset.texture.m_vSize = {scdata.w, scdata.h};
+    asset.texture.m_vSize = size;
     glBindTexture(GL_TEXTURE_2D, asset.texture.m_iTexID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -238,6 +241,8 @@ bool CDMAFrame::onBufferReady() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    Debug::log(LOG, "Got dma frame with size {}", size);
 
     asset.ready = true;
 

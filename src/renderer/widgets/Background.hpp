@@ -9,10 +9,11 @@
 #include <any>
 
 struct SPreloadedAsset;
+class COutput;
 
 class CBackground : public IWidget {
   public:
-    CBackground(const Vector2D& viewport, const std::string& resourceID, const std::unordered_map<std::string, std::any>& props);
+    CBackground(const Vector2D& viewport, COutput* output_, const std::string& resourceID, const std::unordered_map<std::string, std::any>& props, bool ss_);
 
     virtual bool draw(const SRenderData& data);
 
@@ -30,5 +31,7 @@ class CBackground : public IWidget {
     Vector2D         viewport;
     std::string      resourceID;
     CColor           color;
-    SPreloadedAsset* asset = nullptr;
+    SPreloadedAsset* asset        = nullptr;
+    COutput*         output       = nullptr;
+    bool             isScreenshot = false;
 };

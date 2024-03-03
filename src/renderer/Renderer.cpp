@@ -242,9 +242,9 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     glDisableVertexAttribArray(rectShader.posAttrib);
 }
 
-void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, bool noTransform) {
+void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<wl_output_transform> tr) {
     float matrix[9];
-    wlr_matrix_project_box(matrix, &box, noTransform ? WL_OUTPUT_TRANSFORM_NORMAL : WL_OUTPUT_TRANSFORM_FLIPPED_180 /* ugh coordinate spaces */, 0,
+    wlr_matrix_project_box(matrix, &box, tr.value_or(WL_OUTPUT_TRANSFORM_FLIPPED_180) /* ugh coordinate spaces */, 0,
                            projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
@@ -305,7 +305,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 
-                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, resourceID, c.values));
+                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, surf->output, resourceID, c.values, PATH == "screenshot"));
             } else if (c.type == "input-field") {
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
             } else if (c.type == "label") {
@@ -464,7 +464,7 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
 
     // finish
     outfb.bind();
-    renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, true);
+    renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, WL_OUTPUT_TRANSFORM_NORMAL);
 
     glEnable(GL_BLEND);
 }

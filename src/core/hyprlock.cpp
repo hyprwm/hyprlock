@@ -310,6 +310,25 @@ void CHyprlock::run() {
 
     g_pRenderer = std::make_unique<CRenderer>();
 
+    const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
+    const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+
+    Debug::log(LOG, "Running on {}", SZCURRENTD);
+
+    // Hyprland violates the protocol a bit to allow for this.
+    if (SZCURRENTD != "Hyprland") {
+        while (!g_pRenderer->asyncResourceGatherer->ready) {
+            wl_display_flush(m_sWaylandState.display);
+            if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
+                wl_display_read_events(m_sWaylandState.display);
+                wl_display_dispatch_pending(m_sWaylandState.display);
+            } else {
+                wl_display_dispatch(m_sWaylandState.display);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
     lockSession();
 
     signal(SIGUSR1, handleUnlockSignal);
@@ -388,7 +407,7 @@ void CHyprlock::run() {
 
         m_sLoopState.event = false;
 
-        if (pollfds[0].revents & POLLIN /* dbus */) {
+        if (pollfds[0].revents & POLLIN /* wl */) {
             Debug::log(TRACE, "got wl event");
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {

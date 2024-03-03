@@ -15,8 +15,7 @@ static void handleMode(void* data, wl_output* output, uint32_t flags, int32_t wi
     const auto POUTPUT = (COutput*)data;
 
     // handle portrait mode and flipped cases
-    if (POUTPUT->transform == WL_OUTPUT_TRANSFORM_270 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_90 || POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270 ||
-        POUTPUT->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90)
+    if (POUTPUT->transform % 2 == 1)
         POUTPUT->size = {height, width};
     else
         POUTPUT->size = {width, height};
