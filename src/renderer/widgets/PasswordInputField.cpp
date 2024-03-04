@@ -11,6 +11,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
     dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
     dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
+    dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
     pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
@@ -158,6 +159,11 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         if (dots.currentAmount > MAX_DOTS)
             xstart = (inputFieldBox.w + MAX_DOTS * (PASS_SIZE + PASS_SPACING) - PASS_SPACING - 2 * TOTAL_DOTS_WIDTH) / 2;
 
+        if (dots.rounding == -1)
+            dots.rounding = PASS_SIZE / 2.0;
+        else if (dots.rounding == -2)
+            dots.rounding = rounding == -1 ? PASS_SIZE / 2.0 : rounding * dots.size;
+
         for (int i = 0; i < dots.currentAmount; ++i) {
             if (i < DOT_FLOORED - MAX_DOTS)
                 continue;
@@ -171,7 +177,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
             Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + i * (PASS_SIZE + PASS_SPACING), inputFieldBox.h / 2.f - PASS_SIZE / 2.f};
             CBox     box{dotPosition, Vector2D{PASS_SIZE, PASS_SIZE}};
-            g_pRenderer->renderRect(box, fontCol, PASS_SIZE / 2.0);
+            g_pRenderer->renderRect(box, fontCol, dots.rounding);
             fontCol.a = DOT_ALPHA;
         }
     }
