@@ -175,8 +175,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                     fontCol.a *= (1 - dots.currentAmount + DOT_FLOORED) * data.opacity;
             }
 
-            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + i * (PASS_SIZE + PASS_SPACING), inputFieldBox.h / 2.f - PASS_SIZE / 2.f};
-            CBox     box{dotPosition, Vector2D{PASS_SIZE, PASS_SIZE}};
+            Vector2D dotPosition =
+                inputFieldBox.pos() + Vector2D{xstart + (int)inputFieldBox.w % 2 / 2.f + i * (PASS_SIZE + PASS_SPACING), inputFieldBox.h / 2.f - PASS_SIZE / 2.f};
+            CBox box{dotPosition, Vector2D{PASS_SIZE, PASS_SIZE}};
             g_pRenderer->renderRect(box, fontCol, dots.rounding);
             fontCol.a = DOT_ALPHA;
         }
