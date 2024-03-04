@@ -65,7 +65,7 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
 
     IWidget::SFormatResult result;
-    replaceAll(in, "$USER", username ? *username : std::string{""});
+    replaceAll(in, "$USER", username.value_or(""));
     replaceAll(in, "<br/>", std::string{"\n"});
 
     if (in.contains("$TIME")) {
