@@ -703,9 +703,11 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         if (m_sPasswordState.passBuffer.length() > 0)
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-        Debug::log(LOG, "Authenticating");
+        if (m_sPasswordState.passBuffer.length() > 0) {
+            Debug::log(LOG, "Authenticating");
 
-        m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+            m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+        }
     } else if (SYM == XKB_KEY_Escape) {
         Debug::log(LOG, "Clearing password buffer");
 
