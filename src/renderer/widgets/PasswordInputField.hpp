@@ -63,4 +63,5 @@ class CPasswordInputField : public IWidget {
     } hiddenInputState;
 
     bool fadeOnEmpty;
+    int  rounding;
 };
