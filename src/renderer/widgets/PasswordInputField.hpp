@@ -26,9 +26,7 @@ class CPasswordInputField : public IWidget {
     Vector2D pos;
     Vector2D viewport;
 
-    float    dt_size, dt_space;
-
-    int      out_thick;
+    int      outThick, rounding;
 
     CColor   inner, outer, font;
 
@@ -36,7 +34,9 @@ class CPasswordInputField : public IWidget {
         float                                 currentAmount  = 0;
         float                                 speedPerSecond = 5; // actually per... something. I am unsure xD
         std::chrono::system_clock::time_point lastFrame;
-        bool                                  center = false;
+        bool                                  center  = false;
+        float                                 size    = 0;
+        float                                 spacing = 0;
     } dots;
 
     struct {
@@ -63,5 +63,4 @@ class CPasswordInputField : public IWidget {
     } hiddenInputState;
 
     bool fadeOnEmpty;
-    int  rounding;
 };
