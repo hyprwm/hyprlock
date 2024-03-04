@@ -181,6 +181,12 @@ in {
             default = true;
           };
 
+          dots_rounding = mkOption {
+            description = "The rounding of dots (-2 follows input-field rounding)";
+            type = int;
+            default = -1;
+          };
+
           outer_color = mkOption {
             description = "The outer color of the input field";
             type = str;
