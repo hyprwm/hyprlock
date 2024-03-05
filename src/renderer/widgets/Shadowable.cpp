@@ -31,7 +31,7 @@ void CShadowable::markShadowDirty() {
 
 bool CShadowable::draw(const IWidget::SRenderData& data) {
     if (passes == 0)
-        return;
+        return true;
 
     if (!shadowFB.isAllocated() || ignoreDraw)
         return true;
