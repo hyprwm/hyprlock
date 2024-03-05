@@ -10,6 +10,9 @@ CShadowable::CShadowable(IWidget* widget_, const std::unordered_map<std::string,
 
 void CShadowable::markShadowDirty() {
 
+    if (passes == 0)
+        return;
+
     if (!shadowFB.isAllocated())
         shadowFB.alloc(viewport.x, viewport.y, true);
 
@@ -27,6 +30,9 @@ void CShadowable::markShadowDirty() {
 }
 
 bool CShadowable::draw(const IWidget::SRenderData& data) {
+    if (passes == 0)
+        return;
+
     if (!shadowFB.isAllocated() || ignoreDraw)
         return true;
 

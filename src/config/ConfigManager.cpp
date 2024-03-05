@@ -38,7 +38,7 @@ void CConfigManager::init() {
 
 #define SHADOWABLE(name)                                                                                                                                                           \
     m_config.addSpecialConfigValue(name, "shadow_size", Hyprlang::INT{3});                                                                                                         \
-    m_config.addSpecialConfigValue(name, "shadow_passes", Hyprlang::INT{2});                                                                                                       \
+    m_config.addSpecialConfigValue(name, "shadow_passes", Hyprlang::INT{0});                                                                                                       \
     m_config.addSpecialConfigValue(name, "shadow_color", Hyprlang::INT{0xFF000000});                                                                                               \
     m_config.addSpecialConfigValue(name, "shadow_boost", Hyprlang::FLOAT{1.2});
 
