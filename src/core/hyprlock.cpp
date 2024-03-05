@@ -887,9 +887,9 @@ zwlr_screencopy_manager_v1* CHyprlock::getScreencopy() {
 
 void CHyprlock::attemptRestoreOnDeath() {
     // dirty hack
-    uint64_t        timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
+    uint64_t              timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
 
-    constexpr char* LASTRESTARTPATH = "/tmp/hypr/.hyprlockrestart";
+    constexpr const char* LASTRESTARTPATH = "/tmp/hypr/.hyprlockrestart";
 
     if (std::filesystem::exists(LASTRESTARTPATH)) {
         std::ifstream ifs(LASTRESTARTPATH);
