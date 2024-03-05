@@ -362,12 +362,14 @@ in {
             dots_size = ${toString input-field.dots_size}
             dots_spacing = ${toString input-field.dots_spacing}
             dots_center = ${boolToString input-field.dots_center}
+            dots_rounding = ${toString input-field.dots_rounding}
             outer_color = ${input-field.outer_color}
             inner_color = ${input-field.inner_color}
             font_color = ${input-field.font_color}
             fade_on_empty = ${boolToString input-field.fade_on_empty}
             placeholder_text = ${input-field.placeholder_text}
             hide_input = ${boolToString input-field.hide_input}
+            rounding = ${toString input-field.rounding}
 
             position = ${toString input-field.position.x}, ${toString input-field.position.y}
             halign = ${input-field.halign}
