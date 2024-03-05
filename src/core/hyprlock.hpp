@@ -43,6 +43,8 @@ class CHyprlock {
     void                            lockSession();
     void                            unlockSession();
 
+    void                            attemptRestoreOnDeath();
+
     void                            spawnAsync(const std::string& cmd);
     std::string                     spawnSync(const std::string& cmd);
 

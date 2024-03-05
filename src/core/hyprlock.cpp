@@ -293,6 +293,11 @@ static void handleUnlockSignal(int sig) {
     }
 }
 
+static void handleCriticalSignal(int sig) {
+    g_pHyprlock->attemptRestoreOnDeath();
+    abort();
+}
+
 void CHyprlock::run() {
     m_sWaylandState.registry = wl_display_get_registry(m_sWaylandState.display);
 
@@ -332,6 +337,8 @@ void CHyprlock::run() {
     lockSession();
 
     signal(SIGUSR1, handleUnlockSignal);
+    signal(SIGSEGV, handleCriticalSignal);
+    signal(SIGABRT, handleCriticalSignal);
 
     pollfd pollfds[] = {
         {
@@ -346,6 +353,7 @@ void CHyprlock::run() {
 
             if (ret < 0) {
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
+                attemptRestoreOnDeath();
                 m_bTerminate = true;
                 exit(1);
             }
@@ -353,6 +361,7 @@ void CHyprlock::run() {
             for (size_t i = 0; i < 1; ++i) {
                 if (pollfds[i].revents & POLLHUP) {
                     Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                    attemptRestoreOnDeath();
                     m_bTerminate = true;
                     exit(1);
                 }
@@ -872,4 +881,10 @@ std::string CHyprlock::spawnSync(const std::string& cmd) {
 
 zwlr_screencopy_manager_v1* CHyprlock::getScreencopy() {
     return m_sWaylandState.screencopy;
+}
+
+void CHyprlock::attemptRestoreOnDeath() {
+    // dirty hack
+    spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
+    spawnAsync("sleep 2 && hyprlock & disown");
 }
