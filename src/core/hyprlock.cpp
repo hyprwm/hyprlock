@@ -14,6 +14,8 @@
 #include <assert.h>
 #include <string.h>
 #include <xf86drm.h>
+#include <filesystem>
+#include <fstream>
 
 CHyprlock::CHyprlock(const std::string& wlDisplay) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -885,6 +887,34 @@ zwlr_screencopy_manager_v1* CHyprlock::getScreencopy() {
 
 void CHyprlock::attemptRestoreOnDeath() {
     // dirty hack
+    uint64_t        timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
+
+    constexpr char* LASTRESTARTPATH = "/tmp/hypr/.hyprlockrestart";
+
+    if (std::filesystem::exists(LASTRESTARTPATH)) {
+        std::ifstream ifs(LASTRESTARTPATH);
+        std::string   content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+        uint64_t      timeEncoded = 0;
+        try {
+            timeEncoded = std::stoull(content);
+        } catch (std::exception& e) {
+            // oops?
+            ifs.close();
+            std::filesystem::remove(LASTRESTARTPATH);
+            return;
+        }
+        ifs.close();
+
+        if (timeNowMs - timeEncoded < 4000 /* 4s, seems reasonable */) {
+            Debug::log(LOG, "Not restoring on death; less than 4s since last death");
+            return;
+        }
+    }
+
+    std::ofstream ofs(LASTRESTARTPATH, std::ios::trunc);
+    ofs << timeNowMs;
+    ofs.close();
+
     spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
     spawnAsync("sleep 2 && hyprlock & disown");
 }
