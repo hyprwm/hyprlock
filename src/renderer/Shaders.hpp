@@ -331,6 +331,10 @@ uniform sampler2D tex;
 uniform float     noise;
 uniform float     brightness;
 
+uniform int       colorize;
+uniform vec3      colorizeTint;
+uniform float     boostA;
+
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -346,6 +350,13 @@ void main() {
     // brightness
     if (brightness < 1.0) {
         pixColor.rgb *= brightness;
+    }
+
+    pixColor.a *= boostA;
+
+    if (colorize == 1) {
+        gl_FragColor = vec4(colorizeTint.r, colorizeTint.g, colorizeTint.b, pixColor.a);
+        return;
     }
 
     gl_FragColor = pixColor;

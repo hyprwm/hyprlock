@@ -52,7 +52,8 @@ void CLabel::plantTimer() {
         labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), onTimer, this);
 }
 
-CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, CSessionLockSurface* surface_) : surface(surface_) {
+CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, CSessionLockSurface* surface_) :
+    surface(surface_), shadow(this, props, viewport_) {
     labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
     std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
     CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
@@ -92,6 +93,7 @@ bool CLabel::draw(const SRenderData& data) {
 
         // calc pos
         pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign);
+        shadow.markShadowDirty();
     }
 
     if (!pendingResourceID.empty()) {
@@ -104,11 +106,12 @@ bool CLabel::draw(const SRenderData& data) {
             resourceID        = pendingResourceID;
             pendingResourceID = "";
             pos               = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign);
+            shadow.markShadowDirty();
         }
     }
 
     CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
-
+    shadow.draw(data);
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 
     return false;

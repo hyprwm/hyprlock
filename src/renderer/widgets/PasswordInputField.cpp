@@ -3,7 +3,7 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) {
+CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
     size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
     inner                    = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
     outer                    = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
@@ -105,12 +105,21 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     CBox inputFieldBox = {pos, size};
     CBox outerBox      = {pos - Vector2D{outThick, outThick}, size + Vector2D{outThick * 2, outThick * 2}};
 
+    if (firstRender) {
+        firstRender = false;
+        shadow.markShadowDirty();
+    }
+
     bool forceReload = false;
 
     updateFade();
     updateDots();
     updateFailTex();
     updateHiddenInputState();
+
+    SRenderData shadowData = data;
+    shadowData.opacity *= fade.a;
+    shadow.draw(shadowData);
 
     float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
 

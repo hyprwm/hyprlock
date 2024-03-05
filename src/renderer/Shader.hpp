@@ -59,6 +59,11 @@ class CShader {
     GLint brightness = -1;
     GLint noise      = -1;
 
+    // colorize
+    GLint colorize     = -1;
+    GLint colorizeTint = -1;
+    GLint boostA       = -1;
+
     GLint getUniformLocation(const std::string&);
 
     void  destroy();

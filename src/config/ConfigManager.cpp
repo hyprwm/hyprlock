@@ -35,6 +35,13 @@ CConfigManager::CConfigManager() : m_config(getMainConfigPath().c_str(), Hyprlan
 }
 
 void CConfigManager::init() {
+
+#define SHADOWABLE(name)                                                                                                                                                           \
+    m_config.addSpecialConfigValue(name, "shadow_size", Hyprlang::INT{3});                                                                                                         \
+    m_config.addSpecialConfigValue(name, "shadow_passes", Hyprlang::INT{2});                                                                                                       \
+    m_config.addSpecialConfigValue(name, "shadow_color", Hyprlang::INT{0xFF000000});                                                                                               \
+    m_config.addSpecialConfigValue(name, "shadow_boost", Hyprlang::FLOAT{1.2});
+
     m_config.addConfigValue("general:disable_loading_bar", Hyprlang::INT{0});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
@@ -70,6 +77,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
+    SHADOWABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("label", "monitor", Hyprlang::STRING{""});
@@ -80,6 +88,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
+    SHADOWABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {false});
 
@@ -89,6 +98,8 @@ void CConfigManager::init() {
 
     if (result.error)
         Debug::log(ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
+
+#undef SHADOWABLE
 }
 
 std::mutex   configMtx;
@@ -100,6 +111,12 @@ void* const* CConfigManager::getValuePtr(const std::string& name) {
 
 std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     std::vector<CConfigManager::SWidgetConfig> result;
+
+#define SHADOWABLE(name)                                                                                                                                                           \
+    {"shadow_size", m_config.getSpecialConfigValue(name, "shadow_size", k.c_str())}, {"shadow_passes", m_config.getSpecialConfigValue(name, "shadow_passes", k.c_str())},          \
+        {"shadow_color", m_config.getSpecialConfigValue(name, "shadow_color", k.c_str())}, {                                                                                       \
+        "shadow_boost", m_config.getSpecialConfigValue(name, "shadow_boost", k.c_str())                                                                                            \
+    }
 
     //
     auto keys = m_config.listKeysForSpecialCategory("background");
@@ -146,6 +163,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
                 {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
+                SHADOWABLE("input-field"),
             }
         });
         // clang-format on
@@ -165,6 +183,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
+                SHADOWABLE("label"),
             }
         });
         // clang-format on

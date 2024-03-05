@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <chrono>
+#include <optional>
 
 #include "../core/LockSurface.hpp"
 #include "Shader.hpp"
@@ -22,8 +23,10 @@ class CRenderer {
     };
 
     struct SBlurParams {
-        int   size = 0, passes = 0;
-        float noise = 0, contrast = 0, brightness = 0, vibrancy = 0, vibrancy_darkness = 0;
+        int                   size = 0, passes = 0;
+        float                 noise = 0, contrast = 0, brightness = 0, vibrancy = 0, vibrancy_darkness = 0;
+        std::optional<CColor> colorize;
+        float                 boostA = 1.0;
     };
 
     SRenderFeedback                         renderLock(const CSessionLockSurface& surface);
@@ -34,6 +37,9 @@ class CRenderer {
 
     std::unique_ptr<CAsyncResourceGatherer> asyncResourceGatherer;
     std::chrono::system_clock::time_point   gatheredAt;
+
+    void                                    pushFb(GLint fb);
+    void                                    popFb();
 
   private:
     widgetMap_t                            widgets;
@@ -49,6 +55,8 @@ class CRenderer {
 
     std::array<float, 9>                   projMatrix;
     std::array<float, 9>                   projection;
+
+    std::vector<GLint>                     boundFBs;
 };
 
 inline std::unique_ptr<CRenderer> g_pRenderer;

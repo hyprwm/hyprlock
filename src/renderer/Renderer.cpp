@@ -138,14 +138,17 @@ CRenderer::CRenderer() {
     blurPrepareShader.contrast   = glGetUniformLocation(prog, "contrast");
     blurPrepareShader.brightness = glGetUniformLocation(prog, "brightness");
 
-    prog                        = createProgram(TEXVERTSRC, FRAGBLURFINISH);
-    blurFinishShader.program    = prog;
-    blurFinishShader.tex        = glGetUniformLocation(prog, "tex");
-    blurFinishShader.proj       = glGetUniformLocation(prog, "proj");
-    blurFinishShader.posAttrib  = glGetAttribLocation(prog, "pos");
-    blurFinishShader.texAttrib  = glGetAttribLocation(prog, "texcoord");
-    blurFinishShader.brightness = glGetUniformLocation(prog, "brightness");
-    blurFinishShader.noise      = glGetUniformLocation(prog, "noise");
+    prog                          = createProgram(TEXVERTSRC, FRAGBLURFINISH);
+    blurFinishShader.program      = prog;
+    blurFinishShader.tex          = glGetUniformLocation(prog, "tex");
+    blurFinishShader.proj         = glGetUniformLocation(prog, "proj");
+    blurFinishShader.posAttrib    = glGetAttribLocation(prog, "pos");
+    blurFinishShader.texAttrib    = glGetAttribLocation(prog, "texcoord");
+    blurFinishShader.brightness   = glGetUniformLocation(prog, "brightness");
+    blurFinishShader.noise        = glGetUniformLocation(prog, "noise");
+    blurFinishShader.colorize     = glGetUniformLocation(prog, "colorize");
+    blurFinishShader.colorizeTint = glGetUniformLocation(prog, "colorizeTint");
+    blurFinishShader.boostA       = glGetUniformLocation(prog, "boostA");
 
     wlr_matrix_identity(projMatrix.data());
 
@@ -163,6 +166,10 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     g_pEGL->makeCurrent(surf.eglSurface);
     glViewport(0, 0, surf.size.x, surf.size.y);
+
+    GLint fb = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fb);
+    pushFb(fb);
 
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -330,8 +337,8 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     wlr_matrix_multiply(glMatrix, projection.data(), matrix);
 
     CFramebuffer mirrors[2];
-    mirrors[0].alloc(outfb.m_vSize.x, outfb.m_vSize.y);
-    mirrors[1].alloc(outfb.m_vSize.x, outfb.m_vSize.y);
+    mirrors[0].alloc(outfb.m_vSize.x, outfb.m_vSize.y, true);
+    mirrors[1].alloc(outfb.m_vSize.x, outfb.m_vSize.y, true);
 
     CFramebuffer* currentRenderToFB = &mirrors[0];
 
@@ -442,6 +449,10 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
         glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix);
         glUniform1f(blurFinishShader.noise, params.noise);
         glUniform1f(blurFinishShader.brightness, params.brightness);
+        glUniform1i(blurFinishShader.colorize, params.colorize.has_value());
+        if (params.colorize.has_value())
+            glUniform3f(blurFinishShader.colorizeTint, params.colorize->r, params.colorize->g, params.colorize->b);
+        glUniform1f(blurFinishShader.boostA, params.boostA);
 
         glUniform1i(blurFinishShader.tex, 0);
 
@@ -467,4 +478,14 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, WL_OUTPUT_TRANSFORM_NORMAL);
 
     glEnable(GL_BLEND);
+}
+
+void CRenderer::pushFb(GLint fb) {
+    boundFBs.push_back(fb);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+}
+
+void CRenderer::popFb() {
+    boundFBs.pop_back();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, boundFBs.empty() ? 0 : boundFBs.back());
 }

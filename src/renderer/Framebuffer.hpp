@@ -8,7 +8,7 @@ class CFramebuffer {
   public:
     ~CFramebuffer();
 
-    bool      alloc(int w, int h);
+    bool      alloc(int w, int h, bool highres = false);
     void      addStencil();
     void      bind() const;
     void      release();

@@ -3,6 +3,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Vector2D.hpp"
 #include "../../helpers/Color.hpp"
+#include "Shadowable.hpp"
 #include <chrono>
 #include <vector>
 #include <any>
@@ -21,6 +22,8 @@ class CPasswordInputField : public IWidget {
     void     updateFade();
     void     updateFailTex();
     void     updateHiddenInputState();
+
+    bool     firstRender = true;
 
     Vector2D size;
     Vector2D pos;
@@ -63,5 +66,7 @@ class CPasswordInputField : public IWidget {
         bool   enabled            = false;
     } hiddenInputState;
 
-    bool fadeOnEmpty;
+    bool        fadeOnEmpty;
+
+    CShadowable shadow;
 };

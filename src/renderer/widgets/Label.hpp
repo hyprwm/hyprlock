@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IWidget.hpp"
+#include "Shadowable.hpp"
 #include "../../helpers/Vector2D.hpp"
 #include "../../core/Timer.hpp"
 #include "../AsyncResourceGatherer.hpp"
@@ -38,4 +39,6 @@ class CLabel : public IWidget {
     CAsyncResourceGatherer::SPreloadRequest request;
 
     std::shared_ptr<CTimer>                 labelTimer;
+
+    CShadowable                             shadow;
 };
