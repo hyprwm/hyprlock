@@ -34,6 +34,7 @@ class CRenderer {
     void                                    renderRect(const CBox& box, const CColor& col, int rounding = 0);
     void                                    renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, std::optional<wl_output_transform> tr = {});
     void                                    blurFB(const CFramebuffer& outfb, SBlurParams params);
+    void                                    onEmptyPasswordFade();
 
     std::unique_ptr<CAsyncResourceGatherer> asyncResourceGatherer;
     std::chrono::system_clock::time_point   gatheredAt;

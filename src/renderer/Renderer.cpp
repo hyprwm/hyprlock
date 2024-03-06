@@ -489,3 +489,11 @@ void CRenderer::popFb() {
     boundFBs.pop_back();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, boundFBs.empty() ? 0 : boundFBs.back());
 }
+
+void CRenderer::onEmptyPasswordFade() {
+    for (auto& [surf, w] : widgets) {
+        for (auto& widget : w) {
+            widget->onEmptyPasswordTimer();
+        }
+    }
+}
