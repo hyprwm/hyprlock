@@ -16,6 +16,7 @@ class CPasswordInputField : public IWidget {
     CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props);
 
     virtual bool draw(const SRenderData& data);
+    virtual void onEmptyPasswordTimer();
 
   private:
     void     updateDots();
@@ -45,9 +46,10 @@ class CPasswordInputField : public IWidget {
 
     struct {
         std::chrono::system_clock::time_point start;
-        float                                 a         = 0;
-        bool                                  appearing = true;
-        bool                                  animated  = false;
+        float                                 a            = 0;
+        bool                                  appearing    = true;
+        bool                                  animated     = false;
+        bool                                  allowFadeOut = false;
     } fade;
 
     struct {
