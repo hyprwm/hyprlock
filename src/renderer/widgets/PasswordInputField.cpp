@@ -84,11 +84,6 @@ void CPasswordInputField::updateDots() {
         dots.lastFrame     = std::chrono::system_clock::now();
     }
 
-    if (PASSLEN == 0 && !placeholder.failID.empty()) {
-        dots.currentAmount = PASSLEN;
-        return;
-    }
-
     const auto  DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count(), 0, 20000);
 
     const float TOADD = DELTA / 1000000.0 * dots.speedPerSecond;
