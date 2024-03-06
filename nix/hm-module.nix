@@ -211,6 +211,12 @@ in {
             default = true;
           };
 
+          fade_timeout = mkOption {
+            description = "Milliseconds before the input field should be faded (0 to fade immediately)";
+            type = int;
+            default = 1000;
+          };
+
           placeholder_text = mkOption {
             description = "The placeholder text of the input field";
             type = str;
@@ -367,6 +373,7 @@ in {
             inner_color = ${input-field.inner_color}
             font_color = ${input-field.font_color}
             fade_on_empty = ${boolToString input-field.fade_on_empty}
+            fade_timeout = ${toString input-field.fade_timeout}
             placeholder_text = ${input-field.placeholder_text}
             hide_input = ${boolToString input-field.hide_input}
             rounding = ${toString input-field.rounding}
