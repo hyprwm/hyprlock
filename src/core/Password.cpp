@@ -11,11 +11,20 @@
 #include <cstring>
 #include <thread>
 
-struct pam_response* reply;
-
 //
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
-    *resp = reply;
+    const char*          pass      = static_cast<const char*>(appdata_ptr);
+    struct pam_response* pam_reply = static_cast<struct pam_response*>(calloc(num_msg, sizeof(struct pam_response)));
+
+    for (int i = 0; i < num_msg; ++i) {
+        switch (msg[i]->msg_style) {
+            case PAM_PROMPT_ECHO_OFF:
+            case PAM_PROMPT_ECHO_ON: pam_reply[i].resp = strdup(pass); break;
+            case PAM_ERROR_MSG: Debug::log(ERR, "PAM: {}", msg[i]->msg); break;
+            case PAM_TEXT_INFO: Debug::log(LOG, "PAM: {}", msg[i]->msg); break;
+        }
+    }
+    *resp = pam_reply;
     return PAM_SUCCESS;
 }
 
@@ -29,7 +38,7 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
 
     std::thread([this, result, pass]() {
         auto auth = [&](std::string auth) -> bool {
-            const pam_conv localConv = {conv, NULL};
+            const pam_conv localConv = {conv, (void*)pass.c_str()};
             pam_handle_t*  handle    = NULL;
 
             int            ret = pam_start(auth.c_str(), getlogin(), &localConv, &handle);
@@ -41,11 +50,7 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
                 return false;
             }
 
-            reply = (struct pam_response*)malloc(sizeof(struct pam_response));
-
-            reply->resp         = strdup(pass.c_str());
-            reply->resp_retcode = 0;
-            ret                 = pam_authenticate(handle, 0);
+            ret = pam_authenticate(handle, 0);
 
             if (ret != PAM_SUCCESS) {
                 result->success    = false;
