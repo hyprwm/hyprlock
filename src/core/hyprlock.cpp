@@ -30,8 +30,10 @@ CHyprlock::CHyprlock(const std::string& wlDisplay) {
     if (!m_pXKBContext)
         Debug::log(ERR, "Failed to create xkb context");
 
-    const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
-    m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
+    const auto GRACE          = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
+    m_tGraceEnds              = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
+    const auto FADETIMEOUT    = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:input_empty_fade_timeout");
+    m_iEmptyPasswordTimeoutMs = **FADETIMEOUT;
 }
 
 // wl_seat
@@ -654,6 +656,14 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 // end session_lock
 
+static void passwordEmptyTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pRenderer->onEmptyPasswordFade();
+
+    for (auto& o : g_pHyprlock->m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
+}
+
 void CHyprlock::onPasswordCheckTimer() {
     // check result
     if (m_sPasswordState.result->success) {
@@ -669,6 +679,12 @@ void CHyprlock::onPasswordCheckTimer() {
     }
 
     m_sPasswordState.result.reset();
+
+    if (m_sPasswordState.emptyBufferTimer.get()) {
+        m_sPasswordState.emptyBufferTimer->cancel();
+        m_sPasswordState.emptyBufferTimer.reset();
+    }
+    m_sPasswordState.emptyBufferTimer = addTimer(std::chrono::milliseconds(m_iEmptyPasswordTimeoutMs), passwordEmptyTimerCallback, nullptr);
 }
 
 bool CHyprlock::passwordCheckWaiting() {
@@ -728,6 +744,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
         if (len > 1)
             m_sPasswordState.passBuffer += std::string{buf, len - 1};
+    }
+
+    if (m_sPasswordState.passBuffer.empty() && !m_sPasswordState.emptyBufferTimer.get())
+        m_sPasswordState.emptyBufferTimer = addTimer(std::chrono::milliseconds(m_iEmptyPasswordTimeoutMs), passwordEmptyTimerCallback, nullptr);
+    else if (!m_sPasswordState.passBuffer.empty() && m_sPasswordState.emptyBufferTimer.get()) {
+        m_sPasswordState.emptyBufferTimer->cancel();
+        m_sPasswordState.emptyBufferTimer.reset();
     }
 
     for (auto& o : m_vOutputs) {

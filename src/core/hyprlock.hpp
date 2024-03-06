@@ -78,7 +78,8 @@ class CHyprlock {
 
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
-    Vector2D                              m_vLastEnterCoords = {};
+    Vector2D                              m_vLastEnterCoords        = {};
+    uint64_t                              m_iEmptyPasswordTimeoutMs = 0;
 
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
 
@@ -117,6 +118,7 @@ class CHyprlock {
         std::string                                     passBuffer = "";
         std::shared_ptr<CPassword::SVerificationResult> result;
         std::optional<std::string>                      lastFailReason;
+        std::shared_ptr<CTimer>                         emptyBufferTimer;
     } m_sPasswordState;
 
     struct {
