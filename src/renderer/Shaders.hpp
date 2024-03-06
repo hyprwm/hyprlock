@@ -355,7 +355,7 @@ void main() {
     pixColor.a *= boostA;
 
     if (colorize == 1) {
-        gl_FragColor = vec4(colorizeTint.r, colorizeTint.g, colorizeTint.b, pixColor.a);
+        gl_FragColor = vec4(colorizeTint.r * pixColor.a, colorizeTint.g * pixColor.a, colorizeTint.b * pixColor.a, pixColor.a);
         return;
     }
 
