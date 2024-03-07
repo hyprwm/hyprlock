@@ -25,6 +25,10 @@ static void onAssetCallback(void* data) {
     PLABEL->renderSuper();
 }
 
+std::string CLabel::getUniqueResourceId() {
+    return std::string{"label:"} + std::to_string((uintptr_t)this) + ",time:" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+}
+
 void CLabel::onTimerUpdate() {
     std::string oldFormatted = label.formatted;
 
@@ -37,7 +41,7 @@ void CLabel::onTimerUpdate() {
         return; // too many updates, we'll miss some. Shouldn't happen tbh
 
     // request new
-    request.id        = std::string{"label:"} + std::to_string((uintptr_t)this) + ",time:" + std::to_string(time(nullptr));
+    request.id        = getUniqueResourceId();
     pendingResourceID = request.id;
     request.asset     = label.formatted;
 
@@ -61,7 +65,7 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
 
     label = formatString(labelPreFormat);
 
-    request.id                   = std::string{"label:"} + std::to_string((uintptr_t)this) + ",time:" + std::to_string(time(nullptr));
+    request.id                   = getUniqueResourceId();
     resourceID                   = request.id;
     request.asset                = label.formatted;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
