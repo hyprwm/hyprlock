@@ -13,6 +13,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
     dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
+    fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
     font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
     pos                      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -37,6 +38,21 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     }
 }
 
+static void fadeOutCallback(std::shared_ptr<CTimer> self, void* data) {
+    CPasswordInputField* p = (CPasswordInputField*)data;
+
+    p->onFadeOutTimer();
+
+    for (auto& o : g_pHyprlock->m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
+}
+
+void CPasswordInputField::onFadeOutTimer() {
+    fade.allowFadeOut = true;
+    fade.fadeOutTimer.reset();
+}
+
 void CPasswordInputField::updateFade() {
     const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
 
@@ -45,12 +61,26 @@ void CPasswordInputField::updateFade() {
         return;
     }
 
+    if (PASSLEN > 0 && fade.allowFadeOut)
+        fade.allowFadeOut = false;
+
+    if (PASSLEN > 0 && fade.fadeOutTimer.get()) {
+        fade.fadeOutTimer->cancel();
+        fade.fadeOutTimer.reset();
+    }
+
     if (PASSLEN == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
-        fade.a         = 1.0;
-        fade.animated  = true;
-        fade.appearing = false;
-        fade.start     = std::chrono::system_clock::now();
-    } else if (PASSLEN > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
+        if (fade.allowFadeOut || fadeTimeoutMs == 0) {
+            fade.a            = 1.0;
+            fade.animated     = true;
+            fade.appearing    = false;
+            fade.start        = std::chrono::system_clock::now();
+            fade.allowFadeOut = false;
+        } else if (!fade.fadeOutTimer.get())
+            fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), fadeOutCallback, this);
+    }
+
+    if (PASSLEN > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
         fade.a         = 0.0;
         fade.animated  = true;
         fade.appearing = true;
@@ -77,11 +107,6 @@ void CPasswordInputField::updateDots() {
     if (std::abs(PASSLEN - dots.currentAmount) > 1) {
         dots.currentAmount = std::clamp(dots.currentAmount, PASSLEN - 1.f, PASSLEN + 1.f);
         dots.lastFrame     = std::chrono::system_clock::now();
-    }
-
-    if (PASSLEN == 0 && !placeholder.failID.empty()) {
-        dots.currentAmount = PASSLEN;
-        return;
     }
 
     const auto  DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count(), 0, 20000);
@@ -216,7 +241,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != PASSLEN || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != PASSLEN || fade.animated || data.opacity < 1.0 || forceReload;
 }
 
 void CPasswordInputField::updateFailTex() {
