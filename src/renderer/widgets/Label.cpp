@@ -114,7 +114,7 @@ bool CLabel::draw(const SRenderData& data) {
     shadow.draw(data);
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 
-    return false;
+    return !pendingResourceID.empty();
 }
 
 void CLabel::renderSuper() {
