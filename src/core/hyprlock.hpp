@@ -28,7 +28,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay);
+    CHyprlock(const std::string& wlDisplay, const bool immediate);
 
     void                            run();
 

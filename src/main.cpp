@@ -8,10 +8,12 @@ void help() {
                  "  -v, --verbose            - Enable verbose logging\n"
                  "  -q, --quiet              - Disable logging\n"
                  "  --display (display)      - Specify the Wayland display to connect to\n"
+                 "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  -h, --help               - Show this help message\n";
 }
 int main(int argc, char** argv, char** envp) {
     std::string wlDisplay;
+    bool immediate = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -25,6 +27,9 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--display" && i + 1 < argc) {
             wlDisplay = argv[i + 1];
             i++;
+        }
+        else if (arg == "--immediate") {
+            immediate = true;
         } else if (arg == "--help" || arg == "-h") {
             help();
             return 0;
@@ -42,7 +47,7 @@ int main(int argc, char** argv, char** envp) {
         return 1;
     }
 
-    g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay);
+    g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate);
     g_pHyprlock->run();
 
     return 0;

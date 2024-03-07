@@ -17,7 +17,7 @@
 #include <filesystem>
 #include <fstream>
 
-CHyprlock::CHyprlock(const std::string& wlDisplay) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -30,8 +30,12 @@ CHyprlock::CHyprlock(const std::string& wlDisplay) {
     if (!m_pXKBContext)
         Debug::log(ERR, "Failed to create xkb context");
 
-    const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
-    m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
+    if (!immediate) {
+        const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
+        m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
+    } else {
+        m_tGraceEnds     = std::chrono::system_clock::from_time_t(0);
+    }
 }
 
 // wl_seat
