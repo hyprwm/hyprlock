@@ -24,6 +24,8 @@ class CLabel : public IWidget {
     void         plantTimer();
 
   private:
+    std::string                             getUniqueResourceId();
+
     std::string                             labelPreFormat;
     IWidget::SFormatResult                  label;
 
