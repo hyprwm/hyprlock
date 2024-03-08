@@ -121,6 +121,11 @@ bool CLabel::draw(const SRenderData& data) {
     return !pendingResourceID.empty();
 }
 
+static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
+    const auto PLABEL = (CLabel*)data;
+    PLABEL->renderSuper();
+}
+
 void CLabel::renderSuper() {
     const auto MON =
         std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(), [this](const auto& other) { return other->stringPort == this->outputStringPort; });
@@ -131,4 +136,7 @@ void CLabel::renderSuper() {
     const auto PMONITOR = MON->get();
 
     PMONITOR->sessionLockSurface->render();
+
+    if (!pendingResourceID.empty()) /* did not consume the pending resource */
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
 }
