@@ -118,7 +118,7 @@ bool CLabel::draw(const SRenderData& data) {
     shadow.draw(data);
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 
-    return !pendingResourceID.empty();
+    return false;
 }
 
 static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
