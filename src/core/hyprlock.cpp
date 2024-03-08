@@ -292,6 +292,14 @@ void CHyprlock::onGlobalRemoved(void* data, struct wl_registry* registry, uint32
 
 // end wl_registry
 
+static void registerSignalAction(int sig, void (*handler)(int)) {
+    struct sigaction sa;
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(sig, &sa, NULL);
+}
+
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Debug::log(LOG, "Unlocking with a SIGUSR1");
@@ -346,10 +354,10 @@ void CHyprlock::run() {
 
     lockSession();
 
-    signal(SIGUSR1, handleUnlockSignal);
-    signal(SIGUSR2, handlePollTerminate);
-    signal(SIGSEGV, handleCriticalSignal);
-    signal(SIGABRT, handleCriticalSignal);
+    registerSignalAction(SIGUSR1, handleUnlockSignal);
+    registerSignalAction(SIGUSR2, handlePollTerminate);
+    registerSignalAction(SIGSEGV, handleCriticalSignal);
+    registerSignalAction(SIGABRT, handleCriticalSignal);
 
     pollfd pollfds[] = {
         {
