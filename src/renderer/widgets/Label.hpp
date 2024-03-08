@@ -14,7 +14,7 @@ class CSessionLockSurface;
 
 class CLabel : public IWidget {
   public:
-    CLabel(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, CSessionLockSurface* surface_);
+    CLabel(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
     ~CLabel();
 
     virtual bool draw(const SRenderData& data);
@@ -35,8 +35,9 @@ class CLabel : public IWidget {
     std::string                             resourceID;
     std::string                             pendingResourceID; // if dynamic label
     std::string                             halign, valign;
-    SPreloadedAsset*                        asset   = nullptr;
-    CSessionLockSurface*                    surface = nullptr;
+    SPreloadedAsset*                        asset = nullptr;
+
+    std::string                             outputStringPort;
 
     CAsyncResourceGatherer::SPreloadRequest request;
 

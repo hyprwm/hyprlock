@@ -316,7 +316,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
             } else if (c.type == "input-field") {
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
             } else if (c.type == "label") {
-                widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, /* evil */ const_cast<CSessionLockSurface*>(surf)));
+                widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, surf->output->stringPort));
             }
         }
     }
