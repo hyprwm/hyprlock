@@ -56,8 +56,8 @@ void CLabel::plantTimer() {
         labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), onTimer, this);
 }
 
-CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, CSessionLockSurface* surface_) :
-    surface(surface_), shadow(this, props, viewport_) {
+CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
+    outputStringPort(output), shadow(this, props, viewport_) {
     labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
     std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
     CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
@@ -118,9 +118,25 @@ bool CLabel::draw(const SRenderData& data) {
     shadow.draw(data);
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 
-    return !pendingResourceID.empty();
+    return false;
+}
+
+static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
+    const auto PLABEL = (CLabel*)data;
+    PLABEL->renderSuper();
 }
 
 void CLabel::renderSuper() {
-    surface->render();
+    const auto MON =
+        std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(), [this](const auto& other) { return other->stringPort == this->outputStringPort; });
+
+    if (MON == g_pHyprlock->m_vOutputs.end() || !MON->get())
+        return;
+
+    const auto PMONITOR = MON->get();
+
+    PMONITOR->sessionLockSurface->render();
+
+    if (!pendingResourceID.empty()) /* did not consume the pending resource */
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
 }
