@@ -292,11 +292,11 @@ void CHyprlock::onGlobalRemoved(void* data, struct wl_registry* registry, uint32
 
 // end wl_registry
 
-static void registerSignalAction(int sig, void (*handler)(int)) {
+static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0) {
     struct sigaction sa;
     sa.sa_handler = handler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
+    sa.sa_flags = sa_flags;
     sigaction(sig, &sa, NULL);
 }
 
@@ -354,7 +354,7 @@ void CHyprlock::run() {
 
     lockSession();
 
-    registerSignalAction(SIGUSR1, handleUnlockSignal);
+    registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handlePollTerminate);
     registerSignalAction(SIGSEGV, handleCriticalSignal);
     registerSignalAction(SIGABRT, handleCriticalSignal);
