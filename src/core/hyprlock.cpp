@@ -34,7 +34,7 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
         const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
         m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
     } else {
-        m_tGraceEnds     = std::chrono::system_clock::from_time_t(0);
+        m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
     }
 }
 
@@ -299,6 +299,10 @@ static void handleUnlockSignal(int sig) {
     }
 }
 
+static void handlePollTerminate(int sig) {
+    ;
+}
+
 static void handleCriticalSignal(int sig) {
     g_pHyprlock->attemptRestoreOnDeath();
     abort();
@@ -343,6 +347,7 @@ void CHyprlock::run() {
     lockSession();
 
     signal(SIGUSR1, handleUnlockSignal);
+    signal(SIGUSR2, handlePollTerminate);
     signal(SIGSEGV, handleCriticalSignal);
     signal(SIGABRT, handleCriticalSignal);
 
@@ -355,7 +360,7 @@ void CHyprlock::run() {
 
     std::thread pollThr([this, &pollfds]() {
         while (!m_bTerminate) {
-            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. It's because we might need to terminate */);
+            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
 
             if (ret < 0) {
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
@@ -476,6 +481,8 @@ void CHyprlock::run() {
     g_pEGL.reset();
 
     wl_display_disconnect(m_sWaylandState.display);
+
+    pthread_kill(pollThr.native_handle(), SIGUSR2);
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
