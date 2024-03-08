@@ -34,7 +34,7 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
         const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
         m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
     } else {
-        m_tGraceEnds     = std::chrono::system_clock::from_time_t(0);
+        m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
     }
 }
 
@@ -292,11 +292,23 @@ void CHyprlock::onGlobalRemoved(void* data, struct wl_registry* registry, uint32
 
 // end wl_registry
 
+static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0) {
+    struct sigaction sa;
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = sa_flags;
+    sigaction(sig, &sa, NULL);
+}
+
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Debug::log(LOG, "Unlocking with a SIGUSR1");
         g_pHyprlock->unlockSession();
     }
+}
+
+static void handlePollTerminate(int sig) {
+    ;
 }
 
 static void handleCriticalSignal(int sig) {
@@ -342,9 +354,10 @@ void CHyprlock::run() {
 
     lockSession();
 
-    signal(SIGUSR1, handleUnlockSignal);
-    signal(SIGSEGV, handleCriticalSignal);
-    signal(SIGABRT, handleCriticalSignal);
+    registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
+    registerSignalAction(SIGUSR2, handlePollTerminate);
+    registerSignalAction(SIGSEGV, handleCriticalSignal);
+    registerSignalAction(SIGABRT, handleCriticalSignal);
 
     pollfd pollfds[] = {
         {
@@ -355,7 +368,7 @@ void CHyprlock::run() {
 
     std::thread pollThr([this, &pollfds]() {
         while (!m_bTerminate) {
-            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. It's because we might need to terminate */);
+            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
 
             if (ret < 0) {
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
@@ -476,6 +489,8 @@ void CHyprlock::run() {
     g_pEGL.reset();
 
     wl_display_disconnect(m_sWaylandState.display);
+
+    pthread_kill(pollThr.native_handle(), SIGUSR2);
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
