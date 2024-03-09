@@ -20,20 +20,26 @@ class CPasswordInputField : public IWidget {
     void         onFadeOutTimer();
 
   private:
-    void     updateDots();
-    void     updateFade();
-    void     updateFailTex();
-    void     updateHiddenInputState();
+    void        updateDots();
+    void        updateFade();
+    void        updateFailTex();
+    void        updateHiddenInputState();
+    void        updateOuter();
 
-    bool     firstRender = true;
+    bool        firstRender   = true;
+    bool        redrawShadow  = false;
+    bool        outerAnimated = false;
 
-    Vector2D size;
-    Vector2D pos;
-    Vector2D viewport;
+    Vector2D    size;
+    Vector2D    pos;
+    Vector2D    viewport;
+    Vector2D    configPos;
 
-    int      outThick, rounding;
+    std::string halign, valign;
 
-    CColor   inner, outer, font;
+    int         outThick, rounding;
+
+    CColor      inner, outer, font;
 
     struct {
         float                                 currentAmount  = 0;
@@ -61,6 +67,9 @@ class CPasswordInputField : public IWidget {
         std::string      failID        = "";
         SPreloadedAsset* failAsset     = nullptr;
         bool             canGetNewFail = true;
+        CColor           failColor;
+        int              failTransitionMs = 0;
+        std::string      failText         = "";
     } placeholder;
 
     struct {
