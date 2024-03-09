@@ -167,10 +167,16 @@ void CAsyncResourceGatherer::apply() {
             std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
             const auto                  ASSET = &assets[t.id];
 
-            const auto                  CAIROFORMAT = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
-            const GLint                 glIFormat   = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
-            const GLint                 glFormat    = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
-            const GLint                 glType      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
+            const auto                  SURFACESTATUS = cairo_surface_status((cairo_surface_t*)t.cairosurface);
+            const auto                  CAIROFORMAT   = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
+            const GLint                 glIFormat     = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
+            const GLint                 glFormat      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
+            const GLint                 glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
+
+            if (SURFACESTATUS != CAIRO_STATUS_SUCCESS) {
+                Debug::log(ERR, "Resource {} invalid ({})", t.id, cairo_status_to_string(SURFACESTATUS));
+                ASSET->texture.m_iType = TEXTURE_INVALID;
+            }
 
             ASSET->texture.m_vSize = t.size;
             ASSET->texture.allocate();
@@ -186,6 +192,7 @@ void CAsyncResourceGatherer::apply() {
 
             cairo_destroy((cairo_t*)t.cairo);
             cairo_surface_destroy((cairo_surface_t*)t.cairosurface);
+
         } else {
             Debug::log(ERR, "Unsupported type in ::apply() {}", (int)t.type);
         }
