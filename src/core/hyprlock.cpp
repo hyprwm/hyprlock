@@ -371,6 +371,10 @@ void CHyprlock::run() {
             int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
 
             if (ret < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
                 attemptRestoreOnDeath();
                 m_bTerminate = true;
