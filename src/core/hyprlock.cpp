@@ -682,6 +682,7 @@ void CHyprlock::onPasswordCheckTimer() {
         m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
         m_sPasswordState.passBuffer     = "";
         m_sPasswordState.failedAttempts += 1;
+        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
 
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
