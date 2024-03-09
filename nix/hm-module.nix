@@ -14,6 +14,29 @@ self: {
     then "true"
     else "false";
   cfg = config.programs.hyprlock;
+
+  shadow = {
+    shadow_passes = mkOption {
+      description = "Shadow passes";
+      type = int;
+      default = 0;
+    };
+    shadow_size = mkOption {
+      description = "Shadow size";
+      type = int;
+      default = 3;
+    };
+    shadow_color = mkOption {
+      description = "Shadow color";
+      type = str;
+      default = "rgba(0, 0, 0, 1.0)";
+    };
+    shadow_boost = mkOption {
+      description = "Boost shadow's opacity";
+      type = float;
+      default = 1.2;
+    };
+  };
 in {
   options.programs.hyprlock = {
     enable =
@@ -67,67 +90,69 @@ in {
     backgrounds = mkOption {
       description = "Background configurations";
       type = listOf (submodule {
-        options = {
-          monitor = mkOption {
-            description = "The monitor to apply the given wallpaper to";
-            type = str;
-            default = "";
-          };
+        options =
+          {
+            monitor = mkOption {
+              description = "The monitor to apply the given wallpaper to";
+              type = str;
+              default = "";
+            };
 
-          path = mkOption {
-            description = "The path to the wallpaper";
-            type = str;
-            default = "echo '/home/me/someImage.png'"; # only png supported for now
-          };
+            path = mkOption {
+              description = "The path to the wallpaper";
+              type = str;
+              default = "echo '/home/me/someImage.png'"; # only png supported for now
+            };
 
-          color = mkOption {
-            description = "Background color";
-            type = str;
-            default = "rgba(25, 20, 20, 1.0)";
-          };
+            color = mkOption {
+              description = "Background color";
+              type = str;
+              default = "rgba(25, 20, 20, 1.0)";
+            };
 
-          blur_size = mkOption {
-            description = "Blur size";
-            type = int;
-            default = 8;
-          };
+            blur_size = mkOption {
+              description = "Blur size";
+              type = int;
+              default = 8;
+            };
 
-          blur_passes = mkOption {
-            description = "Blur passes";
-            type = int;
-            default = 0;
-          };
+            blur_passes = mkOption {
+              description = "Blur passes";
+              type = int;
+              default = 0;
+            };
 
-          noise = mkOption {
-            description = "Noise applied to blur";
-            type = float;
-            default = 0.0117;
-          };
+            noise = mkOption {
+              description = "Noise applied to blur";
+              type = float;
+              default = 0.0117;
+            };
 
-          contrast = mkOption {
-            description = "Contrast applied to blur";
-            type = float;
-            default = 0.8917;
-          };
+            contrast = mkOption {
+              description = "Contrast applied to blur";
+              type = float;
+              default = 0.8917;
+            };
 
-          brightness = mkOption {
-            description = "Brightness applied to blur";
-            type = float;
-            default = 0.8172;
-          };
+            brightness = mkOption {
+              description = "Brightness applied to blur";
+              type = float;
+              default = 0.8172;
+            };
 
-          vibrancy = mkOption {
-            description = "Vibrancy applied to blur";
-            type = float;
-            default = 0.1686;
-          };
+            vibrancy = mkOption {
+              description = "Vibrancy applied to blur";
+              type = float;
+              default = 0.1686;
+            };
 
-          vibrancy_darkness = mkOption {
-            description = "Vibrancy darkness applied to blur";
-            type = float;
-            default = 0.05;
-          };
-        };
+            vibrancy_darkness = mkOption {
+              description = "Vibrancy darkness applied to blur";
+              type = float;
+              default = 0.05;
+            };
+          }
+          // shadow;
       });
       default = [
         {}
@@ -137,129 +162,131 @@ in {
     input-fields = mkOption {
       description = "Input field configurations";
       type = listOf (submodule {
-        options = {
-          monitor = mkOption {
-            description = "The monitor to place the input field on";
-            type = str;
-            default = "";
-          };
-
-          size = {
-            width = mkOption {
-              description = "Width of the input field";
-              type = int;
-              default = 200;
+        options =
+          {
+            monitor = mkOption {
+              description = "The monitor to place the input field on";
+              type = str;
+              default = "";
             };
-            height = mkOption {
-              description = "Height of the input field";
-              type = int;
-              default = 50;
+
+            size = {
+              width = mkOption {
+                description = "Width of the input field";
+                type = int;
+                default = 200;
+              };
+              height = mkOption {
+                description = "Height of the input field";
+                type = int;
+                default = 50;
+              };
             };
-          };
 
-          outline_thickness = mkOption {
-            description = "The outline thickness of the input field";
-            type = int;
-            default = 3;
-          };
-
-          dots_size = mkOption {
-            description = "The size of the dots in the input field (scale of input-field height, 0.2 - 0.8)";
-            type = float;
-            default = 0.33;
-          };
-
-          dots_spacing = mkOption {
-            description = "The spacing between the dots in the input field (scale of dot's absolute size, 0.0 - 1.0)";
-            type = float;
-            default = 0.15;
-          };
-
-          dots_center = mkOption {
-            description = "Center position of the dots in the input field";
-            type = bool;
-            default = true;
-          };
-
-          dots_rounding = mkOption {
-            description = "The rounding of dots (-2 follows input-field rounding)";
-            type = int;
-            default = -1;
-          };
-
-          outer_color = mkOption {
-            description = "The outer color of the input field";
-            type = str;
-            default = "rgb(151515)";
-          };
-
-          inner_color = mkOption {
-            description = "The inner color of the input field";
-            type = str;
-            default = "rgb(200, 200, 200)";
-          };
-
-          font_color = mkOption {
-            description = "The font color of the input field";
-            type = str;
-            default = "rgb(10, 10, 10)";
-          };
-
-          fade_on_empty = mkOption {
-            description = "Fade input field when empty";
-            type = bool;
-            default = true;
-          };
-
-          fade_timeout = mkOption {
-            description = "Milliseconds before the input field should be faded (0 to fade immediately)";
-            type = int;
-            default = 1000;
-          };
-
-          placeholder_text = mkOption {
-            description = "The placeholder text of the input field";
-            type = str;
-            default = "<i>Input Password...</i>";
-          };
-
-          hide_input = mkOption {
-            description = "Hide input typed into the input field";
-            type = bool;
-            default = false;
-          };
-
-          rounding = mkOption {
-            description = "The rounding of the input field";
-            type = int;
-            default = -1;
-          };
-
-          position = {
-            x = mkOption {
-              description = "X position of the label";
+            outline_thickness = mkOption {
+              description = "The outline thickness of the input field";
               type = int;
-              default = 0;
+              default = 3;
             };
-            y = mkOption {
-              description = "Y position of the label";
+
+            dots_size = mkOption {
+              description = "The size of the dots in the input field (scale of input-field height, 0.2 - 0.8)";
+              type = float;
+              default = 0.33;
+            };
+
+            dots_spacing = mkOption {
+              description = "The spacing between the dots in the input field (scale of dot's absolute size, 0.0 - 1.0)";
+              type = float;
+              default = 0.15;
+            };
+
+            dots_center = mkOption {
+              description = "Center position of the dots in the input field";
+              type = bool;
+              default = true;
+            };
+
+            dots_rounding = mkOption {
+              description = "The rounding of dots (-2 follows input-field rounding)";
               type = int;
-              default = -20;
+              default = -1;
             };
-          };
 
-          halign = mkOption {
-            description = "Horizontal alignment of the label";
-            type = str;
-            default = "center";
-          };
+            outer_color = mkOption {
+              description = "The outer color of the input field";
+              type = str;
+              default = "rgb(151515)";
+            };
 
-          valign = mkOption {
-            description = "Vertical alignment of the label";
-            type = str;
-            default = "center";
-          };
-        };
+            inner_color = mkOption {
+              description = "The inner color of the input field";
+              type = str;
+              default = "rgb(200, 200, 200)";
+            };
+
+            font_color = mkOption {
+              description = "The font color of the input field";
+              type = str;
+              default = "rgb(10, 10, 10)";
+            };
+
+            fade_on_empty = mkOption {
+              description = "Fade input field when empty";
+              type = bool;
+              default = true;
+            };
+
+            fade_timeout = mkOption {
+              description = "Milliseconds before the input field should be faded (0 to fade immediately)";
+              type = int;
+              default = 1000;
+            };
+
+            placeholder_text = mkOption {
+              description = "The placeholder text of the input field";
+              type = str;
+              default = "<i>Input Password...</i>";
+            };
+
+            hide_input = mkOption {
+              description = "Hide input typed into the input field";
+              type = bool;
+              default = false;
+            };
+
+            rounding = mkOption {
+              description = "The rounding of the input field";
+              type = int;
+              default = -1;
+            };
+
+            position = {
+              x = mkOption {
+                description = "X position of the label";
+                type = int;
+                default = 0;
+              };
+              y = mkOption {
+                description = "Y position of the label";
+                type = int;
+                default = -20;
+              };
+            };
+
+            halign = mkOption {
+              description = "Horizontal alignment of the label";
+              type = str;
+              default = "center";
+            };
+
+            valign = mkOption {
+              description = "Vertical alignment of the label";
+              type = str;
+              default = "center";
+            };
+          }
+          // shadow;
       });
       default = [
         {}
@@ -269,63 +296,65 @@ in {
     labels = mkOption {
       description = "Label configurations";
       type = listOf (submodule {
-        options = {
-          monitor = mkOption {
-            description = "The monitor to display the label on";
-            type = str;
-            default = "";
-          };
-
-          text = mkOption {
-            description = "Text to display in label";
-            type = str;
-            default = "Hi there, $USER";
-          };
-
-          color = mkOption {
-            description = "Color of the label";
-            type = str;
-            default = "rgba(200, 200, 200, 1.0)";
-          };
-
-          font_size = mkOption {
-            description = "Font size of the label";
-            type = int;
-            default = 25;
-          };
-
-          font_family = mkOption {
-            description = "Font family of the label";
-            type = str;
-            default = "Noto Sans";
-          };
-
-          position = {
-            x = mkOption {
-              description = "X position of the label";
-              type = int;
-              default = 0;
+        options =
+          {
+            monitor = mkOption {
+              description = "The monitor to display the label on";
+              type = str;
+              default = "";
             };
 
-            y = mkOption {
-              description = "Y position of the label";
-              type = int;
-              default = 80;
+            text = mkOption {
+              description = "Text to display in label";
+              type = str;
+              default = "Hi there, $USER";
             };
-          };
 
-          halign = mkOption {
-            description = "Horizontal alignment of the label";
-            type = str;
-            default = "center";
-          };
+            color = mkOption {
+              description = "Color of the label";
+              type = str;
+              default = "rgba(200, 200, 200, 1.0)";
+            };
 
-          valign = mkOption {
-            description = "Vertical alignment of the label";
-            type = str;
-            default = "center";
-          };
-        };
+            font_size = mkOption {
+              description = "Font size of the label";
+              type = int;
+              default = 25;
+            };
+
+            font_family = mkOption {
+              description = "Font family of the label";
+              type = str;
+              default = "Noto Sans";
+            };
+
+            position = {
+              x = mkOption {
+                description = "X position of the label";
+                type = int;
+                default = 0;
+              };
+
+              y = mkOption {
+                description = "Y position of the label";
+                type = int;
+                default = 80;
+              };
+            };
+
+            halign = mkOption {
+              description = "Horizontal alignment of the label";
+              type = str;
+              default = "center";
+            };
+
+            valign = mkOption {
+              description = "Vertical alignment of the label";
+              type = str;
+              default = "center";
+            };
+          }
+          // shadow;
       });
       default = [
         {}
@@ -356,6 +385,10 @@ in {
             brightness = ${toString background.brightness}
             vibrancy = ${toString background.vibrancy}
             vibrancy_darkness = ${toString background.vibrancy_darkness}
+            shadow_passes = ${toString background.shadow_passes}
+            shadow_size = ${toString background.shadow_size}
+            shadow_color = ${background.shadow_color}
+            shadow_boost = ${toString background.shadow_boost}
           }
         '')
         cfg.backgrounds)}
@@ -377,6 +410,10 @@ in {
             placeholder_text = ${input-field.placeholder_text}
             hide_input = ${boolToString input-field.hide_input}
             rounding = ${toString input-field.rounding}
+            shadow_passes = ${toString input-field.shadow_passes}
+            shadow_size = ${toString input-field.shadow_size}
+            shadow_color = ${input-field.shadow_color}
+            shadow_boost = ${toString input-field.shadow_boost}
 
             position = ${toString input-field.position.x}, ${toString input-field.position.y}
             halign = ${input-field.halign}
@@ -392,6 +429,10 @@ in {
             color = ${label.color}
             font_size = ${toString label.font_size}
             font_family = ${label.font_family}
+            shadow_passes = ${toString label.shadow_passes}
+            shadow_size = ${toString label.shadow_size}
+            shadow_color = ${label.shadow_color}
+            shadow_boost = ${toString label.shadow_boost}
 
             position = ${toString label.position.x}, ${toString label.position.y}
             halign = ${label.halign}
