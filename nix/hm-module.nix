@@ -261,6 +261,24 @@ in {
               default = -1;
             };
 
+            fail_color = mkOption {
+              description = "If authentication failed, changes outer color and fail message color";
+              type = str;
+              default = "rgb(204, 34, 34)";
+            };
+
+            fail_text = mkOption {
+              description = "The text shown if authentication failed. $FAIL (reason) and $ATTEMPTS variables are available";
+              type = str;
+              default = "<i>$FAIL</i>";
+            };
+
+            fail_transition = mkOption {
+              description = "The transition time (ms) between normal outer color and fail color";
+              type = int;
+              default = 300;
+            };
+
             position = {
               x = mkOption {
                 description = "X position of the label";
@@ -414,6 +432,9 @@ in {
             shadow_size = ${toString input-field.shadow_size}
             shadow_color = ${input-field.shadow_color}
             shadow_boost = ${toString input-field.shadow_boost}
+            fail_color = ${input-field.fail_color}
+            fail_text = ${input-field.fail_text}
+            fail_transition = ${toString input-field.fail_transition}
 
             position = ${toString input-field.position.x}, ${toString input-field.position.y}
             halign = ${input-field.halign}
