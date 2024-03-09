@@ -262,7 +262,7 @@ in {
             };
 
             fail_color = mkOption {
-              description = "The font color of fail reason text and changed outer color";
+              description = "If authentication failed, changes outer color and fail message color";
               type = str;
               default = "rgb(204, 34, 34)";
             };
@@ -274,7 +274,7 @@ in {
             };
 
             fail_transition = mkOption {
-              description = "The transition time between normal outer color and fail color";
+              description = "The transition time (ms) between normal outer color and fail color";
               type = int;
               default = 300;
             };
