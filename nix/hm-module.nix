@@ -268,9 +268,9 @@ in {
             };
 
             fail_text = mkOption {
-              description = "The text shown if authentication failed. $FAIL variable is available to show pam fail reason";
+              description = "The text shown if authentication failed. $FAIL (reason) and $ATTEMPTS variables are available";
               type = str;
-              default = "";
+              default = "<i>$FAIL</i>";
             };
 
             fail_transition = mkOption {

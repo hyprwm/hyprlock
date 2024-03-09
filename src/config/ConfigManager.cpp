@@ -79,7 +79,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
-    m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
     SHADOWABLE("input-field");
 

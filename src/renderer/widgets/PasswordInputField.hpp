@@ -35,7 +35,7 @@ class CPasswordInputField : public IWidget {
     Vector2D    viewport;
     Vector2D    configPos;
 
-    std::string halign, valign;
+    std::string halign, valign, configFailText;
 
     int         outThick, rounding;
 

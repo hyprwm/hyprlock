@@ -54,6 +54,7 @@ class CHyprlock {
     std::optional<std::string>      passwordLastFailReason();
 
     size_t                          getPasswordBufferLen();
+    size_t                          getPasswordFailedAttempts();
 
     ext_session_lock_manager_v1*    getSessionLockMgr();
     ext_session_lock_v1*            getSessionLock();
@@ -117,6 +118,7 @@ class CHyprlock {
         std::string                                     passBuffer = "";
         std::shared_ptr<CPassword::SVerificationResult> result;
         std::optional<std::string>                      lastFailReason;
+        size_t                                          failedAttempts = 0;
     } m_sPasswordState;
 
     struct {

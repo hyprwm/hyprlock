@@ -19,7 +19,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     rounding                     = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     placeholder.failColor        = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
     placeholder.failTransitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-    placeholder.failText         = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+    configFailText               = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
     viewport                     = viewport_;
 
     auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
@@ -48,10 +48,12 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     }
 }
 
-static void replaceAllFails(std::string& str, const std::string& to) {
+static void replaceAllFail(std::string& str, const std::string& from, const std::string& to) {
+    if (from.empty())
+        return;
     size_t pos = 0;
-    while ((pos = str.find("$FAIL", pos)) != std::string::npos) {
-        str.replace(pos, 5, to);
+    while ((pos = str.find(from, pos)) != std::string::npos) {
+        str.replace(pos, from.length(), to);
         pos += to.length();
     }
 }
@@ -299,10 +301,9 @@ void CPasswordInputField::updateFailTex() {
     if (!FAIL.has_value() || !placeholder.canGetNewFail)
         return;
 
-    if (placeholder.failText.empty())
-        placeholder.failText = "<span style=\"italic\">" + FAIL.value() + "</span>";
-    else
-        replaceAllFails(placeholder.failText, FAIL.value());
+    placeholder.failText = configFailText;
+    replaceAllFail(placeholder.failText, "$FAIL", FAIL.value());
+    replaceAllFail(placeholder.failText, "$ATTEMPTS", std::to_string(g_pHyprlock->getPasswordFailedAttempts()));
 
     // query
     CAsyncResourceGatherer::SPreloadRequest request;

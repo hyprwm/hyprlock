@@ -681,6 +681,7 @@ void CHyprlock::onPasswordCheckTimer() {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
         m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
         m_sPasswordState.passBuffer     = "";
+        m_sPasswordState.failedAttempts += 1;
 
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
@@ -818,6 +819,10 @@ wp_viewporter* CHyprlock::getViewporter() {
 
 size_t CHyprlock::getPasswordBufferLen() {
     return m_sPasswordState.passBuffer.length();
+}
+
+size_t CHyprlock::getPasswordFailedAttempts() {
+    return m_sPasswordState.failedAttempts;
 }
 
 std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data) {
