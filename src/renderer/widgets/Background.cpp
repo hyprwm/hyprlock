@@ -31,6 +31,12 @@ bool CBackground::draw(const SRenderData& data) {
     if (!asset)
         return true;
 
+    if (asset->texture.m_iType == TEXTURE_INVALID) {
+        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        resourceID = "";
+        return true;
+    }
+
     if ((blurPasses > 0 || isScreenshot) && !blurredFB.isAllocated()) {
         // make it brah
         Vector2D size = asset->texture.m_vSize;
