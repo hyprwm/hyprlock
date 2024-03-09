@@ -29,7 +29,7 @@ bool CBackground::draw(const SRenderData& data) {
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
     if (!asset)
-        return false;
+        return true;
 
     if ((blurPasses > 0 || isScreenshot) && !blurredFB.isAllocated()) {
         // make it brah
