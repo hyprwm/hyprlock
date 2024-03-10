@@ -1,7 +1,7 @@
 #include <filesystem>
 #include "MiscFunctions.hpp"
 
-std::optional<std::string> absolutePath(const std::string& rawpath, const std::string& rawcurrentpath) {
+std::string absolutePath(const std::string& rawpath, const std::string& rawcurrentpath) {
     std::filesystem::path path(rawpath);
 
     // Handling where rawpath starts with '~'
