@@ -79,6 +79,11 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         for (const auto& v : vars) {
             if (v.starts_with("update:")) {
                 try {
+                    if (v.substr(7).contains(':')) {
+                        auto str                = v.substr(v.substr(7).find_first_of(':') + 8);
+                        result.allowForceUpdate = str == "true" || std::stoull(str) == 1;
+                    }
+
                     result.updateEveryMs = std::stoull(v.substr(7));
                 } catch (std::exception& e) { Debug::log(ERR, "Error parsing {} in cmd[]", v); }
             } else {

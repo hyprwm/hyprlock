@@ -15,9 +15,10 @@ class IWidget {
 
     struct SFormatResult {
         std::string formatted;
-        float       updateEveryMs = 0; // 0 means don't (static)
-        bool        alwaysUpdate  = false;
-        bool        cmd           = false;
+        float       updateEveryMs    = 0; // 0 means don't (static)
+        bool        alwaysUpdate     = false;
+        bool        cmd              = false;
+        bool        allowForceUpdate = false;
     };
 
     virtual SFormatResult formatString(std::string in);

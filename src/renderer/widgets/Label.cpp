@@ -53,7 +53,7 @@ void CLabel::onTimerUpdate() {
 
 void CLabel::plantTimer() {
     if (label.updateEveryMs != 0)
-        labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), onTimer, this);
+        labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), onTimer, this, label.allowForceUpdate);
 }
 
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
