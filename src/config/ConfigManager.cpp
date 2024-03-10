@@ -219,7 +219,7 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
     for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
         const auto PATH = absolutePath(glob_buf->gl_pathv[i], CURRENTDIR);
 
-        if (PATH.empty()) {
+        if (PATH.empty() || PATH == configCurrentPath) {
             Debug::log(WARN, "source= skipping invalid path");
             continue;
         }
