@@ -54,6 +54,7 @@ class CHyprlock {
     std::optional<std::string>      passwordLastFailReason();
 
     size_t                          getPasswordBufferLen();
+    size_t                          getPasswordBufferDisplayLen();
     size_t                          getPasswordFailedAttempts();
 
     ext_session_lock_manager_v1*    getSessionLockMgr();

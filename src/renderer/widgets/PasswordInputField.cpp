@@ -121,7 +121,7 @@ void CPasswordInputField::updateFade() {
 }
 
 void CPasswordInputField::updateDots() {
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
+    const auto PASSLEN = g_pHyprlock->getPasswordBufferDisplayLen();
 
     if (PASSLEN == dots.currentAmount)
         return;
@@ -320,11 +320,11 @@ void CPasswordInputField::updateFailTex() {
 }
 
 void CPasswordInputField::updateHiddenInputState() {
-    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == g_pHyprlock->getPasswordBufferLen())
+    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == g_pHyprlock->getPasswordBufferDisplayLen())
         return;
 
     // randomize new thang
-    hiddenInputState.lastPasswordLength = g_pHyprlock->getPasswordBufferLen();
+    hiddenInputState.lastPasswordLength = g_pHyprlock->getPasswordBufferDisplayLen();
 
     srand(std::chrono::system_clock::now().time_since_epoch().count());
     float r1 = (rand() % 100) / 255.0;
