@@ -324,6 +324,15 @@ static void handlePollTerminate(int sig) {
 
 static void handleCriticalSignal(int sig) {
     g_pHyprlock->attemptRestoreOnDeath();
+
+    // remove our handlers
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGSEGV, &sa, NULL);
+
     abort();
 }
 
