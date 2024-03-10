@@ -307,6 +307,17 @@ static void handleUnlockSignal(int sig) {
     }
 }
 
+static void handleForceUpdateSignal(int sig) {
+    if (sig == SIGUSR2) {
+        for (auto& t : g_pHyprlock->getTimers()) {
+            if (t->canForceUpdate()) {
+                t->call(t);
+                t->cancel();
+            }
+        }
+    }
+}
+
 static void handlePollTerminate(int sig) {
     ;
 }
@@ -355,7 +366,8 @@ void CHyprlock::run() {
     lockSession();
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
-    registerSignalAction(SIGUSR2, handlePollTerminate);
+    registerSignalAction(SIGUSR2, handleForceUpdateSignal);
+    registerSignalAction(SIGRTMIN, handlePollTerminate);
     registerSignalAction(SIGSEGV, handleCriticalSignal);
     registerSignalAction(SIGABRT, handleCriticalSignal);
 
@@ -371,7 +383,7 @@ void CHyprlock::run() {
             int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
 
             if (ret < 0) {
-                if (errno == EINTR) 
+                if (errno == EINTR)
                     continue;
 
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
@@ -493,7 +505,7 @@ void CHyprlock::run() {
 
     wl_display_disconnect(m_sWaylandState.display);
 
-    pthread_kill(pollThr.native_handle(), SIGUSR2);
+    pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
@@ -834,12 +846,17 @@ size_t CHyprlock::getPasswordFailedAttempts() {
     return m_sPasswordState.failedAttempts;
 }
 
-std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data) {
+std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
+                                            bool force) {
     std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
-    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data));
+    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data, force));
     m_sLoopState.timerEvent       = true;
     m_sLoopState.timerCV.notify_all();
     return T;
+}
+
+std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
+    return m_vTimers;
 }
 
 void CHyprlock::spawnAsync(const std::string& args) {
