@@ -12,12 +12,8 @@ std::optional<std::string> absolutePath(const std::string& rawpath, const std::s
     // Handling e.g. ./, ../
     else if (path.is_relative()) {
         const std::filesystem::path currentDir = std::filesystem::path(rawcurrentpath).parent_path();
-
-        auto                        finalPath = currentDir / path;
-        if (exists(finalPath))
-            return std::filesystem::canonical(currentDir / path);
-        return {};
+        return std::filesystem::weakly_canonical(currentDir / path);
     } else {
-        return std::filesystem::canonical(path);
+        return std::filesystem::weakly_canonical(path);
     }
 }
