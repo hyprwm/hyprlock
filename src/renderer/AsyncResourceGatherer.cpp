@@ -132,7 +132,7 @@ void CAsyncResourceGatherer::gather() {
                 continue;
 
             std::string id           = std::string{"background:"} + path;
-            const auto  ABSOLUTEPATH = absolutePath(path, "").value_or(path);
+            const auto  ABSOLUTEPATH = absolutePath(path, "");
 
             // preload bg img
             const auto CAIROISURFACE = cairo_image_surface_create_from_png(ABSOLUTEPATH.c_str());

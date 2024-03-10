@@ -208,36 +208,37 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
     std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
     memset(glob_buf.get(), 0, sizeof(glob_t));
 
-    if (auto r = glob(absolutePath(rawpath, configCurrentPath)->c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
+    const auto CURRENTDIR = std::filesystem::path(configCurrentPath).parent_path().string();
+
+    if (auto r = glob(absolutePath(rawpath, CURRENTDIR).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
         std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
         Debug::log(ERR, "{}", err);
         return err;
     }
 
     for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
-        auto pathValueOpt = absolutePath(glob_buf->gl_pathv[i], configCurrentPath);
-        if (pathValueOpt->empty()) {
+        const auto PATH = absolutePath(glob_buf->gl_pathv[i], CURRENTDIR);
+
+        if (PATH.empty() || PATH == configCurrentPath) {
             Debug::log(WARN, "source= skipping invalid path");
             continue;
         }
 
-        auto pathValue = pathValueOpt.value();
-
-        if (!std::filesystem::is_regular_file(pathValue)) {
-            if (std::filesystem::exists(pathValue)) {
-                Debug::log(WARN, "source= skipping non-file {}", pathValue);
+        if (!std::filesystem::is_regular_file(PATH)) {
+            if (std::filesystem::exists(PATH)) {
+                Debug::log(WARN, "source= skipping non-file {}", PATH);
                 continue;
             }
 
             Debug::log(ERR, "source= file doesnt exist");
-            return "source file " + pathValue + " doesn't exist!";
+            return "source file " + PATH + " doesn't exist!";
         }
 
         // allow for nested config parsing
         auto backupConfigPath = configCurrentPath;
-        configCurrentPath     = pathValue;
+        configCurrentPath     = PATH;
 
-        m_config.parseFile(pathValue.c_str());
+        m_config.parseFile(PATH.c_str());
 
         configCurrentPath = backupConfigPath;
     }
