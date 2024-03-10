@@ -151,8 +151,7 @@ in {
               type = float;
               default = 0.05;
             };
-          }
-          // shadow;
+          };
       });
       default = [
         {}
@@ -409,10 +408,6 @@ in {
             brightness = ${toString background.brightness}
             vibrancy = ${toString background.vibrancy}
             vibrancy_darkness = ${toString background.vibrancy_darkness}
-            shadow_passes = ${toString background.shadow_passes}
-            shadow_size = ${toString background.shadow_size}
-            shadow_color = ${background.shadow_color}
-            shadow_boost = ${toString background.shadow_boost}
           }
         '')
         cfg.backgrounds)}
