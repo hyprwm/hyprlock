@@ -17,20 +17,17 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
 ## Building
 
 ### Deps
-Hyprlock requires `hyprlang` >= 0.4.0. See the 
-[README](https://github.com/hyprwm/hyprlang/blob/main/README.md#building-and-installation) for 
-build instructions.
-
 You also need the following dependencies
- - wayland-client
- - wayland-protocols
- - mesa
- And the development libraries for the following:-
- - cairo
- - libdrm
- - pango
- - xkbcommon
- - pam
+- wayland-client
+- wayland-protocols
+- mesa
+And the development libraries for the following:-
+- cairo
+- libdrm
+- pango
+- xkbcommon
+- pam
+- hyprlang >= 0.4
 Development libraries are usually suffixed with `-devel` or `-dev` in most distro repos.
 
 You also need to install `mesa-libgdm-devel` on some distros like RPM based ones where its not
