@@ -24,10 +24,10 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
 
     auto POS__  = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     auto SIZE__ = std::any_cast<Hyprlang::VEC2>(props.at("size"));
-    pos        = {POS__.x, POS__.y};
-    size       = {SIZE__.x, SIZE__.y};
-    configPos  = pos;
-    configSize = size;
+    pos         = {POS__.x, POS__.y};
+    size        = {SIZE__.x, SIZE__.y};
+    configPos   = pos;
+    configSize  = size;
 
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
@@ -169,7 +169,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updateOuter();
     updateHiddenInputState();
 
-    static auto TIMER     = std::chrono::system_clock::now();
+    static auto TIMER = std::chrono::system_clock::now();
 
     if (placeholder.failAsset) {
         const auto TARGETSIZEX = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
@@ -190,7 +190,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         pos = posFromHVAlign(viewport, size, configPos, halign, valign);
     } else if (size.x != configSize.x) {
         size.x = configSize.x;
-        pos = posFromHVAlign(viewport, size, configPos, halign, valign);
+        pos    = posFromHVAlign(viewport, size, configPos, halign, valign);
     }
 
     SRenderData shadowData = data;
