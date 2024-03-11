@@ -4,6 +4,7 @@
 #include <algorithm>
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
+    size                         = std::any_cast<Hyprlang::VEC2>(props.at("size"));
     inner                        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
     outer                        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     outThick                     = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
@@ -23,9 +24,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     viewport                     = viewport_;
 
     auto POS__  = std::any_cast<Hyprlang::VEC2>(props.at("position"));
-    auto SIZE__ = std::any_cast<Hyprlang::VEC2>(props.at("size"));
     pos         = {POS__.x, POS__.y};
-    size        = {SIZE__.x, SIZE__.y};
     configPos   = pos;
     configSize  = size;
 
