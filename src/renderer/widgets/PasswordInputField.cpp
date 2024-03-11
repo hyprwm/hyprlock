@@ -23,9 +23,10 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     checkColor                   = std::any_cast<Hyprlang::INT>(props.at("check_color"));
     viewport                     = viewport_;
 
-    auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
-    pos        = {POS__.x, POS__.y};
-    configPos  = pos;
+    auto POS__  = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+    pos         = {POS__.x, POS__.y};
+    configPos   = pos;
+    configSize  = size;
 
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
@@ -167,19 +168,17 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updateOuter();
     updateHiddenInputState();
 
-    static auto ORIGSIZEX = size.x;
-    static auto ORIGPOS   = pos;
-    static auto TIMER     = std::chrono::system_clock::now();
+    static auto TIMER = std::chrono::system_clock::now();
 
     if (placeholder.failAsset) {
         const auto TARGETSIZEX = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
 
         if (size.x < TARGETSIZEX) {
-            const auto DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - TIMER).count(), 1000, 20000);
+            const auto DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - TIMER).count(), 8000, 20000);
             TIMER            = std::chrono::system_clock::now();
             forceReload      = true;
 
-            size.x += (TARGETSIZEX - ORIGSIZEX) * DELTA / 100000.0;
+            size.x += std::clamp((TARGETSIZEX - size.x) * DELTA / 100000.0, 1.0, 1000.0);
 
             if (size.x > TARGETSIZEX) {
                 size.x       = TARGETSIZEX;
@@ -188,9 +187,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
 
         pos = posFromHVAlign(viewport, size, configPos, halign, valign);
-    } else {
-        size.x = ORIGSIZEX;
-        pos    = ORIGPOS;
+    } else if (size.x != configSize.x) {
+        size.x = configSize.x;
+        pos    = posFromHVAlign(viewport, size, configPos, halign, valign);
     }
 
     SRenderData shadowData = data;
