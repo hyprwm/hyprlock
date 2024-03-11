@@ -17,16 +17,22 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
 ## Building
 
 ### Deps
- - wayland-client
- - wayland-protocols
- - cairo
- - gles3.2
- - libdrm
- - pango
- - hyprlang>=0.4.0
- - xkbcommon
- - pam
- - mesa
+You also need the following dependencies
+- wayland-client
+- wayland-protocols
+- mesa
+
+And the development libraries for the following
+- cairo
+- libdrm
+- pango
+- xkbcommon
+- pam
+- hyprlang >= 0.4
+Development libraries are usually suffixed with `-devel` or `-dev` in most distro repos.
+
+You also need to install `mesa-libgdm-devel` on some distros like RPM based ones where its not
+bundled with the mesa package.
 
 ### Building
 
