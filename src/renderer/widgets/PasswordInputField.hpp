@@ -39,7 +39,7 @@ class CPasswordInputField : public IWidget {
 
     int         outThick, rounding;
 
-    CColor      inner, outer, font;
+    CColor      inner, outer, font, checkColor;
 
     struct {
         float                                 currentAmount  = 0;
