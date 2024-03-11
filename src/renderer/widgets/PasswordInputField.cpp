@@ -166,8 +166,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updateOuter();
     updateHiddenInputState();
 
-    static auto ORIGSIZEX = size.x;
-    static auto ORIGPOS   = pos;
+    const auto ORIGSIZEX = size.x;
+    const auto ORIGPOS   = pos;
 
     if (placeholder.failAsset && placeholder.failAsset->texture.m_vSize.x > ORIGSIZEX) {
         if (placeholder.failAsset->texture.m_vSize.x > size.x)
