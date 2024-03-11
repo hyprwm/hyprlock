@@ -78,6 +78,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "check_color", Hyprlang::INT{0xFFCC8822});
     m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
@@ -168,6 +169,8 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
                 {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
+                {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
                 {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},

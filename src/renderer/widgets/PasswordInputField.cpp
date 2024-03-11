@@ -20,6 +20,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     placeholder.failColor        = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
     placeholder.failTransitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
     configFailText               = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+    checkColor                   = std::any_cast<Hyprlang::INT>(props.at("check_color"));
     viewport                     = viewport_;
 
     auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
@@ -113,10 +114,10 @@ void CPasswordInputField::updateFade() {
         else
             fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
 
-        if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0)) {
+        if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0))
             fade.animated = false;
-            redrawShadow  = true;
-        }
+
+        redrawShadow = true;
     }
 }
 
@@ -168,13 +169,25 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     static auto ORIGSIZEX = size.x;
     static auto ORIGPOS   = pos;
+    static auto TIMER     = std::chrono::system_clock::now();
 
-    if (placeholder.failAsset && placeholder.failAsset->texture.m_vSize.x > ORIGSIZEX) {
-        if (placeholder.failAsset->texture.m_vSize.x > size.x)
-            redrawShadow = true;
+    if (placeholder.failAsset) {
+        const auto TARGETSIZEX = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
 
-        size.x = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
-        pos    = posFromHVAlign(viewport, size, configPos, halign, valign);
+        if (size.x < TARGETSIZEX) {
+            const auto DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - TIMER).count(), 1000, 20000);
+            TIMER            = std::chrono::system_clock::now();
+            forceReload      = true;
+
+            size.x += (TARGETSIZEX - ORIGSIZEX) * DELTA / 100000.0;
+
+            if (size.x > TARGETSIZEX) {
+                size.x       = TARGETSIZEX;
+                redrawShadow = true;
+            }
+        }
+
+        pos = posFromHVAlign(viewport, size, configPos, halign, valign);
     } else {
         size.x = ORIGSIZEX;
         pos    = ORIGPOS;
@@ -283,12 +296,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 }
 
 void CPasswordInputField::updateFailTex() {
-    const auto FAIL = g_pHyprlock->passwordLastFailReason();
+    const auto FAIL    = g_pHyprlock->passwordLastFailReason();
+    const auto WAITING = g_pHyprlock->passwordCheckWaiting();
+    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
 
-    if (g_pHyprlock->passwordCheckWaiting())
+    if (WAITING)
         placeholder.canGetNewFail = true;
 
-    if (g_pHyprlock->getPasswordBufferLen() != 0) {
+    if (PASSLEN != 0 || (WAITING && PASSLEN == 0)) {
         if (placeholder.failAsset) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.failAsset);
             placeholder.failAsset = nullptr;
@@ -350,31 +365,36 @@ void CPasswordInputField::updateOuter() {
     if (outThick == 0)
         return;
 
-    static auto OUTERCOL      = outer;
-    static auto TIMER         = std::chrono::system_clock::now();
-    bool        changeToOuter = placeholder.failID.empty();
+    static auto OUTERCOL = outer, CHANGETO = OUTERCOL;
+    static auto TIMER     = std::chrono::system_clock::now();
+    const auto  WAITING   = g_pHyprlock->passwordCheckWaiting();
+    bool        emptyFail = placeholder.failID.empty();
 
     outerAnimated = false;
 
-    if (changeToOuter) {
-        if (outer == OUTERCOL)
+    if (emptyFail) {
+        CHANGETO = WAITING ? checkColor : OUTERCOL;
+
+        if (outer == CHANGETO)
             return;
 
-        if (outer == placeholder.failColor)
+        if (outer == placeholder.failColor || (outer == OUTERCOL && WAITING))
             TIMER = std::chrono::system_clock::now();
-    } else if (!changeToOuter) {
-        if (fade.animated || fade.a < 1.0)
-            changeToOuter = true;
+    } else if (!emptyFail) {
+        if (fade.animated || fade.a < 1.0) {
+            emptyFail = true;
+            CHANGETO  = OUTERCOL;
+        }
 
-        if (outer == OUTERCOL)
+        if (outer == CHANGETO)
             TIMER = std::chrono::system_clock::now();
     }
 
     const auto MULTI = std::clamp(
         std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)placeholder.failTransitionMs, 0.001, 0.5);
-    const auto DELTA  = changeToOuter ? OUTERCOL - placeholder.failColor : placeholder.failColor - OUTERCOL;
-    const auto TARGET = changeToOuter ? OUTERCOL : placeholder.failColor;
-    const auto SOURCE = changeToOuter ? placeholder.failColor : OUTERCOL;
+    const auto DELTA  = emptyFail ? CHANGETO - (WAITING ? OUTERCOL : placeholder.failColor) : placeholder.failColor - CHANGETO;
+    const auto TARGET = emptyFail ? CHANGETO : placeholder.failColor;
+    const auto SOURCE = emptyFail ? (WAITING ? OUTERCOL : placeholder.failColor) : CHANGETO;
 
     if (outer.r != TARGET.r) {
         outer.r += DELTA.r * MULTI;

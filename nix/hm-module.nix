@@ -261,6 +261,12 @@ in {
               default = -1;
             };
 
+            check_color = mkOption {
+              description = "The outer color of the input field while checking password";
+              type = str;
+              default = "rgb(204, 136, 34)";
+            };
+
             fail_color = mkOption {
               description = "If authentication failed, changes outer color and fail message color";
               type = str;
@@ -432,6 +438,7 @@ in {
             shadow_size = ${toString input-field.shadow_size}
             shadow_color = ${input-field.shadow_color}
             shadow_boost = ${toString input-field.shadow_boost}
+            check_color = ${input-field.check_color}
             fail_color = ${input-field.fail_color}
             fail_text = ${input-field.fail_text}
             fail_transition = ${toString input-field.fail_transition}
