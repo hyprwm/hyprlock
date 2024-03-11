@@ -21,7 +21,8 @@ You also need the following dependencies
 - wayland-client
 - wayland-protocols
 - mesa
-And the development libraries for the following:-
+
+And the development libraries for the following
 - cairo
 - libdrm
 - pango
