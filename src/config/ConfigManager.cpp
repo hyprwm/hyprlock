@@ -82,6 +82,10 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
+    m_config.addSpecialConfigValue("input-field", "capslock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "numlock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "bothlock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "invert_numlock", Hyprlang::INT{0});
     SHADOWABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -174,6 +178,10 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
                 {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},
+                {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
+                {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
+                {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
+                {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
                 SHADOWABLE("input-field"),
             }
         });

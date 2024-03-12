@@ -755,6 +755,9 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
+    m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
+    m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
+
     if (SYM == XKB_KEY_BackSpace) {
         if (m_sPasswordState.passBuffer.length() > 0)
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
@@ -766,6 +769,10 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         Debug::log(LOG, "Clearing password buffer");
 
         m_sPasswordState.passBuffer = "";
+    } else if (SYM == XKB_KEY_Caps_Lock) {
+        m_bCapsLock = !m_bCapsLock;
+    } else if (SYM == XKB_KEY_Num_Lock) {
+        m_bNumLock = !m_bNumLock;
     } else {
         char buf[16] = {0};
         int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
