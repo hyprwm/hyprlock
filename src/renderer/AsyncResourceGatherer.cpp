@@ -128,7 +128,7 @@ void CAsyncResourceGatherer::gather() {
 
             std::string path = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 
-            if (path.empty())
+            if (path.empty() || path == "screenshot")
                 continue;
 
             std::string id           = std::string{"background:"} + path;
