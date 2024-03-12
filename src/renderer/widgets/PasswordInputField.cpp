@@ -38,11 +38,11 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     pos                     = posFromHVAlign(viewport, size, pos, halign, valign);
     dots.size               = std::clamp(dots.size, 0.2f, 0.8f);
     dots.spacing            = std::clamp(dots.spacing, 0.f, 1.f);
-    outerColor.transitionMs = std::clamp(outerColor.transitionMs, 1, 5000);
+    outerColor.transitionMs = std::clamp(outerColor.transitionMs, 0, 1000);
 
-    outerColor.both     = outerColor.both == -1 ? outerColor.main : outerColor.both;
-    outerColor.caps     = outerColor.caps == -1 ? outerColor.main : outerColor.caps;
-    outerColor.num      = outerColor.num == -1 ? outerColor.main : outerColor.num;
+    outerColor.both = outerColor.both == -1 ? outerColor.main : outerColor.both;
+    outerColor.caps = outerColor.caps == -1 ? outerColor.main : outerColor.caps;
+    outerColor.num  = outerColor.num == -1 ? outerColor.main : outerColor.num;
 
     g_pHyprlock->m_bNumLock = outerColor.invertNum;
 
@@ -377,9 +377,11 @@ void CPasswordInputField::updateOuter() {
     static auto OUTER = outerColor.main, TARGET = OUTER, SOURCE = OUTER;
     static auto TIMER = std::chrono::system_clock::now();
 
-    if (outerColor.animated)
+    if (outerColor.animated) {
         if (outerColor.stateNum != outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
             SOURCE = outerColor.main;
+    } else
+        SOURCE = outerColor.main;
 
     outerColor.animated  = false;
     outerColor.stateNum  = outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
@@ -397,6 +399,7 @@ void CPasswordInputField::updateOuter() {
         else
             TARGET = OUTER;
     } else {
+        SOURCE = outerColor.check;
         TARGET = outerColor.fail;
 
         if (fade.animated || fade.a < 1.0) {
@@ -405,16 +408,15 @@ void CPasswordInputField::updateOuter() {
         }
     }
 
-    if (outerColor.main == TARGET) {
-        SOURCE = TARGET;
+    if (outerColor.main == TARGET)
         return;
-    }
 
     if (outerColor.main == SOURCE && !fade.animated)
         TIMER = std::chrono::system_clock::now();
 
-    const auto MULTI =
-        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.001, 0.5);
+    const auto MULTI = outerColor.transitionMs == 0 ?
+        1.0 :
+        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.02, 0.5);
     const auto DELTA = TARGET - SOURCE;
 
     if (outerColor.main.r != TARGET.r) {
