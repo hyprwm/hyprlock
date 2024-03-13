@@ -79,6 +79,9 @@ class CHyprlock {
 
     bool                            m_bLocked = false;
 
+    bool                            m_bCapsLock = false;
+    bool                            m_bNumLock  = false;
+
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
     Vector2D                              m_vLastEnterCoords = {};

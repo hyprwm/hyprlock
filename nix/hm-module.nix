@@ -90,68 +90,67 @@ in {
     backgrounds = mkOption {
       description = "Background configurations";
       type = listOf (submodule {
-        options =
-          {
-            monitor = mkOption {
-              description = "The monitor to apply the given wallpaper to";
-              type = str;
-              default = "";
-            };
-
-            path = mkOption {
-              description = "The path to the wallpaper";
-              type = str;
-              default = "echo '/home/me/someImage.png'"; # only png supported for now
-            };
-
-            color = mkOption {
-              description = "Background color";
-              type = str;
-              default = "rgba(25, 20, 20, 1.0)";
-            };
-
-            blur_size = mkOption {
-              description = "Blur size";
-              type = int;
-              default = 8;
-            };
-
-            blur_passes = mkOption {
-              description = "Blur passes";
-              type = int;
-              default = 0;
-            };
-
-            noise = mkOption {
-              description = "Noise applied to blur";
-              type = float;
-              default = 0.0117;
-            };
-
-            contrast = mkOption {
-              description = "Contrast applied to blur";
-              type = float;
-              default = 0.8917;
-            };
-
-            brightness = mkOption {
-              description = "Brightness applied to blur";
-              type = float;
-              default = 0.8172;
-            };
-
-            vibrancy = mkOption {
-              description = "Vibrancy applied to blur";
-              type = float;
-              default = 0.1686;
-            };
-
-            vibrancy_darkness = mkOption {
-              description = "Vibrancy darkness applied to blur";
-              type = float;
-              default = 0.05;
-            };
+        options = {
+          monitor = mkOption {
+            description = "The monitor to apply the given wallpaper to";
+            type = str;
+            default = "";
           };
+
+          path = mkOption {
+            description = "The path to the wallpaper";
+            type = str;
+            default = "echo '/home/me/someImage.png'"; # only png supported for now
+          };
+
+          color = mkOption {
+            description = "Background color";
+            type = str;
+            default = "rgba(25, 20, 20, 1.0)";
+          };
+
+          blur_size = mkOption {
+            description = "Blur size";
+            type = int;
+            default = 8;
+          };
+
+          blur_passes = mkOption {
+            description = "Blur passes";
+            type = int;
+            default = 0;
+          };
+
+          noise = mkOption {
+            description = "Noise applied to blur";
+            type = float;
+            default = 0.0117;
+          };
+
+          contrast = mkOption {
+            description = "Contrast applied to blur";
+            type = float;
+            default = 0.8917;
+          };
+
+          brightness = mkOption {
+            description = "Brightness applied to blur";
+            type = float;
+            default = 0.8172;
+          };
+
+          vibrancy = mkOption {
+            description = "Vibrancy applied to blur";
+            type = float;
+            default = 0.1686;
+          };
+
+          vibrancy_darkness = mkOption {
+            description = "Vibrancy darkness applied to blur";
+            type = float;
+            default = 0.05;
+          };
+        };
       });
       default = [
         {}
@@ -308,6 +307,30 @@ in {
               type = str;
               default = "center";
             };
+
+            capslock_color = mkOption {
+              description = "Color of the input field when Caps Lock is active";
+              type = str;
+              default = "-1";
+            };
+
+            numlock_color = mkOption {
+              description = "Color of the input field when NumLock is active";
+              type = str;
+              default = "-1";
+            };
+
+            bothlock_color = mkOption {
+              description = "Color of the input field when both Caps Lock and NumLock are active";
+              type = str;
+              default = "-1";
+            };
+
+            invert_numlock = mkOption {
+              description = "Whether to change the color when NumLock is not active";
+              type = bool;
+              default = false;
+            };
           }
           // shadow;
       });
@@ -437,6 +460,10 @@ in {
             fail_color = ${input-field.fail_color}
             fail_text = ${input-field.fail_text}
             fail_transition = ${toString input-field.fail_transition}
+            capslock_color = ${input-field.capslock_color}
+            numlock_color = ${input-field.numlock_color}
+            bothlock_color = ${input-field.bothlock_color}
+            invert_numlock = ${boolToString input-field.invert_numlock}
 
             position = ${toString input-field.position.x}, ${toString input-field.position.y}
             halign = ${input-field.halign}

@@ -4,37 +4,47 @@
 #include <algorithm>
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
-    size                         = std::any_cast<Hyprlang::VEC2>(props.at("size"));
-    inner                        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
-    outer                        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
-    outThick                     = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
-    dots.size                    = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
-    dots.spacing                 = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
-    dots.center                  = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
-    dots.rounding                = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
-    fadeOnEmpty                  = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
-    fadeTimeoutMs                = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
-    font                         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
-    hiddenInputState.enabled     = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
-    rounding                     = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-    placeholder.failColor        = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
-    placeholder.failTransitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-    configFailText               = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-    checkColor                   = std::any_cast<Hyprlang::INT>(props.at("check_color"));
-    viewport                     = viewport_;
+    size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
+    inner                    = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+    outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
+    dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
+    dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
+    dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
+    dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
+    fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
+    fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
+    font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
+    rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+    configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+    outerColor.transitionMs  = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
+    outerColor.main          = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+    outerColor.fail          = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
+    outerColor.check         = std::any_cast<Hyprlang::INT>(props.at("check_color"));
+    outerColor.both          = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
+    outerColor.caps          = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
+    outerColor.num           = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
+    outerColor.invertNum     = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
+    viewport                 = viewport_;
 
-    auto POS__  = std::any_cast<Hyprlang::VEC2>(props.at("position"));
-    pos         = {POS__.x, POS__.y};
-    configPos   = pos;
-    configSize  = size;
+    auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+    pos        = {POS__.x, POS__.y};
+    configPos  = pos;
+    configSize = size;
 
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
-    pos                          = posFromHVAlign(viewport, size, pos, halign, valign);
-    dots.size                    = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing                 = std::clamp(dots.spacing, 0.f, 1.f);
-    placeholder.failTransitionMs = std::clamp(placeholder.failTransitionMs, 1, 5000);
+    pos                     = posFromHVAlign(viewport, size, pos, halign, valign);
+    dots.size               = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.spacing            = std::clamp(dots.spacing, 0.f, 1.f);
+    outerColor.transitionMs = std::clamp(outerColor.transitionMs, 0, 1000);
+
+    outerColor.both = outerColor.both == -1 ? outerColor.main : outerColor.both;
+    outerColor.caps = outerColor.caps == -1 ? outerColor.main : outerColor.caps;
+    outerColor.num  = outerColor.num == -1 ? outerColor.main : outerColor.num;
+
+    g_pHyprlock->m_bNumLock = outerColor.invertNum;
 
     std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     if (!placeholderText.empty()) {
@@ -198,7 +208,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
 
-    CColor outerCol = outer;
+    CColor outerCol = outerColor.main;
     outerCol.a *= fade.a * data.opacity;
     CColor innerCol = inner;
     innerCol.a *= fade.a * data.opacity;
@@ -291,7 +301,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != PASSLEN || fade.animated || outerAnimated || redrawShadow || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != PASSLEN || fade.animated || outerColor.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
 void CPasswordInputField::updateFailTex() {
@@ -326,7 +336,7 @@ void CPasswordInputField::updateFailTex() {
     request.asset                = placeholder.failText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = std::string{"Sans"};
-    request.props["color"]       = placeholder.failColor;
+    request.props["color"]       = outerColor.fail;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
@@ -364,67 +374,81 @@ void CPasswordInputField::updateOuter() {
     if (outThick == 0)
         return;
 
-    static auto OUTERCOL = outer, CHANGETO = OUTERCOL;
-    static auto TIMER     = std::chrono::system_clock::now();
-    const auto  WAITING   = g_pHyprlock->passwordCheckWaiting();
-    bool        emptyFail = placeholder.failID.empty();
+    static auto OUTER = outerColor.main, TARGET = OUTER, SOURCE = OUTER;
+    static auto TIMER = std::chrono::system_clock::now();
 
-    outerAnimated = false;
+    if (outerColor.animated) {
+        if (outerColor.stateNum != outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
+            SOURCE = outerColor.main;
+    } else
+        SOURCE = outerColor.main;
 
-    if (emptyFail) {
-        CHANGETO = WAITING ? checkColor : OUTERCOL;
+    outerColor.animated  = false;
+    outerColor.stateNum  = outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
+    outerColor.stateCaps = g_pHyprlock->m_bCapsLock;
 
-        if (outer == CHANGETO)
-            return;
+    if (placeholder.failID.empty()) {
+        if (g_pHyprlock->passwordCheckWaiting())
+            TARGET = outerColor.check;
+        else if (outerColor.both != OUTER && outerColor.stateCaps && outerColor.stateNum)
+            TARGET = outerColor.both;
+        else if (outerColor.caps != OUTER && outerColor.stateCaps)
+            TARGET = outerColor.caps;
+        else if (outerColor.num != OUTER && outerColor.stateNum)
+            TARGET = outerColor.num;
+        else
+            TARGET = OUTER;
+    } else {
+        SOURCE = outerColor.check;
+        TARGET = outerColor.fail;
 
-        if (outer == placeholder.failColor || (outer == OUTERCOL && WAITING))
-            TIMER = std::chrono::system_clock::now();
-    } else if (!emptyFail) {
         if (fade.animated || fade.a < 1.0) {
-            emptyFail = true;
-            CHANGETO  = OUTERCOL;
+            TARGET = OUTER;
+            SOURCE = outerColor.fail;
         }
-
-        if (outer == CHANGETO)
-            TIMER = std::chrono::system_clock::now();
     }
 
-    const auto MULTI = std::clamp(
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)placeholder.failTransitionMs, 0.001, 0.5);
-    const auto DELTA  = emptyFail ? CHANGETO - (WAITING ? OUTERCOL : placeholder.failColor) : placeholder.failColor - CHANGETO;
-    const auto TARGET = emptyFail ? CHANGETO : placeholder.failColor;
-    const auto SOURCE = emptyFail ? (WAITING ? OUTERCOL : placeholder.failColor) : CHANGETO;
+    if (outerColor.main == TARGET)
+        return;
 
-    if (outer.r != TARGET.r) {
-        outer.r += DELTA.r * MULTI;
-        outerAnimated = true;
+    if (outerColor.main == SOURCE && !fade.animated)
+        TIMER = std::chrono::system_clock::now();
 
-        if ((SOURCE.r < TARGET.r && outer.r > TARGET.r) || (SOURCE.r > TARGET.r && outer.r < TARGET.r))
-            outer.r = TARGET.r;
+    const auto MULTI = outerColor.transitionMs == 0 ?
+        1.0 :
+        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.02, 0.5);
+    const auto DELTA = TARGET - SOURCE;
+
+    if (outerColor.main.r != TARGET.r) {
+        outerColor.main.r += DELTA.r * MULTI;
+        outerColor.animated = true;
+
+        if ((SOURCE.r < TARGET.r && outerColor.main.r > TARGET.r) || (SOURCE.r > TARGET.r && outerColor.main.r < TARGET.r))
+            outerColor.main.r = TARGET.r;
     }
 
-    if (outer.g != TARGET.g) {
-        outer.g += DELTA.g * MULTI;
-        outerAnimated = true;
+    if (outerColor.main.g != TARGET.g) {
+        outerColor.main.g += DELTA.g * MULTI;
+        outerColor.animated = true;
 
-        if ((SOURCE.g < TARGET.g && outer.g > TARGET.g) || (SOURCE.g > TARGET.g && outer.g < TARGET.g))
-            outer.g = TARGET.g;
+        if ((SOURCE.g < TARGET.g && outerColor.main.g > TARGET.g) || (SOURCE.g > TARGET.g && outerColor.main.g < TARGET.g))
+            outerColor.main.g = TARGET.g;
     }
 
-    if (outer.b != TARGET.b) {
-        outer.b += DELTA.b * MULTI;
-        outerAnimated = true;
+    if (outerColor.main.b != TARGET.b) {
+        outerColor.main.b += DELTA.b * MULTI;
+        outerColor.animated = true;
 
-        if ((SOURCE.b < TARGET.b && outer.b > TARGET.b) || (SOURCE.b > TARGET.b && outer.b < TARGET.b))
-            outer.b = TARGET.b;
+        if ((SOURCE.b < TARGET.b && outerColor.main.b > TARGET.b) || (SOURCE.b > TARGET.b && outerColor.main.b < TARGET.b))
+            outerColor.main.b = TARGET.b;
     }
 
-    if (outer.a != TARGET.a) {
-        outer.a += DELTA.a * MULTI;
-        outerAnimated = true;
+    if (outerColor.main.a != TARGET.a) {
+        outerColor.main.a += DELTA.a * MULTI;
+        outerColor.animated = true;
 
-        if ((SOURCE.a < TARGET.a && outer.a > TARGET.a) || (SOURCE.a > TARGET.a && outer.a < TARGET.a))
-            outer.a = TARGET.a;
+        if ((SOURCE.a < TARGET.a && outerColor.main.a > TARGET.a) || (SOURCE.a > TARGET.a && outerColor.main.a < TARGET.a))
+            outerColor.main.a = TARGET.a;
     }
 
     TIMER = std::chrono::system_clock::now();
