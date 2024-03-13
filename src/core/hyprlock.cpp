@@ -452,9 +452,10 @@ void CHyprlock::run() {
         if (m_sLoopState.event == false)
             m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
 
-        if (m_bTerminate)
+        if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
+            unlockSession();
             break;
-
+        }
         std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
 
         m_sLoopState.event = false;
@@ -500,8 +501,10 @@ void CHyprlock::run() {
 
         passed.clear();
 
-        if (m_bTerminate)
+        if (m_bTerminate || (std::chrono::system_clock::now()  > m_tFadeEnds && m_bFadeStarted)) {
+            unlockSession();
             break;
+        }
     }
 
     m_sLoopState.timerEvent = true;
@@ -698,9 +701,14 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 // end session_lock
 
 void CHyprlock::onPasswordCheckTimer() {
+    static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
     // check result
     if (m_sPasswordState.result->success) {
-        unlockSession();
+        if (**PNOFADEOUT) {
+            unlockSession();
+        }
+        m_tFadeEnds = std::chrono::system_clock::now() + std::chrono::seconds(1);
+        m_bFadeStarted = true;
     } else {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
         m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
@@ -763,7 +771,6 @@ void CHyprlock::onKey(uint32_t key, bool down) {
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
         Debug::log(LOG, "Authenticating");
-
         m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
     } else if (SYM == XKB_KEY_Escape) {
         Debug::log(LOG, "Clearing password buffer");

@@ -3,6 +3,7 @@
 #include "../config/ConfigManager.hpp"
 #include "../helpers/Color.hpp"
 #include "../core/Output.hpp"
+#include "../core/hyprlock.hpp"
 #include "mtx.hpp"
 
 #include <GLES3/gl32.h>
@@ -161,6 +162,7 @@ static int frames = 0;
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
     static auto* const PNOFADEIN   = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
+    static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
     matrixProjection(projection.data(), surf.size.x, surf.size.y, WL_OUTPUT_TRANSFORM_NORMAL);
 
@@ -199,6 +201,10 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         if (**PNOFADEIN)
             bga = 1.0;
 
+        if (g_pHyprlock->m_bFadeStarted && !**PNOFADEOUT) {
+            bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(g_pHyprlock->m_tFadeEnds - std::chrono::system_clock::now()).count() / 1000000.0 - 0.02, 0.0, 1.0);
+            // - 0.02 so that the fade ends a little earlier than the final second
+        }
         // render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(&surf);
         for (auto& w : *WIDGETS) {
@@ -210,7 +216,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     Debug::log(TRACE, "frame {}", frames);
 
-    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->ready || bga < 1.0;
+    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->ready || bga != 1.0;
 
     glDisable(GL_BLEND);
 
