@@ -702,12 +702,14 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 void CHyprlock::onPasswordCheckTimer() {
     static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
+    const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
+    const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+
     // check result
     if (m_sPasswordState.result->success) {
-        if (**PNOFADEOUT) {
+        if (**PNOFADEOUT || SZCURRENTD != "Hyprland")
             unlockSession();
-        }
-        m_tFadeEnds = std::chrono::system_clock::now() + std::chrono::seconds(1);
+        m_tFadeEnds = std::chrono::system_clock::now() + std::chrono::milliseconds(600);
         m_bFadeStarted = true;
     } else {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);

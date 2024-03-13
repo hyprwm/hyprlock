@@ -202,7 +202,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
             bga = 1.0;
 
         if (g_pHyprlock->m_bFadeStarted && !**PNOFADEOUT) {
-            bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(g_pHyprlock->m_tFadeEnds - std::chrono::system_clock::now()).count() / 1000000.0 - 0.02, 0.0, 1.0);
+            bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(g_pHyprlock->m_tFadeEnds - std::chrono::system_clock::now()).count() / 600000.0 - 0.02, 0.0, 1.0);
             // - 0.02 so that the fade ends a little earlier than the final second
         }
         // render widgets
