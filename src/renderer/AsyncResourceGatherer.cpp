@@ -10,12 +10,11 @@
 std::mutex cvmtx;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
-    initThread = std::thread([this]() {
-        this->gather();
-        this->asyncLoopThread = std::thread([this]() { this->asyncAssetSpinLock(); });
-        this->asyncLoopThread.detach();
+    asyncLoopThread = std::thread([this]() {
+        this->gather(); /* inital gather */
+        this->asyncAssetSpinLock();
     });
-    initThread.detach();
+    asyncLoopThread.detach();
 
     // some things can't be done async :(
     // gather background textures when needed

@@ -52,7 +52,6 @@ class CAsyncResourceGatherer {
     void recheckDMAFramesFor(COutput* output);
 
   private:
-    std::thread initThread;
     std::thread asyncLoopThread;
 
     void        asyncAssetSpinLock();
