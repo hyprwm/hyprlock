@@ -98,6 +98,12 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
+    if (in.contains("$FAIL")) {
+        const auto FAIL = g_pHyprlock->passwordLastFailReason();
+        replaceAll(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+        result.allowForceUpdate = true;
+    }
+
     if (in.contains("$ATTEMPTS")) {
         replaceAllAttempts(in);
         result.allowForceUpdate = true;
