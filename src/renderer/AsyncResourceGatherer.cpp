@@ -10,12 +10,11 @@
 std::mutex cvmtx;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
-    initThread = std::thread([this]() {
-        this->gather();
-        this->asyncLoopThread = std::thread([this]() { this->asyncAssetSpinLock(); });
-        this->asyncLoopThread.detach();
+    asyncLoopThread = std::thread([this]() {
+        this->gather(); /* inital gather */
+        this->asyncAssetSpinLock();
     });
-    initThread.detach();
+    asyncLoopThread.detach();
 
     // some things can't be done async :(
     // gather background textures when needed
@@ -128,7 +127,7 @@ void CAsyncResourceGatherer::gather() {
 
             std::string path = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 
-            if (path.empty())
+            if (path.empty() || path == "screenshot")
                 continue;
 
             std::string id           = std::string{"background:"} + path;
