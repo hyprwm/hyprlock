@@ -51,24 +51,22 @@ static void replaceAll(std::string& str, const std::string& from, const std::str
 static void replaceAllAttempts(std::string& str) {
 
     const size_t      ATTEMPTS = g_pHyprlock->getPasswordFailedAttempts();
-    const std::string from     = "$ATTEMPTS";
-    const std::string to       = std::to_string(ATTEMPTS);
+    const std::string STR      = std::to_string(ATTEMPTS);
+    size_t            pos      = 0;
 
-    size_t            pos = 0;
-
-    while ((pos = str.find(from, pos)) != std::string::npos) {
+    while ((pos = str.find("$ATTEMPTS", pos)) != std::string::npos) {
         if (str.substr(pos, 10).ends_with('[') && str.substr(pos).contains(']')) {
-            const std::string repl = str.substr(pos + 10, str.find_first_of(']', pos) - 10 - pos);
+            const std::string REPL = str.substr(pos + 10, str.find_first_of(']', pos) - 10 - pos);
             if (ATTEMPTS == 0) {
-                str.replace(pos, 11 + repl.length(), repl);
-                pos += repl.length();
+                str.replace(pos, 11 + REPL.length(), REPL);
+                pos += REPL.length();
             } else {
-                str.replace(pos, 11 + repl.length(), to);
-                pos += to.length();
+                str.replace(pos, 11 + REPL.length(), STR);
+                pos += STR.length();
             }
         } else {
-            str.replace(pos, 9, to);
-            pos += to.length();
+            str.replace(pos, 9, STR);
+            pos += STR.length();
         }
     }
 }
