@@ -1,6 +1,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../helpers/VarList.hpp"
+#include "../../core/hyprlock.hpp"
 #include <chrono>
 #include <unistd.h>
 
@@ -47,6 +48,31 @@ static void replaceAll(std::string& str, const std::string& from, const std::str
     }
 }
 
+static void replaceAllAttempts(std::string& str) {
+
+    const size_t      ATTEMPTS = g_pHyprlock->getPasswordFailedAttempts();
+    const std::string from     = "$ATTEMPTS";
+    const std::string to       = std::to_string(ATTEMPTS);
+
+    size_t            pos = 0;
+
+    while ((pos = str.find(from, pos)) != std::string::npos) {
+        if (str.substr(pos, 10).ends_with('[') && str.substr(pos).contains(']')) {
+            const std::string repl = str.substr(pos + 10, str.find_first_of(']', pos) - 10 - pos);
+            if (ATTEMPTS == 0) {
+                str.replace(pos, 11 + repl.length(), repl);
+                pos += repl.length();
+            } else {
+                str.replace(pos, 11 + repl.length(), to);
+                pos += to.length();
+            }
+        } else {
+            str.replace(pos, 9, to);
+            pos += to.length();
+        }
+    }
+}
+
 static std::string getTime() {
     const auto current_zone = std::chrono::current_zone();
     const auto HHMMSS       = std::chrono::hh_mm_ss{current_zone->to_local(std::chrono::system_clock::now()) -
@@ -70,6 +96,11 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     if (in.contains("$TIME")) {
         replaceAll(in, "$TIME", getTime());
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+
+    if (in.contains("$ATTEMPTS")) {
+        replaceAllAttempts(in);
+        result.allowForceUpdate = true;
     }
 
     if (in.starts_with("cmd[") && in.contains("]")) {
