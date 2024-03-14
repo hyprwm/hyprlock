@@ -713,7 +713,7 @@ void CHyprlock::onPasswordCheckTimer() {
     if (m_sPasswordState.result->success) {
         if (**PNOFADEOUT || SZCURRENTD != "Hyprland")
             unlockSession();
-        m_tFadeEnds = std::chrono::system_clock::now() + std::chrono::milliseconds(600);
+        m_tFadeEnds = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
         m_bFadeStarted = true;
     } else {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
