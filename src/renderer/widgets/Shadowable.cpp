@@ -37,6 +37,6 @@ bool CShadowable::draw(const IWidget::SRenderData& data) {
         return true;
 
     CBox box = {0, 0, viewport.x, viewport.y};
-    g_pRenderer->renderTexture(box, shadowFB.m_cTex, 1.0, 0, WL_OUTPUT_TRANSFORM_NORMAL);
+    g_pRenderer->renderTexture(box, shadowFB.m_cTex, data.opacity, 0, WL_OUTPUT_TRANSFORM_NORMAL);
     return true;
 }
