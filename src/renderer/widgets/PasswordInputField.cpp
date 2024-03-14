@@ -47,7 +47,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     g_pHyprlock->m_bNumLock = outerColor.invertNum;
 
     std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
-    if (!placeholderText.empty()) {
+    if (!placeholderText.empty() || !configFailText.empty()) {
         placeholder.resourceID = "placeholder:" + std::to_string((uintptr_t)this);
         CAsyncResourceGatherer::SPreloadRequest request;
         request.id                   = placeholder.resourceID;
