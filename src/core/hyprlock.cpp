@@ -611,7 +611,7 @@ static void handleKeyboardKeymap(void* data, wl_keyboard* wl_keyboard, uint form
         return;
     }
 
-    const char* buf = (const char*)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    const char* buf = (const char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (buf == MAP_FAILED) {
         Debug::log(ERR, "Failed to mmap xkb keymap: {}", errno);
         return;
