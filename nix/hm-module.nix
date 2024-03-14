@@ -85,6 +85,11 @@ in {
         type = bool;
         default = false;
       };
+      no_fade_out = mkOption {
+          description = "Do not fade out";
+          type = bool;
+          default = false;
+      };
     };
 
     backgrounds = mkOption {
@@ -417,6 +422,7 @@ in {
         grace = ${toString cfg.general.grace}
         hide_cursor = ${boolToString cfg.general.hide_cursor}
         no_fade_in = ${boolToString cfg.general.no_fade_in}
+        no_fade_out = ${boolToString cfg.general.no_fade_out}
       }
 
       ${builtins.concatStringsSep "\n" (map (background: ''
