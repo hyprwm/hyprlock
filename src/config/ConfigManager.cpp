@@ -61,6 +61,18 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
 
+    m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("image", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("image", "path", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("image", "size", Hyprlang::INT{150});
+    m_config.addSpecialConfigValue("image", "rounding", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("image", "border_size", Hyprlang::INT{4});
+    m_config.addSpecialConfigValue("image", "border_color", Hyprlang::INT{0xFFDDDDDD});
+    m_config.addSpecialConfigValue("image", "position", Hyprlang::VEC2{0, 200});
+    m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
+    SHADOWABLE("image");
+
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("input-field", "size", Hyprlang::VEC2{400, 90});
@@ -146,6 +158,28 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"vibrancy", m_config.getSpecialConfigValue("background", "vibrancy", k.c_str())},
                 {"brightness", m_config.getSpecialConfigValue("background", "brightness", k.c_str())},
                 {"vibrancy_darkness", m_config.getSpecialConfigValue("background", "vibrancy_darkness", k.c_str())},
+            }
+        });
+        // clang-format on
+    }
+
+    //
+    keys = m_config.listKeysForSpecialCategory("image");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            "image",
+            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("image", "monitor", k.c_str())),
+            {
+                {"path", m_config.getSpecialConfigValue("image", "path", k.c_str())},
+                {"size", m_config.getSpecialConfigValue("image", "size", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("image", "rounding", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("image", "border_size", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("image", "border_color", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("image", "position", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("image", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("image", "valign", k.c_str())},
+                SHADOWABLE("image"),
             }
         });
         // clang-format on
