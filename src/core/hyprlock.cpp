@@ -307,14 +307,18 @@ static void handleUnlockSignal(int sig) {
     }
 }
 
+static void forceUpdateTimers() {
+    for (auto& t : g_pHyprlock->getTimers()) {
+        if (t->canForceUpdate()) {
+            t->call(t);
+            t->cancel();
+        }
+    }
+}
+
 static void handleForceUpdateSignal(int sig) {
     if (sig == SIGUSR2) {
-        for (auto& t : g_pHyprlock->getTimers()) {
-            if (t->canForceUpdate()) {
-                t->call(t);
-                t->cancel();
-            }
-        }
+        forceUpdateTimers();
     }
 }
 
@@ -717,6 +721,7 @@ void CHyprlock::onPasswordCheckTimer() {
         m_sPasswordState.passBuffer     = "";
         m_sPasswordState.failedAttempts += 1;
         Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
+        forceUpdateTimers();
 
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
