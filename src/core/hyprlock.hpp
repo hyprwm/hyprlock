@@ -43,8 +43,8 @@ class CHyprlock {
     void                            onLockLocked();
     void                            onLockFinished();
 
-    void                            lockSession();
-    void                            unlockSession();
+    void                            acquireSessionLock();
+    void                            releaseSessionLock();
 
     void                            attemptRestoreOnDeath();
 

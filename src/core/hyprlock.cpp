@@ -303,7 +303,7 @@ static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Debug::log(LOG, "Unlocking with a SIGUSR1");
-        g_pHyprlock->unlockSession();
+        g_pHyprlock->releaseSessionLock();
     }
 }
 
@@ -376,7 +376,7 @@ void CHyprlock::run() {
         }
     }
 
-    lockSession();
+    acquireSessionLock();
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
@@ -457,7 +457,7 @@ void CHyprlock::run() {
             m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
 
         if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
-            unlockSession();
+            releaseSessionLock();
             break;
         }
         std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
@@ -506,7 +506,7 @@ void CHyprlock::run() {
         passed.clear();
 
         if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
-            unlockSession();
+            releaseSessionLock();
             break;
         }
     }
@@ -536,7 +536,7 @@ void CHyprlock::unlock() {
     const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
 
     if (**PNOFADEOUT || SZCURRENTD != "Hyprland") {
-        unlockSession();
+        releaseSessionLock();
         return;
     }
 
@@ -813,13 +813,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     }
 }
 
-void CHyprlock::lockSession() {
+void CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = ext_session_lock_manager_v1_lock(m_sWaylandState.sessionLock);
     ext_session_lock_v1_add_listener(m_sLockState.lock, &sessionLockListener, nullptr);
 }
 
-void CHyprlock::unlockSession() {
+void CHyprlock::releaseSessionLock() {
     Debug::log(LOG, "Unlocking session");
     if (m_bTerminate && !m_sLockState.lock) {
         Debug::log(ERR, "Unlock already happend?");
