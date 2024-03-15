@@ -32,6 +32,8 @@ class CHyprlock {
 
     void                            run();
 
+    void                            unlock();
+
     void                            onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     void                            onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
 
@@ -79,8 +81,8 @@ class CHyprlock {
 
     bool                            m_bLocked = false;
 
-    bool                            m_bCapsLock = false;
-    bool                            m_bNumLock  = false;
+    bool                            m_bCapsLock    = false;
+    bool                            m_bNumLock     = false;
     bool                            m_bFadeStarted = false;
     //
     std::chrono::system_clock::time_point m_tGraceEnds;

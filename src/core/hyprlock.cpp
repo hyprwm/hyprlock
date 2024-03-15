@@ -505,7 +505,7 @@ void CHyprlock::run() {
 
         passed.clear();
 
-        if (m_bTerminate || (std::chrono::system_clock::now()  > m_tFadeEnds && m_bFadeStarted)) {
+        if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
             unlockSession();
             break;
         }
@@ -528,6 +528,18 @@ void CHyprlock::run() {
     timersThr.join();
 
     Debug::log(LOG, "Reached the end, exiting");
+}
+
+void CHyprlock::unlock() {
+    static auto* const PNOFADEOUT     = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
+    const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
+    const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+
+    if (**PNOFADEOUT || SZCURRENTD != "Hyprland")
+        unlockSession();
+
+    m_tFadeEnds    = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
+    m_bFadeStarted = true;
 }
 
 // wl_seat
@@ -556,10 +568,10 @@ static void handlePointerAxis(void* data, wl_pointer* wl_pointer, uint32_t time,
 
 static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
     if (g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5 &&
-        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds) {
+        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds && !g_pHyprlock->m_bFadeStarted) {
 
         Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
-        g_pHyprlock->unlockSession();
+        g_pHyprlock->unlock();
     }
 }
 
@@ -705,16 +717,9 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 // end session_lock
 
 void CHyprlock::onPasswordCheckTimer() {
-    static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
-    const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
-
     // check result
     if (m_sPasswordState.result->success) {
-        if (**PNOFADEOUT || SZCURRENTD != "Hyprland")
-            unlockSession();
-        m_tFadeEnds = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
-        m_bFadeStarted = true;
+        unlock();
     } else {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
         m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
@@ -740,10 +745,8 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
-
-    if (down && std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds) {
-        unlockSession();
+    if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
+        unlock();
         return;
     }
 
@@ -769,6 +772,8 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         }
         return;
     }
+
+    const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
     m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
     m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
