@@ -535,11 +535,17 @@ void CHyprlock::unlock() {
     const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
 
-    if (**PNOFADEOUT || SZCURRENTD != "Hyprland")
+    if (**PNOFADEOUT || SZCURRENTD != "Hyprland") {
         unlockSession();
+        return;
+    }
 
     m_tFadeEnds    = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
     m_bFadeStarted = true;
+
+    for (auto& o : m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
 }
 
 // wl_seat
