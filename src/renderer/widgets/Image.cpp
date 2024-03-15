@@ -39,16 +39,16 @@ bool CImage::draw(const SRenderData& data) {
         shadow.markShadowDirty();
     }
 
-    float scaleX = size / tex->m_vSize.x;
-    float scaleY = size / tex->m_vSize.y;
+    const float SCALEX = size / tex->m_vSize.x;
+    const float SCALEY = size / tex->m_vSize.y;
 
-    texbox.w *= std::max(scaleX, scaleY);
-    texbox.h *= std::max(scaleX, scaleY);
+    texbox.w *= std::max(SCALEX, SCALEY);
+    texbox.h *= std::max(SCALEX, SCALEY);
 
     shadow.draw(data);
 
-    bool       roundingAllowed = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
-    const auto TEXPOS          = posFromHVAlign(viewport, Vector2D{texbox.w, texbox.h}, pos, halign, valign);
+    const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
+    const auto TEXPOS     = posFromHVAlign(viewport, Vector2D{texbox.w, texbox.h}, pos, halign, valign);
 
     texbox.x = TEXPOS.x;
     texbox.y = TEXPOS.y;
@@ -58,11 +58,11 @@ bool CImage::draw(const SRenderData& data) {
         CColor borderCol = color;
         borderCol.a *= data.opacity;
         borderBox.round();
-        g_pRenderer->renderRect(borderBox, borderCol, roundingAllowed ? rounding : std::min(borderBox.w, borderBox.h) / 2.0);
+        g_pRenderer->renderRect(borderBox, borderCol, ALLOWROUND ? rounding : std::min(borderBox.w, borderBox.h) / 2.0);
     }
 
     texbox.round();
-    g_pRenderer->renderTexture(texbox, *tex, data.opacity, roundingAllowed ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
+    g_pRenderer->renderTexture(texbox, *tex, data.opacity, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
     return data.opacity < 1.0;
 }
