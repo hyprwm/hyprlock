@@ -124,9 +124,9 @@ void CPasswordInputField::updateFade() {
 
     if (fade.animated) {
         if (fade.appearing)
-            fade.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
+            fade.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 150000.0, 0.0, 1.0);
         else
-            fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
+            fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 150000.0, 0.0, 1.0);
 
         if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0))
             fade.animated = false;
@@ -218,38 +218,41 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     CColor fontCol = font;
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
-    g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
-
     const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
 
-    if (PASSLEN != 0 && hiddenInputState.enabled) {
-        CBox     outerBoxScaled = outerBox;
-        Vector2D p              = outerBox.pos();
-        outerBoxScaled.translate(-p).scale(0.5).translate(p);
-        if (hiddenInputState.lastQuadrant > 1)
-            outerBoxScaled.y += outerBoxScaled.h;
-        if (hiddenInputState.lastQuadrant % 2 == 1)
-            outerBoxScaled.x += outerBoxScaled.w;
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-        g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
-        glScissor(0, 0, viewport.x, viewport.y);
-        glDisable(GL_SCISSOR_TEST);
+    if (outThick > 0) {
+        g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
+
+        if (PASSLEN != 0 && hiddenInputState.enabled && !fade.animated && data.opacity == 1.0) {
+            CBox     outerBoxScaled = outerBox;
+            Vector2D p              = outerBox.pos();
+            outerBoxScaled.translate(-p).scale(0.5).translate(p);
+            if (hiddenInputState.lastQuadrant > 1)
+                outerBoxScaled.y += outerBoxScaled.h;
+            if (hiddenInputState.lastQuadrant % 2 == 1)
+                outerBoxScaled.x += outerBoxScaled.w;
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
+            g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
+            glScissor(0, 0, viewport.x, viewport.y);
+            glDisable(GL_SCISSOR_TEST);
+        }
     }
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - outThick);
 
-    const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
-    const int   PASS_SPACING   = std::floor(PASS_SIZE * dots.spacing);
-    const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
-    const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
-    const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
-    const int   DOT_FLOORED    = std::floor(dots.currentAmount);
-    const float DOT_ALPHA      = fontCol.a;
-    // Calculate the total width required for all dots including spaces between them
-    const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
+    if (!hiddenInputState.enabled && !g_pHyprlock->m_bFadeStarted) {
+        const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
+        const int   PASS_SPACING   = std::floor(PASS_SIZE * dots.spacing);
+        const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
+        const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
+        const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
+        const int   DOT_FLOORED    = std::floor(dots.currentAmount);
+        const float DOT_ALPHA      = fontCol.a;
 
-    if (!hiddenInputState.enabled) {
+        // Calculate the total width required for all dots including spaces between them
+        const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
+
         // Calculate starting x-position to ensure dots stay centered within the input field
         int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 + DOT_PAD : DOT_PAD;
 
@@ -391,7 +394,12 @@ void CPasswordInputField::updateOuter() {
     outerColor.stateCaps = g_pHyprlock->m_bCapsLock;
 
     if (placeholder.failID.empty()) {
-        if (g_pHyprlock->passwordCheckWaiting())
+        if (g_pHyprlock->m_bFadeStarted) {
+            if (TARGET == outerColor.check)
+                SOURCE = outerColor.main;
+            outerColor.transitionMs = 100;
+            TARGET = OUTER;
+        } else if (g_pHyprlock->passwordCheckWaiting())
             TARGET = outerColor.check;
         else if (outerColor.both != OUTER && outerColor.stateCaps && outerColor.stateNum)
             TARGET = outerColor.both;
