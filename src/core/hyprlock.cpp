@@ -745,6 +745,9 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
+    if (m_bFadeStarted)
+        return;
+
     if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
         unlock();
         return;
