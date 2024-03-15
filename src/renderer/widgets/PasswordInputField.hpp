@@ -28,6 +28,9 @@ class CPasswordInputField : public IWidget {
 
     bool        firstRender  = true;
     bool        redrawShadow = false;
+    bool        checkWaiting = false;
+
+    size_t      passwordLength = 0;
 
     Vector2D    size;
     Vector2D    pos;
