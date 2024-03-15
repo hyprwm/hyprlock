@@ -531,11 +531,9 @@ void CHyprlock::run() {
 }
 
 void CHyprlock::unlock() {
-    static auto* const PNOFADEOUT     = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
-    const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
-    if (**PNOFADEOUT || SZCURRENTD != "Hyprland") {
+    if (**PNOFADEOUT) {
         unlockSession();
         return;
     }
