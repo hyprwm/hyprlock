@@ -190,14 +190,14 @@ in {
             default = -1;
           };
 
-          frame_size = mkOption {
-            description = "Size of the frame around an image";
+          border_size = mkOption {
+            description = "Size of image border";
             type = int;
             default = 4;
           };
 
-          frame_color = mkOption {
-            description = "Color of the frame around an image";
+          border_color = mkOption {
+            description = "Color of image border";
             type = str;
             default = "rgb(221, 221, 221)";
           };
@@ -518,8 +518,8 @@ in {
             path = ${image.path}
             size = ${toString image.size}
             rounding = ${toString image.rounding}
-            frame_size = ${toString image.frame_size}
-            frame_color = ${image.frame_color}
+            border_size = ${toString image.border_size}
+            border_color = ${image.border_color}
 
             position = ${toString image.position.x}, ${toString image.position.y}
             halign = ${image.halign}
