@@ -419,7 +419,7 @@ void CPasswordInputField::updateOuter() {
 
     const auto MULTI = outerColor.transitionMs == 0 ?
         1.0 :
-        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.02, 0.5);
+        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.02, 0.5);
     const auto DELTA = TARGET - SOURCE;
 
     if (outerColor.main.r != TARGET.r) {

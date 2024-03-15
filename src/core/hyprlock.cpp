@@ -16,6 +16,7 @@
 #include <xf86drm.h>
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 
 CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
