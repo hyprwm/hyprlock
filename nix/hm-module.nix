@@ -162,6 +162,77 @@ in {
       ];
     };
 
+    images = mkOption {
+      description = "Image configurations";
+      type = listOf (submodule {
+        options = {
+          monitor = mkOption {
+            description = "The monitor to draw an image";
+            type = str;
+            default = "";
+          };
+
+          path = mkOption {
+            description = "The path to source image";
+            type = str;
+            default = "/home/me/cutie.png"; # only png supported for now
+          };
+
+          size = mkOption {
+            description = "Size of the image. Lesser side is chosen if not 1:1 aspect ratio";
+            type = int;
+            default = 150;
+          };
+
+          rounding = mkOption {
+            description = "The rounding of the image";
+            type = int;
+            default = -1;
+          };
+
+          border_size = mkOption {
+            description = "Size of image border";
+            type = int;
+            default = 4;
+          };
+
+          border_color = mkOption {
+            description = "Color of image border";
+            type = str;
+            default = "rgb(221, 221, 221)";
+          };
+
+          position = {
+            x = mkOption {
+              description = "X position of the image";
+              type = int;
+              default = 0;
+            };
+            y = mkOption {
+              description = "Y position of the image";
+              type = int;
+              default = 200;
+            };
+          };
+
+          halign = mkOption {
+            description = "Horizontal alignment of the image";
+            type = str;
+            default = "center";
+          };
+
+          valign = mkOption {
+            description = "Vertical alignment of the image";
+            type = str;
+            default = "center";
+          };
+        };
+      });
+      default = [
+        {}
+      ];
+    };
+
     input-fields = mkOption {
       description = "Input field configurations";
       type = listOf (submodule {
@@ -440,6 +511,22 @@ in {
           }
         '')
         cfg.backgrounds)}
+
+      ${builtins.concatStringsSep "\n" (map (image: ''
+          image {
+            monitor = ${image.monitor}
+            path = ${image.path}
+            size = ${toString image.size}
+            rounding = ${toString image.rounding}
+            border_size = ${toString image.border_size}
+            border_color = ${image.border_color}
+
+            position = ${toString image.position.x}, ${toString image.position.y}
+            halign = ${image.halign}
+            valign = ${image.valign}
+          }
+        '')
+        cfg.images)}
 
       ${builtins.concatStringsSep "\n" (map (input-field: ''
           input-field {
