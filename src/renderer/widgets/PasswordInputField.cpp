@@ -379,7 +379,7 @@ void CPasswordInputField::updateOuter() {
     static auto TIMER = std::chrono::system_clock::now();
 
     if (outerColor.animated) {
-        if (outerColor.stateNum != outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
+        if (outerColor.stateNum != (outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
             SOURCE = outerColor.main;
     } else
         SOURCE = outerColor.main;
