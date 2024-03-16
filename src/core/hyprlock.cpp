@@ -773,9 +773,6 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     else
         std::erase(m_vPressedKeys, key);
 
-    if (!down) // we dont care about up events
-        return;
-
     if (m_sPasswordState.result) {
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
@@ -783,34 +780,36 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
-    const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
+    if (down) {
+        const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
-    m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
-    m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
+        m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
+        m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
 
-    if (SYM == XKB_KEY_BackSpace) {
-        if (m_sPasswordState.passBuffer.length() > 0) {
-            // handle utf-8
-            while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
-                m_sPasswordState.passBuffer.pop_back();
-            m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+        if (SYM == XKB_KEY_BackSpace) {
+            if (m_sPasswordState.passBuffer.length() > 0) {
+                // handle utf-8
+                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+                    m_sPasswordState.passBuffer.pop_back();
+                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+            }
+        } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
+            Debug::log(LOG, "Authenticating");
+            m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+        } else if (SYM == XKB_KEY_Escape) {
+            Debug::log(LOG, "Clearing password buffer");
+
+            m_sPasswordState.passBuffer = "";
+        } else if (SYM == XKB_KEY_Caps_Lock) {
+            m_bCapsLock = !m_bCapsLock;
+        } else if (SYM == XKB_KEY_Num_Lock) {
+            m_bNumLock = !m_bNumLock;
+        } else {
+            char buf[16] = {0};
+            int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
+            if (len > 1)
+                m_sPasswordState.passBuffer += std::string{buf, len - 1};
         }
-    } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-        Debug::log(LOG, "Authenticating");
-        m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
-    } else if (SYM == XKB_KEY_Escape) {
-        Debug::log(LOG, "Clearing password buffer");
-
-        m_sPasswordState.passBuffer = "";
-    } else if (SYM == XKB_KEY_Caps_Lock) {
-        m_bCapsLock = !m_bCapsLock;
-    } else if (SYM == XKB_KEY_Num_Lock) {
-        m_bNumLock = !m_bNumLock;
-    } else {
-        char buf[16] = {0};
-        int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
-        if (len > 1)
-            m_sPasswordState.passBuffer += std::string{buf, len - 1};
     }
 
     for (auto& o : m_vOutputs) {
