@@ -2,7 +2,9 @@
 #include "hyprlock.hpp"
 #include "../helpers/Log.hpp"
 
+#include <security/_pam_types.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <security/pam_appl.h>
 #if __has_include(<security/pam_misc.h>)
 #include <security/pam_misc.h>
@@ -11,20 +13,70 @@
 #include <cstring>
 #include <thread>
 
-//
-int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
-    const char*          pass      = static_cast<const char*>(appdata_ptr);
-    struct pam_response* pam_reply = static_cast<struct pam_response*>(calloc(num_msg, sizeof(struct pam_response)));
+using namespace std;
 
-    for (int i = 0; i < num_msg; ++i) {
-        switch (msg[i]->msg_style) {
-            case PAM_PROMPT_ECHO_OFF:
-            case PAM_PROMPT_ECHO_ON: pam_reply[i].resp = strdup(pass); break;
-            case PAM_ERROR_MSG: Debug::log(ERR, "PAM: {}", msg[i]->msg); break;
-            case PAM_TEXT_INFO: Debug::log(LOG, "PAM: {}", msg[i]->msg); break;
+class AuthClient {
+  public:
+    int sock;
+    AuthClient(int sockfd) {
+        sock = sockfd;
+    };
+    //TODO: replace with std::expected errorhandling when clangd supports C++23
+    string question(const struct pam_message* msg) {
+        char data[10240];
+
+        //TODO: maybe use protobufs or extra class?
+        int          mlen = strlen(msg->msg);
+        vector<char> packet(strlen(msg->msg) + sizeof(int));
+        const char*  style = static_cast<const char*>(static_cast<const void*>(&(msg->msg_style)));
+        copy(style, style + sizeof(int), back_inserter(packet));
+        copy(msg->msg, msg->msg + mlen, back_inserter(packet));
+
+        if (send(this->sock, packet.data(), mlen + sizeof(int), 0) < 0) {
+            //ERROR:theres an error here
+            return string();
+        }
+        if (recv(this->sock, data, 10240, 0) < 0) {
+            //ERROR:there's an error here
+            return string();
+        }
+        //TODO: should I clear data?
+
+        //the response ist always just a string
+        return string(data);
+    }
+};
+
+int conv(int num_msg, const struct pam_message** msgs, struct pam_response** response, void* appdata_ptr) {
+    int                          count = 0;
+    string                       reply;
+    vector<struct pam_response*> replies(num_msg);
+
+    AuthClient*                  authcl = (AuthClient*)appdata_ptr;
+
+    if (num_msg <= 0)
+        return PAM_CONV_ERR;
+
+    for (count = 0; count < num_msg; ++count) {
+        if (!(reply = authcl->question(msgs[count])).empty()) {
+            struct pam_response r = {reply.data(), 0};
+            replies[count]        = &r;
+        } else {
+            for (struct pam_response* r : replies) {
+                //TODO: safe erasure?
+
+                /*
+                 * NOTE:pam_conv(3) - It is the caller's responsibility to release both,
+                 * this array and the responses themselves, using free(3). Note,
+                 * *resp is a struct pam_response array and not an array of pointers.
+                 */
+                free(r->resp);
+                free(r);
+            }
+            return PAM_CONV_ERR;
         }
     }
-    *resp = pam_reply;
+    *response = *replies.data();
     return PAM_SUCCESS;
 }
 
@@ -36,7 +88,7 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
 
     std::shared_ptr<CPassword::SVerificationResult> result = std::make_shared<CPassword::SVerificationResult>(false);
 
-    std::thread([this, result, pass]() {
+    std::thread([result, pass]() {
         auto auth = [&](std::string auth) -> bool {
             const pam_conv localConv = {conv, (void*)pass.c_str()};
             pam_handle_t*  handle    = NULL;
