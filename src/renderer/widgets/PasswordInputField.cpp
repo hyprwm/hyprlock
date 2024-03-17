@@ -303,6 +303,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
+    // TODO: find out why failAsset not shown on empty input
     if (passwordLength == 0 && g_pHyprlock->getPasswordFailedAttempts() > failedAttempts)
         forceReload = true;
 
