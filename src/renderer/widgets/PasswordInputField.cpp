@@ -303,6 +303,11 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
+    if (passwordLength == 0 && g_pHyprlock->getPasswordFailedAttempts() > failedAttempts)
+        forceReload = true;
+
+    failedAttempts = g_pHyprlock->getPasswordFailedAttempts();
+
     return dots.currentAmount != passwordLength || fade.animated || col.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
@@ -327,7 +332,7 @@ void CPasswordInputField::updateFailTex() {
 
     placeholder.failText = configFailText;
     replaceAllFail(placeholder.failText, "$FAIL", FAIL.value());
-    replaceAllFail(placeholder.failText, "$ATTEMPTS", std::to_string(g_pHyprlock->getPasswordFailedAttempts()));
+    replaceAllFail(placeholder.failText, "$ATTEMPTS", std::to_string(failedAttempts));
 
     // query
     CAsyncResourceGatherer::SPreloadRequest request;
