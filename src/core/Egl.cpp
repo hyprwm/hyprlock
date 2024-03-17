@@ -69,6 +69,12 @@ CEGL::CEGL(wl_display* display) {
 
 error:
     eglMakeCurrent(EGL_NO_DISPLAY, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+}
+
+CEGL::~CEGL() {
+    if (eglContext != EGL_NO_CONTEXT)
+        eglDestroyContext(eglDisplay, eglContext);
+
     if (eglDisplay)
         eglTerminate(eglDisplay);
 
