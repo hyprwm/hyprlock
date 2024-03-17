@@ -26,7 +26,7 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
 
-        else if (arg == "--config" || arg == "-c")
+        else if ((arg == "--config" || arg == "-c") && i + 1 < argc)
             configPath = argv[++i];
 
         else if (arg == "--display" && i + 1 < argc) {
