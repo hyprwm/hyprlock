@@ -5,3 +5,4 @@ protocols/*.h
 protocols/*.c
 .clangd
 .cache/
+.clang-format
