@@ -519,6 +519,9 @@ void CHyprlock::run() {
 
     m_vOutputs.clear();
     g_pEGL.reset();
+    g_pRenderer = nullptr;
+
+    xkb_context_unref(m_pXKBContext);
 
     wl_display_disconnect(m_sWaylandState.display);
 

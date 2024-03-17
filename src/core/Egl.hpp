@@ -9,6 +9,7 @@
 class CEGL {
   public:
     CEGL(wl_display*);
+    ~CEGL();
 
     EGLDisplay                               eglDisplay;
     EGLConfig                                eglConfig;
