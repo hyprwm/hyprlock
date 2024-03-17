@@ -100,7 +100,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "numlock_color", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "bothlock_color", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "invert_numlock", Hyprlang::INT{0});
-    m_config.addSpecialConfigValue("input-field", "swap_font", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("input-field", "swap_font_color", Hyprlang::INT{0});
     SHADOWABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -219,7 +219,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
                 {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
                 {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
-                {"swap_font", m_config.getSpecialConfigValue("input-field", "swap_font", k.c_str())},
+                {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
                 SHADOWABLE("input-field"),
             }
         });

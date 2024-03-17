@@ -25,7 +25,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     col.caps                 = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
     col.num                  = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
     col.invertNum            = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
-    col.swapFont             = std::any_cast<Hyprlang::INT>(props.at("swap_font"));
+    col.swapFont             = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
     viewport                 = viewport_;
 
     auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
