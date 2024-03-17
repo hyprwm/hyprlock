@@ -89,22 +89,20 @@ void CPasswordInputField::onFadeOutTimer() {
 }
 
 void CPasswordInputField::updateFade() {
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
-
     if (!fadeOnEmpty) {
         fade.a = 1.0;
         return;
     }
 
-    if (PASSLEN > 0 && fade.allowFadeOut)
+    if (passwordLength > 0 && fade.allowFadeOut)
         fade.allowFadeOut = false;
 
-    if (PASSLEN > 0 && fade.fadeOutTimer.get()) {
+    if (passwordLength > 0 && fade.fadeOutTimer.get()) {
         fade.fadeOutTimer->cancel();
         fade.fadeOutTimer.reset();
     }
 
-    if (PASSLEN == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
+    if (passwordLength == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
         if (fade.allowFadeOut || fadeTimeoutMs == 0) {
             fade.a            = 1.0;
             fade.animated     = true;
@@ -115,7 +113,7 @@ void CPasswordInputField::updateFade() {
             fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), fadeOutCallback, this);
     }
 
-    if (PASSLEN > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
+    if (passwordLength > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
         fade.a         = 0.0;
         fade.animated  = true;
         fade.appearing = true;
@@ -136,13 +134,11 @@ void CPasswordInputField::updateFade() {
 }
 
 void CPasswordInputField::updateDots() {
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferDisplayLen();
-
-    if (PASSLEN == dots.currentAmount)
+    if (passwordLength == dots.currentAmount)
         return;
 
-    if (std::abs(PASSLEN - dots.currentAmount) > 1) {
-        dots.currentAmount = std::clamp(dots.currentAmount, PASSLEN - 1.f, PASSLEN + 1.f);
+    if (std::abs(passwordLength - dots.currentAmount) > 1) {
+        dots.currentAmount = std::clamp(dots.currentAmount, passwordLength - 1.f, passwordLength + 1.f);
         dots.lastFrame     = std::chrono::system_clock::now();
     }
 
@@ -150,14 +146,14 @@ void CPasswordInputField::updateDots() {
 
     const float TOADD = DELTA / 1000000.0 * dots.speedPerSecond;
 
-    if (PASSLEN > dots.currentAmount) {
+    if (passwordLength > dots.currentAmount) {
         dots.currentAmount += TOADD;
-        if (dots.currentAmount > PASSLEN)
-            dots.currentAmount = PASSLEN;
-    } else if (PASSLEN < dots.currentAmount) {
+        if (dots.currentAmount > passwordLength)
+            dots.currentAmount = passwordLength;
+    } else if (passwordLength < dots.currentAmount) {
         dots.currentAmount -= TOADD;
-        if (dots.currentAmount < PASSLEN)
-            dots.currentAmount = PASSLEN;
+        if (dots.currentAmount < passwordLength)
+            dots.currentAmount = passwordLength;
     }
 
     dots.lastFrame = std::chrono::system_clock::now();
@@ -174,6 +170,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     }
 
     bool forceReload = false;
+
+    passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
+    checkWaiting   = g_pHyprlock->passwordCheckWaiting();
 
     updateFade();
     updateDots();
@@ -209,7 +208,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     shadowData.opacity *= fade.a;
     shadow.draw(shadowData);
 
-    float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
+    float  passAlpha = checkWaiting ? 0.5 : 1.0;
 
     CColor outerCol = outerColor.main;
     outerCol.a *= fade.a * data.opacity;
@@ -218,38 +217,39 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     CColor fontCol = font;
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
-    g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
+    if (outThick > 0) {
+        g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
 
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
-
-    if (PASSLEN != 0 && hiddenInputState.enabled) {
-        CBox     outerBoxScaled = outerBox;
-        Vector2D p              = outerBox.pos();
-        outerBoxScaled.translate(-p).scale(0.5).translate(p);
-        if (hiddenInputState.lastQuadrant > 1)
-            outerBoxScaled.y += outerBoxScaled.h;
-        if (hiddenInputState.lastQuadrant % 2 == 1)
-            outerBoxScaled.x += outerBoxScaled.w;
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-        g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
-        glScissor(0, 0, viewport.x, viewport.y);
-        glDisable(GL_SCISSOR_TEST);
+        if (passwordLength != 0 && hiddenInputState.enabled && !fade.animated && data.opacity == 1.0) {
+            CBox     outerBoxScaled = outerBox;
+            Vector2D p              = outerBox.pos();
+            outerBoxScaled.translate(-p).scale(0.5).translate(p);
+            if (hiddenInputState.lastQuadrant > 1)
+                outerBoxScaled.y += outerBoxScaled.h;
+            if (hiddenInputState.lastQuadrant % 2 == 1)
+                outerBoxScaled.x += outerBoxScaled.w;
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
+            g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
+            glScissor(0, 0, viewport.x, viewport.y);
+            glDisable(GL_SCISSOR_TEST);
+        }
     }
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - outThick);
 
-    const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
-    const int   PASS_SPACING   = std::floor(PASS_SIZE * dots.spacing);
-    const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
-    const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
-    const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
-    const int   DOT_FLOORED    = std::floor(dots.currentAmount);
-    const float DOT_ALPHA      = fontCol.a;
-    // Calculate the total width required for all dots including spaces between them
-    const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
+    if (!hiddenInputState.enabled && !g_pHyprlock->m_bFadeStarted) {
+        const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
+        const int   PASS_SPACING   = std::floor(PASS_SIZE * dots.spacing);
+        const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
+        const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
+        const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
+        const int   DOT_FLOORED    = std::floor(dots.currentAmount);
+        const float DOT_ALPHA      = fontCol.a;
 
-    if (!hiddenInputState.enabled) {
+        // Calculate the total width required for all dots including spaces between them
+        const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
+
         // Calculate starting x-position to ensure dots stay centered within the input field
         int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 + DOT_PAD : DOT_PAD;
 
@@ -280,7 +280,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (PASSLEN == 0 && !placeholder.resourceID.empty()) {
+    if (passwordLength == 0 && !placeholder.resourceID.empty()) {
         SPreloadedAsset* currAsset = nullptr;
 
         if (!placeholder.failID.empty()) {
@@ -304,18 +304,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != PASSLEN || fade.animated || outerColor.animated || redrawShadow || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != passwordLength || fade.animated || outerColor.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
 void CPasswordInputField::updateFailTex() {
-    const auto FAIL    = g_pHyprlock->passwordLastFailReason();
-    const auto WAITING = g_pHyprlock->passwordCheckWaiting();
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
+    const auto FAIL = g_pHyprlock->passwordLastFailReason();
 
-    if (WAITING)
+    if (checkWaiting)
         placeholder.canGetNewFail = true;
 
-    if (PASSLEN != 0 || (WAITING && PASSLEN == 0)) {
+    if (passwordLength != 0 || (checkWaiting && passwordLength == 0)) {
         if (placeholder.failAsset) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.failAsset);
             placeholder.failAsset = nullptr;
@@ -347,11 +345,11 @@ void CPasswordInputField::updateFailTex() {
 }
 
 void CPasswordInputField::updateHiddenInputState() {
-    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == g_pHyprlock->getPasswordBufferDisplayLen())
+    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == passwordLength)
         return;
 
     // randomize new thang
-    hiddenInputState.lastPasswordLength = g_pHyprlock->getPasswordBufferDisplayLen();
+    hiddenInputState.lastPasswordLength = passwordLength;
 
     srand(std::chrono::system_clock::now().time_since_epoch().count());
     float r1 = (rand() % 100) / 255.0;
@@ -381,7 +379,7 @@ void CPasswordInputField::updateOuter() {
     static auto TIMER = std::chrono::system_clock::now();
 
     if (outerColor.animated) {
-        if (outerColor.stateNum != outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
+        if (outerColor.stateNum != (outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
             SOURCE = outerColor.main;
     } else
         SOURCE = outerColor.main;
@@ -391,7 +389,12 @@ void CPasswordInputField::updateOuter() {
     outerColor.stateCaps = g_pHyprlock->m_bCapsLock;
 
     if (placeholder.failID.empty()) {
-        if (g_pHyprlock->passwordCheckWaiting())
+        if (g_pHyprlock->m_bFadeStarted) {
+            if (TARGET == outerColor.check)
+                SOURCE = outerColor.main;
+            outerColor.transitionMs = 100;
+            TARGET                  = OUTER;
+        } else if (checkWaiting)
             TARGET = outerColor.check;
         else if (outerColor.both != OUTER && outerColor.stateCaps && outerColor.stateNum)
             TARGET = outerColor.both;
