@@ -122,9 +122,9 @@ void CPasswordInputField::updateFade() {
 
     if (fade.animated) {
         if (fade.appearing)
-            fade.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 150000.0, 0.0, 1.0);
+            fade.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
         else
-            fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 150000.0, 0.0, 1.0);
+            fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
 
         if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0))
             fade.animated = false;
