@@ -3,6 +3,7 @@
 #include "../config/ConfigManager.hpp"
 #include "../helpers/Color.hpp"
 #include "../core/Output.hpp"
+#include "../core/hyprlock.hpp"
 #include "mtx.hpp"
 
 #include <GLES3/gl32.h>
@@ -15,6 +16,7 @@
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
 #include "widgets/Label.hpp"
+#include "widgets/Image.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -161,6 +163,7 @@ static int frames = 0;
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
     static auto* const PNOFADEIN   = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
+    static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
     matrixProjection(projection.data(), surf.size.x, surf.size.y, WL_OUTPUT_TRANSFORM_NORMAL);
 
@@ -199,6 +202,10 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         if (**PNOFADEIN)
             bga = 1.0;
 
+        if (g_pHyprlock->m_bFadeStarted && !**PNOFADEOUT) {
+            bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(g_pHyprlock->m_tFadeEnds - std::chrono::system_clock::now()).count() / 500000.0 - 0.02, 0.0, 1.0);
+            // - 0.02 so that the fade ends a little earlier than the final second
+        }
         // render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(&surf);
         for (auto& w : *WIDGETS) {
@@ -317,6 +324,14 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
             } else if (c.type == "label") {
                 widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, surf->output->stringPort));
+            } else if (c.type == "image") {
+                const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
+
+                std::string       resourceID = "";
+                if (!PATH.empty())
+                    resourceID = "image:" + PATH;
+
+                widgets[surf].emplace_back(std::make_unique<CImage>(surf->size, surf->output, resourceID, c.values));
             }
         }
     }

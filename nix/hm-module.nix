@@ -85,74 +85,148 @@ in {
         type = bool;
         default = false;
       };
+      no_fade_out = mkOption {
+          description = "Do not fade out";
+          type = bool;
+          default = false;
+      };
     };
 
     backgrounds = mkOption {
       description = "Background configurations";
       type = listOf (submodule {
-        options =
-          {
-            monitor = mkOption {
-              description = "The monitor to apply the given wallpaper to";
-              type = str;
-              default = "";
-            };
+        options = {
+          monitor = mkOption {
+            description = "The monitor to apply the given wallpaper to";
+            type = str;
+            default = "";
+          };
 
-            path = mkOption {
-              description = "The path to the wallpaper";
-              type = str;
-              default = "echo '/home/me/someImage.png'"; # only png supported for now
-            };
+          path = mkOption {
+            description = "The path to the wallpaper";
+            type = str;
+            default = "echo '/home/me/someImage.png'"; # only png supported for now
+          };
 
-            color = mkOption {
-              description = "Background color";
-              type = str;
-              default = "rgba(25, 20, 20, 1.0)";
-            };
+          color = mkOption {
+            description = "Background color";
+            type = str;
+            default = "rgba(25, 20, 20, 1.0)";
+          };
 
-            blur_size = mkOption {
-              description = "Blur size";
-              type = int;
-              default = 8;
-            };
+          blur_size = mkOption {
+            description = "Blur size";
+            type = int;
+            default = 8;
+          };
 
-            blur_passes = mkOption {
-              description = "Blur passes";
+          blur_passes = mkOption {
+            description = "Blur passes";
+            type = int;
+            default = 0;
+          };
+
+          noise = mkOption {
+            description = "Noise applied to blur";
+            type = float;
+            default = 0.0117;
+          };
+
+          contrast = mkOption {
+            description = "Contrast applied to blur";
+            type = float;
+            default = 0.8917;
+          };
+
+          brightness = mkOption {
+            description = "Brightness applied to blur";
+            type = float;
+            default = 0.8172;
+          };
+
+          vibrancy = mkOption {
+            description = "Vibrancy applied to blur";
+            type = float;
+            default = 0.1686;
+          };
+
+          vibrancy_darkness = mkOption {
+            description = "Vibrancy darkness applied to blur";
+            type = float;
+            default = 0.05;
+          };
+        };
+      });
+      default = [
+        {}
+      ];
+    };
+
+    images = mkOption {
+      description = "Image configurations";
+      type = listOf (submodule {
+        options = {
+          monitor = mkOption {
+            description = "The monitor to draw an image";
+            type = str;
+            default = "";
+          };
+
+          path = mkOption {
+            description = "The path to source image";
+            type = str;
+            default = "/home/me/cutie.png"; # only png supported for now
+          };
+
+          size = mkOption {
+            description = "Size of the image. Lesser side is chosen if not 1:1 aspect ratio";
+            type = int;
+            default = 150;
+          };
+
+          rounding = mkOption {
+            description = "The rounding of the image";
+            type = int;
+            default = -1;
+          };
+
+          border_size = mkOption {
+            description = "Size of image border";
+            type = int;
+            default = 4;
+          };
+
+          border_color = mkOption {
+            description = "Color of image border";
+            type = str;
+            default = "rgb(221, 221, 221)";
+          };
+
+          position = {
+            x = mkOption {
+              description = "X position of the image";
               type = int;
               default = 0;
             };
-
-            noise = mkOption {
-              description = "Noise applied to blur";
-              type = float;
-              default = 0.0117;
+            y = mkOption {
+              description = "Y position of the image";
+              type = int;
+              default = 200;
             };
+          };
 
-            contrast = mkOption {
-              description = "Contrast applied to blur";
-              type = float;
-              default = 0.8917;
-            };
+          halign = mkOption {
+            description = "Horizontal alignment of the image";
+            type = str;
+            default = "center";
+          };
 
-            brightness = mkOption {
-              description = "Brightness applied to blur";
-              type = float;
-              default = 0.8172;
-            };
-
-            vibrancy = mkOption {
-              description = "Vibrancy applied to blur";
-              type = float;
-              default = 0.1686;
-            };
-
-            vibrancy_darkness = mkOption {
-              description = "Vibrancy darkness applied to blur";
-              type = float;
-              default = 0.05;
-            };
-          }
-          // shadow;
+          valign = mkOption {
+            description = "Vertical alignment of the image";
+            type = str;
+            default = "center";
+          };
+        };
       });
       default = [
         {}
@@ -261,6 +335,12 @@ in {
               default = -1;
             };
 
+            check_color = mkOption {
+              description = "The outer color of the input field while checking password";
+              type = str;
+              default = "rgb(204, 136, 34)";
+            };
+
             fail_color = mkOption {
               description = "If authentication failed, changes outer color and fail message color";
               type = str;
@@ -302,6 +382,30 @@ in {
               description = "Vertical alignment of the label";
               type = str;
               default = "center";
+            };
+
+            capslock_color = mkOption {
+              description = "Color of the input field when Caps Lock is active";
+              type = str;
+              default = "-1";
+            };
+
+            numlock_color = mkOption {
+              description = "Color of the input field when NumLock is active";
+              type = str;
+              default = "-1";
+            };
+
+            bothlock_color = mkOption {
+              description = "Color of the input field when both Caps Lock and NumLock are active";
+              type = str;
+              default = "-1";
+            };
+
+            invert_numlock = mkOption {
+              description = "Whether to change the color when NumLock is not active";
+              type = bool;
+              default = false;
             };
           }
           // shadow;
@@ -389,6 +493,7 @@ in {
         grace = ${toString cfg.general.grace}
         hide_cursor = ${boolToString cfg.general.hide_cursor}
         no_fade_in = ${boolToString cfg.general.no_fade_in}
+        no_fade_out = ${boolToString cfg.general.no_fade_out}
       }
 
       ${builtins.concatStringsSep "\n" (map (background: ''
@@ -403,13 +508,25 @@ in {
             brightness = ${toString background.brightness}
             vibrancy = ${toString background.vibrancy}
             vibrancy_darkness = ${toString background.vibrancy_darkness}
-            shadow_passes = ${toString background.shadow_passes}
-            shadow_size = ${toString background.shadow_size}
-            shadow_color = ${background.shadow_color}
-            shadow_boost = ${toString background.shadow_boost}
           }
         '')
         cfg.backgrounds)}
+
+      ${builtins.concatStringsSep "\n" (map (image: ''
+          image {
+            monitor = ${image.monitor}
+            path = ${image.path}
+            size = ${toString image.size}
+            rounding = ${toString image.rounding}
+            border_size = ${toString image.border_size}
+            border_color = ${image.border_color}
+
+            position = ${toString image.position.x}, ${toString image.position.y}
+            halign = ${image.halign}
+            valign = ${image.valign}
+          }
+        '')
+        cfg.images)}
 
       ${builtins.concatStringsSep "\n" (map (input-field: ''
           input-field {
@@ -432,9 +549,14 @@ in {
             shadow_size = ${toString input-field.shadow_size}
             shadow_color = ${input-field.shadow_color}
             shadow_boost = ${toString input-field.shadow_boost}
+            check_color = ${input-field.check_color}
             fail_color = ${input-field.fail_color}
             fail_text = ${input-field.fail_text}
             fail_transition = ${toString input-field.fail_transition}
+            capslock_color = ${input-field.capslock_color}
+            numlock_color = ${input-field.numlock_color}
+            bothlock_color = ${input-field.bothlock_color}
+            invert_numlock = ${boolToString input-field.invert_numlock}
 
             position = ${toString input-field.position.x}, ${toString input-field.position.y}
             halign = ${input-field.halign}

@@ -32,16 +32,19 @@ class CHyprlock {
 
     void                            run();
 
+    void                            unlock();
+
     void                            onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     void                            onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
 
-    std::shared_ptr<CTimer>         addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data);
+    std::shared_ptr<CTimer>         addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
+                                             bool force = false);
 
     void                            onLockLocked();
     void                            onLockFinished();
 
-    void                            lockSession();
-    void                            unlockSession();
+    void                            acquireSessionLock();
+    void                            releaseSessionLock();
 
     void                            attemptRestoreOnDeath();
 
@@ -78,11 +81,16 @@ class CHyprlock {
 
     bool                            m_bLocked = false;
 
+    bool                            m_bCapsLock    = false;
+    bool                            m_bNumLock     = false;
+    bool                            m_bFadeStarted = false;
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
+    std::chrono::system_clock::time_point m_tFadeEnds;
     Vector2D                              m_vLastEnterCoords = {};
 
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
+    std::vector<std::shared_ptr<CTimer>>  getTimers();
 
     struct {
         void*                        linuxDmabuf         = nullptr;

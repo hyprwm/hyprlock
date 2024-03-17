@@ -46,6 +46,8 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
     m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});
+    m_config.addConfigValue("general:no_fade_out", Hyprlang::INT{0});
+
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
@@ -58,6 +60,18 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "brightness", Hyprlang::FLOAT{0.8172});
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
+
+    m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("image", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("image", "path", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("image", "size", Hyprlang::INT{150});
+    m_config.addSpecialConfigValue("image", "rounding", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("image", "border_size", Hyprlang::INT{4});
+    m_config.addSpecialConfigValue("image", "border_color", Hyprlang::INT{0xFFDDDDDD});
+    m_config.addSpecialConfigValue("image", "position", Hyprlang::VEC2{0, 200});
+    m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
+    SHADOWABLE("image");
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
@@ -78,9 +92,14 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "check_color", Hyprlang::INT{0xFFCC8822});
     m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
+    m_config.addSpecialConfigValue("input-field", "capslock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "numlock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "bothlock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "invert_numlock", Hyprlang::INT{0});
     SHADOWABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -144,6 +163,28 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         // clang-format on
     }
 
+    //
+    keys = m_config.listKeysForSpecialCategory("image");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            "image",
+            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("image", "monitor", k.c_str())),
+            {
+                {"path", m_config.getSpecialConfigValue("image", "path", k.c_str())},
+                {"size", m_config.getSpecialConfigValue("image", "size", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("image", "rounding", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("image", "border_size", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("image", "border_color", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("image", "position", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("image", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("image", "valign", k.c_str())},
+                SHADOWABLE("image"),
+            }
+        });
+        // clang-format on
+    }
+
     keys = m_config.listKeysForSpecialCategory("input-field");
     for (auto& k : keys) {
         // clang-format off
@@ -168,9 +209,15 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
                 {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
+                {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
                 {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},
+                {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
+                {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
+                {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
+                {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
                 SHADOWABLE("input-field"),
             }
         });

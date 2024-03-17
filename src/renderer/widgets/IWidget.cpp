@@ -1,6 +1,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../helpers/VarList.hpp"
+#include "../../core/hyprlock.hpp"
 #include <chrono>
 #include <unistd.h>
 
@@ -47,6 +48,29 @@ static void replaceAll(std::string& str, const std::string& from, const std::str
     }
 }
 
+static void replaceAllAttempts(std::string& str) {
+
+    const size_t      ATTEMPTS = g_pHyprlock->getPasswordFailedAttempts();
+    const std::string STR      = std::to_string(ATTEMPTS);
+    size_t            pos      = 0;
+
+    while ((pos = str.find("$ATTEMPTS", pos)) != std::string::npos) {
+        if (str.substr(pos, 10).ends_with('[') && str.substr(pos).contains(']')) {
+            const std::string REPL = str.substr(pos + 10, str.find_first_of(']', pos) - 10 - pos);
+            if (ATTEMPTS == 0) {
+                str.replace(pos, 11 + REPL.length(), REPL);
+                pos += REPL.length();
+            } else {
+                str.replace(pos, 11 + REPL.length(), STR);
+                pos += STR.length();
+            }
+        } else {
+            str.replace(pos, 9, STR);
+            pos += STR.length();
+        }
+    }
+}
+
 static std::string getTime() {
     const auto current_zone = std::chrono::current_zone();
     const auto HHMMSS       = std::chrono::hh_mm_ss{current_zone->to_local(std::chrono::system_clock::now()) -
@@ -72,6 +96,17 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
+    if (in.contains("$FAIL")) {
+        const auto FAIL = g_pHyprlock->passwordLastFailReason();
+        replaceAll(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$ATTEMPTS")) {
+        replaceAllAttempts(in);
+        result.allowForceUpdate = true;
+    }
+
     if (in.starts_with("cmd[") && in.contains("]")) {
         // this is a command
         CVarList vars(in.substr(4, in.find_first_of(']') - 4));
@@ -79,6 +114,11 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         for (const auto& v : vars) {
             if (v.starts_with("update:")) {
                 try {
+                    if (v.substr(7).contains(':')) {
+                        auto str                = v.substr(v.substr(7).find_first_of(':') + 8);
+                        result.allowForceUpdate = str == "true" || std::stoull(str) == 1;
+                    }
+
                     result.updateEveryMs = std::stoull(v.substr(7));
                 } catch (std::exception& e) { Debug::log(ERR, "Error parsing {} in cmd[]", v); }
             } else {

@@ -10,12 +10,11 @@
 std::mutex cvmtx;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
-    initThread = std::thread([this]() {
-        this->gather();
-        this->asyncLoopThread = std::thread([this]() { this->asyncAssetSpinLock(); });
-        this->asyncLoopThread.detach();
+    asyncLoopThread = std::thread([this]() {
+        this->gather(); /* inital gather */
+        this->asyncAssetSpinLock();
     });
-    initThread.detach();
+    asyncLoopThread.detach();
 
     // some things can't be done async :(
     // gather background textures when needed
@@ -113,13 +112,13 @@ void CAsyncResourceGatherer::gather() {
     // gather resources to preload
     // clang-format off
     int preloads = std::count_if(CWIDGETS.begin(), CWIDGETS.end(), [](const auto& w) {
-        return w.type == "background";
+        return w.type == "background" || w.type == "image";
     });
     // clang-format on
 
     progress = 0;
     for (auto& c : CWIDGETS) {
-        if (c.type == "background") {
+        if (c.type == "background" || c.type == "image") {
 #if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 180100
             progress = progress + 1.0 / (preloads + 1.0);
 #else
@@ -128,10 +127,10 @@ void CAsyncResourceGatherer::gather() {
 
             std::string path = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 
-            if (path.empty())
+            if (path.empty() || path == "screenshot")
                 continue;
 
-            std::string id           = std::string{"background:"} + path;
+            std::string id           = (c.type == "background" ? std::string{"background:"} : std::string{"image:"}) + path;
             const auto  ABSOLUTEPATH = absolutePath(path, "");
 
             // preload bg img

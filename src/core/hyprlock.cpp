@@ -16,6 +16,7 @@
 #include <xf86drm.h>
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 
 CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -303,7 +304,22 @@ static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Debug::log(LOG, "Unlocking with a SIGUSR1");
-        g_pHyprlock->unlockSession();
+        g_pHyprlock->releaseSessionLock();
+    }
+}
+
+static void forceUpdateTimers() {
+    for (auto& t : g_pHyprlock->getTimers()) {
+        if (t->canForceUpdate()) {
+            t->call(t);
+            t->cancel();
+        }
+    }
+}
+
+static void handleForceUpdateSignal(int sig) {
+    if (sig == SIGUSR2) {
+        forceUpdateTimers();
     }
 }
 
@@ -313,6 +329,15 @@ static void handlePollTerminate(int sig) {
 
 static void handleCriticalSignal(int sig) {
     g_pHyprlock->attemptRestoreOnDeath();
+
+    // remove our handlers
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGSEGV, &sa, NULL);
+
     abort();
 }
 
@@ -352,10 +377,11 @@ void CHyprlock::run() {
         }
     }
 
-    lockSession();
+    acquireSessionLock();
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
-    registerSignalAction(SIGUSR2, handlePollTerminate);
+    registerSignalAction(SIGUSR2, handleForceUpdateSignal);
+    registerSignalAction(SIGRTMIN, handlePollTerminate);
     registerSignalAction(SIGSEGV, handleCriticalSignal);
     registerSignalAction(SIGABRT, handleCriticalSignal);
 
@@ -371,7 +397,7 @@ void CHyprlock::run() {
             int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
 
             if (ret < 0) {
-                if (errno == EINTR) 
+                if (errno == EINTR)
                     continue;
 
                 Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
@@ -431,9 +457,10 @@ void CHyprlock::run() {
         if (m_sLoopState.event == false)
             m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
 
-        if (m_bTerminate)
+        if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
+            releaseSessionLock();
             break;
-
+        }
         std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
 
         m_sLoopState.event = false;
@@ -479,8 +506,10 @@ void CHyprlock::run() {
 
         passed.clear();
 
-        if (m_bTerminate)
+        if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
+            releaseSessionLock();
             break;
+        }
     }
 
     m_sLoopState.timerEvent = true;
@@ -493,13 +522,31 @@ void CHyprlock::run() {
 
     wl_display_disconnect(m_sWaylandState.display);
 
-    pthread_kill(pollThr.native_handle(), SIGUSR2);
+    pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
     timersThr.join();
 
     Debug::log(LOG, "Reached the end, exiting");
+}
+
+void CHyprlock::unlock() {
+    static auto* const PNOFADEOUT     = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
+    const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
+    const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+
+    if (**PNOFADEOUT || SZCURRENTD != "Hyprland") {
+        releaseSessionLock();
+        return;
+    }
+
+    m_tFadeEnds    = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
+    m_bFadeStarted = true;
+
+    for (auto& o : m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
 }
 
 // wl_seat
@@ -528,10 +575,10 @@ static void handlePointerAxis(void* data, wl_pointer* wl_pointer, uint32_t time,
 
 static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
     if (g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5 &&
-        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds) {
+        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds && !g_pHyprlock->m_bFadeStarted) {
 
         Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
-        g_pHyprlock->unlockSession();
+        g_pHyprlock->unlock();
     }
 }
 
@@ -586,7 +633,7 @@ static void handleKeyboardKeymap(void* data, wl_keyboard* wl_keyboard, uint form
         return;
     }
 
-    const char* buf = (const char*)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    const char* buf = (const char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (buf == MAP_FAILED) {
         Debug::log(ERR, "Failed to mmap xkb keymap: {}", errno);
         return;
@@ -679,13 +726,14 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 void CHyprlock::onPasswordCheckTimer() {
     // check result
     if (m_sPasswordState.result->success) {
-        unlockSession();
+        unlock();
     } else {
         Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
         m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
         m_sPasswordState.passBuffer     = "";
         m_sPasswordState.failedAttempts += 1;
         Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
+        forceUpdateTimers();
 
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
@@ -704,10 +752,11 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
+    if (m_bFadeStarted)
+        return;
 
-    if (down && std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds) {
-        unlockSession();
+    if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
+        unlock();
         return;
     }
 
@@ -724,9 +773,6 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     else
         std::erase(m_vPressedKeys, key);
 
-    if (!down) // we dont care about up events
-        return;
-
     if (m_sPasswordState.result) {
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
@@ -734,22 +780,36 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
-    if (SYM == XKB_KEY_BackSpace) {
-        if (m_sPasswordState.passBuffer.length() > 0)
-            m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
-    } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-        Debug::log(LOG, "Authenticating");
+    if (down) {
+        const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
 
-        m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
-    } else if (SYM == XKB_KEY_Escape) {
-        Debug::log(LOG, "Clearing password buffer");
+        m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
+        m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
 
-        m_sPasswordState.passBuffer = "";
-    } else {
-        char buf[16] = {0};
-        int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
-        if (len > 1)
-            m_sPasswordState.passBuffer += std::string{buf, len - 1};
+        if (SYM == XKB_KEY_BackSpace) {
+            if (m_sPasswordState.passBuffer.length() > 0) {
+                // handle utf-8
+                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+                    m_sPasswordState.passBuffer.pop_back();
+                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+            }
+        } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
+            Debug::log(LOG, "Authenticating");
+            m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+        } else if (SYM == XKB_KEY_Escape) {
+            Debug::log(LOG, "Clearing password buffer");
+
+            m_sPasswordState.passBuffer = "";
+        } else if (SYM == XKB_KEY_Caps_Lock) {
+            m_bCapsLock = !m_bCapsLock;
+        } else if (SYM == XKB_KEY_Num_Lock) {
+            m_bNumLock = !m_bNumLock;
+        } else {
+            char buf[16] = {0};
+            int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
+            if (len > 1)
+                m_sPasswordState.passBuffer += std::string{buf, len - 1};
+        }
     }
 
     for (auto& o : m_vOutputs) {
@@ -757,13 +817,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     }
 }
 
-void CHyprlock::lockSession() {
+void CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = ext_session_lock_manager_v1_lock(m_sWaylandState.sessionLock);
     ext_session_lock_v1_add_listener(m_sLockState.lock, &sessionLockListener, nullptr);
 }
 
-void CHyprlock::unlockSession() {
+void CHyprlock::releaseSessionLock() {
     Debug::log(LOG, "Unlocking session");
     if (m_bTerminate && !m_sLockState.lock) {
         Debug::log(ERR, "Unlock already happend?");
@@ -834,12 +894,17 @@ size_t CHyprlock::getPasswordFailedAttempts() {
     return m_sPasswordState.failedAttempts;
 }
 
-std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data) {
+std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
+                                            bool force) {
     std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
-    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data));
+    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data, force));
     m_sLoopState.timerEvent       = true;
     m_sLoopState.timerCV.notify_all();
     return T;
+}
+
+std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
+    return m_vTimers;
 }
 
 void CHyprlock::spawnAsync(const std::string& args) {

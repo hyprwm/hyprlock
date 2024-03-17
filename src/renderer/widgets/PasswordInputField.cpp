@@ -4,38 +4,53 @@
 #include <algorithm>
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
-    size                         = std::any_cast<Hyprlang::VEC2>(props.at("size"));
-    inner                        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
-    outer                        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
-    outThick                     = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
-    dots.size                    = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
-    dots.spacing                 = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
-    dots.center                  = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
-    dots.rounding                = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
-    fadeOnEmpty                  = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
-    fadeTimeoutMs                = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
-    font                         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
-    hiddenInputState.enabled     = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
-    rounding                     = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-    placeholder.failColor        = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
-    placeholder.failTransitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-    configFailText               = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-    viewport                     = viewport_;
+    size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
+    inner                    = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+    outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
+    dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
+    dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
+    dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
+    dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
+    fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
+    fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
+    font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
+    rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+    configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+    outerColor.transitionMs  = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
+    outerColor.main          = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+    outerColor.fail          = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
+    outerColor.check         = std::any_cast<Hyprlang::INT>(props.at("check_color"));
+    outerColor.both          = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
+    outerColor.caps          = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
+    outerColor.num           = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
+    outerColor.invertNum     = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
+    viewport                 = viewport_;
 
     auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     pos        = {POS__.x, POS__.y};
     configPos  = pos;
+    configSize = size;
 
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
-    pos                          = posFromHVAlign(viewport, size, pos, halign, valign);
-    dots.size                    = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing                 = std::clamp(dots.spacing, 0.f, 1.f);
-    placeholder.failTransitionMs = std::clamp(placeholder.failTransitionMs, 1, 5000);
+    pos                     = posFromHVAlign(viewport, size, pos, halign, valign);
+    dots.size               = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.spacing            = std::clamp(dots.spacing, 0.f, 1.f);
+    outerColor.transitionMs = std::clamp(outerColor.transitionMs, 0, 1000);
+
+    outerColor.both = outerColor.both == -1 ? outerColor.main : outerColor.both;
+    outerColor.caps = outerColor.caps == -1 ? outerColor.main : outerColor.caps;
+    outerColor.num  = outerColor.num == -1 ? outerColor.main : outerColor.num;
+
+    g_pHyprlock->m_bNumLock = outerColor.invertNum;
 
     std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
-    if (!placeholderText.empty()) {
+
+    // Render placeholder if either placeholder_text or fail_text are non-empty
+    // as placeholder must be rendered to show fail_text
+    if (!placeholderText.empty() || !configFailText.empty()) {
         placeholder.resourceID = "placeholder:" + std::to_string((uintptr_t)this);
         CAsyncResourceGatherer::SPreloadRequest request;
         request.id                   = placeholder.resourceID;
@@ -74,22 +89,20 @@ void CPasswordInputField::onFadeOutTimer() {
 }
 
 void CPasswordInputField::updateFade() {
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
-
     if (!fadeOnEmpty) {
         fade.a = 1.0;
         return;
     }
 
-    if (PASSLEN > 0 && fade.allowFadeOut)
+    if (passwordLength > 0 && fade.allowFadeOut)
         fade.allowFadeOut = false;
 
-    if (PASSLEN > 0 && fade.fadeOutTimer.get()) {
+    if (passwordLength > 0 && fade.fadeOutTimer.get()) {
         fade.fadeOutTimer->cancel();
         fade.fadeOutTimer.reset();
     }
 
-    if (PASSLEN == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
+    if (passwordLength == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
         if (fade.allowFadeOut || fadeTimeoutMs == 0) {
             fade.a            = 1.0;
             fade.animated     = true;
@@ -100,7 +113,7 @@ void CPasswordInputField::updateFade() {
             fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), fadeOutCallback, this);
     }
 
-    if (PASSLEN > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
+    if (passwordLength > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
         fade.a         = 0.0;
         fade.animated  = true;
         fade.appearing = true;
@@ -113,21 +126,19 @@ void CPasswordInputField::updateFade() {
         else
             fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
 
-        if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0)) {
+        if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0))
             fade.animated = false;
-            redrawShadow  = true;
-        }
+
+        redrawShadow = true;
     }
 }
 
 void CPasswordInputField::updateDots() {
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferDisplayLen();
-
-    if (PASSLEN == dots.currentAmount)
+    if (passwordLength == dots.currentAmount)
         return;
 
-    if (std::abs(PASSLEN - dots.currentAmount) > 1) {
-        dots.currentAmount = std::clamp(dots.currentAmount, PASSLEN - 1.f, PASSLEN + 1.f);
+    if (std::abs(passwordLength - dots.currentAmount) > 1) {
+        dots.currentAmount = std::clamp(dots.currentAmount, passwordLength - 1.f, passwordLength + 1.f);
         dots.lastFrame     = std::chrono::system_clock::now();
     }
 
@@ -135,14 +146,14 @@ void CPasswordInputField::updateDots() {
 
     const float TOADD = DELTA / 1000000.0 * dots.speedPerSecond;
 
-    if (PASSLEN > dots.currentAmount) {
+    if (passwordLength > dots.currentAmount) {
         dots.currentAmount += TOADD;
-        if (dots.currentAmount > PASSLEN)
-            dots.currentAmount = PASSLEN;
-    } else if (PASSLEN < dots.currentAmount) {
+        if (dots.currentAmount > passwordLength)
+            dots.currentAmount = passwordLength;
+    } else if (passwordLength < dots.currentAmount) {
         dots.currentAmount -= TOADD;
-        if (dots.currentAmount < PASSLEN)
-            dots.currentAmount = PASSLEN;
+        if (dots.currentAmount < passwordLength)
+            dots.currentAmount = passwordLength;
     }
 
     dots.lastFrame = std::chrono::system_clock::now();
@@ -160,71 +171,85 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
+    passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
+    checkWaiting   = g_pHyprlock->passwordCheckWaiting();
+
     updateFade();
     updateDots();
     updateFailTex();
     updateOuter();
     updateHiddenInputState();
 
-    static auto ORIGSIZEX = size.x;
-    static auto ORIGPOS   = pos;
+    static auto TIMER = std::chrono::system_clock::now();
 
-    if (placeholder.failAsset && placeholder.failAsset->texture.m_vSize.x > ORIGSIZEX) {
-        if (placeholder.failAsset->texture.m_vSize.x > size.x)
-            redrawShadow = true;
+    if (placeholder.failAsset) {
+        const auto TARGETSIZEX = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
 
-        size.x = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
+        if (size.x < TARGETSIZEX) {
+            const auto DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - TIMER).count(), 8000, 20000);
+            TIMER            = std::chrono::system_clock::now();
+            forceReload      = true;
+
+            size.x += std::clamp((TARGETSIZEX - size.x) * DELTA / 100000.0, 1.0, 1000.0);
+
+            if (size.x > TARGETSIZEX) {
+                size.x       = TARGETSIZEX;
+                redrawShadow = true;
+            }
+        }
+
+        pos = posFromHVAlign(viewport, size, configPos, halign, valign);
+    } else if (size.x != configSize.x) {
+        size.x = configSize.x;
         pos    = posFromHVAlign(viewport, size, configPos, halign, valign);
-    } else {
-        size.x = ORIGSIZEX;
-        pos    = ORIGPOS;
     }
 
     SRenderData shadowData = data;
     shadowData.opacity *= fade.a;
     shadow.draw(shadowData);
 
-    float  passAlpha = g_pHyprlock->passwordCheckWaiting() ? 0.5 : 1.0;
+    float  passAlpha = checkWaiting ? 0.5 : 1.0;
 
-    CColor outerCol = outer;
+    CColor outerCol = outerColor.main;
     outerCol.a *= fade.a * data.opacity;
     CColor innerCol = inner;
     innerCol.a *= fade.a * data.opacity;
     CColor fontCol = font;
     fontCol.a *= fade.a * data.opacity * passAlpha;
 
-    g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
+    if (outThick > 0) {
+        g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
 
-    const auto PASSLEN = g_pHyprlock->getPasswordBufferLen();
-
-    if (PASSLEN != 0 && hiddenInputState.enabled) {
-        CBox     outerBoxScaled = outerBox;
-        Vector2D p              = outerBox.pos();
-        outerBoxScaled.translate(-p).scale(0.5).translate(p);
-        if (hiddenInputState.lastQuadrant > 1)
-            outerBoxScaled.y += outerBoxScaled.h;
-        if (hiddenInputState.lastQuadrant % 2 == 1)
-            outerBoxScaled.x += outerBoxScaled.w;
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-        g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
-        glScissor(0, 0, viewport.x, viewport.y);
-        glDisable(GL_SCISSOR_TEST);
+        if (passwordLength != 0 && hiddenInputState.enabled && !fade.animated && data.opacity == 1.0) {
+            CBox     outerBoxScaled = outerBox;
+            Vector2D p              = outerBox.pos();
+            outerBoxScaled.translate(-p).scale(0.5).translate(p);
+            if (hiddenInputState.lastQuadrant > 1)
+                outerBoxScaled.y += outerBoxScaled.h;
+            if (hiddenInputState.lastQuadrant % 2 == 1)
+                outerBoxScaled.x += outerBoxScaled.w;
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
+            g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
+            glScissor(0, 0, viewport.x, viewport.y);
+            glDisable(GL_SCISSOR_TEST);
+        }
     }
 
     g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - outThick);
 
-    const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
-    const int   PASS_SPACING   = std::floor(PASS_SIZE * dots.spacing);
-    const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
-    const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
-    const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
-    const int   DOT_FLOORED    = std::floor(dots.currentAmount);
-    const float DOT_ALPHA      = fontCol.a;
-    // Calculate the total width required for all dots including spaces between them
-    const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
+    if (!hiddenInputState.enabled && !g_pHyprlock->m_bFadeStarted) {
+        const int   PASS_SIZE      = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
+        const int   PASS_SPACING   = std::floor(PASS_SIZE * dots.spacing);
+        const int   DOT_PAD        = (inputFieldBox.h - PASS_SIZE) / 2;
+        const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
+        const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (PASS_SIZE + PASS_SPACING)); // max amount of dots that can fit in the area
+        const int   DOT_FLOORED    = std::floor(dots.currentAmount);
+        const float DOT_ALPHA      = fontCol.a;
 
-    if (!hiddenInputState.enabled) {
+        // Calculate the total width required for all dots including spaces between them
+        const int TOTAL_DOTS_WIDTH = (PASS_SIZE + PASS_SPACING) * dots.currentAmount - PASS_SPACING;
+
         // Calculate starting x-position to ensure dots stay centered within the input field
         int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 + DOT_PAD : DOT_PAD;
 
@@ -255,7 +280,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (PASSLEN == 0 && !placeholder.resourceID.empty()) {
+    if (passwordLength == 0 && !placeholder.resourceID.empty()) {
         SPreloadedAsset* currAsset = nullptr;
 
         if (!placeholder.failID.empty()) {
@@ -279,16 +304,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != PASSLEN || fade.animated || outerAnimated || redrawShadow || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != passwordLength || fade.animated || outerColor.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
 void CPasswordInputField::updateFailTex() {
     const auto FAIL = g_pHyprlock->passwordLastFailReason();
 
-    if (g_pHyprlock->passwordCheckWaiting())
+    if (checkWaiting)
         placeholder.canGetNewFail = true;
 
-    if (g_pHyprlock->getPasswordBufferLen() != 0) {
+    if (passwordLength != 0 || (checkWaiting && passwordLength == 0)) {
         if (placeholder.failAsset) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.failAsset);
             placeholder.failAsset = nullptr;
@@ -312,7 +337,7 @@ void CPasswordInputField::updateFailTex() {
     request.asset                = placeholder.failText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = std::string{"Sans"};
-    request.props["color"]       = placeholder.failColor;
+    request.props["color"]       = outerColor.fail;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
@@ -320,11 +345,11 @@ void CPasswordInputField::updateFailTex() {
 }
 
 void CPasswordInputField::updateHiddenInputState() {
-    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == g_pHyprlock->getPasswordBufferDisplayLen())
+    if (!hiddenInputState.enabled || (size_t)hiddenInputState.lastPasswordLength == passwordLength)
         return;
 
     // randomize new thang
-    hiddenInputState.lastPasswordLength = g_pHyprlock->getPasswordBufferDisplayLen();
+    hiddenInputState.lastPasswordLength = passwordLength;
 
     srand(std::chrono::system_clock::now().time_since_epoch().count());
     float r1 = (rand() % 100) / 255.0;
@@ -350,62 +375,86 @@ void CPasswordInputField::updateOuter() {
     if (outThick == 0)
         return;
 
-    static auto OUTERCOL      = outer;
-    static auto TIMER         = std::chrono::system_clock::now();
-    bool        changeToOuter = placeholder.failID.empty();
+    static auto OUTER = outerColor.main, TARGET = OUTER, SOURCE = OUTER;
+    static auto TIMER = std::chrono::system_clock::now();
 
-    outerAnimated = false;
+    if (outerColor.animated) {
+        if (outerColor.stateNum != (outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
+            SOURCE = outerColor.main;
+    } else
+        SOURCE = outerColor.main;
 
-    if (changeToOuter) {
-        if (outer == OUTERCOL)
-            return;
+    outerColor.animated  = false;
+    outerColor.stateNum  = outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
+    outerColor.stateCaps = g_pHyprlock->m_bCapsLock;
 
-        if (outer == placeholder.failColor)
-            TIMER = std::chrono::system_clock::now();
-    } else if (!changeToOuter) {
-        if (fade.animated || fade.a < 1.0)
-            changeToOuter = true;
+    if (placeholder.failID.empty()) {
+        if (g_pHyprlock->m_bFadeStarted) {
+            if (TARGET == outerColor.check)
+                SOURCE = outerColor.main;
+            outerColor.transitionMs = 100;
+            TARGET                  = OUTER;
+        } else if (checkWaiting)
+            TARGET = outerColor.check;
+        else if (outerColor.both != OUTER && outerColor.stateCaps && outerColor.stateNum)
+            TARGET = outerColor.both;
+        else if (outerColor.caps != OUTER && outerColor.stateCaps)
+            TARGET = outerColor.caps;
+        else if (outerColor.num != OUTER && outerColor.stateNum)
+            TARGET = outerColor.num;
+        else
+            TARGET = OUTER;
+    } else {
+        SOURCE = outerColor.check;
+        TARGET = outerColor.fail;
 
-        if (outer == OUTERCOL)
-            TIMER = std::chrono::system_clock::now();
+        if (fade.animated || fade.a < 1.0) {
+            TARGET = OUTER;
+            SOURCE = outerColor.fail;
+        }
     }
 
-    const auto MULTI = std::clamp(
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TIMER).count() / (double)placeholder.failTransitionMs, 0.001, 0.5);
-    const auto DELTA  = changeToOuter ? OUTERCOL - placeholder.failColor : placeholder.failColor - OUTERCOL;
-    const auto TARGET = changeToOuter ? OUTERCOL : placeholder.failColor;
-    const auto SOURCE = changeToOuter ? placeholder.failColor : OUTERCOL;
+    if (outerColor.main == TARGET)
+        return;
 
-    if (outer.r != TARGET.r) {
-        outer.r += DELTA.r * MULTI;
-        outerAnimated = true;
+    if (outerColor.main == SOURCE && !fade.animated)
+        TIMER = std::chrono::system_clock::now();
 
-        if ((SOURCE.r < TARGET.r && outer.r > TARGET.r) || (SOURCE.r > TARGET.r && outer.r < TARGET.r))
-            outer.r = TARGET.r;
+    const auto MULTI = outerColor.transitionMs == 0 ?
+        1.0 :
+        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.02, 0.5);
+    const auto DELTA = TARGET - SOURCE;
+
+    if (outerColor.main.r != TARGET.r) {
+        outerColor.main.r += DELTA.r * MULTI;
+        outerColor.animated = true;
+
+        if ((SOURCE.r < TARGET.r && outerColor.main.r > TARGET.r) || (SOURCE.r > TARGET.r && outerColor.main.r < TARGET.r))
+            outerColor.main.r = TARGET.r;
     }
 
-    if (outer.g != TARGET.g) {
-        outer.g += DELTA.g * MULTI;
-        outerAnimated = true;
+    if (outerColor.main.g != TARGET.g) {
+        outerColor.main.g += DELTA.g * MULTI;
+        outerColor.animated = true;
 
-        if ((SOURCE.g < TARGET.g && outer.g > TARGET.g) || (SOURCE.g > TARGET.g && outer.g < TARGET.g))
-            outer.g = TARGET.g;
+        if ((SOURCE.g < TARGET.g && outerColor.main.g > TARGET.g) || (SOURCE.g > TARGET.g && outerColor.main.g < TARGET.g))
+            outerColor.main.g = TARGET.g;
     }
 
-    if (outer.b != TARGET.b) {
-        outer.b += DELTA.b * MULTI;
-        outerAnimated = true;
+    if (outerColor.main.b != TARGET.b) {
+        outerColor.main.b += DELTA.b * MULTI;
+        outerColor.animated = true;
 
-        if ((SOURCE.b < TARGET.b && outer.b > TARGET.b) || (SOURCE.b > TARGET.b && outer.b < TARGET.b))
-            outer.b = TARGET.b;
+        if ((SOURCE.b < TARGET.b && outerColor.main.b > TARGET.b) || (SOURCE.b > TARGET.b && outerColor.main.b < TARGET.b))
+            outerColor.main.b = TARGET.b;
     }
 
-    if (outer.a != TARGET.a) {
-        outer.a += DELTA.a * MULTI;
-        outerAnimated = true;
+    if (outerColor.main.a != TARGET.a) {
+        outerColor.main.a += DELTA.a * MULTI;
+        outerColor.animated = true;
 
-        if ((SOURCE.a < TARGET.a && outer.a > TARGET.a) || (SOURCE.a > TARGET.a && outer.a < TARGET.a))
-            outer.a = TARGET.a;
+        if ((SOURCE.a < TARGET.a && outerColor.main.a > TARGET.a) || (SOURCE.a > TARGET.a && outerColor.main.a < TARGET.a))
+            outerColor.main.a = TARGET.a;
     }
 
     TIMER = std::chrono::system_clock::now();
