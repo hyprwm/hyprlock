@@ -7,11 +7,13 @@ void help() {
                  "Options:\n"
                  "  -v, --verbose            - Enable verbose logging\n"
                  "  -q, --quiet              - Disable logging\n"
+                 "  -c FILE, --config FILE   - Specify config file to use\n"
                  "  --display (display)      - Specify the Wayland display to connect to\n"
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  -h, --help               - Show this help message\n";
 }
 int main(int argc, char** argv, char** envp) {
+    std::string configPath;
     std::string wlDisplay;
     bool immediate = false;
 
@@ -23,6 +25,9 @@ int main(int argc, char** argv, char** envp) {
 
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
+
+        else if (arg == "--config" || arg == "-c")
+            configPath = argv[++i];
 
         else if (arg == "--display" && i + 1 < argc) {
             wlDisplay = argv[i + 1];
@@ -37,7 +42,7 @@ int main(int argc, char** argv, char** envp) {
     }
 
     try {
-        g_pConfigManager = std::make_unique<CConfigManager>();
+        g_pConfigManager = std::make_unique<CConfigManager>(configPath);
         g_pConfigManager->init();
     } catch (const char* err) {
         Debug::log(CRIT, "ConfigManager threw: {}", err);
