@@ -41,9 +41,9 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
         auto auth = [&](std::string auth) -> bool {
             const pam_conv localConv = {conv, (void*)pass.c_str()};
             pam_handle_t*  handle    = NULL;
-            struct passwd *passwd = getpwuid(getuid());
+            auto uidPassword = getpwuid(getuid());
 
-            int            ret = pam_start(auth.c_str(), passwd->pw_name, &localConv, &handle);
+            int            ret = pam_start(auth.c_str(), uidPassword->pw_name, &localConv, &handle);
 
             if (ret != PAM_SUCCESS) {
                 result->success    = false;
