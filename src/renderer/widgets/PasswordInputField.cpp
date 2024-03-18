@@ -425,10 +425,11 @@ void CPasswordInputField::updateColors() {
         const bool ANIMONCHECK = checkWaiting && (TARGET == (BORDERLESS ? INNER : OUTER) || TARGET == col.fail);
 
         if (LOCKCHANGED || ANIMONCHECK) {
-            SOURCE = BORDERLESS ? col.inner : col.outer;
-            // to avoid an edge case when check_color set to the same as outer.
-            FSOURCE = ANIMONCHECK && OUTER == col.check ? FONT : col.font;
-            ISOURCE = ANIMONCHECK && OUTER == col.check ? INNER : col.inner;
+            const bool EQUALCOLORS = ANIMONCHECK && OUTER == col.check;
+            // to avoid throttle when check_color set to the same as outer.
+            SOURCE  = BORDERLESS ? (EQUALCOLORS ? INNER : col.inner) : col.outer;
+            FSOURCE = EQUALCOLORS ? FONT : col.font;
+            ISOURCE = EQUALCOLORS ? INNER : col.inner;
         }
     } else {
         SOURCE  = BORDERLESS ? col.inner : col.outer;
@@ -452,13 +453,13 @@ void CPasswordInputField::updateColors() {
 
             TARGET  = col.check;
             ITARGET = col.swapFont ? FONT : INNER;
-        } else if (col.both != OUTER && col.stateCaps && col.stateNum) {
+        } else if (col.stateCaps && col.stateNum && col.both != OUTER) {
             TARGET  = col.both;
             FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
-        } else if (col.caps != OUTER && col.stateCaps) {
+        } else if (col.stateCaps && col.caps != OUTER) {
             TARGET  = col.caps;
             FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
-        } else if (col.num != OUTER && col.stateNum) {
+        } else if (col.stateNum && col.num != OUTER) {
             TARGET  = col.num;
             FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
         } else {
