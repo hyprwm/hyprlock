@@ -374,10 +374,12 @@ void CPasswordInputField::updateHiddenInputState() {
     hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
 
-static void changeChannel(const float& source, const float& target, float& subject, const double& multi, bool& animated, const float& delta) {
+static void changeChannel(const float& source, const float& target, float& subject, const double& multi, bool& animated) {
+
+    const float DELTA = target - source;
 
     if (subject != target) {
-        subject += delta * multi;
+        subject += DELTA * multi;
         animated = true;
 
         if ((source < target && subject > target) || (source > target && subject < target))
@@ -387,12 +389,10 @@ static void changeChannel(const float& source, const float& target, float& subje
 
 static void changeColor(const CColor& source, const CColor& target, CColor& subject, const double& multi, bool& animated) {
 
-    const auto DELTA = target - source;
-
-    changeChannel(source.r, target.r, subject.r, multi, animated, DELTA.r);
-    changeChannel(source.g, target.g, subject.g, multi, animated, DELTA.g);
-    changeChannel(source.b, target.b, subject.b, multi, animated, DELTA.b);
-    changeChannel(source.a, target.a, subject.a, multi, animated, DELTA.a);
+    changeChannel(source.r, target.r, subject.r, multi, animated);
+    changeChannel(source.g, target.g, subject.g, multi, animated);
+    changeChannel(source.b, target.b, subject.b, multi, animated);
+    changeChannel(source.a, target.a, subject.a, multi, animated);
 }
 
 void CPasswordInputField::updateColors() {
