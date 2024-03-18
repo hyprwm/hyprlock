@@ -30,7 +30,7 @@ static std::string getMainConfigPath() {
     return getConfigDir() + "/hypr/hyprlock.conf";
 }
 
-CConfigManager::CConfigManager(std::string configPath) : m_config(configPath.empty() ? getMainConfigPath().c_str() : configPath.c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = true}) {
+CConfigManager::CConfigManager(std::string configPath) : m_config(configPath.empty() ? getMainConfigPath().c_str() : configPath.c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = configPath.empty()}) {
     configCurrentPath = configPath.empty() ? getMainConfigPath() : configPath;
 }
 
