@@ -9,7 +9,7 @@
 #include "Output.hpp"
 #include "CursorShape.hpp"
 #include "Timer.hpp"
-#include "Password.hpp"
+#include "Auth.hpp"
 
 #include <memory>
 #include <vector>
@@ -129,10 +129,8 @@ class CHyprlock {
     } m_sLockState;
 
     struct {
-        std::string                                     passBuffer = "";
-        std::shared_ptr<CPassword::SVerificationResult> result;
-        std::optional<std::string>                      lastFailReason;
-        size_t                                          failedAttempts = 0;
+        std::string passBuffer     = "";
+        size_t      failedAttempts = 0;
     } m_sPasswordState;
 
     struct {

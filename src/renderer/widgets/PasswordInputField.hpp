@@ -22,7 +22,7 @@ class CPasswordInputField : public IWidget {
   private:
     void        updateDots();
     void        updateFade();
-    void        updateFailTex();
+    void        updatePlaceholder();
     void        updateHiddenInputState();
     void        updateColors();
 
@@ -39,7 +39,7 @@ class CPasswordInputField : public IWidget {
     Vector2D    configPos;
     Vector2D    configSize;
 
-    std::string halign, valign, configFailText, outputStringPort;
+    std::string halign, valign, configFailText, outputStringPort, configPlaceholderText;
 
     int         outThick, rounding;
 
@@ -63,13 +63,17 @@ class CPasswordInputField : public IWidget {
     } fade;
 
     struct {
-        std::string      resourceID = "";
-        SPreloadedAsset* asset      = nullptr;
+        std::string              resourceID = "";
+        SPreloadedAsset*         asset      = nullptr;
 
-        std::string      failID        = "";
-        SPreloadedAsset* failAsset     = nullptr;
-        bool             canGetNewFail = true;
-        std::string      failText      = "";
+        std::string              currentText   = "";
+        bool                     canGetNewText = true;
+        bool                     isFailText    = false;
+
+        std::string              lastAuthFeedback;
+
+        std::vector<std::string> registeredResourceIDs;
+
     } placeholder;
 
     struct {

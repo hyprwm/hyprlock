@@ -119,9 +119,10 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
-    if (in.contains("$FAIL")) {
-        const auto FAIL = g_pHyprlock->passwordLastFailReason();
-        replaceAll(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+    if (in.contains("$FAIL") || in.contains("$PROMPT")) {
+        const auto AUTHFEEDBACKOPT = g_pAuth->getFeedback();
+        replaceAll(in, "$FAIL", (AUTHFEEDBACKOPT.has_value() && AUTHFEEDBACKOPT->isFail) ? AUTHFEEDBACKOPT->text : "");
+        replaceAll(in, "$PROMPT", (AUTHFEEDBACKOPT.has_value() && !AUTHFEEDBACKOPT->isFail) ? AUTHFEEDBACKOPT->text : "");
         result.allowForceUpdate = true;
     }
 

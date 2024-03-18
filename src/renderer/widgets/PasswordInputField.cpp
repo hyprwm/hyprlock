@@ -3,6 +3,16 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
+static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
+    if (from.empty())
+        return;
+    size_t pos = 0;
+    while ((pos = str.find(from, pos)) != std::string::npos) {
+        str.replace(pos, from.length(), to);
+        pos += to.length();
+    }
+}
+
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
     size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
@@ -15,6 +25,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
     rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+    configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
     col.transitionMs         = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
     col.outer                = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
@@ -48,30 +59,22 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
 
     g_pHyprlock->m_bNumLock = col.invertNum;
 
-    std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
-
     // Render placeholder if either placeholder_text or fail_text are non-empty
     // as placeholder must be rendered to show fail_text
-    if (!placeholderText.empty() || !configFailText.empty()) {
-        placeholder.resourceID = "placeholder:" + std::to_string((uintptr_t)this);
+    if (!configPlaceholderText.empty() || !configFailText.empty()) {
+        placeholder.currentText = configPlaceholderText;
+
+        replaceAll(placeholder.currentText, "$PROMPT", "");
+
+        placeholder.resourceID = "placeholder:" + placeholder.currentText + std::to_string((uintptr_t)this);
         CAsyncResourceGatherer::SPreloadRequest request;
         request.id                   = placeholder.resourceID;
-        request.asset                = placeholderText;
+        request.asset                = placeholder.currentText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = std::string{"Sans"};
         request.props["color"]       = CColor{1.0 - col.font.r, 1.0 - col.font.g, 1.0 - col.font.b, 0.5};
         request.props["font_size"]   = (int)size.y / 4;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-    }
-}
-
-static void replaceAllFail(std::string& str, const std::string& from, const std::string& to) {
-    if (from.empty())
-        return;
-    size_t pos = 0;
-    while ((pos = str.find(from, pos)) != std::string::npos) {
-        str.replace(pos, from.length(), to);
-        pos += to.length();
     }
 }
 
@@ -176,18 +179,18 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     failedAttempts = g_pHyprlock->getPasswordFailedAttempts();
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
-    checkWaiting   = g_pHyprlock->passwordCheckWaiting();
+    checkWaiting   = g_pAuth->checkWaiting();
 
     updateFade();
     updateDots();
-    updateFailTex();
+    updatePlaceholder();
     updateColors();
     updateHiddenInputState();
 
     static auto TIMER = std::chrono::system_clock::now();
 
-    if (placeholder.failAsset) {
-        const auto TARGETSIZEX = placeholder.failAsset->texture.m_vSize.x + inputFieldBox.h;
+    if (placeholder.asset) {
+        const auto TARGETSIZEX = placeholder.asset->texture.m_vSize.x + inputFieldBox.h;
 
         if (size.x < TARGETSIZEX) {
             const auto DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - TIMER).count(), 8000, 20000);
@@ -285,17 +288,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     if (passwordLength == 0 && !placeholder.resourceID.empty()) {
         SPreloadedAsset* currAsset = nullptr;
 
-        if (!placeholder.failID.empty()) {
-            if (!placeholder.failAsset)
-                placeholder.failAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(placeholder.failID);
+        if (!placeholder.asset)
+            placeholder.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(placeholder.resourceID);
 
-            currAsset = placeholder.failAsset;
-        } else {
-            if (!placeholder.asset)
-                placeholder.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(placeholder.resourceID);
-
-            currAsset = placeholder.asset;
-        }
+        currAsset = placeholder.asset;
 
         if (currAsset) {
             Vector2D pos = outerBox.pos() + outerBox.size() / 2.f;
@@ -309,41 +305,55 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     return dots.currentAmount != passwordLength || fade.animated || col.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
-void CPasswordInputField::updateFailTex() {
-    const auto FAIL = g_pHyprlock->passwordLastFailReason();
-
-    if (checkWaiting)
-        placeholder.canGetNewFail = true;
-
+void CPasswordInputField::updatePlaceholder() {
     if (passwordLength != 0 || (checkWaiting && passwordLength == 0)) {
-        if (placeholder.failAsset) {
-            g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.failAsset);
-            placeholder.failAsset = nullptr;
-            placeholder.failID    = "";
-            redrawShadow          = true;
+        if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ placeholder.isFailText) {
+            std::erase(placeholder.registeredResourceIDs, placeholder.resourceID);
+            g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.asset);
+            placeholder.asset      = nullptr;
+            placeholder.resourceID = "";
+            redrawShadow           = true;
         }
         return;
     }
 
-    if (!FAIL.has_value() || !placeholder.canGetNewFail)
+    const auto AUTHFEEDBACKOPT = g_pAuth->getFeedback();
+    if (!AUTHFEEDBACKOPT.has_value())
         return;
 
-    placeholder.failText = configFailText;
-    replaceAllFail(placeholder.failText, "$FAIL", FAIL.value());
-    replaceAllFail(placeholder.failText, "$ATTEMPTS", std::to_string(failedAttempts));
+    const auto AUTHFEEDBACK = AUTHFEEDBACKOPT.value();
+    if (AUTHFEEDBACK.text.empty() || placeholder.lastAuthFeedback == AUTHFEEDBACK.text)
+        return;
+
+    placeholder.isFailText       = AUTHFEEDBACK.isFail;
+    placeholder.lastAuthFeedback = AUTHFEEDBACK.text;
+
+    placeholder.asset = nullptr;
+
+    if (placeholder.isFailText) {
+        placeholder.currentText = configFailText;
+        replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK.text);
+        replaceAll(placeholder.currentText, "$ATTEMPTS", std::to_string(g_pHyprlock->getPasswordFailedAttempts()));
+    } else {
+        placeholder.currentText = configPlaceholderText;
+        replaceAll(placeholder.currentText, "$PROMPT", AUTHFEEDBACK.text);
+    }
+
+    placeholder.resourceID = "placeholder:" + placeholder.currentText + std::to_string((uintptr_t)this);
+    if (std::find(placeholder.registeredResourceIDs.begin(), placeholder.registeredResourceIDs.end(), placeholder.resourceID) != placeholder.registeredResourceIDs.end())
+        return;
+
+    placeholder.registeredResourceIDs.push_back(placeholder.resourceID);
 
     // query
     CAsyncResourceGatherer::SPreloadRequest request;
-    request.id                   = "input-error:" + std::to_string((uintptr_t)this) + ",time:" + std::to_string(time(nullptr));
-    placeholder.failID           = request.id;
-    request.asset                = placeholder.failText;
+    request.id                   = placeholder.resourceID;
+    request.asset                = placeholder.currentText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = std::string{"Sans"};
-    request.props["color"]       = col.fail;
+    request.props["color"]       = (placeholder.isFailText) ? col.fail : col.font;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-
-    placeholder.canGetNewFail = false;
 }
 
 void CPasswordInputField::updateHiddenInputState() {
@@ -423,7 +433,7 @@ void CPasswordInputField::updateColors() {
     col.stateNum  = col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
     col.stateCaps = g_pHyprlock->m_bCapsLock;
 
-    if (placeholder.failID.empty()) {
+    if (!placeholder.isFailText) {
         if (g_pHyprlock->m_bFadeStarted) {
             if (TARGET == col.check)
                 SOURCE = BORDERLESS ? col.inner : col.outer;
