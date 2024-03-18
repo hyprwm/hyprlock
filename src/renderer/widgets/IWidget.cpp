@@ -4,6 +4,7 @@
 #include "../../core/hyprlock.hpp"
 #include <chrono>
 #include <unistd.h>
+#include <pwd.h>
 
 #if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 190100
 #pragma comment(lib, "date-tz")
@@ -82,7 +83,8 @@ static std::string getTime() {
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
-    char* username = getlogin();
+    struct passwd *passwd = getpwuid(getuid());
+    char* username = passwd->pw_name;;
 
     if (!username)
         Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
