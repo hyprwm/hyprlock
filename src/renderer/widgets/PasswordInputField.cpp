@@ -172,6 +172,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
+    if (passwordLength == 0 && g_pHyprlock->getPasswordFailedAttempts() > failedAttempts)
+        forceReload = true;
+
+    failedAttempts = g_pHyprlock->getPasswordFailedAttempts();
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
     checkWaiting   = g_pHyprlock->passwordCheckWaiting();
 
@@ -303,12 +307,6 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    // TODO: find out why failAsset not shown on empty input
-    if (passwordLength == 0 && g_pHyprlock->getPasswordFailedAttempts() > failedAttempts)
-        forceReload = true;
-
-    failedAttempts = g_pHyprlock->getPasswordFailedAttempts();
-
     return dots.currentAmount != passwordLength || fade.animated || col.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
@@ -424,7 +422,7 @@ void CPasswordInputField::updateColors() {
         // some cases when events happen too quick (within transitionMs)
         // TODO: find more?
         const bool LOCKCHANGED = col.stateNum != (col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || col.stateCaps != g_pHyprlock->m_bCapsLock;
-        const bool ANIMONCHECK = checkWaiting && TARGET == (BORDERLESS ? INNER : OUTER);
+        const bool ANIMONCHECK = checkWaiting && (TARGET == (BORDERLESS ? INNER : OUTER) || TARGET == col.fail);
 
         if (LOCKCHANGED || ANIMONCHECK) {
             SOURCE = BORDERLESS ? col.inner : col.outer;
