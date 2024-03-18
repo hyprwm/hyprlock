@@ -463,8 +463,8 @@ void CPasswordInputField::updateColors() {
             FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
         } else {
             // if quickly pressed after failure
-            if (BORDERLESS && col.animated && TARGET == col.fail)
-                SOURCE = col.inner;
+            if (col.animated && TARGET == col.fail)
+                SOURCE = BORDERLESS ? col.inner : col.outer;
 
             TARGET  = BORDERLESS ? INNER : OUTER;
             FTARGET = FONT;
