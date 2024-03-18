@@ -321,7 +321,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
 
                 widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, surf->output, resourceID, c.values, PATH == "screenshot"));
             } else if (c.type == "input-field") {
-                widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values));
+                widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values, surf->output->stringPort));
             } else if (c.type == "label") {
                 widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, surf->output->stringPort));
             } else if (c.type == "image") {

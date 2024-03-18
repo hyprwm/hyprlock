@@ -754,6 +754,17 @@ std::optional<std::string> CHyprlock::passwordLastFailReason() {
     return m_sPasswordState.lastFailReason;
 }
 
+void CHyprlock::renderOutput(const std::string& stringPort) {
+    const auto MON = std::find_if(m_vOutputs.begin(), m_vOutputs.end(), [stringPort](const auto& other) { return other->stringPort == stringPort; });
+
+    if (MON == m_vOutputs.end() || !MON->get())
+        return;
+
+    const auto PMONITOR = MON->get();
+
+    PMONITOR->sessionLockSurface->render();
+}
+
 void CHyprlock::onKey(uint32_t key, bool down) {
     if (m_bFadeStarted)
         return;

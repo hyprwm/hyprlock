@@ -56,6 +56,8 @@ class CHyprlock {
     bool                            passwordCheckWaiting();
     std::optional<std::string>      passwordLastFailReason();
 
+    void                            renderOutput(const std::string& stringPort);
+
     size_t                          getPasswordBufferLen();
     size_t                          getPasswordBufferDisplayLen();
     size_t                          getPasswordFailedAttempts();
