@@ -374,41 +374,25 @@ void CPasswordInputField::updateHiddenInputState() {
     hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
 
+static void changeChannel(const float& source, const float& target, float& subject, const double& multi, bool& animated, const float& delta) {
+
+    if (subject != target) {
+        subject += delta * multi;
+        animated = true;
+
+        if ((source < target && subject > target) || (source > target && subject < target))
+            subject = target;
+    }
+}
+
 static void changeColor(const CColor& source, const CColor& target, CColor& subject, const double& multi, bool& animated) {
 
     const auto DELTA = target - source;
 
-    if (subject.r != target.r) {
-        subject.r += DELTA.r * multi;
-        animated = true;
-
-        if ((source.r < target.r && subject.r > target.r) || (source.r > target.r && subject.r < target.r))
-            subject.r = target.r;
-    }
-
-    if (subject.g != target.g) {
-        subject.g += DELTA.g * multi;
-        animated = true;
-
-        if ((source.g < target.g && subject.g > target.g) || (source.g > target.g && subject.g < target.g))
-            subject.g = target.g;
-    }
-
-    if (subject.b != target.b) {
-        subject.b += DELTA.b * multi;
-        animated = true;
-
-        if ((source.b < target.b && subject.b > target.b) || (source.b > target.b && subject.b < target.b))
-            subject.b = target.b;
-    }
-
-    if (subject.a != target.a) {
-        subject.a += DELTA.a * multi;
-        animated = true;
-
-        if ((source.a < target.a && subject.a > target.a) || (source.a > target.a && subject.a < target.a))
-            subject.a = target.a;
-    }
+    changeChannel(source.r, target.r, subject.r, multi, animated, DELTA.r);
+    changeChannel(source.g, target.g, subject.g, multi, animated, DELTA.g);
+    changeChannel(source.b, target.b, subject.b, multi, animated, DELTA.b);
+    changeChannel(source.a, target.a, subject.a, multi, animated, DELTA.a);
 }
 
 void CPasswordInputField::updateColors() {
