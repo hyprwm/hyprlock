@@ -10,7 +10,7 @@
 
 class CConfigManager {
   public:
-    CConfigManager();
+    CConfigManager(std::string configPath);
     void         init();
     void* const* getValuePtr(const std::string& name);
 
