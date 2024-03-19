@@ -3,7 +3,8 @@
 #include "../../core/hyprlock.hpp"
 #include <algorithm>
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
+CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
+    outputStringPort(output), shadow(this, props, viewport_) {
     size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
     outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
@@ -78,15 +79,13 @@ static void fadeOutCallback(std::shared_ptr<CTimer> self, void* data) {
     CPasswordInputField* p = (CPasswordInputField*)data;
 
     p->onFadeOutTimer();
-
-    for (auto& o : g_pHyprlock->m_vOutputs) {
-        o->sessionLockSurface->render();
-    }
 }
 
 void CPasswordInputField::onFadeOutTimer() {
     fade.allowFadeOut = true;
     fade.fadeOutTimer.reset();
+
+    g_pHyprlock->renderOutput(outputStringPort);
 }
 
 void CPasswordInputField::updateFade() {

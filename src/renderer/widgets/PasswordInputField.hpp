@@ -14,7 +14,7 @@ struct SPreloadedAsset;
 
 class CPasswordInputField : public IWidget {
   public:
-    CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props);
+    CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
 
     virtual bool draw(const SRenderData& data);
     void         onFadeOutTimer();
@@ -39,7 +39,7 @@ class CPasswordInputField : public IWidget {
     Vector2D    configPos;
     Vector2D    configSize;
 
-    std::string halign, valign, configFailText;
+    std::string halign, valign, configFailText, outputStringPort;
 
     int         outThick, rounding;
 
