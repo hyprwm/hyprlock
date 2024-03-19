@@ -31,7 +31,6 @@ class CPasswordInputField : public IWidget {
     bool        checkWaiting = false;
 
     size_t      passwordLength = 0;
-    size_t      failedAttempts = 0;
 
     Vector2D    size;
     Vector2D    pos;
@@ -66,9 +65,10 @@ class CPasswordInputField : public IWidget {
         std::string              resourceID = "";
         SPreloadedAsset*         asset      = nullptr;
 
-        std::string              currentText   = "";
-        bool                     canGetNewText = true;
-        bool                     isFailText    = false;
+        std::string              currentText    = "";
+        size_t                   failedAttempts = 0;
+        bool                     canGetNewText  = true;
+        bool                     isFailText     = false;
 
         std::string              lastAuthFeedback;
 

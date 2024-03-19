@@ -174,10 +174,6 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
-    if (passwordLength == 0 && g_pHyprlock->getPasswordFailedAttempts() > failedAttempts)
-        forceReload = true;
-
-    failedAttempts = g_pHyprlock->getPasswordFailedAttempts();
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
     checkWaiting   = g_pAuth->checkWaiting();
 
@@ -322,9 +318,10 @@ void CPasswordInputField::updatePlaceholder() {
         return;
 
     const auto AUTHFEEDBACK = AUTHFEEDBACKOPT.value();
-    if (AUTHFEEDBACK.text.empty() || placeholder.lastAuthFeedback == AUTHFEEDBACK.text)
+    if (AUTHFEEDBACK.text.empty() || (placeholder.lastAuthFeedback == AUTHFEEDBACK.text && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts))
         return;
 
+    placeholder.failedAttempts   = g_pHyprlock->getPasswordFailedAttempts();
     placeholder.isFailText       = AUTHFEEDBACK.isFail;
     placeholder.lastAuthFeedback = AUTHFEEDBACK.text;
 
@@ -333,7 +330,7 @@ void CPasswordInputField::updatePlaceholder() {
     if (placeholder.isFailText) {
         placeholder.currentText = configFailText;
         replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK.text);
-        replaceAll(placeholder.currentText, "$ATTEMPTS", std::to_string(g_pHyprlock->getPasswordFailedAttempts()));
+        replaceAll(placeholder.currentText, "$ATTEMPTS", std::to_string(placeholder.failedAttempts));
     } else {
         placeholder.currentText = configPlaceholderText;
         replaceAll(placeholder.currentText, "$PROMPT", AUTHFEEDBACK.text);
@@ -433,7 +430,7 @@ void CPasswordInputField::updateColors() {
     col.stateNum  = col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
     col.stateCaps = g_pHyprlock->m_bCapsLock;
 
-    if (!placeholder.isFailText) {
+    if (!placeholder.isFailText || passwordLength > 0 || (passwordLength == 0 && checkWaiting)) {
         if (g_pHyprlock->m_bFadeStarted) {
             if (TARGET == col.check)
                 SOURCE = BORDERLESS ? col.inner : col.outer;
