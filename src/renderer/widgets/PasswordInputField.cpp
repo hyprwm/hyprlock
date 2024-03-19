@@ -5,7 +5,6 @@
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
     size                     = std::any_cast<Hyprlang::VEC2>(props.at("size"));
-    inner                    = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
     outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
     dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
@@ -13,18 +12,20 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
-    font                     = std::any_cast<Hyprlang::INT>(props.at("font_color"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
     rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-    outerColor.transitionMs  = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-    outerColor.main          = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
-    outerColor.fail          = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
-    outerColor.check         = std::any_cast<Hyprlang::INT>(props.at("check_color"));
-    outerColor.both          = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
-    outerColor.caps          = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
-    outerColor.num           = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
-    outerColor.invertNum     = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
+    col.transitionMs         = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
+    col.outer                = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+    col.inner                = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+    col.font                 = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    col.fail                 = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
+    col.check                = std::any_cast<Hyprlang::INT>(props.at("check_color"));
+    col.both                 = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
+    col.caps                 = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
+    col.num                  = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
+    col.invertNum            = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
+    col.swapFont             = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
     viewport                 = viewport_;
 
     auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
@@ -35,16 +36,16 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
-    pos                     = posFromHVAlign(viewport, size, pos, halign, valign);
-    dots.size               = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing            = std::clamp(dots.spacing, 0.f, 1.f);
-    outerColor.transitionMs = std::clamp(outerColor.transitionMs, 0, 1000);
+    pos              = posFromHVAlign(viewport, size, pos, halign, valign);
+    dots.size        = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.spacing     = std::clamp(dots.spacing, 0.f, 1.f);
+    col.transitionMs = std::clamp(col.transitionMs, 0, 1000);
 
-    outerColor.both = outerColor.both == -1 ? outerColor.main : outerColor.both;
-    outerColor.caps = outerColor.caps == -1 ? outerColor.main : outerColor.caps;
-    outerColor.num  = outerColor.num == -1 ? outerColor.main : outerColor.num;
+    col.both = col.both == -1 ? col.outer : col.both;
+    col.caps = col.caps == -1 ? col.outer : col.caps;
+    col.num  = col.num == -1 ? col.outer : col.num;
 
-    g_pHyprlock->m_bNumLock = outerColor.invertNum;
+    g_pHyprlock->m_bNumLock = col.invertNum;
 
     std::string placeholderText = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
 
@@ -57,7 +58,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.asset                = placeholderText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = std::string{"Sans"};
-        request.props["color"]       = CColor{1.0 - font.r, 1.0 - font.g, 1.0 - font.b, 0.5};
+        request.props["color"]       = CColor{1.0 - col.font.r, 1.0 - col.font.g, 1.0 - col.font.b, 0.5};
         request.props["font_size"]   = (int)size.y / 4;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
@@ -171,13 +172,17 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
+    if (passwordLength == 0 && g_pHyprlock->getPasswordFailedAttempts() > failedAttempts)
+        forceReload = true;
+
+    failedAttempts = g_pHyprlock->getPasswordFailedAttempts();
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
     checkWaiting   = g_pHyprlock->passwordCheckWaiting();
 
     updateFade();
     updateDots();
     updateFailTex();
-    updateOuter();
+    updateColors();
     updateHiddenInputState();
 
     static auto TIMER = std::chrono::system_clock::now();
@@ -208,14 +213,12 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     shadowData.opacity *= fade.a;
     shadow.draw(shadowData);
 
-    float  passAlpha = checkWaiting ? 0.5 : 1.0;
-
-    CColor outerCol = outerColor.main;
+    CColor outerCol = col.outer;
     outerCol.a *= fade.a * data.opacity;
-    CColor innerCol = inner;
+    CColor innerCol = col.inner;
     innerCol.a *= fade.a * data.opacity;
-    CColor fontCol = font;
-    fontCol.a *= fade.a * data.opacity * passAlpha;
+    CColor fontCol = col.font;
+    fontCol.a *= fade.a * data.opacity;
 
     if (outThick > 0) {
         g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
@@ -304,7 +307,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != passwordLength || fade.animated || outerColor.animated || redrawShadow || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != passwordLength || fade.animated || col.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
 void CPasswordInputField::updateFailTex() {
@@ -328,7 +331,7 @@ void CPasswordInputField::updateFailTex() {
 
     placeholder.failText = configFailText;
     replaceAllFail(placeholder.failText, "$FAIL", FAIL.value());
-    replaceAllFail(placeholder.failText, "$ATTEMPTS", std::to_string(g_pHyprlock->getPasswordFailedAttempts()));
+    replaceAllFail(placeholder.failText, "$ATTEMPTS", std::to_string(failedAttempts));
 
     // query
     CAsyncResourceGatherer::SPreloadRequest request;
@@ -337,7 +340,7 @@ void CPasswordInputField::updateFailTex() {
     request.asset                = placeholder.failText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = std::string{"Sans"};
-    request.props["color"]       = outerColor.fail;
+    request.props["color"]       = col.fail;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
@@ -371,91 +374,126 @@ void CPasswordInputField::updateHiddenInputState() {
     hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
 
-void CPasswordInputField::updateOuter() {
-    if (outThick == 0)
-        return;
+static void changeChannel(const float& source, const float& target, float& subject, const double& multi, bool& animated) {
 
-    static auto OUTER = outerColor.main, TARGET = OUTER, SOURCE = OUTER;
-    static auto TIMER = std::chrono::system_clock::now();
+    const float DELTA = target - source;
 
-    if (outerColor.animated) {
-        if (outerColor.stateNum != (outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || outerColor.stateCaps != g_pHyprlock->m_bCapsLock)
-            SOURCE = outerColor.main;
-    } else
-        SOURCE = outerColor.main;
+    if (subject != target) {
+        subject += DELTA * multi;
+        animated = true;
 
-    outerColor.animated  = false;
-    outerColor.stateNum  = outerColor.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
-    outerColor.stateCaps = g_pHyprlock->m_bCapsLock;
+        if ((source < target && subject > target) || (source > target && subject < target))
+            subject = target;
+    }
+}
+
+static void changeColor(const CColor& source, const CColor& target, CColor& subject, const double& multi, bool& animated) {
+
+    changeChannel(source.r, target.r, subject.r, multi, animated);
+    changeChannel(source.g, target.g, subject.g, multi, animated);
+    changeChannel(source.b, target.b, subject.b, multi, animated);
+    changeChannel(source.a, target.a, subject.a, multi, animated);
+}
+
+void CPasswordInputField::updateColors() {
+    static auto OUTER = col.outer, TARGET = OUTER, SOURCE = OUTER;
+    static auto INNER = col.inner, ITARGET = INNER, ISOURCE = INNER;
+    static auto FONT = col.font, FTARGET = FONT, FSOURCE = FONT;
+
+    const bool  BORDERLESS = outThick == 0;
+
+    if (col.animated) {
+        // some cases when events happen too quick (within transitionMs)
+        // TODO: find more?
+        const bool LOCKCHANGED = col.stateNum != (col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || col.stateCaps != g_pHyprlock->m_bCapsLock;
+        const bool ANIMONCHECK = checkWaiting && (TARGET == (BORDERLESS ? INNER : OUTER) || TARGET == col.fail);
+
+        if (LOCKCHANGED || ANIMONCHECK) {
+            const bool EQUALCOLORS = ANIMONCHECK && OUTER == col.check;
+            // to avoid throttle when check_color set to the same as outer.
+            SOURCE  = BORDERLESS ? (EQUALCOLORS ? INNER : col.inner) : col.outer;
+            FSOURCE = EQUALCOLORS ? FONT : col.font;
+            ISOURCE = EQUALCOLORS ? INNER : col.inner;
+        }
+    } else {
+        SOURCE  = BORDERLESS ? col.inner : col.outer;
+        FSOURCE = col.font;
+        ISOURCE = col.inner;
+    }
+
+    col.stateNum  = col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
+    col.stateCaps = g_pHyprlock->m_bCapsLock;
 
     if (placeholder.failID.empty()) {
         if (g_pHyprlock->m_bFadeStarted) {
-            if (TARGET == outerColor.check)
-                SOURCE = outerColor.main;
-            outerColor.transitionMs = 100;
-            TARGET                  = OUTER;
-        } else if (checkWaiting)
-            TARGET = outerColor.check;
-        else if (outerColor.both != OUTER && outerColor.stateCaps && outerColor.stateNum)
-            TARGET = outerColor.both;
-        else if (outerColor.caps != OUTER && outerColor.stateCaps)
-            TARGET = outerColor.caps;
-        else if (outerColor.num != OUTER && outerColor.stateNum)
-            TARGET = outerColor.num;
-        else
-            TARGET = OUTER;
+            if (TARGET == col.check)
+                SOURCE = BORDERLESS ? col.inner : col.outer;
+            col.transitionMs = 100;
+            TARGET           = BORDERLESS ? INNER : OUTER;
+        } else if (checkWaiting) {
+            FTARGET               = col.swapFont ? INNER : FONT;
+            const float PASSALPHA = FTARGET.a * 0.5;
+            FTARGET.a             = PASSALPHA;
+
+            TARGET  = col.check;
+            ITARGET = col.swapFont ? FONT : INNER;
+        } else if (col.stateCaps && col.stateNum && col.both != OUTER) {
+            TARGET  = col.both;
+            FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
+        } else if (col.stateCaps && col.caps != OUTER) {
+            TARGET  = col.caps;
+            FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
+        } else if (col.stateNum && col.num != OUTER) {
+            TARGET  = col.num;
+            FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
+        } else {
+            // if quickly pressed after failure
+            if (col.animated && TARGET == col.fail)
+                SOURCE = BORDERLESS ? col.inner : col.outer;
+
+            TARGET  = BORDERLESS ? INNER : OUTER;
+            FTARGET = FONT;
+            ITARGET = INNER;
+        }
     } else {
-        SOURCE = outerColor.check;
-        TARGET = outerColor.fail;
+        FSOURCE               = col.swapFont ? INNER : FONT;
+        const float PASSALPHA = FSOURCE.a * 0.5;
+        FSOURCE.a             = PASSALPHA;
+        FTARGET               = FONT;
+
+        SOURCE  = col.check;
+        TARGET  = col.fail;
+        ISOURCE = FONT;
+        ITARGET = FONT;
 
         if (fade.animated || fade.a < 1.0) {
-            TARGET = OUTER;
-            SOURCE = outerColor.fail;
+            TARGET = BORDERLESS ? INNER : OUTER;
+            SOURCE = col.fail;
         }
     }
 
-    if (outerColor.main == TARGET)
+    col.animated = false;
+
+    const bool SWAPDONE = !BORDERLESS && col.swapFont ? col.inner == ITARGET : true;
+
+    if ((BORDERLESS ? col.inner : col.outer) == TARGET && col.font == FTARGET && SWAPDONE) {
+        col.shouldStart = true;
         return;
+    }
 
-    if (outerColor.main == SOURCE && !fade.animated)
-        TIMER = std::chrono::system_clock::now();
+    if (col.shouldStart) {
+        col.lastFrame   = std::chrono::system_clock::now();
+        col.shouldStart = false;
+    }
 
-    const auto MULTI = outerColor.transitionMs == 0 ?
+    const auto MULTI = col.transitionMs == 0 ?
         1.0 :
-        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - TIMER).count() / (double)outerColor.transitionMs, 0.02, 0.5);
-    const auto DELTA = TARGET - SOURCE;
+        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - col.lastFrame).count() / (double)col.transitionMs, 0.016, 0.5);
 
-    if (outerColor.main.r != TARGET.r) {
-        outerColor.main.r += DELTA.r * MULTI;
-        outerColor.animated = true;
+    changeColor(SOURCE, TARGET, (BORDERLESS ? col.inner : col.outer), MULTI, col.animated);
+    changeColor(FSOURCE, FTARGET, col.font, MULTI, col.animated);
+    if (col.swapFont && !BORDERLESS)
+        changeColor(ISOURCE, ITARGET, col.inner, MULTI, col.animated);
 
-        if ((SOURCE.r < TARGET.r && outerColor.main.r > TARGET.r) || (SOURCE.r > TARGET.r && outerColor.main.r < TARGET.r))
-            outerColor.main.r = TARGET.r;
-    }
-
-    if (outerColor.main.g != TARGET.g) {
-        outerColor.main.g += DELTA.g * MULTI;
-        outerColor.animated = true;
-
-        if ((SOURCE.g < TARGET.g && outerColor.main.g > TARGET.g) || (SOURCE.g > TARGET.g && outerColor.main.g < TARGET.g))
-            outerColor.main.g = TARGET.g;
-    }
-
-    if (outerColor.main.b != TARGET.b) {
-        outerColor.main.b += DELTA.b * MULTI;
-        outerColor.animated = true;
-
-        if ((SOURCE.b < TARGET.b && outerColor.main.b > TARGET.b) || (SOURCE.b > TARGET.b && outerColor.main.b < TARGET.b))
-            outerColor.main.b = TARGET.b;
-    }
-
-    if (outerColor.main.a != TARGET.a) {
-        outerColor.main.a += DELTA.a * MULTI;
-        outerColor.animated = true;
-
-        if ((SOURCE.a < TARGET.a && outerColor.main.a > TARGET.a) || (SOURCE.a > TARGET.a && outerColor.main.a < TARGET.a))
-            outerColor.main.a = TARGET.a;
-    }
-
-    TIMER = std::chrono::system_clock::now();
+    col.lastFrame = std::chrono::system_clock::now();
 }

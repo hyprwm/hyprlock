@@ -407,6 +407,12 @@ in {
               type = bool;
               default = false;
             };
+
+            swap_font_color = mkOption {
+              description = "Whether to swap font color with inner color on some events";
+              type = bool;
+              default = false;
+            };
           }
           // shadow;
       });
@@ -557,6 +563,7 @@ in {
             numlock_color = ${input-field.numlock_color}
             bothlock_color = ${input-field.bothlock_color}
             invert_numlock = ${boolToString input-field.invert_numlock}
+            swap_font_color = ${boolToString input-field.swap_font_color}
 
             position = ${toString input-field.position.x}, ${toString input-field.position.y}
             halign = ${input-field.halign}
