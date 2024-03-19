@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 
 #include <unistd.h>
+#include <pwd.h>
 #include <security/pam_appl.h>
 #if __has_include(<security/pam_misc.h>)
 #include <security/pam_misc.h>
@@ -38,10 +39,11 @@ std::shared_ptr<CPassword::SVerificationResult> CPassword::verify(const std::str
 
     std::thread([this, result, pass]() {
         auto auth = [&](std::string auth) -> bool {
-            const pam_conv localConv = {conv, (void*)pass.c_str()};
-            pam_handle_t*  handle    = NULL;
+            const pam_conv localConv   = {conv, (void*)pass.c_str()};
+            pam_handle_t*  handle      = NULL;
+            auto           uidPassword = getpwuid(getuid());
 
-            int            ret = pam_start(auth.c_str(), getlogin(), &localConv, &handle);
+            int            ret = pam_start(auth.c_str(), uidPassword->pw_name, &localConv, &handle);
 
             if (ret != PAM_SUCCESS) {
                 result->success    = false;
