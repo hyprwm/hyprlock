@@ -83,8 +83,8 @@ static std::string getTime() {
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
-    auto uidPassword = getpwuid(getuid());
-    char* username = uidPassword->pw_name;
+    auto  uidPassword = getpwuid(getuid());
+    char* username    = uidPassword->pw_name;
 
     if (!username)
         Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
