@@ -1,4 +1,8 @@
 .vscode/
 build/
+result/
 protocols/*.h
 protocols/*.c
+.clangd
+.cache/
+.clang-format
