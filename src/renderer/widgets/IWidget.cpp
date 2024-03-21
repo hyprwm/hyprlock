@@ -83,7 +83,7 @@ static void replaceAllLayout(std::string& str) {
         if (str.substr(pos, 8).ends_with('[') && str.substr(pos).contains(']')) {
             const std::string REPL = str.substr(pos + 8, str.find_first_of(']', pos) - 8 - pos);
             const CVarList    LANGS(REPL);
-            const std::string LANG = LANGS[LAYOUTIDX].empty() ? STR : LANGS[LAYOUTIDX];
+            const std::string LANG = LANGS[LAYOUTIDX].empty() ? STR : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
             str.replace(pos, 9 + REPL.length(), LANG);
             pos += LANG.length();
         } else {
