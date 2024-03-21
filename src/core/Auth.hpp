@@ -5,7 +5,6 @@
 #include <string>
 #include <mutex>
 #include <condition_variable>
-#include <thread>
 
 class CAuth {
   public:
@@ -18,9 +17,8 @@ class CAuth {
         std::mutex              inputMutex;
         std::condition_variable inputSubmittedCondition;
 
-        bool                    waitingForPamAuth = false;
-        bool                    inputSubmitted    = false;
-        bool                    success           = false;
+        bool                    inputSubmitted = false;
+        bool                    success        = false;
     };
 
     struct SFeedback {

@@ -75,7 +75,7 @@ bool CAuth::auth(std::string pam_module) {
 
     ret = pam_authenticate(handle, 0);
 
-    m_sConversationState.waitingForPamAuth = false;
+    m_sConversationState.inputSubmitted = false;
 
     if (ret != PAM_SUCCESS) {
         m_sConversationState.success    = false;
@@ -105,9 +105,8 @@ void CAuth::waitForInput() {
 
 void CAuth::submitInput(const std::string& input) {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
-    m_sConversationState.input             = input;
-    m_sConversationState.inputSubmitted    = true;
-    m_sConversationState.waitingForPamAuth = true;
+    m_sConversationState.input          = input;
+    m_sConversationState.inputSubmitted = true;
     m_sConversationState.inputSubmittedCondition.notify_all();
 }
 
@@ -127,7 +126,7 @@ void CAuth::setPrompt(const char* prompt) {
 }
 
 bool CAuth::checkWaiting() {
-    return m_sConversationState.waitingForPamAuth;
+    return m_sConversationState.inputSubmitted;
 }
 
 void CAuth::terminate() {
@@ -135,11 +134,10 @@ void CAuth::terminate() {
 }
 
 void CAuth::resetConversation() {
-    m_sConversationState.input             = "";
-    m_sConversationState.prompt            = "";
-    m_sConversationState.lastPrompt        = "";
-    m_sConversationState.failReason        = "";
-    m_sConversationState.inputSubmitted    = false;
-    m_sConversationState.waitingForPamAuth = false;
-    m_sConversationState.success           = false;
+    m_sConversationState.input          = "";
+    m_sConversationState.prompt         = "";
+    m_sConversationState.lastPrompt     = "";
+    m_sConversationState.failReason     = "";
+    m_sConversationState.inputSubmitted = false;
+    m_sConversationState.success        = false;
 }
