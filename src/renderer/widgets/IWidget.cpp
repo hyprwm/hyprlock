@@ -72,6 +72,27 @@ static void replaceAllAttempts(std::string& str) {
     }
 }
 
+static void replaceAllLayout(std::string& str) {
+
+    const auto        LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
+    const auto        LAYOUTNAME = xkb_keymap_layout_get_name(g_pHyprlock->m_pXKBKeymap, LAYOUTIDX);
+    const std::string STR        = LAYOUTNAME ? LAYOUTNAME : "error";
+    size_t            pos        = 0;
+
+    while ((pos = str.find("$LAYOUT", pos)) != std::string::npos) {
+        if (str.substr(pos, 8).ends_with('[') && str.substr(pos).contains(']')) {
+            const std::string REPL = str.substr(pos + 8, str.find_first_of(']', pos) - 8 - pos);
+            const CVarList    LANGS(REPL);
+            const std::string LANG = LANGS[LAYOUTIDX].empty() ? STR : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
+            str.replace(pos, 9 + REPL.length(), LANG);
+            pos += LANG.length();
+        } else {
+            str.replace(pos, 7, STR);
+            pos += STR.length();
+        }
+    }
+}
+
 static std::string getTime() {
     const auto current_zone = std::chrono::current_zone();
     const auto HHMMSS       = std::chrono::hh_mm_ss{current_zone->to_local(std::chrono::system_clock::now()) -
@@ -106,6 +127,11 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     if (in.contains("$ATTEMPTS")) {
         replaceAllAttempts(in);
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$LAYOUT")) {
+        replaceAllLayout(in);
         result.allowForceUpdate = true;
     }
 

@@ -79,6 +79,8 @@ class CHyprlock {
     xkb_keymap*                     m_pXKBKeymap  = nullptr;
     xkb_state*                      m_pXKBState   = nullptr;
 
+    xkb_layout_index_t              m_uiActiveLayout = 0;
+
     bool                            m_bTerminate = false;
 
     bool                            m_bLocked = false;
