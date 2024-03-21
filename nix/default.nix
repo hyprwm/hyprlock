@@ -18,7 +18,13 @@
 stdenv.mkDerivation {
   pname = "hyprlock";
   inherit version;
+
   src = ../.;
+
+  patches = [
+    # remove PAM file install check
+    ./cmake.patch
+  ];
 
   nativeBuildInputs = [
     cmake
