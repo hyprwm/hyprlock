@@ -675,6 +675,11 @@ static void handleKeyboardModifiers(void* data, wl_keyboard* wl_keyboard, uint s
     if (!g_pHyprlock->m_pXKBState)
         return;
 
+    if (group != g_pHyprlock->m_uiActiveLayout) {
+        g_pHyprlock->m_uiActiveLayout = group;
+        forceUpdateTimers();
+    }
+
     xkb_state_update_mask(g_pHyprlock->m_pXKBState, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
 
