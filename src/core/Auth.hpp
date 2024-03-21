@@ -44,7 +44,6 @@ class CAuth {
 
   private:
     SPamConversationState m_sConversationState;
-    std::thread           m_authThread;
 
     void                  resetConversation();
 };

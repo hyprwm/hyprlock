@@ -735,6 +735,10 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 // end session_lock
 
+static void restartAuthTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pAuth->start();
+}
+
 void CHyprlock::onPasswordCheckTimer() {
     // check result
     if (g_pAuth->didAuthSucceed()) {
@@ -749,6 +753,8 @@ void CHyprlock::onPasswordCheckTimer() {
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
         }
+
+        g_pHyprlock->addTimer(/* controls error message duration */ std::chrono::seconds(1), restartAuthTimerCallback, nullptr);
     }
 }
 

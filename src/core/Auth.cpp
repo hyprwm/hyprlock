@@ -50,20 +50,14 @@ static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data)
 }
 
 void CAuth::start() {
-    m_authThread = std::thread([this]() {
+    std::thread([this]() {
         static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:pam_module"));
-        while (!g_pHyprlock->m_bTerminate) {
-            bool success = auth(*PPAMMODULE);
-            g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
-            if (success)
-                break;
 
-            std::this_thread::sleep_for(std::chrono::seconds(1)); // TODO: Make sure that the callback succeeded
-            resetConversation();
-        }
-    });
+        resetConversation();
+        auth(*PPAMMODULE);
 
-    m_authThread.detach();
+        g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
+    }).detach();
 }
 
 bool CAuth::auth(std::string pam_module) {
