@@ -62,8 +62,9 @@ class CPasswordInputField : public IWidget {
     } fade;
 
     struct {
-        std::string              resourceID = "";
-        SPreloadedAsset*         asset      = nullptr;
+        std::string              resourceID    = "";
+        SPreloadedAsset*         asset         = nullptr;
+        SPreloadedAsset*         previousAsset = nullptr;
 
         std::string              currentText    = "";
         size_t                   failedAttempts = 0;
