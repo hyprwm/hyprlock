@@ -28,6 +28,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 if (VERIFICATIONSTATE->prompt != VERIFICATIONSTATE->lastPrompt)
                     g_pAuth->waitForInput();
 
+                // Needed for unlocks via SIGUSR1
                 if (g_pHyprlock->m_bTerminate)
                     return PAM_CONV_ERR;
 
@@ -38,8 +39,6 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
             case PAM_TEXT_INFO: Debug::log(LOG, "PAM: {}", msg[i]->msg); break;
         }
     }
-
-    VERIFICATIONSTATE->waitingForPamAuth = true;
 
     *resp = pam_reply;
     return PAM_SUCCESS;
@@ -105,17 +104,18 @@ void CAuth::waitForInput() {
 }
 
 void CAuth::submitInput(const std::string& input) {
-    std::unique_lock<std::mutex> lock(m_sConversationState.inputMutex);
-    m_sConversationState.input          = input;
-    m_sConversationState.inputSubmitted = true;
+    std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
+    m_sConversationState.input             = input;
+    m_sConversationState.inputSubmitted    = true;
+    m_sConversationState.waitingForPamAuth = true;
     m_sConversationState.inputSubmittedCondition.notify_all();
 }
 
 std::optional<CAuth::SFeedback> CAuth::getFeedback() {
-    if (!m_sConversationState.inputSubmitted) {
-        return SFeedback{m_sConversationState.prompt, false};
-    } else if (!m_sConversationState.failReason.empty()) {
+    if (!m_sConversationState.failReason.empty()) {
         return SFeedback{m_sConversationState.failReason, true};
+    } else if (!m_sConversationState.inputSubmitted) {
+        return SFeedback{m_sConversationState.prompt, false};
     }
 
     return std::nullopt;
