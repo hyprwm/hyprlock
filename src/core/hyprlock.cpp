@@ -829,7 +829,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
             }
         } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
             Debug::log(LOG, "Authenticating");
-            g_pAuth->submitInput(m_sPasswordState.passBuffer);
+            g_pAuth->submitInput(m_sPasswordState.passBuffer.c_str());
         } else if (SYM == XKB_KEY_Escape) {
             Debug::log(LOG, "Clearing password buffer");
 

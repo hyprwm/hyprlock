@@ -99,14 +99,29 @@ bool CAuth::didAuthSucceed() {
 
 void CAuth::waitForInput() {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
+    m_sConversationState.inputRequested = true;
     m_sConversationState.inputSubmitted = false;
     m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return m_sConversationState.inputSubmitted || g_pHyprlock->m_bTerminate; });
 }
 
-void CAuth::submitInput(const std::string& input) {
+
+static void submitInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+    const auto INPUT = (const char*)data;
+    g_pAuth->submitInput(INPUT);
+}
+
+void CAuth::submitInput(const char* input) {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
+
+    m_sConversationState.inputSubmitted = true; // Blocks further input
+
+    if (!m_sConversationState.inputRequested) {
+        g_pHyprlock->addTimer(std::chrono::milliseconds(1), submitInputTimerCallback, (void*)input);
+        return;
+    }
+
     m_sConversationState.input          = input;
-    m_sConversationState.inputSubmitted = true;
+    m_sConversationState.inputRequested = false;
     m_sConversationState.inputSubmittedCondition.notify_all();
 }
 
@@ -139,5 +154,6 @@ void CAuth::resetConversation() {
     m_sConversationState.lastPrompt     = "";
     m_sConversationState.failReason     = "";
     m_sConversationState.inputSubmitted = false;
+    m_sConversationState.inputRequested = false;
     m_sConversationState.success        = false;
 }

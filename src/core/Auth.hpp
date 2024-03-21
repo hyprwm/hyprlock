@@ -18,6 +18,7 @@ class CAuth {
         std::condition_variable inputSubmittedCondition;
 
         bool                    inputSubmitted = false;
+        bool                    inputRequested = false;
         bool                    success        = false;
     };
 
@@ -31,7 +32,7 @@ class CAuth {
     bool                     didAuthSucceed();
 
     void                     waitForInput();
-    void                     submitInput(const std::string& input);
+    void                     submitInput(const char* input);
 
     void                     setPrompt(const char* prompt);
     std::optional<SFeedback> getFeedback();
