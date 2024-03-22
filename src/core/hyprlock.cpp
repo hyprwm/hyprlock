@@ -758,6 +758,13 @@ void CHyprlock::onPasswordCheckTimer() {
     }
 }
 
+void CHyprlock::clearPasswordBuffer() {
+    m_sPasswordState.passBuffer = "";
+    for (auto& o : m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
+}
+
 void CHyprlock::renderOutput(const std::string& stringPort) {
     const auto MON = std::find_if(m_vOutputs.begin(), m_vOutputs.end(), [stringPort](const auto& other) { return other->stringPort == stringPort; });
 
@@ -829,7 +836,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
             }
         } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
             Debug::log(LOG, "Authenticating");
-            g_pAuth->submitInput(m_sPasswordState.passBuffer.c_str());
+            g_pAuth->submitInput(m_sPasswordState.passBuffer);
         } else if (SYM == XKB_KEY_Escape) {
             Debug::log(LOG, "Clearing password buffer");
 

@@ -19,7 +19,11 @@ class CAuth {
 
         bool                    inputSubmitted = false;
         bool                    inputRequested = false;
-        bool                    success        = false;
+
+        bool                    blockInput     = false;
+        std::string             unhandledInput = "";
+
+        bool                    success = false;
     };
 
     struct SFeedback {
@@ -32,7 +36,7 @@ class CAuth {
     bool                     didAuthSucceed();
 
     void                     waitForInput();
-    void                     submitInput(const char* input);
+    void                     submitInput(std::optional<std::string> input);
 
     void                     setPrompt(const char* prompt);
     std::optional<SFeedback> getFeedback();

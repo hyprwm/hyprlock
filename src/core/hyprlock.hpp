@@ -53,6 +53,7 @@ class CHyprlock {
 
     void                            onKey(uint32_t key, bool down);
     void                            onPasswordCheckTimer();
+    void                            clearPasswordBuffer();
     bool                            passwordCheckWaiting();
     std::optional<std::string>      passwordLastFailReason();
 
