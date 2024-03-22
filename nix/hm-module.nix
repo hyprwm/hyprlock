@@ -228,9 +228,7 @@ in {
           };
         };
       });
-      default = [
-        {}
-      ];
+      default = [];
     };
 
     input-fields = mkOption {
@@ -484,9 +482,7 @@ in {
           }
           // shadow;
       });
-      default = [
-        {}
-      ];
+      default = [];
     };
   };
 
