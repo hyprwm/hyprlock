@@ -30,7 +30,8 @@ static std::string getMainConfigPath() {
     return getConfigDir() + "/hypr/hyprlock.conf";
 }
 
-CConfigManager::CConfigManager(std::string configPath) : m_config(configPath.empty() ? getMainConfigPath().c_str() : configPath.c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = configPath.empty()}) {
+CConfigManager::CConfigManager(std::string configPath) :
+    m_config(configPath.empty() ? getMainConfigPath().c_str() : configPath.c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = configPath.empty()}) {
     configCurrentPath = configPath.empty() ? getMainConfigPath() : configPath;
 }
 
@@ -47,7 +48,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
     m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});
     m_config.addConfigValue("general:no_fade_out", Hyprlang::INT{0});
-
+    m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
