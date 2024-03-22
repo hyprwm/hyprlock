@@ -46,9 +46,9 @@ static void handleName(void* data, wl_output* output, const char* name) {
 }
 
 static void handleDescription(void* data, wl_output* output, const char* description) {
-    const auto POUTPUT   = (COutput*)data;
-    POUTPUT->description = description ? std::string{description} : "";
-    Debug::log(LOG, "output {} description {}", POUTPUT->name, POUTPUT->description);
+    const auto POUTPUT  = (COutput*)data;
+    POUTPUT->stringDesc = description ? std::string{description} : "";
+    Debug::log(LOG, "output {} description {}", POUTPUT->name, POUTPUT->stringDesc);
 }
 
 static const wl_output_listener outputListener = {
