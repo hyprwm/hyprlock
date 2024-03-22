@@ -306,7 +306,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
         const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
         for (auto& c : CWIDGETS) {
-            if (!c.monitor.empty() && c.monitor != surf->output->stringPort)
+            if (!c.monitor.empty() && c.monitor != surf->output->stringPort && surf->output->description.find(c.monitor) != 0)
                 continue;
 
             // by type
