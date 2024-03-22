@@ -289,11 +289,6 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         currAsset = placeholder.asset;
 
-        if (!currAsset) {
-            currAsset   = placeholder.previousAsset;
-            forceReload = true;
-        }
-
         if (currAsset) {
             Vector2D pos = outerBox.pos() + outerBox.size() / 2.f;
             pos          = pos - currAsset->texture.m_vSize / 2.f;
@@ -330,8 +325,7 @@ void CPasswordInputField::updatePlaceholder() {
     placeholder.isFailText       = AUTHFEEDBACK.isFail;
     placeholder.lastAuthFeedback = AUTHFEEDBACK.text;
 
-    placeholder.previousAsset = placeholder.asset;
-    placeholder.asset         = nullptr;
+    placeholder.asset = nullptr;
 
     if (placeholder.isFailText) {
         placeholder.currentText = configFailText;
