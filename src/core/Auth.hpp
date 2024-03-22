@@ -31,6 +31,8 @@ class CAuth {
         bool        isFail = false;
     };
 
+    CAuth();
+
     void                     start();
     bool                     auth(std::string pam_module);
     bool                     didAuthSucceed();
@@ -48,7 +50,9 @@ class CAuth {
   private:
     SPamConversationState m_sConversationState;
 
+    std::string           m_sPamModule;
+
     void                  resetConversation();
 };
 
-inline std::unique_ptr<CAuth> g_pAuth = std::make_unique<CAuth>();
+inline std::unique_ptr<CAuth> g_pAuth;

@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 #include "src/config/ConfigManager.hpp"
 
+#include <filesystem>
 #include <unistd.h>
 #include <pwd.h>
 #include <security/pam_appl.h>
@@ -44,16 +45,24 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
     return PAM_SUCCESS;
 }
 
+CAuth::CAuth() {
+    static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:pam_module"));
+    m_sPamModule                  = *PPAMMODULE;
+
+    if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
+        Debug::log(ERR, "Pam module \"{}\" not found! Falling back to \"su\"", m_sPamModule);
+        m_sPamModule = "su";
+    }
+}
+
 static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->onPasswordCheckTimer();
 }
 
 void CAuth::start() {
     std::thread([this]() {
-        static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:pam_module"));
-
         resetConversation();
-        auth(*PPAMMODULE);
+        auth(m_sPamModule);
 
         g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
     }).detach();

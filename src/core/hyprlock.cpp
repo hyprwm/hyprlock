@@ -379,6 +379,9 @@ void CHyprlock::run() {
 
     acquireSessionLock();
 
+    g_pAuth = std::make_unique<CAuth>();
+    g_pAuth->start();
+
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
@@ -451,8 +454,6 @@ void CHyprlock::run() {
     });
 
     m_sLoopState.event = true; // let it process once
-
-    g_pAuth->start();
 
     while (1) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
@@ -759,6 +760,9 @@ void CHyprlock::onPasswordCheckTimer() {
 }
 
 void CHyprlock::clearPasswordBuffer() {
+    if (m_sPasswordState.passBuffer.empty())
+        return;
+
     m_sPasswordState.passBuffer = "";
     for (auto& o : m_vOutputs) {
         o->sessionLockSurface->render();
