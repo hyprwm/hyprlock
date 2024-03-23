@@ -814,6 +814,14 @@ void CHyprlock::onKey(uint32_t key, bool down) {
             }
         } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
             Debug::log(LOG, "Authenticating");
+
+            static auto* const PIGNOREEMPTY = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:ignore_empty_input");
+
+            if (m_sPasswordState.passBuffer.empty() && **PIGNOREEMPTY) {
+                Debug::log(LOG, "Ignoring empty input");
+                return;
+            }
+
             m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
         } else if (SYM == XKB_KEY_Escape) {
             Debug::log(LOG, "Clearing password buffer");
