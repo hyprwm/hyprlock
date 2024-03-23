@@ -42,7 +42,8 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
     }
 
     for (auto& mon : mons) {
-        const auto MON = std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(), [mon](const auto& other) { return other->stringPort == mon; });
+        const auto MON = std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(),
+                                      [mon](const auto& other) { return other->stringPort == mon || other->stringDesc.starts_with(mon); });
 
         if (MON == g_pHyprlock->m_vOutputs.end())
             continue;
@@ -65,7 +66,7 @@ void CAsyncResourceGatherer::recheckDMAFramesFor(COutput* output) {
         if (std::string{std::any_cast<Hyprlang::STRING>(c.values.at("path"))} != "screenshot")
             continue;
 
-        if (c.monitor.empty() || c.monitor == output->stringPort) {
+        if (c.monitor.empty() || c.monitor == output->stringPort || output->stringDesc.starts_with(c.monitor)) {
             shouldMake = true;
             break;
         }

@@ -16,6 +16,7 @@ class COutput {
     int                                  scale      = 1;
     std::string                          stringName = "";
     std::string                          stringPort = "";
+    std::string                          stringDesc = "";
 
     std::unique_ptr<CSessionLockSurface> sessionLockSurface;
 
