@@ -21,10 +21,11 @@ class CConfigManager {
         std::unordered_map<std::string, std::any> values;
     };
 
-    std::vector<SWidgetConfig> getWidgetConfigs();
-    std::optional<std::string> handleSource(const std::string&, const std::string&);
+    std::vector<SWidgetConfig>                   getWidgetConfigs();
+    std::optional<std::string>                   handleSource(const std::string&, const std::string&);
 
-    std::string                configCurrentPath;
+    std::string                                  configCurrentPath;
+    std::unordered_map<std::string, std::string> hyprpaperMonToPath;
 
   private:
     Hyprlang::CConfig m_config;

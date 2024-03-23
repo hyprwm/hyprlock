@@ -13,6 +13,8 @@
 
 #include "Shaders.hpp"
 
+#include "../helpers/Hyprpaper.hpp"
+
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
 #include "widgets/Label.hpp"
@@ -316,6 +318,8 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 std::string       resourceID = "";
                 if (PATH == "screenshot")
                     resourceID = "dma:" + surf->output->stringPort;
+                else if (PATH == "hyprpaper")
+                    resourceID = hyprpaperGetResourceId(g_pConfigManager->hyprpaperMonToPath, surf->output->stringPort, surf->output->stringDesc);
                 else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 

@@ -50,6 +50,7 @@ class CAsyncResourceGatherer {
     void notify();
     void await();
     void recheckDMAFramesFor(COutput* output);
+    void preloadImage(const std::string& path, const std::string& id);
 
   private:
     std::thread asyncLoopThread;

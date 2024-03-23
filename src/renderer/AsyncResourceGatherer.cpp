@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "../core/hyprlock.hpp"
 #include "../helpers/MiscFunctions.hpp"
+#include "../helpers/Hyprpaper.hpp"
 
 std::mutex cvmtx;
 
@@ -105,6 +106,28 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     return nullptr;
 }
 
+void CAsyncResourceGatherer::preloadImage(const std::string& path, const std::string& id) {
+
+    const auto ABSOLUTEPATH = absolutePath(path, "");
+
+    // preload bg img
+    const auto CAIROISURFACE = cairo_image_surface_create_from_png(ABSOLUTEPATH.c_str());
+
+    const auto CAIRO = cairo_create(CAIROISURFACE);
+    cairo_scale(CAIRO, 1, 1);
+
+    const auto TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
+
+    TARGET->size = {cairo_image_surface_get_width(CAIROISURFACE), cairo_image_surface_get_height(CAIROISURFACE)};
+    TARGET->type = TARGET_IMAGE;
+    TARGET->id   = id;
+
+    const auto DATA      = cairo_image_surface_get_data(CAIROISURFACE);
+    TARGET->cairo        = CAIRO;
+    TARGET->cairosurface = CAIROISURFACE;
+    TARGET->data         = DATA;
+}
+
 void CAsyncResourceGatherer::gather() {
     const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
@@ -131,25 +154,22 @@ void CAsyncResourceGatherer::gather() {
             if (path.empty() || path == "screenshot")
                 continue;
 
-            std::string id           = (c.type == "background" ? std::string{"background:"} : std::string{"image:"}) + path;
-            const auto  ABSOLUTEPATH = absolutePath(path, "");
+            std::string id = (c.type == "background" ? std::string{"background:"} : std::string{"image:"}) + path;
 
-            // preload bg img
-            const auto CAIROISURFACE = cairo_image_surface_create_from_png(ABSOLUTEPATH.c_str());
+            if (c.type == "background" && path == "hyprpaper") {
+                g_pConfigManager->hyprpaperMonToPath = hyprpaperRequest();
+                if (g_pConfigManager->hyprpaperMonToPath.size() > 0) {
+                    for (const auto& mp : g_pConfigManager->hyprpaperMonToPath) {
+                        path = mp.second;
+                        id   = "hyprpaper:" + mp.first + ":" + mp.second;
+                        preloadImage(path, id);
+                    }
+                    continue;
+                } else
+                    continue;
+            }
 
-            const auto CAIRO = cairo_create(CAIROISURFACE);
-            cairo_scale(CAIRO, 1, 1);
-
-            const auto TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
-
-            TARGET->size = {cairo_image_surface_get_width(CAIROISURFACE), cairo_image_surface_get_height(CAIROISURFACE)};
-            TARGET->type = TARGET_IMAGE;
-            TARGET->id   = id;
-
-            const auto DATA      = cairo_image_surface_get_data(CAIROISURFACE);
-            TARGET->cairo        = CAIRO;
-            TARGET->cairosurface = CAIROISURFACE;
-            TARGET->data         = DATA;
+            preloadImage(path, id);
         }
     }
 
