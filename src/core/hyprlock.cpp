@@ -804,7 +804,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 
         m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
         m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
-		m_bCtrl     = xkb_state_mod_name_is_active(m_pXKBState, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
+        m_bCtrl     = xkb_state_mod_name_is_active(m_pXKBState, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
 
         if (SYM == XKB_KEY_BackSpace) {
             if (m_sPasswordState.passBuffer.length() > 0) {
