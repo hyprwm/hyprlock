@@ -31,7 +31,7 @@ And the development libraries for the following
 - hyprlang >= 0.4
 Development libraries are usually suffixed with `-devel` or `-dev` in most distro repos.
 
-You also need to install `mesa-libgdm-devel` on some distros like RPM based ones where its not
+You also need to install `mesa-libgbm-devel` on some distros like RPM based ones where its not
 bundled with the mesa package.
 
 ### Building
