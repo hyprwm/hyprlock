@@ -804,14 +804,12 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 
         m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
         m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
+        m_bCtrl     = xkb_state_mod_name_is_active(m_pXKBState, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
 
-        if (SYM == XKB_KEY_BackSpace) {
-            if (m_sPasswordState.passBuffer.length() > 0) {
-                // handle utf-8
-                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
-                    m_sPasswordState.passBuffer.pop_back();
-                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
-            }
+        if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace))) {
+            Debug::log(LOG, "Clearing password buffer");
+
+            m_sPasswordState.passBuffer = "";
         } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
             Debug::log(LOG, "Authenticating");
 
@@ -823,10 +821,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
             }
 
             m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
-        } else if (SYM == XKB_KEY_Escape) {
-            Debug::log(LOG, "Clearing password buffer");
-
-            m_sPasswordState.passBuffer = "";
+        } else if (SYM == XKB_KEY_BackSpace) {
+            if (m_sPasswordState.passBuffer.length() > 0) {
+                // handle utf-8
+                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+                    m_sPasswordState.passBuffer.pop_back();
+                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+            }
         } else if (SYM == XKB_KEY_Caps_Lock) {
             m_bCapsLock = !m_bCapsLock;
         } else if (SYM == XKB_KEY_Num_Lock) {

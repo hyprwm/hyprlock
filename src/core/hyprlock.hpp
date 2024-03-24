@@ -87,6 +87,7 @@ class CHyprlock {
 
     bool                            m_bCapsLock    = false;
     bool                            m_bNumLock     = false;
+    bool                            m_bCtrl        = false;
     bool                            m_bFadeStarted = false;
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
