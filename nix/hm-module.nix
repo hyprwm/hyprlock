@@ -5,7 +5,7 @@ self: {
   ...
 }: let
   inherit (builtins) toString;
-  inherit (lib.types) bool float int listOf package str submodule;
+  inherit (lib.types) bool float int listOf lines nullOr package str submodule;
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
 
@@ -62,6 +62,18 @@ in {
       description = "The hyprlock package";
       type = package;
       default = self.packages.${pkgs.stdenv.hostPlatform.system}.hyprlock;
+    };
+
+    extraConfig = mkOption {
+      description = "Extra configuration lines, written verbatim";
+      type = nullOr lines;
+      default = null;
+    };
+
+    sources = mkOption {
+      description = "List of files to `source`";
+      type = listOf str;
+      default = [];
     };
 
     general = {
@@ -490,6 +502,10 @@ in {
     home.packages = [cfg.package];
 
     xdg.configFile."hypr/hyprlock.conf".text = ''
+      ${builtins.concatStringsSep "\n" (map (source: ''
+        source = ${source}
+      '') cfg.sources)}
+
       general {
         disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
         grace = ${toString cfg.general.grace}
@@ -586,6 +602,8 @@ in {
           }
         '')
         cfg.labels)}
+
+        ${lib.optionalString (cfg.extraConfig != null) cfg.extraConfig}
     '';
   };
 }
