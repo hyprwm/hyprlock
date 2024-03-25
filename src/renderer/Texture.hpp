@@ -13,6 +13,7 @@ enum TEXTURETYPE {
 class CTexture {
   public:
     CTexture();
+    ~CTexture();
 
     void        destroyTexture();
     void        allocate();

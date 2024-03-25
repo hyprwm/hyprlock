@@ -4,6 +4,10 @@ CTexture::CTexture() {
     // naffin'
 }
 
+CTexture::~CTexture() {
+    destroyTexture();
+}
+
 void CTexture::destroyTexture() {
     if (m_bAllocated) {
         glDeleteTextures(1, &m_iTexID);
