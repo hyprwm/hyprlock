@@ -1,4 +1,8 @@
+.cache
+.direnv
+.envrc
 .vscode/
 build/
-protocols/*.h
+compile_commands.json
 protocols/*.c
+protocols/*.h
