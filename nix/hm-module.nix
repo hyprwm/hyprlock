@@ -102,6 +102,11 @@ in {
           type = bool;
           default = false;
       };
+      ignore_empty_input = mkOption {
+          description = "Skips validation when an empty password is provided";
+          type = bool;
+          default = false;
+      };
     };
 
     backgrounds = mkOption {
@@ -512,6 +517,7 @@ in {
         hide_cursor = ${boolToString cfg.general.hide_cursor}
         no_fade_in = ${boolToString cfg.general.no_fade_in}
         no_fade_out = ${boolToString cfg.general.no_fade_out}
+        ignore_empty_input = ${boolToString cfg.general.ignore_empty_input}
       }
 
       ${builtins.concatStringsSep "\n" (map (background: ''
