@@ -34,7 +34,7 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
     else if (valign == "bottom")
         pos.y += 0;
     else if (valign != "none")
-        Debug::log(ERR, "IWidget: invalid halign {}", halign);
+        Debug::log(ERR, "IWidget: invalid valign {}", valign);
 
     return pos;
 }
