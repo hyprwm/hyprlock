@@ -2,7 +2,7 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
-#include "Password.hpp"
+#include "Auth.hpp"
 #include "Egl.hpp"
 
 #include <sys/wait.h>
@@ -379,6 +379,9 @@ void CHyprlock::run() {
 
     acquireSessionLock();
 
+    g_pAuth = std::make_unique<CAuth>();
+    g_pAuth->start();
+
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
@@ -526,6 +529,8 @@ void CHyprlock::run() {
     wl_display_disconnect(m_sWaylandState.display);
 
     pthread_kill(pollThr.native_handle(), SIGRTMIN);
+
+    g_pAuth->terminate();
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
@@ -731,14 +736,17 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 // end session_lock
 
+static void restartAuthTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pAuth->start();
+}
+
 void CHyprlock::onPasswordCheckTimer() {
     // check result
-    if (m_sPasswordState.result->success) {
+    if (g_pAuth->didAuthSucceed()) {
         unlock();
     } else {
-        Debug::log(LOG, "Authentication failed: {}", m_sPasswordState.result->failReason);
-        m_sPasswordState.lastFailReason = m_sPasswordState.result->failReason;
-        m_sPasswordState.passBuffer     = "";
+        Debug::log(LOG, "Authentication failed: {}", (g_pAuth->getFeedback().has_value()) ? g_pAuth->getFeedback().value().text : "unknown reason");
+        m_sPasswordState.passBuffer = "";
         m_sPasswordState.failedAttempts += 1;
         Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
         forceUpdateTimers();
@@ -746,17 +754,19 @@ void CHyprlock::onPasswordCheckTimer() {
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
         }
+
+        g_pHyprlock->addTimer(/* controls error message duration */ std::chrono::seconds(1), restartAuthTimerCallback, nullptr);
     }
-
-    m_sPasswordState.result.reset();
 }
 
-bool CHyprlock::passwordCheckWaiting() {
-    return m_sPasswordState.result.get();
-}
+void CHyprlock::clearPasswordBuffer() {
+    if (m_sPasswordState.passBuffer.empty())
+        return;
 
-std::optional<std::string> CHyprlock::passwordLastFailReason() {
-    return m_sPasswordState.lastFailReason;
+    m_sPasswordState.passBuffer = "";
+    for (auto& o : m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
 }
 
 void CHyprlock::renderOutput(const std::string& stringPort) {
@@ -792,7 +802,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     else
         std::erase(m_vPressedKeys, key);
 
-    if (m_sPasswordState.result) {
+    if (g_pAuth->checkWaiting()) {
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
         }
@@ -820,7 +830,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
                 return;
             }
 
-            m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+            g_pAuth->submitInput(m_sPasswordState.passBuffer);
         } else if (SYM == XKB_KEY_BackSpace) {
             if (m_sPasswordState.passBuffer.length() > 0) {
                 // handle utf-8
@@ -828,6 +838,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
                     m_sPasswordState.passBuffer.pop_back();
                 m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
             }
+        } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
+            Debug::log(LOG, "Authenticating");
+            g_pAuth->submitInput(m_sPasswordState.passBuffer);
+        } else if (SYM == XKB_KEY_Escape) {
+            Debug::log(LOG, "Clearing password buffer");
+
+            m_sPasswordState.passBuffer = "";
         } else if (SYM == XKB_KEY_Caps_Lock) {
             m_bCapsLock = !m_bCapsLock;
         } else if (SYM == XKB_KEY_Num_Lock) {
