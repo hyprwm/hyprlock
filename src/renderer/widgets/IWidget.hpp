@@ -11,7 +11,8 @@ class IWidget {
 
     virtual bool     draw(const SRenderData& data) = 0;
 
-    virtual Vector2D posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign);
+    virtual Vector2D posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign,
+                                    const double& ang = 0);
 
     struct SFormatResult {
         std::string formatted;

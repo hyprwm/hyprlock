@@ -16,25 +16,31 @@ namespace std {
 }
 #endif
 
-Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign) {
+Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign, const double& ang) {
+
+    // offset after rotation for alignment
+    Vector2D rot;
+    if (ang != 0)
+        rot = (size - size.rotated(ang)) / 2.0;
+
     Vector2D pos = offset;
     if (halign == "center")
         pos.x += viewport.x / 2.0 - size.x / 2.0;
     else if (halign == "left")
-        pos.x += 0;
+        pos.x += 0 - rot.x;
     else if (halign == "right")
-        pos.x += viewport.x - size.x;
+        pos.x += viewport.x - size.x + rot.x;
     else if (halign != "none")
         Debug::log(ERR, "IWidget: invalid halign {}", halign);
 
     if (valign == "center")
         pos.y += viewport.y / 2.0 - size.y / 2.0;
     else if (valign == "top")
-        pos.y += viewport.y - size.y;
+        pos.y += viewport.y - size.y + rot.y;
     else if (valign == "bottom")
-        pos.y += size.y;
+        pos.y += 0 - rot.y;
     else if (valign != "none")
-        Debug::log(ERR, "IWidget: invalid halign {}", halign);
+        Debug::log(ERR, "IWidget: invalid valign {}", valign);
 
     return pos;
 }

@@ -20,7 +20,9 @@ class CImage : public IWidget {
   private:
     int              size;
     int              rounding;
-    int              border;
+    int              configRounding;
+    double           border;
+    double           angle;
     CColor           color;
     Vector2D         pos;
 

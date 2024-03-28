@@ -202,6 +202,12 @@ in {
             default = "rgb(221, 221, 221)";
           };
 
+          rotate = mkOption {
+            description = "Image rotation angle";
+            type = float;
+            default = 0;
+          };
+
           position = {
             x = mkOption {
               description = "X position of the image";
@@ -454,6 +460,12 @@ in {
               default = "Noto Sans";
             };
 
+            rotate = mkOption {
+              description = "Label rotation angle";
+              type = float;
+              default = 0;
+            };
+
             position = {
               x = mkOption {
                 description = "X position of the label";
@@ -522,6 +534,7 @@ in {
             rounding = ${toString image.rounding}
             border_size = ${toString image.border_size}
             border_color = ${image.border_color}
+            rotate = ${toString image.rotate}
 
             position = ${toString image.position.x}, ${toString image.position.y}
             halign = ${image.halign}
@@ -575,6 +588,7 @@ in {
             color = ${label.color}
             font_size = ${toString label.font_size}
             font_family = ${label.font_family}
+            rotate = ${toString label.rotate}
             shadow_passes = ${toString label.shadow_passes}
             shadow_size = ${toString label.shadow_size}
             shadow_color = ${label.shadow_color}

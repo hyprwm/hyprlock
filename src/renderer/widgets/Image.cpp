@@ -12,6 +12,10 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     pos      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+    angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+
+    configRounding = rounding;
+    angle          = angle * M_PI / 180.0;
 }
 
 bool CImage::draw(const SRenderData& data) {
@@ -47,21 +51,30 @@ bool CImage::draw(const SRenderData& data) {
 
     shadow.draw(data);
 
+    if (angle != 0) {
+        if (texbox.w == texbox.h && configRounding != 0)
+            rounding = -1;
+        else
+            rounding = 0;
+    }
+
     const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
-    const auto TEXPOS     = posFromHVAlign(viewport, Vector2D{texbox.w, texbox.h}, pos, halign, valign);
+    const auto TEXPOS     = posFromHVAlign(viewport, Vector2D{texbox.w + border * 2.0, texbox.h + border * 2.0}, pos + Vector2D{border, border}, halign, valign, angle);
 
     texbox.x = TEXPOS.x;
     texbox.y = TEXPOS.y;
 
     if (border > 0) {
-        CBox   borderBox = {TEXPOS - Vector2D{(double)border, (double)border}, texbox.size() + Vector2D{(double)border * 2.0, (double)border * 2.0}};
+        CBox   borderBox = {TEXPOS - Vector2D{border, border}, texbox.size() + Vector2D{border * 2.0, border * 2.0}};
         CColor borderCol = color;
         borderCol.a *= data.opacity;
         borderBox.round();
+        borderBox.rot = angle;
         g_pRenderer->renderRect(borderBox, borderCol, ALLOWROUND ? rounding : std::min(borderBox.w, borderBox.h) / 2.0);
     }
 
     texbox.round();
+    texbox.rot = angle;
     g_pRenderer->renderTexture(texbox, *tex, data.opacity, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
     return data.opacity < 1.0;

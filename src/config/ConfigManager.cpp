@@ -72,6 +72,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "position", Hyprlang::VEC2{0, 200});
     m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
     SHADOWABLE("image");
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -113,6 +114,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
+    m_config.addSpecialConfigValue("label", "rotate", Hyprlang::FLOAT{0});
     SHADOWABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {false});
@@ -181,6 +183,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"position", m_config.getSpecialConfigValue("image", "position", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("image", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("image", "valign", k.c_str())},
+                {"rotate", m_config.getSpecialConfigValue("image", "rotate", k.c_str())},
                 SHADOWABLE("image"),
             }
         });
@@ -241,6 +244,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
+                {"rotate", m_config.getSpecialConfigValue("label", "rotate", k.c_str())},
                 SHADOWABLE("label"),
             }
         });
