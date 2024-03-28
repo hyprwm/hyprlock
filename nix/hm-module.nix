@@ -471,6 +471,12 @@ in {
               default = "Noto Sans";
             };
 
+            rotate = mkOption {
+              description = "Label rotation angle";
+              type = int;
+              default = 0;
+            };
+
             position = {
               x = mkOption {
                 description = "X position of the label";
@@ -597,6 +603,7 @@ in {
             color = ${label.color}
             font_size = ${toString label.font_size}
             font_family = ${label.font_family}
+            rotate = ${toString label.rotate}
             shadow_passes = ${toString label.shadow_passes}
             shadow_size = ${toString label.shadow_size}
             shadow_color = ${label.shadow_color}

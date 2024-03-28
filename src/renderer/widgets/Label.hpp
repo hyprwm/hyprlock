@@ -37,6 +37,9 @@ class CLabel : public IWidget {
     std::string                             halign, valign;
     SPreloadedAsset*                        asset = nullptr;
 
+    std::optional<wl_output_transform>      transform;
+    bool                                    rotated = false;
+
     std::string                             outputStringPort;
 
     CAsyncResourceGatherer::SPreloadRequest request;

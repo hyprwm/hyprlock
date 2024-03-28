@@ -87,6 +87,23 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
+    int angle = std::any_cast<Hyprlang::INT>(props.at("rotate"));
+
+    switch (angle) {
+        case 0: transform = {}; break;
+        case 90:
+            transform = WL_OUTPUT_TRANSFORM_FLIPPED_270;
+            rotated   = true;
+            break;
+        case 180: transform = WL_OUTPUT_TRANSFORM_FLIPPED; break;
+        case -90:
+        case 270:
+            transform = WL_OUTPUT_TRANSFORM_FLIPPED_90;
+            rotated   = true;
+            break;
+        default: transform = {}; break;
+    }
+
     plantTimer();
 }
 
@@ -97,8 +114,6 @@ bool CLabel::draw(const SRenderData& data) {
         if (!asset)
             return true;
 
-        // calc pos
-        pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign);
         shadow.markShadowDirty();
     }
 
@@ -111,14 +126,17 @@ bool CLabel::draw(const SRenderData& data) {
             asset             = newAsset;
             resourceID        = pendingResourceID;
             pendingResourceID = "";
-            pos               = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign);
             shadow.markShadowDirty();
         }
     }
 
-    CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+    // calc pos and rotated size
+    Vector2D realSize = rotated ? Vector2D{asset->texture.m_vSize.y, asset->texture.m_vSize.x} : asset->texture.m_vSize;
+    pos               = posFromHVAlign(viewport, realSize, configPos, halign, valign);
+
+    CBox box = {pos.x, pos.y, realSize.x, realSize.y};
     shadow.draw(data);
-    g_pRenderer->renderTexture(box, asset->texture, data.opacity);
+    g_pRenderer->renderTexture(box, asset->texture, data.opacity, 0, transform);
 
     return false;
 }
