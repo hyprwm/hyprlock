@@ -87,6 +87,9 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
+    angle = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+    angle = angle * M_PI / 180.0;
+
     plantTimer();
 }
 
@@ -97,8 +100,6 @@ bool CLabel::draw(const SRenderData& data) {
         if (!asset)
             return true;
 
-        // calc pos
-        pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign);
         shadow.markShadowDirty();
     }
 
@@ -111,12 +112,15 @@ bool CLabel::draw(const SRenderData& data) {
             asset             = newAsset;
             resourceID        = pendingResourceID;
             pendingResourceID = "";
-            pos               = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign);
             shadow.markShadowDirty();
         }
     }
 
+    // calc pos
+    pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign, angle);
+
     CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+    box.rot  = angle;
     shadow.draw(data);
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 

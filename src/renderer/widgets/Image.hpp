@@ -18,9 +18,12 @@ class CImage : public IWidget {
     virtual bool draw(const SRenderData& data);
 
   private:
+    CFramebuffer     imageFB;
+
     int              size;
     int              rounding;
-    int              border;
+    double           border;
+    double           angle;
     CColor           color;
     Vector2D         pos;
 

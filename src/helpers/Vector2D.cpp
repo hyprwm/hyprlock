@@ -49,3 +49,9 @@ double Vector2D::size() const {
 Vector2D Vector2D::getComponentMax(const Vector2D& other) const {
     return Vector2D(std::max(this->x, other.x), std::max(this->y, other.y));
 }
+
+Vector2D Vector2D::rotated(const double& ang) const {
+    const double COS = std::abs(std::cos(ang));
+    const double SIN = std::abs(std::sin(ang));
+    return Vector2D(x * COS + y * SIN, x * SIN + y * COS);
+}

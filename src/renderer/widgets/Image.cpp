@@ -12,6 +12,9 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     pos      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
     halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+    angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+
+    angle = angle * M_PI / 180.0;
 }
 
 bool CImage::draw(const SRenderData& data) {
@@ -31,7 +34,36 @@ bool CImage::draw(const SRenderData& data) {
         return false;
     }
 
-    CTexture* tex    = &asset->texture;
+    if (!imageFB.isAllocated()) {
+
+        const Vector2D TEXSIZE = asset->texture.m_vSize;
+        const float    SCALEX  = size / TEXSIZE.x;
+        const float    SCALEY  = size / TEXSIZE.y;
+
+        // image with borders offset
+        CBox texbox = {{border, border}, TEXSIZE};
+
+        texbox.w *= std::max(SCALEX, SCALEY);
+        texbox.h *= std::max(SCALEX, SCALEY);
+
+        const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
+
+        // plus borders if any
+        CBox borderBox = {{}, {texbox.w + border * 2.0, texbox.h + border * 2.0}};
+
+        borderBox.round();
+        imageFB.alloc(borderBox.w, borderBox.h, true);
+        g_pRenderer->pushFb(imageFB.m_iFb);
+
+        if (border > 0)
+            g_pRenderer->renderRect(borderBox, color, ALLOWROUND ? rounding : std::min(borderBox.w, borderBox.h) / 2.0);
+
+        texbox.round();
+        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_NORMAL);
+        g_pRenderer->popFb();
+    }
+
+    CTexture* tex    = &imageFB.m_cTex;
     CBox      texbox = {{}, tex->m_vSize};
 
     if (firstRender) {
@@ -39,30 +71,16 @@ bool CImage::draw(const SRenderData& data) {
         shadow.markShadowDirty();
     }
 
-    const float SCALEX = size / tex->m_vSize.x;
-    const float SCALEY = size / tex->m_vSize.y;
-
-    texbox.w *= std::max(SCALEX, SCALEY);
-    texbox.h *= std::max(SCALEX, SCALEY);
-
     shadow.draw(data);
 
-    const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
-    const auto TEXPOS     = posFromHVAlign(viewport, Vector2D{texbox.w, texbox.h}, pos, halign, valign);
+    const auto TEXPOS = posFromHVAlign(viewport, tex->m_vSize, pos, halign, valign, angle);
 
     texbox.x = TEXPOS.x;
     texbox.y = TEXPOS.y;
 
-    if (border > 0) {
-        CBox   borderBox = {TEXPOS - Vector2D{(double)border, (double)border}, texbox.size() + Vector2D{(double)border * 2.0, (double)border * 2.0}};
-        CColor borderCol = color;
-        borderCol.a *= data.opacity;
-        borderBox.round();
-        g_pRenderer->renderRect(borderBox, borderCol, ALLOWROUND ? rounding : std::min(borderBox.w, borderBox.h) / 2.0);
-    }
-
     texbox.round();
-    g_pRenderer->renderTexture(texbox, *tex, data.opacity, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
+    texbox.rot = angle;
+    g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
     return data.opacity < 1.0;
 }

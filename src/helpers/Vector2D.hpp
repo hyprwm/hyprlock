@@ -98,6 +98,7 @@ class Vector2D {
     Vector2D round() const;
 
     Vector2D getComponentMax(const Vector2D& other) const;
+    Vector2D rotated(const double& ang) const;
 };
 
 /**

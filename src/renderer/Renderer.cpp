@@ -226,7 +226,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
 void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     float matrix[9];
-    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, box.rot,
                            projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
@@ -258,7 +258,7 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
 
 void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<wl_output_transform> tr) {
     float matrix[9];
-    wlr_matrix_project_box(matrix, &box, tr.value_or(WL_OUTPUT_TRANSFORM_FLIPPED_180) /* ugh coordinate spaces */, 0,
+    wlr_matrix_project_box(matrix, &box, tr.value_or(WL_OUTPUT_TRANSFORM_FLIPPED_180) /* ugh coordinate spaces */, box.rot,
                            projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
