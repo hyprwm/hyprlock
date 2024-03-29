@@ -222,7 +222,7 @@ in {
           rotate = mkOption {
             description = "Image rotation angle";
             type = float;
-            default = 0;
+            default = 0.0;
           };
 
           position = {
@@ -480,7 +480,7 @@ in {
             rotate = mkOption {
               description = "Label rotation angle";
               type = float;
-              default = 0;
+              default = 0.0;
             };
 
             position = {
