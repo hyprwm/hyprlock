@@ -25,6 +25,7 @@ class CImage : public IWidget {
     void         plantTimer();
 
   private:
+    std::uintmax_t                          getFileSize(const std::string& path);
     std::string                             getUniqueResourceId();
 
     CFramebuffer                            imageFB;
@@ -40,6 +41,7 @@ class CImage : public IWidget {
 
     bool                                    firstRender = true;
 
+    std::uintmax_t                          fileSize;
     int                                     reloadTime;
     std::string                             reloadCommand;
     std::shared_ptr<CTimer>                 imageTimer;

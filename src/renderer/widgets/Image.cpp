@@ -1,6 +1,7 @@
 #include "Image.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
+#include <filesystem>
 #include <cmath>
 
 CImage::~CImage() {
@@ -20,8 +21,15 @@ static void onAssetCallback(void* data) {
     PIMAGE->renderSuper();
 }
 
+std::uintmax_t CImage::getFileSize(const std::string& path) {
+    if (std::filesystem::exists(path))
+        return std::filesystem::file_size(path);
+
+    return fileSize;
+}
+
 std::string CImage::getUniqueResourceId() {
-    return std::string{"image:"} + std::to_string((uintptr_t)this) + ",path:" + path + ",time:" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    return std::string{"image:"} + path + ",size:" + std::to_string(fileSize);
 }
 
 void CImage::onTimerUpdate() {
@@ -38,6 +46,11 @@ void CImage::onTimerUpdate() {
         if (path.empty())
             return;
     }
+
+    if (getFileSize(path) == fileSize)
+        return;
+
+    fileSize = getFileSize(path);
 
     // request new
     request.id        = getUniqueResourceId();
@@ -75,7 +88,8 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     reloadTime    = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
     reloadCommand = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
 
-    angle = angle * M_PI / 180.0;
+    fileSize = getFileSize(path);
+    angle    = angle * M_PI / 180.0;
 
     plantTimer();
 }
@@ -88,22 +102,14 @@ bool CImage::draw(const SRenderData& data) {
     if (!pendingResourceID.empty()) {
         auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
         if (newAsset) {
-            if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-                g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
-                pendingResourceID = "";
-
-                if (!imageFB.isAllocated())
-                    return true;
-
-            } else {
-                g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+            if (resourceID != pendingResourceID && newAsset->texture.m_iType != TEXTURE_INVALID) {
                 imageFB.release();
 
-                asset             = newAsset;
-                resourceID        = pendingResourceID;
-                pendingResourceID = "";
-                firstRender       = true;
+                asset       = newAsset;
+                resourceID  = pendingResourceID;
+                firstRender = true;
             }
+            pendingResourceID = "";
         }
     }
 
