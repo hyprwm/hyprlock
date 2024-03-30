@@ -73,6 +73,8 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
+    m_config.addSpecialConfigValue("image", "reload_time", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("image", "reload_cmd", Hyprlang::STRING{""});
     SHADOWABLE("image");
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -184,6 +186,8 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"halign", m_config.getSpecialConfigValue("image", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("image", "valign", k.c_str())},
                 {"rotate", m_config.getSpecialConfigValue("image", "rotate", k.c_str())},
+                {"reload_time", m_config.getSpecialConfigValue("image", "reload_time", k.c_str())},
+                {"reload_cmd", m_config.getSpecialConfigValue("image", "reload_cmd", k.c_str())},
                 SHADOWABLE("image"),
             }
         });
