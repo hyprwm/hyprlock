@@ -112,11 +112,16 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     auto  uidPassword = getpwuid(getuid());
     char* username    = uidPassword->pw_name;
+    char* user_gecos  = uidPassword->pw_gecos;
 
     if (!username)
         Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
 
+    if (!user_gecos)
+        Debug::log(WARN, "Error in formatString, user_gecos null. Errno: ", errno);
+
     IWidget::SFormatResult result;
+    replaceAll(in, "$DESC", std::string{user_gecos ? user_gecos : ""});
     replaceAll(in, "$USER", std::string{username ? username : ""});
     replaceAll(in, "<br/>", std::string{"\n"});
 
