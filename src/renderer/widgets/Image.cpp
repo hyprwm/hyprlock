@@ -1,7 +1,7 @@
 #include "Image.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
-#include <filesystem>
+#include "../../helpers/Log.hpp"
 #include <cmath>
 
 CImage::~CImage() {
@@ -21,21 +21,7 @@ static void onAssetCallback(void* data) {
     PIMAGE->renderSuper();
 }
 
-std::uintmax_t CImage::getFileSize(const std::string& path) {
-    if (std::filesystem::exists(path))
-        return std::filesystem::file_size(path);
-
-    return fileSize;
-}
-
-std::string CImage::getUniqueResourceId() {
-    return std::string{"image:"} + path + ",size:" + std::to_string(fileSize);
-}
-
 void CImage::onTimerUpdate() {
-
-    if (!pendingResourceID.empty())
-        return;
 
     if (!reloadCommand.empty()) {
         path = g_pHyprlock->spawnSync(reloadCommand);
@@ -47,13 +33,21 @@ void CImage::onTimerUpdate() {
             return;
     }
 
-    if (getFileSize(path) == fileSize)
+    try {
+        const auto MTIME = std::filesystem::last_write_time(path);
+        if (MTIME == modificationTime)
+            return;
+
+        modificationTime = MTIME;
+    } catch (std::exception& e) {
+        Debug::log(ERR, "{}", e.what());
+        return;
+    }
+
+    if (!pendingResourceID.empty())
         return;
 
-    fileSize = getFileSize(path);
-
-    // request new
-    request.id        = getUniqueResourceId();
+    request.id        = std::string{"image:"} + path + ",time:" + std::to_string(modificationTime.time_since_epoch().count());
     pendingResourceID = request.id;
     request.asset     = path;
     request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
@@ -88,21 +82,24 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     reloadTime    = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
     reloadCommand = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
 
-    fileSize = getFileSize(path);
-    angle    = angle * M_PI / 180.0;
+    try {
+        modificationTime = std::filesystem::last_write_time(path);
+    } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
+
+    angle = angle * M_PI / 180.0;
 
     plantTimer();
 }
 
 bool CImage::draw(const SRenderData& data) {
 
-    if (resourceID.empty() && pendingResourceID.empty())
-        return false;
-
     if (!pendingResourceID.empty()) {
         auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
         if (newAsset) {
-            if (resourceID != pendingResourceID && newAsset->texture.m_iType != TEXTURE_INVALID) {
+            if (newAsset->texture.m_iType == TEXTURE_INVALID) {
+                g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
+            } else if (resourceID != pendingResourceID) {
+                g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
                 imageFB.release();
 
                 asset       = newAsset;
@@ -112,6 +109,9 @@ bool CImage::draw(const SRenderData& data) {
             pendingResourceID = "";
         }
     }
+
+    if (resourceID.empty())
+        return false;
 
     if (!asset)
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);

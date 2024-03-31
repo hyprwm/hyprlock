@@ -7,6 +7,7 @@
 #include "../AsyncResourceGatherer.hpp"
 #include "Shadowable.hpp"
 #include <string>
+#include <filesystem>
 #include <unordered_map>
 #include <any>
 
@@ -25,9 +26,6 @@ class CImage : public IWidget {
     void         plantTimer();
 
   private:
-    std::uintmax_t                          getFileSize(const std::string& path);
-    std::string                             getUniqueResourceId();
-
     CFramebuffer                            imageFB;
 
     int                                     size;
@@ -41,9 +39,9 @@ class CImage : public IWidget {
 
     bool                                    firstRender = true;
 
-    std::uintmax_t                          fileSize;
     int                                     reloadTime;
     std::string                             reloadCommand;
+    std::filesystem::file_time_type         modificationTime;
     std::shared_ptr<CTimer>                 imageTimer;
     CAsyncResourceGatherer::SPreloadRequest request;
 
