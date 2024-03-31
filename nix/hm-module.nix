@@ -249,7 +249,8 @@ in {
             type = str;
             default = "center";
           };
-        };
+        }
+        // shadow;
       });
       default = [];
     };
