@@ -22,6 +22,7 @@ static void onAssetCallback(void* data) {
 }
 
 void CImage::onTimerUpdate() {
+    const std::string OLDPATH = path;
 
     if (!reloadCommand.empty()) {
         path = g_pHyprlock->spawnSync(reloadCommand);
@@ -29,17 +30,21 @@ void CImage::onTimerUpdate() {
         if (path.ends_with('\n'))
             path.pop_back();
 
+        if (path.starts_with("file://"))
+            path = path.substr(7);
+
         if (path.empty())
             return;
     }
 
     try {
         const auto MTIME = std::filesystem::last_write_time(path);
-        if (MTIME == modificationTime)
+        if (OLDPATH == path && MTIME == modificationTime)
             return;
 
         modificationTime = MTIME;
     } catch (std::exception& e) {
+        path = OLDPATH;
         Debug::log(ERR, "{}", e.what());
         return;
     }
