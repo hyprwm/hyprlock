@@ -358,8 +358,10 @@ void CHyprlock::run() {
 
     g_pRenderer = std::make_unique<CRenderer>();
 
-    const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
-    const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+    const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
+    const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+    static auto* const PNOFADEOUT     = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
+    const bool         NOFADEOUT      = **PNOFADEOUT;
 
     Debug::log(LOG, "Running on {}", SZCURRENTD);
 
@@ -452,15 +454,19 @@ void CHyprlock::run() {
 
     m_sLoopState.event = true; // let it process once
 
-    while (1) {
+    while (!m_bTerminate) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
         if (m_sLoopState.event == false)
             m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
 
-        if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
+        if (!NOFADEOUT && m_bFadeStarted && std::chrono::system_clock::now() > m_tFadeEnds) {
             releaseSessionLock();
             break;
         }
+
+        if (m_bTerminate)
+            break;
+
         std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
 
         m_sLoopState.event = false;
@@ -506,7 +512,7 @@ void CHyprlock::run() {
 
         passed.clear();
 
-        if (m_bTerminate || (std::chrono::system_clock::now() > m_tFadeEnds && m_bFadeStarted)) {
+        if (!NOFADEOUT && m_bFadeStarted && std::chrono::system_clock::now() > m_tFadeEnds) {
             releaseSessionLock();
             break;
         }
