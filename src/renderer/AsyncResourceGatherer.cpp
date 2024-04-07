@@ -203,6 +203,25 @@ void CAsyncResourceGatherer::apply() {
     applied = true;
 }
 
+void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
+    SPreloadTarget target;
+    target.type = TARGET_IMAGE;
+    target.id   = rq.id;
+
+    const auto ABSOLUTEPATH  = absolutePath(rq.asset, "");
+    const auto CAIROISURFACE = cairo_image_surface_create_from_png(ABSOLUTEPATH.c_str());
+
+    const auto CAIRO = cairo_create(CAIROISURFACE);
+    cairo_scale(CAIRO, 1, 1);
+
+    target.cairo        = CAIRO;
+    target.cairosurface = CAIROISURFACE;
+    target.data         = cairo_image_surface_get_data(CAIROISURFACE);
+    target.size         = {(double)cairo_image_surface_get_width(CAIROISURFACE), (double)cairo_image_surface_get_height(CAIROISURFACE)};
+
+    preloadTargets.push_back(target);
+}
+
 void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     SPreloadTarget target;
     target.type = TARGET_IMAGE; /* text is just an image lol */
@@ -314,6 +333,8 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
         for (auto& r : requests) {
             if (r.type == TARGET_TEXT) {
                 renderText(r);
+            } else if (r.type == TARGET_IMAGE) {
+                renderImage(r);
             } else {
                 Debug::log(ERR, "Unsupported async preload type {}??", (int)r.type);
                 continue;

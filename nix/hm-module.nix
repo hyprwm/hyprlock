@@ -225,6 +225,18 @@ in {
             default = 0.0;
           };
 
+          reload_time = mkOption {
+            description = "Interval in seconds between reloading the image";
+            type = int;
+            default = -1;
+          };
+
+          reload_cmd = mkOption {
+            description = "Command to obtain new path";
+            type = str;
+            default = "";
+          };
+
           position = {
             x = mkOption {
               description = "X position of the image";
@@ -558,6 +570,8 @@ in {
             border_size = ${toString image.border_size}
             border_color = ${image.border_color}
             rotate = ${toString image.rotate}
+            reload_time = ${toString image.reload_time}
+            reload_cmd = ${image.reload_cmd}
 
             position = ${toString image.position.x}, ${toString image.position.y}
             halign = ${image.halign}

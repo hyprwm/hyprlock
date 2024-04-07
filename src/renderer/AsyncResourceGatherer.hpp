@@ -56,6 +56,7 @@ class CAsyncResourceGatherer {
 
     void        asyncAssetSpinLock();
     void        renderText(const SPreloadRequest& rq);
+    void        renderImage(const SPreloadRequest& rq);
 
     struct {
         std::condition_variable      loopGuard;
