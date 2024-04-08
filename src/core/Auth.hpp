@@ -17,8 +17,8 @@ class CAuth {
         std::mutex              inputMutex;
         std::condition_variable inputSubmittedCondition;
 
-        bool                    inputSubmitted = false;
-        bool                    inputRequested = false;
+        bool                    waitingForPamAuth = false;
+        bool                    inputRequested    = false;
 
         bool                    blockInput     = false;
         std::string             unhandledInput = "";
