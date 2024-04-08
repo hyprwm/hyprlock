@@ -844,13 +844,6 @@ void CHyprlock::onKey(uint32_t key, bool down) {
                     m_sPasswordState.passBuffer.pop_back();
                 m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
             }
-        } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-            Debug::log(LOG, "Authenticating");
-            g_pAuth->submitInput(m_sPasswordState.passBuffer);
-        } else if (SYM == XKB_KEY_Escape) {
-            Debug::log(LOG, "Clearing password buffer");
-
-            m_sPasswordState.passBuffer = "";
         } else if (SYM == XKB_KEY_Caps_Lock) {
             m_bCapsLock = !m_bCapsLock;
         } else if (SYM == XKB_KEY_Num_Lock) {
