@@ -120,9 +120,9 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$FAIL") || in.contains("$PROMPT")) {
-        const auto AUTHFEEDBACKOPT = g_pAuth->getFeedback();
-        replaceAll(in, "$FAIL", (AUTHFEEDBACKOPT.has_value() && AUTHFEEDBACKOPT->isFail) ? AUTHFEEDBACKOPT->text : "");
-        replaceAll(in, "$PROMPT", (AUTHFEEDBACKOPT.has_value() && !AUTHFEEDBACKOPT->isFail) ? AUTHFEEDBACKOPT->text : "");
+        const auto AUTHFEEDBACK = g_pAuth->getFeedback();
+        replaceAll(in, "$FAIL", AUTHFEEDBACK.isFail ? AUTHFEEDBACK.text : "");
+        replaceAll(in, "$PROMPT", !AUTHFEEDBACK.isFail ? AUTHFEEDBACK.text : "");
         result.allowForceUpdate = true;
     }
 

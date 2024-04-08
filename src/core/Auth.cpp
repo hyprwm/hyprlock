@@ -76,8 +76,8 @@ bool CAuth::auth(std::string pam_module) {
     int            ret = pam_start(pam_module.c_str(), uidPassword->pw_name, &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.success    = false;
-        m_sConversationState.failReason = "pam_start failed";
+        m_sConversationState.success = false;
+        m_sFailText                  = "pam_start failed";
         Debug::log(ERR, "auth: pam_start failed for {}", pam_module);
         return false;
     }
@@ -87,16 +87,16 @@ bool CAuth::auth(std::string pam_module) {
     m_sConversationState.waitingForPamAuth = false;
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.success    = false;
-        m_sConversationState.failReason = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
-        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failReason, pam_module);
+        m_sConversationState.success = false;
+        m_sFailText                  = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
+        Debug::log(ERR, "auth: {} for {}", m_sFailText, pam_module);
         return false;
     }
 
     ret = pam_end(handle, ret);
 
-    m_sConversationState.success    = true;
-    m_sConversationState.failReason = "Successfully authenticated";
+    m_sConversationState.success = true;
+    m_sFailText                  = "Successfully authenticated";
     Debug::log(LOG, "auth: authenticated for {}", pam_module);
 
     return true;
@@ -106,56 +106,43 @@ bool CAuth::didAuthSucceed() {
     return m_sConversationState.success;
 }
 
+// clearing the input must be done from the main thread!
 static void onWaitForInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->clearPasswordBuffer();
 }
 
 void CAuth::waitForInput() {
+    if (!m_sConversationState.lastPrompt.empty())
+        g_pHyprlock->addTimer(std::chrono::milliseconds(1), onWaitForInputTimerCallback, nullptr);
+
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
-    g_pHyprlock->addTimer(std::chrono::milliseconds(1), onWaitForInputTimerCallback, nullptr);
+    m_bBlockInput                          = false;
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = true;
     m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return !m_sConversationState.inputRequested || g_pHyprlock->m_bTerminate; });
+    m_bBlockInput = true;
 }
 
-static void submitUnhandledInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pAuth->submitInput(std::nullopt);
-}
-
-void CAuth::submitInput(std::optional<std::string> input) {
+void CAuth::submitInput(std::string input) {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
 
-    if (!m_sConversationState.inputRequested) {
-        m_sConversationState.blockInput     = true;
-        m_sConversationState.unhandledInput = input.value_or("");
-        g_pHyprlock->addTimer(std::chrono::milliseconds(1), submitUnhandledInputTimerCallback, nullptr);
-        return;
-    }
+    if (!m_sConversationState.inputRequested)
+        Debug::log(ERR, "SubmitInput called, but the auth thread is not waiting for input!");
 
-    if (input.has_value())
-        m_sConversationState.input = input.value();
-    else if (!m_sConversationState.unhandledInput.empty()) {
-        m_sConversationState.input          = m_sConversationState.unhandledInput;
-        m_sConversationState.unhandledInput = "";
-    } else {
-        Debug::log(ERR, "No input to submit");
-        m_sConversationState.input = "";
-    }
-
+    m_sConversationState.input             = input;
     m_sConversationState.inputRequested    = false;
     m_sConversationState.waitingForPamAuth = true;
     m_sConversationState.inputSubmittedCondition.notify_all();
-    m_sConversationState.blockInput = false;
 }
 
-std::optional<CAuth::SFeedback> CAuth::getFeedback() {
-    if (!m_sConversationState.failReason.empty()) {
-        return SFeedback{m_sConversationState.failReason, true};
-    } else if (!m_sConversationState.waitingForPamAuth) {
+CAuth::SFeedback CAuth::getFeedback() {
+    if (!m_sFailText.empty()) {
+        return SFeedback{m_sFailText, true};
+    } else if (!m_sConversationState.prompt.empty()) {
         return SFeedback{m_sConversationState.prompt, false};
+    } else {
+        return SFeedback{"Starting Auth...", false};
     }
-
-    return std::nullopt;
 }
 
 void CAuth::setPrompt(const char* prompt) {
@@ -163,8 +150,12 @@ void CAuth::setPrompt(const char* prompt) {
     m_sConversationState.prompt     = prompt;
 }
 
+void CAuth::clearFailText() {
+    m_sFailText = "";
+}
+
 bool CAuth::checkWaiting() {
-    return m_sConversationState.blockInput || m_sConversationState.waitingForPamAuth;
+    return m_bBlockInput || m_sConversationState.waitingForPamAuth;
 }
 
 void CAuth::terminate() {
@@ -175,10 +166,7 @@ void CAuth::resetConversation() {
     m_sConversationState.input             = "";
     m_sConversationState.prompt            = "";
     m_sConversationState.lastPrompt        = "";
-    m_sConversationState.failReason        = "";
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
-    m_sConversationState.blockInput        = false;
-    m_sConversationState.unhandledInput    = "";
     m_sConversationState.success           = false;
 }

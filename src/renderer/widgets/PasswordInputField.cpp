@@ -302,7 +302,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 }
 
 void CPasswordInputField::updatePlaceholder() {
-    if (passwordLength != 0 || (checkWaiting && passwordLength == 0)) {
+    if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ placeholder.isFailText) {
             std::erase(placeholder.registeredResourceIDs, placeholder.resourceID);
             g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.asset);
@@ -313,12 +313,8 @@ void CPasswordInputField::updatePlaceholder() {
         return;
     }
 
-    const auto AUTHFEEDBACKOPT = g_pAuth->getFeedback();
-    if (!AUTHFEEDBACKOPT.has_value())
-        return;
-
-    const auto AUTHFEEDBACK = AUTHFEEDBACKOPT.value();
-    if (AUTHFEEDBACK.text.empty() || (placeholder.lastAuthFeedback == AUTHFEEDBACK.text && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts))
+    const auto AUTHFEEDBACK = g_pAuth->getFeedback();
+    if (placeholder.lastAuthFeedback == AUTHFEEDBACK.text && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts)
         return;
 
     placeholder.failedAttempts   = g_pHyprlock->getPasswordFailedAttempts();

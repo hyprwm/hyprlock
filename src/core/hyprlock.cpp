@@ -736,8 +736,12 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 // end session_lock
 
-static void restartAuthTimerCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pAuth->start();
+static void clearFailTextTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pAuth->clearFailText();
+
+    for (auto& o : g_pHyprlock->m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
 }
 
 void CHyprlock::onPasswordCheckTimer() {
@@ -745,17 +749,19 @@ void CHyprlock::onPasswordCheckTimer() {
     if (g_pAuth->didAuthSucceed()) {
         unlock();
     } else {
-        Debug::log(LOG, "Authentication failed: {}", (g_pAuth->getFeedback().has_value()) ? g_pAuth->getFeedback().value().text : "unknown reason");
+        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
+
         m_sPasswordState.passBuffer = "";
         m_sPasswordState.failedAttempts += 1;
-        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
         forceUpdateTimers();
+
+        g_pHyprlock->addTimer(/* controls error message duration */ std::chrono::seconds(1), clearFailTextTimerCallback, nullptr);
+
+        g_pAuth->start();
 
         for (auto& o : m_vOutputs) {
             o->sessionLockSurface->render();
         }
-
-        g_pHyprlock->addTimer(/* controls error message duration */ std::chrono::seconds(1), restartAuthTimerCallback, nullptr);
     }
 }
 
