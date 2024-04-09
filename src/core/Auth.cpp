@@ -23,13 +23,16 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
         switch (msg[i]->msg_style) {
             case PAM_PROMPT_ECHO_OFF:
             case PAM_PROMPT_ECHO_ON: {
-                const auto PROMPT = std::string(msg[i]->msg);
+                const auto PROMPT        = std::string(msg[i]->msg);
+                const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
                 Debug::log(LOG, "PAM_PROMPT: {}", PROMPT);
+
+                if (PROMPTCHANGED)
+                    g_pHyprlock->enqueueForceUpdateTimers();
 
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
-                if (initialPrompt || PROMPT != CONVERSATIONSTATE->prompt) {
-                    //TODO: Force update timers because of the prompt variable
+                if (initialPrompt || PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
                     g_pAuth->waitForInput();
                 }

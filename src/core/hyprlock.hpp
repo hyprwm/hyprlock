@@ -40,6 +40,8 @@ class CHyprlock {
     std::shared_ptr<CTimer>         addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
                                              bool force = false);
 
+    void                            enqueueForceUpdateTimers();
+
     void                            onLockLocked();
     void                            onLockFinished();
 

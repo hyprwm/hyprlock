@@ -952,6 +952,11 @@ std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
     return m_vTimers;
 }
 
+void CHyprlock::enqueueForceUpdateTimers() {
+    addTimer(
+        std::chrono::milliseconds(1), [](std::shared_ptr<CTimer> self, void* data) { forceUpdateTimers(); }, nullptr, false);
+}
+
 void CHyprlock::spawnAsync(const std::string& args) {
     Debug::log(LOG, "Executing (async) {}", args);
 
