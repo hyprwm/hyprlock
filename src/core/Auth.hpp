@@ -22,15 +22,10 @@ class CAuth {
         bool                    success = false;
     };
 
-    struct SFeedback {
-        std::string text;
-        bool        isFail = false;
-    };
-
     CAuth();
 
     void                       start();
-    bool                       auth(std::string pam_module);
+    bool                       auth();
     bool                       didAuthSucceed();
 
     void                       waitForInput();

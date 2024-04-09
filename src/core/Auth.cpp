@@ -70,23 +70,23 @@ static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data)
 void CAuth::start() {
     std::thread([this]() {
         resetConversation();
-        auth(m_sPamModule);
+        auth();
 
         g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
     }).detach();
 }
 
-bool CAuth::auth(std::string pam_module) {
+bool CAuth::auth() {
     const pam_conv localConv   = {conv, (void*)&m_sConversationState};
     pam_handle_t*  handle      = NULL;
     auto           uidPassword = getpwuid(getuid());
 
-    int            ret = pam_start(pam_module.c_str(), uidPassword->pw_name, &localConv, &handle);
+    int            ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
         m_sConversationState.success  = false;
         m_sConversationState.failText = "pam_start failed";
-        Debug::log(ERR, "auth: pam_start failed for {}", pam_module);
+        Debug::log(ERR, "auth: pam_start failed for {}", m_sPamModule);
         return false;
     }
 
@@ -97,7 +97,7 @@ bool CAuth::auth(std::string pam_module) {
     if (ret != PAM_SUCCESS) {
         m_sConversationState.success  = false;
         m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
-        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, pam_module);
+        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
 
@@ -105,7 +105,7 @@ bool CAuth::auth(std::string pam_module) {
 
     m_sConversationState.success  = true;
     m_sConversationState.failText = "Successfully authenticated";
-    Debug::log(LOG, "auth: authenticated for {}", pam_module);
+    Debug::log(LOG, "auth: authenticated for {}", m_sPamModule);
 
     return true;
 }
