@@ -119,10 +119,15 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
-    if (in.contains("$FAIL") || in.contains("$PROMPT")) {
-        const auto AUTHFEEDBACK = g_pAuth->getFeedback();
-        replaceAll(in, "$FAIL", AUTHFEEDBACK.isFail ? AUTHFEEDBACK.text : "");
-        replaceAll(in, "$PROMPT", !AUTHFEEDBACK.isFail ? AUTHFEEDBACK.text : "");
+    if (in.contains("$FAIL")) {
+        const auto FAIL = g_pAuth->getLastFailText();
+        replaceAll(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$PROMPT")) {
+        const auto PROMPT = g_pAuth->getLastPrompt();
+        replaceAll(in, "$PROMPT", PROMPT.has_value() ? PROMPT.value() : "");
         result.allowForceUpdate = true;
     }
 

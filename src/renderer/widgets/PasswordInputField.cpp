@@ -1,6 +1,7 @@
 #include "PasswordInputField.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
+#include "src/core/Auth.hpp"
 #include <algorithm>
 
 static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
@@ -313,23 +314,24 @@ void CPasswordInputField::updatePlaceholder() {
         return;
     }
 
-    const auto AUTHFEEDBACK = g_pAuth->getFeedback();
-    if (placeholder.lastAuthFeedback == AUTHFEEDBACK.text && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts)
+    const auto AUTHFEEDBACK = g_pAuth->m_bDisplayFailText ? g_pAuth->getLastFailText().value_or("Ups, no fail text?") : g_pAuth->getLastPrompt().value_or("Ups, no prompt?");
+
+    if (placeholder.lastAuthFeedback == AUTHFEEDBACK && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts)
         return;
 
     placeholder.failedAttempts   = g_pHyprlock->getPasswordFailedAttempts();
-    placeholder.isFailText       = AUTHFEEDBACK.isFail;
-    placeholder.lastAuthFeedback = AUTHFEEDBACK.text;
+    placeholder.isFailText       = g_pAuth->m_bDisplayFailText;
+    placeholder.lastAuthFeedback = AUTHFEEDBACK;
 
     placeholder.asset = nullptr;
 
     if (placeholder.isFailText) {
         placeholder.currentText = configFailText;
-        replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK.text);
+        replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK);
         replaceAll(placeholder.currentText, "$ATTEMPTS", std::to_string(placeholder.failedAttempts));
     } else {
         placeholder.currentText = configPlaceholderText;
-        replaceAll(placeholder.currentText, "$PROMPT", AUTHFEEDBACK.text);
+        replaceAll(placeholder.currentText, "$PROMPT", AUTHFEEDBACK);
     }
 
     placeholder.resourceID = "placeholder:" + placeholder.currentText + std::to_string((uintptr_t)this);

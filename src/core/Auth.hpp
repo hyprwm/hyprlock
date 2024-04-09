@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <mutex>
 #include <condition_variable>
@@ -8,9 +9,9 @@
 class CAuth {
   public:
     struct SPamConversationState {
-        std::string             input      = "";
-        std::string             prompt     = "";
-        std::string             lastPrompt = "";
+        std::string             input    = "";
+        std::string             prompt   = "";
+        std::string             failText = "";
 
         std::mutex              inputMutex;
         std::condition_variable inputSubmittedCondition;
@@ -28,25 +29,26 @@ class CAuth {
 
     CAuth();
 
-    void      start();
-    bool      auth(std::string pam_module);
-    bool      didAuthSucceed();
+    void                       start();
+    bool                       auth(std::string pam_module);
+    bool                       didAuthSucceed();
 
-    void      waitForInput();
-    void      submitInput(std::string input);
+    void                       waitForInput();
+    void                       submitInput(std::string input);
 
-    void      setPrompt(const char* prompt);
-    void      clearFailText();
-    SFeedback getFeedback();
+    std::optional<std::string> getLastFailText();
+    std::optional<std::string> getLastPrompt();
 
-    bool      checkWaiting();
+    bool                       checkWaiting();
 
-    void      terminate();
+    void                       terminate();
+
+    // Should only be set via the main thread
+    bool m_bDisplayFailText = false;
 
   private:
     SPamConversationState m_sConversationState;
 
-    std::string           m_sFailText;
     bool                  m_bBlockInput = true;
 
     std::string           m_sPamModule;

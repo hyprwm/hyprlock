@@ -15,33 +15,38 @@
 #include <thread>
 
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
-    const auto           VERIFICATIONSTATE = (CAuth::SPamConversationState*)appdata_ptr;
-    struct pam_response* pam_reply         = (struct pam_response*)calloc(num_msg, sizeof(struct pam_response));
+    const auto           CONVERSATIONSTATE = (CAuth::SPamConversationState*)appdata_ptr;
+    struct pam_response* pamReply          = (struct pam_response*)calloc(num_msg, sizeof(struct pam_response));
+    bool                 initialPrompt     = true;
 
     for (int i = 0; i < num_msg; ++i) {
         switch (msg[i]->msg_style) {
             case PAM_PROMPT_ECHO_OFF:
             case PAM_PROMPT_ECHO_ON: {
-                g_pAuth->setPrompt(msg[i]->msg);
+                const auto PROMPT = std::string(msg[i]->msg);
+                Debug::log(LOG, "PAM_PROMPT: {}", PROMPT);
+
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
-                Debug::log(LOG, "PAM_PROMPT: {}", msg[i]->msg);
-                if (VERIFICATIONSTATE->prompt != VERIFICATIONSTATE->lastPrompt)
+                if (initialPrompt || PROMPT != CONVERSATIONSTATE->prompt) {
+                    //TODO: Force update timers because of the prompt variable
+                    CONVERSATIONSTATE->prompt = PROMPT;
                     g_pAuth->waitForInput();
+                }
 
                 // Needed for unlocks via SIGUSR1
                 if (g_pHyprlock->m_bTerminate)
                     return PAM_CONV_ERR;
 
-                pam_reply[i].resp = strdup(VERIFICATIONSTATE->input.c_str());
-                break;
-            }
+                pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
+                initialPrompt    = false;
+            } break;
             case PAM_ERROR_MSG: Debug::log(ERR, "PAM: {}", msg[i]->msg); break;
             case PAM_TEXT_INFO: Debug::log(LOG, "PAM: {}", msg[i]->msg); break;
         }
     }
 
-    *resp = pam_reply;
+    *resp = pamReply;
     return PAM_SUCCESS;
 }
 
@@ -76,8 +81,8 @@ bool CAuth::auth(std::string pam_module) {
     int            ret = pam_start(pam_module.c_str(), uidPassword->pw_name, &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.success = false;
-        m_sFailText                  = "pam_start failed";
+        m_sConversationState.success  = false;
+        m_sConversationState.failText = "pam_start failed";
         Debug::log(ERR, "auth: pam_start failed for {}", pam_module);
         return false;
     }
@@ -87,16 +92,16 @@ bool CAuth::auth(std::string pam_module) {
     m_sConversationState.waitingForPamAuth = false;
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.success = false;
-        m_sFailText                  = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
-        Debug::log(ERR, "auth: {} for {}", m_sFailText, pam_module);
+        m_sConversationState.success  = false;
+        m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
+        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, pam_module);
         return false;
     }
 
     ret = pam_end(handle, ret);
 
-    m_sConversationState.success = true;
-    m_sFailText                  = "Successfully authenticated";
+    m_sConversationState.success  = true;
+    m_sConversationState.failText = "Successfully authenticated";
     Debug::log(LOG, "auth: authenticated for {}", pam_module);
 
     return true;
@@ -106,14 +111,13 @@ bool CAuth::didAuthSucceed() {
     return m_sConversationState.success;
 }
 
-// clearing the input must be done from the main thread!
-static void onWaitForInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+// clearing the input must be done from the main thread
+static void clearInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->clearPasswordBuffer();
 }
 
 void CAuth::waitForInput() {
-    if (!m_sConversationState.lastPrompt.empty())
-        g_pHyprlock->addTimer(std::chrono::milliseconds(1), onWaitForInputTimerCallback, nullptr);
+    g_pHyprlock->addTimer(std::chrono::milliseconds(1), clearInputTimerCallback, nullptr);
 
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
     m_bBlockInput                          = false;
@@ -135,23 +139,12 @@ void CAuth::submitInput(std::string input) {
     m_sConversationState.inputSubmittedCondition.notify_all();
 }
 
-CAuth::SFeedback CAuth::getFeedback() {
-    if (!m_sFailText.empty()) {
-        return SFeedback{m_sFailText, true};
-    } else if (!m_sConversationState.prompt.empty()) {
-        return SFeedback{m_sConversationState.prompt, false};
-    } else {
-        return SFeedback{"Starting Auth...", false};
-    }
+std::optional<std::string> CAuth::getLastFailText() {
+    return m_sConversationState.failText.empty() ? std::nullopt : std::optional(m_sConversationState.failText);
 }
 
-void CAuth::setPrompt(const char* prompt) {
-    m_sConversationState.lastPrompt = m_sConversationState.prompt;
-    m_sConversationState.prompt     = prompt;
-}
-
-void CAuth::clearFailText() {
-    m_sFailText = "";
+std::optional<std::string> CAuth::getLastPrompt() {
+    return m_sConversationState.prompt.empty() ? std::nullopt : std::optional(m_sConversationState.prompt);
 }
 
 bool CAuth::checkWaiting() {
@@ -164,8 +157,6 @@ void CAuth::terminate() {
 
 void CAuth::resetConversation() {
     m_sConversationState.input             = "";
-    m_sConversationState.prompt            = "";
-    m_sConversationState.lastPrompt        = "";
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
     m_sConversationState.success           = false;
