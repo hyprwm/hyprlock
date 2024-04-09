@@ -67,9 +67,9 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("shape", "size", Hyprlang::VEC2{100, 100});
     m_config.addSpecialConfigValue("shape", "rounding", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("shape", "border_size", Hyprlang::INT{0});
-    m_config.addSpecialConfigValue("shape", "border_color", Hyprlang::INT{0xFFDDDDDD});
+    m_config.addSpecialConfigValue("shape", "border_color", Hyprlang::INT{0xFF00CFE6});
     m_config.addSpecialConfigValue("shape", "color", Hyprlang::INT{0xFF111111});
-    m_config.addSpecialConfigValue("shape", "position", Hyprlang::VEC2{0, 0});
+    m_config.addSpecialConfigValue("shape", "position", Hyprlang::VEC2{0, 80});
     m_config.addSpecialConfigValue("shape", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "rotate", Hyprlang::FLOAT{0});

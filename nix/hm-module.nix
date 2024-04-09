@@ -179,6 +179,95 @@ in {
       ];
     };
 
+    shapes = mkOption {
+      description = "Shape configurations";
+      type = listOf (submodule {
+        options = {
+          monitor = mkOption {
+            description = "The monitor to draw a shape";
+            type = str;
+            default = "";
+          };
+
+          size = {
+            x = mkOption {
+              description = "Width of the shape";
+              type = int;
+              default = 360;
+            };
+            y = mkOption {
+              description = "Height of the shape";
+              type = int;
+              default = 60;
+            };
+          };
+
+          color = mkOption {
+            description = "Color of the shape";
+            type = str;
+            default = "rgba(22, 17, 17, 1.0)";
+          };
+
+          rounding = mkOption {
+            description = "Rounding of the shape";
+            type = int;
+            default = -1;
+          };
+
+          border_size = mkOption {
+            description = "Size of shape border";
+            type = int;
+            default = 4;
+          };
+
+          border_color = mkOption {
+            description = "Color of shape border";
+            type = str;
+            default = "rgba(0, 207, 230, 1.0)";
+          };
+
+          rotate = mkOption {
+            description = "Shape rotation angle";
+            type = float;
+            default = 0.0;
+          };
+
+          xray = mkOption {
+            description = "Whether to make a transparent \"hole\" in the background";
+            type = bool;
+            default = false;
+          };
+
+          position = {
+            x = mkOption {
+              description = "X position of the shape";
+              type = int;
+              default = 0;
+            };
+            y = mkOption {
+              description = "Y position of the shape";
+              type = int;
+              default = 80;
+            };
+          };
+
+          halign = mkOption {
+            description = "Horizontal alignment of the shape";
+            type = str;
+            default = "center";
+          };
+
+          valign = mkOption {
+            description = "Vertical alignment of the shape";
+            type = str;
+            default = "center";
+          };
+        }
+        // shadow;
+      });
+      default = [];
+    };
+
     images = mkOption {
       description = "Image configurations";
       type = listOf (submodule {
@@ -560,6 +649,24 @@ in {
           }
         '')
         cfg.backgrounds)}
+
+      ${builtins.concatStringsSep "\n" (map (shape: ''
+          shape {
+            monitor = ${shape.monitor}
+            size = ${toString shape.size.x}, ${toString shape.size.y}
+            color = ${shape.color}
+            rounding = ${toString shape.rounding}
+            border_size = ${toString shape.border_size}
+            border_color = ${shape.border_color}
+            rotate = ${toString shape.rotate}
+            xray = ${boolToString shape.xray}
+
+            position = ${toString shape.position.x}, ${toString shape.position.y}
+            halign = ${shape.halign}
+            valign = ${shape.valign}
+          }
+        '')
+        cfg.shapes)}
 
       ${builtins.concatStringsSep "\n" (map (image: ''
           image {
