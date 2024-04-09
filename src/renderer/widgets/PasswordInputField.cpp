@@ -94,15 +94,17 @@ void CPasswordInputField::updateFade() {
         return;
     }
 
-    if (passwordLength > 0 && fade.allowFadeOut)
+    const bool INPUTUSED = passwordLength > 0 || checkWaiting;
+
+    if (INPUTUSED && fade.allowFadeOut)
         fade.allowFadeOut = false;
 
-    if (passwordLength > 0 && fade.fadeOutTimer.get()) {
+    if (INPUTUSED && fade.fadeOutTimer.get()) {
         fade.fadeOutTimer->cancel();
         fade.fadeOutTimer.reset();
     }
 
-    if (passwordLength == 0 && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
+    if (!INPUTUSED && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
         if (fade.allowFadeOut || fadeTimeoutMs == 0) {
             fade.a            = 1.0;
             fade.animated     = true;
@@ -113,7 +115,7 @@ void CPasswordInputField::updateFade() {
             fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), fadeOutCallback, this);
     }
 
-    if (passwordLength > 0 && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
+    if (INPUTUSED && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
         fade.a         = 0.0;
         fade.animated  = true;
         fade.appearing = true;
