@@ -86,6 +86,8 @@ bool CShape::draw(const SRenderData& data) {
 
         shapeFB.alloc(borderBox.width + 2.0, borderBox.height + 2.0, true);
         g_pRenderer->pushFb(shapeFB.m_iFb);
+        glClearColor(0.0, 0.0, 0.0, 0.0);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
             g_pRenderer->renderRect(borderBox, borderColor, ROUNDBORDER);
