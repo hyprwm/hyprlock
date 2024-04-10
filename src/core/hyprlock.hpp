@@ -54,13 +54,13 @@ class CHyprlock {
     std::string                     spawnSync(const std::string& cmd);
 
     void                            onKey(uint32_t key, bool down);
+    void                            handleKeySym(xkb_keysym_t sym);
     void                            startKeyRepeat(xkb_keysym_t sym);
     void                            repeatKey(xkb_keysym_t sym);
     void                            onPasswordCheckTimer();
     void                            clearPasswordBuffer();
     bool                            passwordCheckWaiting();
     std::optional<std::string>      passwordLastFailReason();
-    void                            doBackspace();
 
     void                            renderOutput(const std::string& stringPort);
 
