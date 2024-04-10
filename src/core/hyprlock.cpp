@@ -793,6 +793,51 @@ void CHyprlock::renderOutput(const std::string& stringPort) {
     PMONITOR->sessionLockSurface->render();
 }
 
+void onHoldBackspaceDeleteTimerCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pHyprlock->doBackspace();
+
+    for (auto& o : g_pHyprlock->m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
+}
+
+void CHyprlock::doBackspace() {
+    if (m_sPasswordState.passBuffer.length() > 0) {
+        // handle utf-8
+        while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+            m_sPasswordState.passBuffer.pop_back();
+        m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+    }
+}
+
+void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
+    if (m_pKeyRepeatTimer) {
+        m_pKeyRepeatTimer->cancel();
+        m_pKeyRepeatTimer.reset();
+    }
+
+    // initial delay
+    m_pKeyRepeatTimer = addTimer(
+        std::chrono::milliseconds(500), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+}
+
+void CHyprlock::repeatKey(xkb_keysym_t sym) {
+    bool continueRepeat = true;
+
+    if (sym == XKB_KEY_BackSpace || sym == XKB_KEY_Delete) {
+        doBackspace();
+        continueRepeat = m_sPasswordState.passBuffer.length() > 0;
+    }
+
+    if (continueRepeat)
+        m_pKeyRepeatTimer = addTimer(
+            std::chrono::milliseconds(50), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+
+    for (auto& o : m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
+}
+
 void CHyprlock::onKey(uint32_t key, bool down) {
     if (m_bFadeStarted)
         return;
@@ -812,8 +857,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 
     if (down)
         m_vPressedKeys.push_back(key);
-    else
+    else {
         std::erase(m_vPressedKeys, key);
+        if (m_pKeyRepeatTimer) {
+            m_pKeyRepeatTimer->cancel();
+            m_pKeyRepeatTimer.reset();
+        }
+    }
 
     if (g_pAuth->checkWaiting()) {
         for (auto& o : m_vOutputs) {
@@ -843,14 +893,10 @@ void CHyprlock::onKey(uint32_t key, bool down) {
                 return;
             }
 
-            g_pAuth->submitInput(m_sPasswordState.passBuffer);
-        } else if (SYM == XKB_KEY_BackSpace) {
-            if (m_sPasswordState.passBuffer.length() > 0) {
-                // handle utf-8
-                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
-                    m_sPasswordState.passBuffer.pop_back();
-                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
-            }
+            m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
+        } else if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) {
+            doBackspace();
+            startKeyRepeat(SYM);
         } else if (SYM == XKB_KEY_Caps_Lock) {
             m_bCapsLock = !m_bCapsLock;
         } else if (SYM == XKB_KEY_Num_Lock) {

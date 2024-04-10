@@ -54,10 +54,13 @@ class CHyprlock {
     std::string                     spawnSync(const std::string& cmd);
 
     void                            onKey(uint32_t key, bool down);
+    void                            startKeyRepeat(xkb_keysym_t sym);
+    void                            repeatKey(xkb_keysym_t sym);
     void                            onPasswordCheckTimer();
     void                            clearPasswordBuffer();
     bool                            passwordCheckWaiting();
     std::optional<std::string>      passwordLastFailReason();
+    void                            doBackspace();
 
     void                            renderOutput(const std::string& stringPort);
 
@@ -96,6 +99,8 @@ class CHyprlock {
     std::chrono::system_clock::time_point m_tGraceEnds;
     std::chrono::system_clock::time_point m_tFadeEnds;
     Vector2D                              m_vLastEnterCoords = {};
+
+    std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
 
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
     std::vector<std::shared_ptr<CTimer>>  getTimers();
