@@ -83,9 +83,4 @@ protocol("unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml" "linux-dmabuf-unst
 # Installation
 install(TARGETS hyprlock)
 
-install(CODE "
-    if (NOT EXISTS \"${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d/hyprlock\")
-        install(FILES \"${CMAKE_SOURCE_DIR}/pam/hyprlock\" DESTINATION \"${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d\")
-    endif()
-")
-
+install(FILES ${CMAKE_SOURCE_DIR}/pam/hyprlock DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d)
