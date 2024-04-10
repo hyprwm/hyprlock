@@ -21,11 +21,6 @@ stdenv.mkDerivation {
 
   src = ../.;
 
-  patches = [
-    # remove PAM file install check
-    ./cmake.patch
-  ];
-
   nativeBuildInputs = [
     cmake
     pkg-config
