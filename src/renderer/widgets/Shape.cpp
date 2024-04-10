@@ -20,15 +20,16 @@ CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, 
 
     const Vector2D VBORDER  = {border, border};
     const Vector2D REALSIZE = size + VBORDER * 2.0;
+    const Vector2D OFFSET   = angle == 0 ? Vector2D{0.0, 0.0} : Vector2D{1.0, 1.0};
 
-    pos = posFromHVAlign(viewport, xray ? size : (angle == 0 ? REALSIZE : REALSIZE + Vector2D{2.0, 2.0}), pos, halign, valign, xray ? 0 : angle);
+    pos = posFromHVAlign(viewport, xray ? size : REALSIZE + OFFSET * 2.0, pos, halign, valign, xray ? 0 : angle);
 
     if (xray) {
         shapeBox  = {pos, size};
         borderBox = {pos - VBORDER, REALSIZE};
     } else {
-        shapeBox  = {pos + VBORDER, size};
-        borderBox = {pos, REALSIZE};
+        shapeBox  = {OFFSET + VBORDER, size};
+        borderBox = {OFFSET, REALSIZE};
     }
 }
 
@@ -41,14 +42,13 @@ bool CShape::draw(const SRenderData& data) {
 
     shadow.draw(data);
 
-    CColor borderCol = borderColor;
-    borderCol.a *= data.opacity;
-
     const auto MINHALFBORDER = std::min(borderBox.w, borderBox.h) / 2.0;
 
     if (xray) {
         if (border > 0) {
-            const int PIROUND = std::min(MINHALFBORDER, std::round(border * M_PI));
+            const int PIROUND   = std::min(MINHALFBORDER, std::round(border * M_PI));
+            CColor    borderCol = borderColor;
+            borderCol.a *= data.opacity;
             g_pRenderer->renderRect(borderBox, borderCol, rounding == -1 ? PIROUND : std::clamp(rounding, 0, PIROUND));
         }
 
@@ -61,38 +61,19 @@ bool CShape::draw(const SRenderData& data) {
         return data.opacity < 1.0;
     }
 
-    const auto MINHALFSHAPE = std::min(shapeBox.w, shapeBox.h) / 2.0;
-    const bool ALLOWROUND   = rounding > -1 && rounding < MINHALFSHAPE;
-    const int  ROUNDSHAPE   = ALLOWROUND ? rounding : MINHALFSHAPE;
-    const int  ROUNDBORDER  = ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER;
-
-    if (angle == 0) {
-        CColor shapeCol = color;
-        shapeCol.a *= data.opacity;
-
-        if (border > 0)
-            g_pRenderer->renderRect(borderBox, borderCol, ROUNDBORDER);
-
-        g_pRenderer->renderRect(shapeBox, shapeCol, ROUNDSHAPE);
-
-        return data.opacity < 1.0;
-    }
-
     if (!shapeFB.isAllocated()) {
-        borderBox.x = 1.0;
-        borderBox.y = 1.0;
-        shapeBox.x  = border + 1.0;
-        shapeBox.y  = border + 1.0;
+        const auto MINHALFSHAPE = std::min(shapeBox.w, shapeBox.h) / 2.0;
+        const bool ALLOWROUND   = rounding > -1 && rounding < MINHALFSHAPE;
 
-        shapeFB.alloc(borderBox.width + 2.0, borderBox.height + 2.0, true);
+        shapeFB.alloc(borderBox.width + borderBox.x * 2.0, borderBox.height + borderBox.y * 2.0, true);
         g_pRenderer->pushFb(shapeFB.m_iFb);
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderRect(borderBox, borderColor, ROUNDBORDER);
+            g_pRenderer->renderRect(borderBox, borderColor, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER);
 
-        g_pRenderer->renderRect(shapeBox, color, ROUNDSHAPE);
+        g_pRenderer->renderRect(shapeBox, color, ALLOWROUND ? rounding : MINHALFSHAPE);
         g_pRenderer->popFb();
     }
 
