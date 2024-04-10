@@ -116,12 +116,13 @@ bool CLabel::draw(const SRenderData& data) {
         }
     }
 
+    shadow.draw(data);
+
     // calc pos
     pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign, angle);
 
     CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
     box.rot  = angle;
-    shadow.draw(data);
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 
     return false;

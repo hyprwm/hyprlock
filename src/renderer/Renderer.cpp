@@ -17,6 +17,7 @@
 #include "widgets/Background.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/Image.hpp"
+#include "widgets/Shape.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -324,6 +325,8 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values, surf->output->stringPort));
             } else if (c.type == "label") {
                 widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, surf->output->stringPort));
+            } else if (c.type == "shape") {
+                widgets[surf].emplace_back(std::make_unique<CShape>(surf->size, c.values));
             } else if (c.type == "image") {
                 const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 

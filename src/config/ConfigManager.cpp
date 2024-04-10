@@ -62,6 +62,20 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
 
+    m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("shape", "size", Hyprlang::VEC2{100, 100});
+    m_config.addSpecialConfigValue("shape", "rounding", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("shape", "border_size", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("shape", "border_color", Hyprlang::INT{0xFF00CFE6});
+    m_config.addSpecialConfigValue("shape", "color", Hyprlang::INT{0xFF111111});
+    m_config.addSpecialConfigValue("shape", "position", Hyprlang::VEC2{0, 80});
+    m_config.addSpecialConfigValue("shape", "halign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("shape", "valign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("shape", "rotate", Hyprlang::FLOAT{0});
+    m_config.addSpecialConfigValue("shape", "xray", Hyprlang::INT{0});
+    SHADOWABLE("shape");
+
     m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("image", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("image", "path", Hyprlang::STRING{""});
@@ -164,6 +178,30 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"vibrancy", m_config.getSpecialConfigValue("background", "vibrancy", k.c_str())},
                 {"brightness", m_config.getSpecialConfigValue("background", "brightness", k.c_str())},
                 {"vibrancy_darkness", m_config.getSpecialConfigValue("background", "vibrancy_darkness", k.c_str())},
+            }
+        });
+        // clang-format on
+    }
+
+    //
+    keys = m_config.listKeysForSpecialCategory("shape");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            "shape",
+            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("shape", "monitor", k.c_str())),
+            {
+                {"size", m_config.getSpecialConfigValue("shape", "size", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("shape", "rounding", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("shape", "border_size", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("shape", "border_color", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("shape", "color", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("shape", "position", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("shape", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("shape", "valign", k.c_str())},
+                {"rotate", m_config.getSpecialConfigValue("shape", "rotate", k.c_str())},
+                {"xray", m_config.getSpecialConfigValue("shape", "xray", k.c_str())},
+                SHADOWABLE("shape"),
             }
         });
         // clang-format on

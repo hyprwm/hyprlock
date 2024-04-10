@@ -132,12 +132,14 @@ bool CImage::draw(const SRenderData& data) {
 
     if (!imageFB.isAllocated()) {
 
-        const Vector2D TEXSIZE = asset->texture.m_vSize;
-        const float    SCALEX  = size / TEXSIZE.x;
-        const float    SCALEY  = size / TEXSIZE.y;
+        const Vector2D IMAGEPOS  = {border, border};
+        const Vector2D BORDERPOS = {0.0, 0.0};
+        const Vector2D TEXSIZE   = asset->texture.m_vSize;
+        const float    SCALEX    = size / TEXSIZE.x;
+        const float    SCALEY    = size / TEXSIZE.y;
 
-        // image with borders offset
-        CBox texbox = {{border, border}, TEXSIZE};
+        // image with borders offset, with extra pixel for anti-aliasing when rotated
+        CBox texbox = {angle == 0 ? IMAGEPOS : IMAGEPOS + Vector2D{1.0, 1.0}, TEXSIZE};
 
         texbox.w *= std::max(SCALEX, SCALEY);
         texbox.h *= std::max(SCALEX, SCALEY);
@@ -145,16 +147,19 @@ bool CImage::draw(const SRenderData& data) {
         const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
 
         // plus borders if any
-        CBox borderBox = {{}, {texbox.w + border * 2.0, texbox.h + border * 2.0}};
+        CBox borderBox = {angle == 0 ? BORDERPOS : BORDERPOS + Vector2D{1.0, 1.0}, texbox.size() + IMAGEPOS * 2.0};
 
         borderBox.round();
-        imageFB.alloc(borderBox.w, borderBox.h, true);
+
+        const Vector2D FBSIZE = angle == 0 ? borderBox.size() : borderBox.size() + Vector2D{2.0, 2.0};
+
+        imageFB.alloc(FBSIZE.x, FBSIZE.y, true);
         g_pRenderer->pushFb(imageFB.m_iFb);
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderRect(borderBox, color, ALLOWROUND ? rounding : std::min(borderBox.w, borderBox.h) / 2.0);
+            g_pRenderer->renderRect(borderBox, color, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : std::min(borderBox.w, borderBox.h) / 2.0);
 
         texbox.round();
         g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_NORMAL);
