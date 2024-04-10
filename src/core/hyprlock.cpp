@@ -776,6 +776,7 @@ void CHyprlock::renderOutput(const std::string& stringPort) {
     PMONITOR->sessionLockSurface->render();
 }
 
+std::chrono::time_point<std::chrono::system_clock> m_lastBackspacePress;
 void CHyprlock::onKey(uint32_t key, bool down) {
     if (m_bFadeStarted)
         return;
@@ -828,12 +829,30 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 
             m_sPasswordState.result = g_pPassword->verify(m_sPasswordState.passBuffer);
         } else if (SYM == XKB_KEY_BackSpace) {
-            if (m_sPasswordState.passBuffer.length() > 0) {
-                // handle utf-8
-                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
-                    m_sPasswordState.passBuffer.pop_back();
-                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+            auto now = std::chrono::system_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastBackspacePress).count();
+
+            if (duration >= 200) {
+                if (m_sPasswordState.passBuffer.length() > 0) {
+                    // handle utf-8
+                    while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+                        m_sPasswordState.passBuffer.pop_back();
+                    m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+                }
+            } else {
+                // delete 5 characters per second
+                for (int i = 0; i < 5; ++i) {
+                    if (m_sPasswordState.passBuffer.length() > 0) {
+                        // handle utf-8
+                        while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+                            m_sPasswordState.passBuffer.pop_back();
+                        m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+                    }
+                }
             }
+
+            // update last backspace press timestamp
+            m_lastBackspacePress = now;
         } else if (SYM == XKB_KEY_Caps_Lock) {
             m_bCapsLock = !m_bCapsLock;
         } else if (SYM == XKB_KEY_Num_Lock) {
