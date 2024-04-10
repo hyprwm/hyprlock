@@ -131,8 +131,14 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$FAIL")) {
-        const auto FAIL = g_pHyprlock->passwordLastFailReason();
+        const auto FAIL = g_pAuth->getLastFailText();
         replaceAll(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$PROMPT")) {
+        const auto PROMPT = g_pAuth->getLastPrompt();
+        replaceAll(in, "$PROMPT", PROMPT.has_value() ? PROMPT.value() : "");
         result.allowForceUpdate = true;
     }
 

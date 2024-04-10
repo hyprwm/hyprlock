@@ -15,7 +15,7 @@ void help() {
 int main(int argc, char** argv, char** envp) {
     std::string configPath;
     std::string wlDisplay;
-    bool immediate = false;
+    bool        immediate = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -32,8 +32,7 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--display" && i + 1 < argc) {
             wlDisplay = argv[i + 1];
             i++;
-        }
-        else if (arg == "--immediate") {
+        } else if (arg == "--immediate") {
             immediate = true;
         } else if (arg == "--help" || arg == "-h") {
             help();

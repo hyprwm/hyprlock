@@ -9,7 +9,7 @@
 #include "Output.hpp"
 #include "CursorShape.hpp"
 #include "Timer.hpp"
-#include "Password.hpp"
+#include "Auth.hpp"
 
 #include <memory>
 #include <vector>
@@ -40,6 +40,8 @@ class CHyprlock {
     std::shared_ptr<CTimer>         addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
                                              bool force = false);
 
+    void                            enqueueForceUpdateTimers();
+
     void                            onLockLocked();
     void                            onLockFinished();
 
@@ -53,6 +55,7 @@ class CHyprlock {
 
     void                            onKey(uint32_t key, bool down);
     void                            onPasswordCheckTimer();
+    void                            clearPasswordBuffer();
     bool                            passwordCheckWaiting();
     std::optional<std::string>      passwordLastFailReason();
 
@@ -129,10 +132,9 @@ class CHyprlock {
     } m_sLockState;
 
     struct {
-        std::string                                     passBuffer = "";
-        std::shared_ptr<CPassword::SVerificationResult> result;
-        std::optional<std::string>                      lastFailReason;
-        size_t                                          failedAttempts = 0;
+        std::string passBuffer      = "";
+        size_t      failedAttempts  = 0;
+        bool        displayFailText = false;
     } m_sPasswordState;
 
     struct {
