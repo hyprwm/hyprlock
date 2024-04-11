@@ -103,7 +103,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "dots_spacing", Hyprlang::FLOAT{0.2});
     m_config.addSpecialConfigValue("input-field", "dots_rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
-    m_config.addSpecialConfigValue("input-field", "fade_timeout", Hyprlang::INT{1000});
+    m_config.addSpecialConfigValue("input-field", "fade_timeout", Hyprlang::INT{2000});
     m_config.addSpecialConfigValue("input-field", "font_color", Hyprlang::INT{0xFF000000});
     m_config.addSpecialConfigValue("input-field", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "valign", Hyprlang::STRING{"center"});
