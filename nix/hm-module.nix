@@ -437,7 +437,7 @@ in {
             fade_timeout = mkOption {
               description = "Milliseconds before the input field should be faded (0 to fade immediately)";
               type = int;
-              default = 1000;
+              default = 2000;
             };
 
             placeholder_text = mkOption {
