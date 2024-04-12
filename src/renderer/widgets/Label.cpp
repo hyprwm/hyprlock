@@ -60,21 +60,23 @@ void CLabel::plantTimer() {
 
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
-    labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
-    std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-    CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
-    int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
+    labelPreFormat           = std::any_cast<Hyprlang::STRING>(props.at("text"));
+    std::string fontFamily   = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
+    std::string fontFeatures = std::any_cast<Hyprlang::STRING>(props.at("font_features"));
+    CColor      labelColor   = std::any_cast<Hyprlang::INT>(props.at("color"));
+    int         fontSize     = std::any_cast<Hyprlang::INT>(props.at("font_size"));
 
     label = formatString(labelPreFormat);
 
-    request.id                   = getUniqueResourceId();
-    resourceID                   = request.id;
-    request.asset                = label.formatted;
-    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = fontFamily;
-    request.props["color"]       = labelColor;
-    request.props["font_size"]   = fontSize;
-    request.props["cmd"]         = label.cmd;
+    request.id                     = getUniqueResourceId();
+    resourceID                     = request.id;
+    request.asset                  = label.formatted;
+    request.type                   = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+    request.props["font_family"]   = fontFamily;
+    request.props["font_features"] = fontFeatures;
+    request.props["color"]         = labelColor;
+    request.props["font_size"]     = fontSize;
+    request.props["cmd"]           = label.cmd;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 

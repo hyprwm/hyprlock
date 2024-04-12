@@ -129,6 +129,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
+    m_config.addSpecialConfigValue("label", "font_features", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "rotate", Hyprlang::FLOAT{0});
@@ -284,6 +285,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"color", m_config.getSpecialConfigValue("label", "color", k.c_str())},
                 {"font_size", m_config.getSpecialConfigValue("label", "font_size", k.c_str())},
                 {"font_family", m_config.getSpecialConfigValue("label", "font_family", k.c_str())},
+                {"font_features", m_config.getSpecialConfigValue("label", "font_features", k.c_str())},
                 {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
