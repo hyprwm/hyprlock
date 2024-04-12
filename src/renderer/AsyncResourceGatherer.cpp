@@ -244,6 +244,17 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     pango_layout_set_font_description(layout, fontDesc);
     pango_font_description_free(fontDesc);
 
+    if (rq.props.contains("text_align")) {
+        const std::string TEXTALIGN = std::any_cast<std::string>(rq.props.at("text_align"));
+        PangoAlignment    align     = PANGO_ALIGN_LEFT;
+        if (TEXTALIGN == "center")
+            align = PANGO_ALIGN_CENTER;
+        else if (TEXTALIGN == "right")
+            align = PANGO_ALIGN_RIGHT;
+
+        pango_layout_set_alignment(layout, align);
+    }
+
     PangoAttrList* attrList = nullptr;
     GError*        gError   = nullptr;
     char*          buf      = nullptr;

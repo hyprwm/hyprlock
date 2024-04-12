@@ -561,6 +561,12 @@ in {
               default = "Hi there, $USER";
             };
 
+            text_align = mkOption {
+              description = "Horizontal alignment of multi-line text";
+              type = str;
+              default = "";
+            };
+
             color = mkOption {
               description = "Color of the label";
               type = str;
@@ -729,6 +735,7 @@ in {
           label {
             monitor = ${label.monitor}
             text = ${label.text}
+            text_align = ${label.text_align}
             color = ${label.color}
             font_size = ${toString label.font_size}
             font_family = ${label.font_family}

@@ -61,6 +61,7 @@ void CLabel::plantTimer() {
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
     labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
+    std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
     std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
     CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
     int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
@@ -75,6 +76,9 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
     request.props["color"]       = labelColor;
     request.props["font_size"]   = fontSize;
     request.props["cmd"]         = label.cmd;
+
+    if (!textAlign.empty())
+        request.props["text_align"] = textAlign;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
