@@ -132,6 +132,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "rotate", Hyprlang::FLOAT{0});
+    m_config.addSpecialConfigValue("label", "text_align", Hyprlang::STRING{""});
     SHADOWABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {false});
@@ -288,6 +289,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
                 {"rotate", m_config.getSpecialConfigValue("label", "rotate", k.c_str())},
+                {"text_align", m_config.getSpecialConfigValue("label", "text_align", k.c_str())},
                 SHADOWABLE("label"),
             }
         });
