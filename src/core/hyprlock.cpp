@@ -399,7 +399,7 @@ void CHyprlock::run() {
 
     std::thread pollThr([this, &pollfds]() {
         while (!m_bTerminate) {
-            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
+            int ret = poll(pollfds, 1, 16 /* 16 ms, or 60 times per second */);
 
             if (ret < 0) {
                 if (errno == EINTR)
@@ -460,7 +460,7 @@ void CHyprlock::run() {
     while (!m_bTerminate) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
         if (m_sLoopState.event == false)
-            m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
+            m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(16), [this] { return m_sLoopState.event; });
 
         if (!NOFADEOUT && m_bFadeStarted && std::chrono::system_clock::now() > m_tFadeEnds) {
             releaseSessionLock();
