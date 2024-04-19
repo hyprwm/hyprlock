@@ -28,7 +28,10 @@ CSessionLockSurface::~CSessionLockSurface() {
         wp_viewport_destroy(viewport);
         wp_fractional_scale_v1_destroy(fractional);
     }
-    wl_egl_window_destroy(eglWindow);
+
+    if (eglWindow)
+        wl_egl_window_destroy(eglWindow);
+
     ext_session_lock_surface_v1_destroy(lockSurface);
     wl_surface_destroy(surface);
     if (frameCallback)
