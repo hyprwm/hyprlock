@@ -119,7 +119,7 @@ static const wl_callback_listener callbackListener = {
 void CSessionLockSurface::render() {
     Debug::log(TRACE, "render lock");
 
-    if (frameCallback)
+    if (frameCallback || !readyForFrame)
         return;
 
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
@@ -132,7 +132,6 @@ void CSessionLockSurface::render() {
 }
 
 void CSessionLockSurface::onCallback() {
-    readyForFrame = true;
     frameCallback = nullptr;
 
     if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL)
