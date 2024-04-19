@@ -28,7 +28,10 @@ CSessionLockSurface::~CSessionLockSurface() {
         wp_viewport_destroy(viewport);
         wp_fractional_scale_v1_destroy(fractional);
     }
-    wl_egl_window_destroy(eglWindow);
+
+    if (eglWindow)
+        wl_egl_window_destroy(eglWindow);
+
     ext_session_lock_surface_v1_destroy(lockSurface);
     wl_surface_destroy(surface);
     if (frameCallback)
@@ -116,7 +119,7 @@ static const wl_callback_listener callbackListener = {
 void CSessionLockSurface::render() {
     Debug::log(TRACE, "render lock");
 
-    if (frameCallback)
+    if (frameCallback || !readyForFrame)
         return;
 
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
@@ -129,7 +132,6 @@ void CSessionLockSurface::render() {
 }
 
 void CSessionLockSurface::onCallback() {
-    readyForFrame = true;
     frameCallback = nullptr;
 
     if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL)
