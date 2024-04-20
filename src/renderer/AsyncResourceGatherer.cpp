@@ -2,10 +2,14 @@
 #include "../config/ConfigManager.hpp"
 #include "../core/Egl.hpp"
 #include <cairo/cairo.h>
+#include <magic.h>
 #include <pango/pangocairo.h>
 #include <algorithm>
+#include <filesystem>
 #include "../core/hyprlock.hpp"
 #include "../helpers/MiscFunctions.hpp"
+#include "../helpers/Jpeg.hpp"
+#include "../helpers/Webp.hpp"
 
 std::mutex cvmtx;
 
@@ -105,6 +109,13 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     return nullptr;
 }
 
+enum class FileType {
+    PNG,
+    JPEG,
+    WEBP,
+    UNKNOWN,
+};
+
 void CAsyncResourceGatherer::gather() {
     const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
@@ -131,11 +142,52 @@ void CAsyncResourceGatherer::gather() {
             if (path.empty() || path == "screenshot")
                 continue;
 
-            std::string id           = (c.type == "background" ? std::string{"background:"} : std::string{"image:"}) + path;
-            const auto  ABSOLUTEPATH = absolutePath(path, "");
+            std::string           id = (c.type == "background" ? std::string{"background:"} : std::string{"image:"}) + path;
+            std::filesystem::path ABSOLUTEPATH(absolutePath(path, ""));
+
+            // determine the file type
+            std::string ext = ABSOLUTEPATH.extension().string();
+            // convert the extension to lower case
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](char c) { return c <= 'Z' && c >= 'A' ? c - ('Z' - 'z') : c; });
+
+            FileType ft = FileType::UNKNOWN;
+            Debug::log(WARN, "Extension: {}", ext);
+            if (ext == ".png") {
+                ft = FileType::PNG;
+            } else if (ext == ".jpg" || ext == ".jpeg") {
+                ft = FileType::JPEG;
+            } else if (ext == ".webp") {
+                ft = FileType::WEBP;
+            } else {
+                // magic is slow, so only use it when no recognized extension is found
+                auto handle = magic_open(MAGIC_NONE | MAGIC_COMPRESS);
+                magic_load(handle, nullptr);
+
+                const auto type_str   = std::string(magic_file(handle, path.c_str()));
+                const auto first_word = type_str.substr(0, type_str.find(" "));
+                magic_close(handle);
+
+                if (first_word == "PNG") {
+                    ft = FileType::PNG;
+                } else if (first_word == "JPEG") {
+                    ft = FileType::JPEG;
+                } else if (first_word == "RIFF" && type_str.find("Web/P image") != std::string::npos) {
+                    ft = FileType::WEBP;
+                }
+            }
 
             // preload bg img
-            const auto CAIROISURFACE = cairo_image_surface_create_from_png(ABSOLUTEPATH.c_str());
+            cairo_surface_t* CAIROISURFACE = nullptr;
+            switch (ft) {
+                case FileType::PNG: CAIROISURFACE = cairo_image_surface_create_from_png(ABSOLUTEPATH.c_str()); break;
+                case FileType::JPEG: CAIROISURFACE = JPEG::createSurfaceFromJPEG(ABSOLUTEPATH); break;
+                case FileType::WEBP: CAIROISURFACE = WEBP::createSurfaceFromWEBP(ABSOLUTEPATH); break;
+                default: Debug::log(ERR, "unrecognized image format of {}", path.c_str()); continue;
+            }
+
+            if (CAIROISURFACE == nullptr) {
+                continue;
+            }
 
             const auto CAIRO = cairo_create(CAIROISURFACE);
             cairo_scale(CAIRO, 1, 1);
