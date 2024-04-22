@@ -52,7 +52,7 @@ void CImage::onTimerUpdate() {
     if (!pendingResourceID.empty())
         return;
 
-    request.id        = std::string{"image:"} + path + ",time:" + std::to_string(modificationTime.time_since_epoch().count());
+    request.id        = std::string{"image:"} + path + ",time:" + std::to_string((uint64_t)modificationTime.time_since_epoch().count());
     pendingResourceID = request.id;
     request.asset     = path;
     request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
