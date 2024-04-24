@@ -152,13 +152,13 @@ void CAsyncResourceGatherer::gather() {
 
             FileType ft = FileType::UNKNOWN;
             Debug::log(WARN, "Extension: {}", ext);
-            if (ext == ".png") {
+            if (ext == ".png")
                 ft = FileType::PNG;
-            } else if (ext == ".jpg" || ext == ".jpeg") {
+            else if (ext == ".jpg" || ext == ".jpeg")
                 ft = FileType::JPEG;
-            } else if (ext == ".webp") {
+            else if (ext == ".webp")
                 ft = FileType::WEBP;
-            } else {
+            else {
                 // magic is slow, so only use it when no recognized extension is found
                 auto handle = magic_open(MAGIC_NONE | MAGIC_COMPRESS);
                 magic_load(handle, nullptr);
@@ -167,13 +167,12 @@ void CAsyncResourceGatherer::gather() {
                 const auto first_word = type_str.substr(0, type_str.find(" "));
                 magic_close(handle);
 
-                if (first_word == "PNG") {
+                if (first_word == "PNG")
                     ft = FileType::PNG;
-                } else if (first_word == "JPEG") {
+                else if (first_word == "JPEG")
                     ft = FileType::JPEG;
-                } else if (first_word == "RIFF" && type_str.find("Web/P image") != std::string::npos) {
+                else if (first_word == "RIFF" && type_str.find("Web/P image") != std::string::npos)
                     ft = FileType::WEBP;
-                }
             }
 
             // preload bg img
@@ -185,9 +184,8 @@ void CAsyncResourceGatherer::gather() {
                 default: Debug::log(ERR, "unrecognized image format of {}", path.c_str()); continue;
             }
 
-            if (CAIROISURFACE == nullptr) {
+            if (CAIROISURFACE == nullptr)
                 continue;
-            }
 
             const auto CAIRO = cairo_create(CAIROISURFACE);
             cairo_scale(CAIRO, 1, 1);
