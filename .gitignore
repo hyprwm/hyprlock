@@ -6,3 +6,4 @@ build/
 compile_commands.json
 protocols/*.c
 protocols/*.h
+*.kdev4
