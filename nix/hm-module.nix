@@ -9,6 +9,7 @@ self: {
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
   inherit (lib.trivial) boolToString;
+  concatMapLines = lib.concatMapStringsSep "\n";
 
   cfg = config.programs.hyprlock;
 
@@ -620,9 +621,9 @@ in {
     home.packages = [cfg.package];
 
     xdg.configFile."hypr/hyprlock.conf".text = ''
-      ${builtins.concatStringsSep "\n" (map (source: ''
+      ${concatMapLines (source: ''
         source = ${source}
-      '') cfg.sources)}
+      '') cfg.sources}
 
       general {
         disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
@@ -633,7 +634,7 @@ in {
         ignore_empty_input = ${boolToString cfg.general.ignore_empty_input}
       }
 
-      ${builtins.concatStringsSep "\n" (map (background: ''
+      ${concatMapLines (background: ''
           background {
             monitor = ${background.monitor}
             path = ${background.path}
@@ -647,9 +648,9 @@ in {
             vibrancy_darkness = ${toString background.vibrancy_darkness}
           }
         '')
-        cfg.backgrounds)}
+        cfg.backgrounds}
 
-      ${builtins.concatStringsSep "\n" (map (shape: ''
+      ${concatMapLines (shape: ''
           shape {
             monitor = ${shape.monitor}
             size = ${toString shape.size.x}, ${toString shape.size.y}
@@ -665,9 +666,9 @@ in {
             valign = ${shape.valign}
           }
         '')
-        cfg.shapes)}
+        cfg.shapes}
 
-      ${builtins.concatStringsSep "\n" (map (image: ''
+      ${concatMapLines (image: ''
           image {
             monitor = ${image.monitor}
             path = ${image.path}
@@ -684,9 +685,9 @@ in {
             valign = ${image.valign}
           }
         '')
-        cfg.images)}
+        cfg.images}
 
-      ${builtins.concatStringsSep "\n" (map (input-field: ''
+      ${concatMapLines (input-field: ''
           input-field {
             monitor = ${input-field.monitor}
             size = ${toString input-field.size.width}, ${toString input-field.size.height}
@@ -722,9 +723,9 @@ in {
             valign = ${input-field.valign}
           }
         '')
-        cfg.input-fields)}
+        cfg.input-fields}
 
-      ${builtins.concatStringsSep "\n" (map (label: ''
+      ${concatMapLines (label: ''
           label {
             monitor = ${label.monitor}
             text = ${label.text}
@@ -743,7 +744,7 @@ in {
             valign = ${label.valign}
           }
         '')
-        cfg.labels)}
+        cfg.labels}
 
         ${lib.optionalString (cfg.extraConfig != null) cfg.extraConfig}
     '';
