@@ -620,133 +620,46 @@ in {
   config = mkIf cfg.enable {
     home.packages = [cfg.package];
 
-    xdg.configFile."hypr/hyprlock.conf".text = ''
-      ${concatMapLines (source: ''
-        source = ${source}
-      '') cfg.sources}
+    xdg.configFile."hypr/hyprlock.conf".text = let
+      translateCfg = attrs:
+        lib.mapAttrsToList (
+          n: v: "  ${n} = ${
+            if builtins.isNull v
+            then ""
+            else if builtins.isString v
+            then v
+            else if builtins.isBool v
+            then boolToString v
+            else if (builtins.isInt v || builtins.isFloat v)
+            then toString v
+            else if builtins.isAttrs v
+            then "${toString v.x or v.width}, ${toString v.y or v.height}"
+            else
+              throw ''
+                Unhandled attribute value passed to hyprlock of type: ${builtins.typeOf n}
+              ''
+          }"
+        )
+        attrs;
+    in ''
+      ${concatMapLines (source: "source = ${source}") cfg.sources}
 
       general {
-        disable_loading_bar = ${boolToString cfg.general.disable_loading_bar}
-        grace = ${toString cfg.general.grace}
-        hide_cursor = ${boolToString cfg.general.hide_cursor}
-        no_fade_in = ${boolToString cfg.general.no_fade_in}
-        no_fade_out = ${boolToString cfg.general.no_fade_out}
-        ignore_empty_input = ${boolToString cfg.general.ignore_empty_input}
+      ${lib.concatLines (translateCfg cfg.general)}
       }
 
-      ${concatMapLines (background: ''
-          background {
-            monitor = ${background.monitor}
-            path = ${background.path}
-            color = ${background.color}
-            blur_size = ${toString background.blur_size}
-            blur_passes = ${toString background.blur_passes}
-            noise = ${toString background.noise}
-            contrast = ${toString background.contrast}
-            brightness = ${toString background.brightness}
-            vibrancy = ${toString background.vibrancy}
-            vibrancy_darkness = ${toString background.vibrancy_darkness}
-          }
-        '')
-        cfg.backgrounds}
-
-      ${concatMapLines (shape: ''
-          shape {
-            monitor = ${shape.monitor}
-            size = ${toString shape.size.x}, ${toString shape.size.y}
-            color = ${shape.color}
-            rounding = ${toString shape.rounding}
-            border_size = ${toString shape.border_size}
-            border_color = ${shape.border_color}
-            rotate = ${toString shape.rotate}
-            xray = ${boolToString shape.xray}
-
-            position = ${toString shape.position.x}, ${toString shape.position.y}
-            halign = ${shape.halign}
-            valign = ${shape.valign}
-          }
-        '')
-        cfg.shapes}
-
-      ${concatMapLines (image: ''
-          image {
-            monitor = ${image.monitor}
-            path = ${image.path}
-            size = ${toString image.size}
-            rounding = ${toString image.rounding}
-            border_size = ${toString image.border_size}
-            border_color = ${image.border_color}
-            rotate = ${toString image.rotate}
-            reload_time = ${toString image.reload_time}
-            reload_cmd = ${image.reload_cmd}
-
-            position = ${toString image.position.x}, ${toString image.position.y}
-            halign = ${image.halign}
-            valign = ${image.valign}
-          }
-        '')
-        cfg.images}
-
-      ${concatMapLines (input-field: ''
-          input-field {
-            monitor = ${input-field.monitor}
-            size = ${toString input-field.size.width}, ${toString input-field.size.height}
-            outline_thickness = ${toString input-field.outline_thickness}
-            dots_size = ${toString input-field.dots_size}
-            dots_spacing = ${toString input-field.dots_spacing}
-            dots_center = ${boolToString input-field.dots_center}
-            dots_rounding = ${toString input-field.dots_rounding}
-            outer_color = ${input-field.outer_color}
-            inner_color = ${input-field.inner_color}
-            font_color = ${input-field.font_color}
-            fade_on_empty = ${boolToString input-field.fade_on_empty}
-            fade_timeout = ${toString input-field.fade_timeout}
-            placeholder_text = ${input-field.placeholder_text}
-            hide_input = ${boolToString input-field.hide_input}
-            rounding = ${toString input-field.rounding}
-            shadow_passes = ${toString input-field.shadow_passes}
-            shadow_size = ${toString input-field.shadow_size}
-            shadow_color = ${input-field.shadow_color}
-            shadow_boost = ${toString input-field.shadow_boost}
-            check_color = ${input-field.check_color}
-            fail_color = ${input-field.fail_color}
-            fail_text = ${input-field.fail_text}
-            fail_transition = ${toString input-field.fail_transition}
-            capslock_color = ${input-field.capslock_color}
-            numlock_color = ${input-field.numlock_color}
-            bothlock_color = ${input-field.bothlock_color}
-            invert_numlock = ${boolToString input-field.invert_numlock}
-            swap_font_color = ${boolToString input-field.swap_font_color}
-
-            position = ${toString input-field.position.x}, ${toString input-field.position.y}
-            halign = ${input-field.halign}
-            valign = ${input-field.valign}
-          }
-        '')
-        cfg.input-fields}
-
-      ${concatMapLines (label: ''
-          label {
-            monitor = ${label.monitor}
-            text = ${label.text}
-            text_align = ${label.text_align}
-            color = ${label.color}
-            font_size = ${toString label.font_size}
-            font_family = ${label.font_family}
-            rotate = ${toString label.rotate}
-            shadow_passes = ${toString label.shadow_passes}
-            shadow_size = ${toString label.shadow_size}
-            shadow_color = ${label.shadow_color}
-            shadow_boost = ${toString label.shadow_boost}
-
-            position = ${toString label.position.x}, ${toString label.position.y}
-            halign = ${label.halign}
-            valign = ${label.valign}
-          }
-        '')
-        cfg.labels}
-
-        ${lib.optionalString (cfg.extraConfig != null) cfg.extraConfig}
+      ${
+        concatMapLines (x: (lib.concatMapStrings (
+            y: ''
+              ${x} {
+              ${lib.concatLines (translateCfg y)}
+              }
+            ''
+          )
+          cfg."${x}s"))
+        ["background" "shape" "image" "input-field" "label"]
+      }
+      ${lib.optionalString (cfg.extraConfig != null) cfg.extraConfig}
     '';
   };
 }
