@@ -5,7 +5,7 @@ self: {
   ...
 }: let
   inherit (builtins) toString;
-  inherit (lib.types) bool float int listOf lines nullOr package str submodule;
+  inherit (lib.types) bool float int listOf lines nullOr str submodule;
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
   inherit (lib.trivial) boolToString;
@@ -55,11 +55,7 @@ in {
         '';
       };
 
-    package = mkOption {
-      description = "The hyprlock package";
-      type = package;
-      default = self.packages.${pkgs.stdenv.hostPlatform.system}.hyprlock;
-    };
+    package = lib.mkPackageOption self.packages.${pkgs.stdenv.hostPlatform.system} "hyprlock" {};
 
     extraConfig = mkOption {
       description = "Extra configuration lines, written verbatim";
