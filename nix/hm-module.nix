@@ -8,11 +8,8 @@ self: {
   inherit (lib.types) bool float int listOf lines nullOr package str submodule;
   inherit (lib.modules) mkIf;
   inherit (lib.options) mkOption mkEnableOption;
+  inherit (lib.trivial) boolToString;
 
-  boolToString = x:
-    if x
-    then "true"
-    else "false";
   cfg = config.programs.hyprlock;
 
   shadow = {
