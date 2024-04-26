@@ -92,14 +92,14 @@ in {
         default = false;
       };
       no_fade_out = mkOption {
-          description = "Do not fade out";
-          type = bool;
-          default = false;
+        description = "Do not fade out";
+        type = bool;
+        default = false;
       };
       ignore_empty_input = mkOption {
-          description = "Skips validation when an empty password is provided";
-          type = bool;
-          default = false;
+        description = "Skips validation when an empty password is provided";
+        type = bool;
+        default = false;
       };
     };
 
@@ -176,88 +176,89 @@ in {
     shapes = mkOption {
       description = "Shape configurations";
       type = listOf (submodule {
-        options = {
-          monitor = mkOption {
-            description = "The monitor to draw a shape";
-            type = str;
-            default = "";
-          };
-
-          size = {
-            x = mkOption {
-              description = "Width of the shape";
-              type = int;
-              default = 360;
+        options =
+          {
+            monitor = mkOption {
+              description = "The monitor to draw a shape";
+              type = str;
+              default = "";
             };
-            y = mkOption {
-              description = "Height of the shape";
-              type = int;
-              default = 60;
+
+            size = {
+              x = mkOption {
+                description = "Width of the shape";
+                type = int;
+                default = 360;
+              };
+              y = mkOption {
+                description = "Height of the shape";
+                type = int;
+                default = 60;
+              };
             };
-          };
 
-          color = mkOption {
-            description = "Color of the shape";
-            type = str;
-            default = "rgba(22, 17, 17, 1.0)";
-          };
-
-          rounding = mkOption {
-            description = "Rounding of the shape";
-            type = int;
-            default = -1;
-          };
-
-          border_size = mkOption {
-            description = "Size of shape border";
-            type = int;
-            default = 4;
-          };
-
-          border_color = mkOption {
-            description = "Color of shape border";
-            type = str;
-            default = "rgba(0, 207, 230, 1.0)";
-          };
-
-          rotate = mkOption {
-            description = "Shape rotation angle";
-            type = float;
-            default = 0.0;
-          };
-
-          xray = mkOption {
-            description = "Whether to make a transparent \"hole\" in the background";
-            type = bool;
-            default = false;
-          };
-
-          position = {
-            x = mkOption {
-              description = "X position of the shape";
-              type = int;
-              default = 0;
+            color = mkOption {
+              description = "Color of the shape";
+              type = str;
+              default = "rgba(22, 17, 17, 1.0)";
             };
-            y = mkOption {
-              description = "Y position of the shape";
+
+            rounding = mkOption {
+              description = "Rounding of the shape";
               type = int;
-              default = 80;
+              default = -1;
             };
-          };
 
-          halign = mkOption {
-            description = "Horizontal alignment of the shape";
-            type = str;
-            default = "center";
-          };
+            border_size = mkOption {
+              description = "Size of shape border";
+              type = int;
+              default = 4;
+            };
 
-          valign = mkOption {
-            description = "Vertical alignment of the shape";
-            type = str;
-            default = "center";
-          };
-        }
-        // shadow;
+            border_color = mkOption {
+              description = "Color of shape border";
+              type = str;
+              default = "rgba(0, 207, 230, 1.0)";
+            };
+
+            rotate = mkOption {
+              description = "Shape rotation angle";
+              type = float;
+              default = 0.0;
+            };
+
+            xray = mkOption {
+              description = "Whether to make a transparent \"hole\" in the background";
+              type = bool;
+              default = false;
+            };
+
+            position = {
+              x = mkOption {
+                description = "X position of the shape";
+                type = int;
+                default = 0;
+              };
+              y = mkOption {
+                description = "Y position of the shape";
+                type = int;
+                default = 80;
+              };
+            };
+
+            halign = mkOption {
+              description = "Horizontal alignment of the shape";
+              type = str;
+              default = "center";
+            };
+
+            valign = mkOption {
+              description = "Vertical alignment of the shape";
+              type = str;
+              default = "center";
+            };
+          }
+          // shadow;
       });
       default = [];
     };
@@ -265,87 +266,88 @@ in {
     images = mkOption {
       description = "Image configurations";
       type = listOf (submodule {
-        options = {
-          monitor = mkOption {
-            description = "The monitor to draw an image";
-            type = str;
-            default = "";
-          };
-
-          path = mkOption {
-            description = "The path to source image";
-            type = str;
-            default = "/home/me/cutie.png"; # only png supported for now
-          };
-
-          size = mkOption {
-            description = "Size of the image. Lesser side is chosen if not 1:1 aspect ratio";
-            type = int;
-            default = 150;
-          };
-
-          rounding = mkOption {
-            description = "The rounding of the image";
-            type = int;
-            default = -1;
-          };
-
-          border_size = mkOption {
-            description = "Size of image border";
-            type = int;
-            default = 4;
-          };
-
-          border_color = mkOption {
-            description = "Color of image border";
-            type = str;
-            default = "rgb(221, 221, 221)";
-          };
-
-          rotate = mkOption {
-            description = "Image rotation angle";
-            type = float;
-            default = 0.0;
-          };
-
-          reload_time = mkOption {
-            description = "Interval in seconds between reloading the image";
-            type = int;
-            default = -1;
-          };
-
-          reload_cmd = mkOption {
-            description = "Command to obtain new path";
-            type = str;
-            default = "";
-          };
-
-          position = {
-            x = mkOption {
-              description = "X position of the image";
-              type = int;
-              default = 0;
+        options =
+          {
+            monitor = mkOption {
+              description = "The monitor to draw an image";
+              type = str;
+              default = "";
             };
-            y = mkOption {
-              description = "Y position of the image";
-              type = int;
-              default = 200;
+
+            path = mkOption {
+              description = "The path to source image";
+              type = str;
+              default = "/home/me/cutie.png"; # only png supported for now
             };
-          };
 
-          halign = mkOption {
-            description = "Horizontal alignment of the image";
-            type = str;
-            default = "center";
-          };
+            size = mkOption {
+              description = "Size of the image. Lesser side is chosen if not 1:1 aspect ratio";
+              type = int;
+              default = 150;
+            };
 
-          valign = mkOption {
-            description = "Vertical alignment of the image";
-            type = str;
-            default = "center";
-          };
-        }
-        // shadow;
+            rounding = mkOption {
+              description = "The rounding of the image";
+              type = int;
+              default = -1;
+            };
+
+            border_size = mkOption {
+              description = "Size of image border";
+              type = int;
+              default = 4;
+            };
+
+            border_color = mkOption {
+              description = "Color of image border";
+              type = str;
+              default = "rgb(221, 221, 221)";
+            };
+
+            rotate = mkOption {
+              description = "Image rotation angle";
+              type = float;
+              default = 0.0;
+            };
+
+            reload_time = mkOption {
+              description = "Interval in seconds between reloading the image";
+              type = int;
+              default = -1;
+            };
+
+            reload_cmd = mkOption {
+              description = "Command to obtain new path";
+              type = str;
+              default = "";
+            };
+
+            position = {
+              x = mkOption {
+                description = "X position of the image";
+                type = int;
+                default = 0;
+              };
+              y = mkOption {
+                description = "Y position of the image";
+                type = int;
+                default = 200;
+              };
+            };
+
+            halign = mkOption {
+              description = "Horizontal alignment of the image";
+              type = str;
+              default = "center";
+            };
+
+            valign = mkOption {
+              description = "Vertical alignment of the image";
+              type = str;
+              default = "center";
+            };
+          }
+          // shadow;
       });
       default = [];
     };
