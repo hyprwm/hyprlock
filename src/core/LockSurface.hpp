@@ -24,6 +24,7 @@ class CSessionLockSurface {
 
     void  render();
     void  onCallback();
+    void  onScaleUpdate();
 
   private:
     COutput*                     output      = nullptr;

@@ -17,6 +17,9 @@ static void handlePreferredScale(void* data, wp_fractional_scale_v1* wp_fraction
     const auto PSURF       = (CSessionLockSurface*)data;
     PSURF->fractionalScale = scale / 120.0;
     Debug::log(LOG, "got fractional {}", PSURF->fractionalScale);
+
+    if (PSURF->readyForFrame)
+        PSURF->onScaleUpdate();
 }
 
 static const wp_fractional_scale_v1_listener fsListener = {
@@ -101,6 +104,10 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     readyForFrame = true;
 
     render();
+}
+
+void CSessionLockSurface::onScaleUpdate() {
+    configure(size, serial);
 }
 
 static void handleDone(void* data, wl_callback* wl_callback, uint32_t callback_data) {
