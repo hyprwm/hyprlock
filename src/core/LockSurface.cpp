@@ -69,13 +69,16 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
 void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     Debug::log(LOG, "configure with serial {}", serial_);
 
+    const bool sameSerial = serial == serial_;
+
     serial      = serial_;
     size        = (size_ * fractionalScale).floor();
     logicalSize = size_;
 
     Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
-    ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
+    if (!sameSerial)
+        ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
 
     if (fractional)
         wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
