@@ -29,6 +29,7 @@ And the development libraries for the following
 - xkbcommon
 - pam
 - hyprlang >= 0.4
+- libmagic (file-devel on Fedora)
 
 Development libraries are usually suffixed with `-devel` or `-dev` in most distro repos.
 
