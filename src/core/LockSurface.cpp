@@ -110,7 +110,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 }
 
 void CSessionLockSurface::onScaleUpdate() {
-    configure(size, serial);
+    configure(logicalSize, serial);
 }
 
 static void handleDone(void* data, wl_callback* wl_callback, uint32_t callback_data) {
