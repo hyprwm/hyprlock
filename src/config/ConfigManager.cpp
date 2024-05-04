@@ -44,6 +44,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue(name, "shadow_boost", Hyprlang::FLOAT{1.2});
 
     m_config.addConfigValue("general:disable_loading_bar", Hyprlang::INT{0});
+    m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
     m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});

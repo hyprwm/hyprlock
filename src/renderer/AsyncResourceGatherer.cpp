@@ -277,14 +277,21 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     target.type = TARGET_IMAGE; /* text is just an image lol */
     target.id   = rq.id;
 
-    const int         FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
-    const CColor      FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CColor>(rq.props.at("color")) : CColor(1.0, 1.0, 1.0, 1.0);
-    const std::string FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
-    const bool        ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
-    const std::string TEXT       = ISCMD ? g_pHyprlock->spawnSync(rq.asset) : rq.asset;
+    const int          FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
+    const CColor       FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CColor>(rq.props.at("color")) : CColor(1.0, 1.0, 1.0, 1.0);
+    const std::string  FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
+    const bool         ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
 
-    auto              CAIROSURFACE = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080 /* dummy value */);
-    auto              CAIRO        = cairo_create(CAIROSURFACE);
+    static auto* const TRIM = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:text_trim");
+    std::string        TEXT = ISCMD ? g_pHyprlock->spawnSync(rq.asset) : rq.asset;
+
+    if (**TRIM) {
+        TEXT.erase(0, TEXT.find_first_not_of(" \n\r\t"));
+        TEXT.erase(TEXT.find_last_not_of(" \n\r\t") + 1);
+    }
+
+    auto CAIROSURFACE = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080 /* dummy value */);
+    auto CAIRO        = cairo_create(CAIROSURFACE);
 
     // draw title using Pango
     PangoLayout*          layout = pango_cairo_create_layout(CAIRO);
