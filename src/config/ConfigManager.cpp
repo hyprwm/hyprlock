@@ -63,6 +63,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "brightness", Hyprlang::FLOAT{0.8172});
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
+    m_config.addSpecialConfigValue("backgroung", "reload_time", Hyprlang::INT{-1});
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
@@ -81,7 +82,7 @@ void CConfigManager::init() {
     m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("image", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("image", "path", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("image", "size", Hyprlang::INT{150});
+    m_config.addSpecialConfigValue("image", "size", Hyprlang::VEC2{150, 150});
     m_config.addSpecialConfigValue("image", "rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("image", "border_size", Hyprlang::INT{4});
     m_config.addSpecialConfigValue("image", "border_color", Hyprlang::INT{0xFFDDDDDD});
@@ -89,6 +90,13 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
+    m_config.addSpecialConfigValue("image", "blur_size", Hyprlang::INT{8});
+    m_config.addSpecialConfigValue("image", "blur_passes", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("image", "noise", Hyprlang::FLOAT{0.0117});
+    m_config.addSpecialConfigValue("image", "contrast", Hyprlang::FLOAT{0.8917});
+    m_config.addSpecialConfigValue("image", "brightness", Hyprlang::FLOAT{0.8172});
+    m_config.addSpecialConfigValue("image", "vibrancy", Hyprlang::FLOAT{0.1686});
+    m_config.addSpecialConfigValue("image", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
     m_config.addSpecialConfigValue("image", "reload_time", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("image", "reload_cmd", Hyprlang::STRING{""});
     SHADOWABLE("image");
