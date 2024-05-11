@@ -63,7 +63,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "brightness", Hyprlang::FLOAT{0.8172});
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
-    m_config.addSpecialConfigValue("backgroung", "reload_time", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("background", "reload_time", Hyprlang::INT{-1});
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
