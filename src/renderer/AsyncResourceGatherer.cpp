@@ -163,7 +163,7 @@ void CAsyncResourceGatherer::gather() {
                 auto handle = magic_open(MAGIC_NONE | MAGIC_COMPRESS);
                 magic_load(handle, nullptr);
 
-                const auto type_str   = std::string(magic_file(handle, path.c_str()));
+                const auto type_str   = std::string(magic_file(handle, ABSOLUTEPATH.c_str()));
                 const auto first_word = type_str.substr(0, type_str.find(" "));
                 magic_close(handle);
 
