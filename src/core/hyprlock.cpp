@@ -695,7 +695,8 @@ static void handleKeyboardModifiers(void* data, wl_keyboard* wl_keyboard, uint s
 }
 
 static void handleRepeatInfo(void* data, struct wl_keyboard* wl_keyboard, int32_t rate, int32_t delay) {
-    ;
+    g_pHyprlock->m_iKeebRepeatRate  = rate;
+    g_pHyprlock->m_iKeebRepeatDelay = delay;
 }
 
 inline const wl_keyboard_listener keyboardListener = {
@@ -799,17 +800,23 @@ void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
         m_pKeyRepeatTimer.reset();
     }
 
+    if (m_iKeebRepeatDelay <= 0)
+        return;
+
     m_pKeyRepeatTimer = addTimer(
-        /* initial delay until key repeat */ std::chrono::milliseconds(500), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+        std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 }
 
 void CHyprlock::repeatKey(xkb_keysym_t sym) {
+    if (m_iKeebRepeatRate <= 0)
+        return;
+
     handleKeySym(sym);
 
     // This condition is for backspace and delete keys, but should also be ok for other keysyms since our buffer won't be empty anyways
     if (bool CONTINUE = m_sPasswordState.passBuffer.length() > 0; CONTINUE)
         m_pKeyRepeatTimer = addTimer(
-            /* key repeat delay */ std::chrono::milliseconds(50), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+            std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 
     for (auto& o : m_vOutputs) {
         o->sessionLockSurface->render();
