@@ -54,6 +54,9 @@ class CHyprlock {
     std::string                     spawnSync(const std::string& cmd);
 
     void                            onKey(uint32_t key, bool down);
+    void                            handleKeySym(xkb_keysym_t sym);
+    void                            startKeyRepeat(xkb_keysym_t sym);
+    void                            repeatKey(xkb_keysym_t sym);
     void                            onPasswordCheckTimer();
     void                            clearPasswordBuffer();
     bool                            passwordCheckWaiting();
@@ -82,6 +85,9 @@ class CHyprlock {
     xkb_keymap*                     m_pXKBKeymap  = nullptr;
     xkb_state*                      m_pXKBState   = nullptr;
 
+    int32_t                         m_iKeebRepeatRate  = 25;
+    int32_t                         m_iKeebRepeatDelay = 600;
+
     xkb_layout_index_t              m_uiActiveLayout = 0;
 
     bool                            m_bTerminate = false;
@@ -96,6 +102,8 @@ class CHyprlock {
     std::chrono::system_clock::time_point m_tGraceEnds;
     std::chrono::system_clock::time_point m_tFadeEnds;
     Vector2D                              m_vLastEnterCoords = {};
+
+    std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
 
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
     std::vector<std::shared_ptr<CTimer>>  getTimers();

@@ -695,7 +695,8 @@ static void handleKeyboardModifiers(void* data, wl_keyboard* wl_keyboard, uint s
 }
 
 static void handleRepeatInfo(void* data, struct wl_keyboard* wl_keyboard, int32_t rate, int32_t delay) {
-    ;
+    g_pHyprlock->m_iKeebRepeatRate  = rate;
+    g_pHyprlock->m_iKeebRepeatDelay = delay;
 }
 
 inline const wl_keyboard_listener keyboardListener = {
@@ -793,6 +794,35 @@ void CHyprlock::renderOutput(const std::string& stringPort) {
     PMONITOR->sessionLockSurface->render();
 }
 
+void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
+    if (m_pKeyRepeatTimer) {
+        m_pKeyRepeatTimer->cancel();
+        m_pKeyRepeatTimer.reset();
+    }
+
+    if (m_iKeebRepeatDelay <= 0)
+        return;
+
+    m_pKeyRepeatTimer = addTimer(
+        std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+}
+
+void CHyprlock::repeatKey(xkb_keysym_t sym) {
+    if (m_iKeebRepeatRate <= 0)
+        return;
+
+    handleKeySym(sym);
+
+    // This condition is for backspace and delete keys, but should also be ok for other keysyms since our buffer won't be empty anyways
+    if (bool CONTINUE = m_sPasswordState.passBuffer.length() > 0; CONTINUE)
+        m_pKeyRepeatTimer = addTimer(
+            std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+
+    for (auto& o : m_vOutputs) {
+        o->sessionLockSurface->render();
+    }
+}
+
 void CHyprlock::onKey(uint32_t key, bool down) {
     if (m_bFadeStarted)
         return;
@@ -812,8 +842,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 
     if (down)
         m_vPressedKeys.push_back(key);
-    else
+    else {
         std::erase(m_vPressedKeys, key);
+        if (m_pKeyRepeatTimer) {
+            m_pKeyRepeatTimer->cancel();
+            m_pKeyRepeatTimer.reset();
+        }
+    }
 
     if (g_pAuth->checkWaiting()) {
         for (auto& o : m_vOutputs) {
@@ -829,42 +864,49 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
         m_bCtrl     = xkb_state_mod_name_is_active(m_pXKBState, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
 
-        if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace))) {
-            Debug::log(LOG, "Clearing password buffer");
-
-            m_sPasswordState.passBuffer = "";
-        } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-            Debug::log(LOG, "Authenticating");
-
-            static auto* const PIGNOREEMPTY = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:ignore_empty_input");
-
-            if (m_sPasswordState.passBuffer.empty() && **PIGNOREEMPTY) {
-                Debug::log(LOG, "Ignoring empty input");
-                return;
-            }
-
-            g_pAuth->submitInput(m_sPasswordState.passBuffer);
-        } else if (SYM == XKB_KEY_BackSpace) {
-            if (m_sPasswordState.passBuffer.length() > 0) {
-                // handle utf-8
-                while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
-                    m_sPasswordState.passBuffer.pop_back();
-                m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
-            }
-        } else if (SYM == XKB_KEY_Caps_Lock) {
-            m_bCapsLock = !m_bCapsLock;
-        } else if (SYM == XKB_KEY_Num_Lock) {
-            m_bNumLock = !m_bNumLock;
-        } else {
-            char buf[16] = {0};
-            int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
-            if (len > 1)
-                m_sPasswordState.passBuffer += std::string{buf, len - 1};
-        }
+        handleKeySym(SYM);
+        if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) // keys allowed to repeat
+            startKeyRepeat(SYM);
     }
 
     for (auto& o : m_vOutputs) {
         o->sessionLockSurface->render();
+    }
+}
+
+void CHyprlock::handleKeySym(xkb_keysym_t sym) {
+    const auto SYM = sym;
+    if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace))) {
+        Debug::log(LOG, "Clearing password buffer");
+
+        m_sPasswordState.passBuffer = "";
+    } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
+        Debug::log(LOG, "Authenticating");
+
+        static auto* const PIGNOREEMPTY = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:ignore_empty_input");
+
+        if (m_sPasswordState.passBuffer.empty() && **PIGNOREEMPTY) {
+            Debug::log(LOG, "Ignoring empty input");
+            return;
+        }
+
+        g_pAuth->submitInput(m_sPasswordState.passBuffer);
+    } else if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) {
+        if (m_sPasswordState.passBuffer.length() > 0) {
+            // handle utf-8
+            while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
+                m_sPasswordState.passBuffer.pop_back();
+            m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
+        }
+    } else if (SYM == XKB_KEY_Caps_Lock) {
+        m_bCapsLock = !m_bCapsLock;
+    } else if (SYM == XKB_KEY_Num_Lock) {
+        m_bNumLock = !m_bNumLock;
+    } else {
+        char buf[16] = {0};
+        int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
+        if (len > 1)
+            m_sPasswordState.passBuffer += std::string{buf, len - 1};
     }
 }
 
