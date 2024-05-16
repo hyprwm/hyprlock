@@ -63,6 +63,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "brightness", Hyprlang::FLOAT{0.8172});
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
+    m_config.addSpecialConfigValue("background", "zheight", Hyprlang::INT{-1});
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
@@ -76,6 +77,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("shape", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "rotate", Hyprlang::FLOAT{0});
     m_config.addSpecialConfigValue("shape", "xray", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("shape", "zheight", Hyprlang::INT{0});
     SHADOWABLE("shape");
 
     m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -91,6 +93,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
     m_config.addSpecialConfigValue("image", "reload_time", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("image", "reload_cmd", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("image", "zheight", Hyprlang::INT{0});
     SHADOWABLE("image");
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -121,6 +124,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "bothlock_color", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "invert_numlock", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "swap_font_color", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("input-field", "zheight", Hyprlang::INT{0});
     SHADOWABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -134,6 +138,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
     m_config.addSpecialConfigValue("label", "rotate", Hyprlang::FLOAT{0});
     m_config.addSpecialConfigValue("label", "text_align", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("label", "zheight", Hyprlang::INT{0});
     SHADOWABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {false});
@@ -181,6 +186,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"vibrancy", m_config.getSpecialConfigValue("background", "vibrancy", k.c_str())},
                 {"brightness", m_config.getSpecialConfigValue("background", "brightness", k.c_str())},
                 {"vibrancy_darkness", m_config.getSpecialConfigValue("background", "vibrancy_darkness", k.c_str())},
+                {"zheight", m_config.getSpecialConfigValue("background", "zheight", k.c_str())},
             }
         });
         // clang-format on
@@ -204,6 +210,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"valign", m_config.getSpecialConfigValue("shape", "valign", k.c_str())},
                 {"rotate", m_config.getSpecialConfigValue("shape", "rotate", k.c_str())},
                 {"xray", m_config.getSpecialConfigValue("shape", "xray", k.c_str())},
+                {"zheight", m_config.getSpecialConfigValue("shape", "zheight", k.c_str())},
                 SHADOWABLE("shape"),
             }
         });
@@ -229,6 +236,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"rotate", m_config.getSpecialConfigValue("image", "rotate", k.c_str())},
                 {"reload_time", m_config.getSpecialConfigValue("image", "reload_time", k.c_str())},
                 {"reload_cmd", m_config.getSpecialConfigValue("image", "reload_cmd", k.c_str())},
+                {"zheight", m_config.getSpecialConfigValue("image", "zheight", k.c_str())},
                 SHADOWABLE("image"),
             }
         });
@@ -269,6 +277,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
                 {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
                 {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
+                {"zheight", m_config.getSpecialConfigValue("input-field", "zheight", k.c_str())},
                 SHADOWABLE("input-field"),
             }
         });
@@ -291,12 +300,17 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
                 {"rotate", m_config.getSpecialConfigValue("label", "rotate", k.c_str())},
                 {"text_align", m_config.getSpecialConfigValue("label", "text_align", k.c_str())},
+                {"zheight", m_config.getSpecialConfigValue("label", "zheight", k.c_str())},
                 SHADOWABLE("label"),
             }
         });
         // clang-format on
     }
 
+    std::sort(result.begin(), result.end(), [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
+        return std::any_cast<Hyprlang::INT>(a.values.at("zheight")) < std::any_cast<Hyprlang::INT>(b.values.at("zheight"));
+    });
+    
     return result;
 }
 
