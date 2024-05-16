@@ -306,7 +306,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         });
         // clang-format on
     }
-    
+
     return result;
 }
 
