@@ -306,10 +306,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         });
         // clang-format on
     }
-
-    std::sort(result.begin(), result.end(), [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
-        return std::any_cast<Hyprlang::INT>(a.values.at("zheight")) < std::any_cast<Hyprlang::INT>(b.values.at("zheight"));
-    });
     
     return result;
 }
