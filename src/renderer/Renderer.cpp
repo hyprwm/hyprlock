@@ -307,7 +307,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
         auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
         std::sort(CWIDGETS.begin(), CWIDGETS.end(), [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
-            return std::any_cast<Hyprlang::INT>(a.values.at("zheight")) < std::any_cast<Hyprlang::INT>(b.values.at("zheight"));
+            return std::any_cast<Hyprlang::INT>(a.values.at("zindex")) < std::any_cast<Hyprlang::INT>(b.values.at("zindex"));
         });
 
         for (auto& c : CWIDGETS) {
