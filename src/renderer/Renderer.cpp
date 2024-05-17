@@ -304,7 +304,11 @@ void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int
 std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface* surf) {
     if (!widgets.contains(surf)) {
 
-        const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
+        auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
+
+        std::sort(CWIDGETS.begin(), CWIDGETS.end(), [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
+            return std::any_cast<Hyprlang::INT>(a.values.at("zindex")) < std::any_cast<Hyprlang::INT>(b.values.at("zindex"));
+        });
 
         for (auto& c : CWIDGETS) {
             if (!c.monitor.empty() && c.monitor != surf->output->stringPort && !surf->output->stringDesc.starts_with(c.monitor))
