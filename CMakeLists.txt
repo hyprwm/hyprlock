@@ -8,6 +8,7 @@ project(hyprlock
 )
 
 set(CMAKE_MESSAGE_LOG_LEVEL "STATUS")
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug OR CMAKE_BUILD_TYPE MATCHES DEBUG)
     message(STATUS "Configuring hyprlock in Debug with CMake")
@@ -27,7 +28,10 @@ include(GNUInstallDirs)
 # configure
 set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-unused-value
-	-Wno-missing-field-initializers -Wno-narrowing)
+    -Wno-missing-field-initializers -Wno-narrowing)
+
+# position independent build: __FILE__
+add_compile_options(-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
 
 # dependencies
 message(STATUS "Checking deps...")
