@@ -15,11 +15,11 @@ cairo_surface_t* WEBP::createSurfaceFromWEBP(const std::filesystem::path& path) 
         return nullptr;
     }
 
-    void* imageRawData;
+    void*       imageRawData;
 
     struct stat fileInfo = {};
 
-    const auto FD = open(path.c_str(), O_RDONLY);
+    const auto  FD = open(path.c_str(), O_RDONLY);
 
     fstat(FD, &fileInfo);
 
@@ -43,15 +43,14 @@ cairo_surface_t* WEBP::createSurfaceFromWEBP(const std::filesystem::path& path) 
     }
 
     const auto HEIGHT = config.input.height;
-    const auto WIDTH = config.input.width;
+    const auto WIDTH  = config.input.width;
 
-    auto cairoSurface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, WIDTH, HEIGHT);
+    auto       cairoSurface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, WIDTH, HEIGHT);
     if (cairo_surface_status(cairoSurface) != CAIRO_STATUS_SUCCESS) {
         Debug::log(CRIT, "createSurfaceFromWEBP: Cairo Failed (?)");
         cairo_surface_destroy(cairoSurface);
         return nullptr;
     }
-
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     config.output.colorspace = MODE_bgrA;
@@ -59,16 +58,16 @@ cairo_surface_t* WEBP::createSurfaceFromWEBP(const std::filesystem::path& path) 
     config.output.colorspace = MODE_Argb;
 #endif
 
-    const auto CAIRODATA = cairo_image_surface_get_data(cairoSurface);
+    const auto CAIRODATA   = cairo_image_surface_get_data(cairoSurface);
     const auto CAIROSTRIDE = cairo_image_surface_get_stride(cairoSurface);
 
     config.options.no_fancy_upsampling = 1;
-    config.output.u.RGBA.rgba = CAIRODATA;
-    config.output.u.RGBA.stride = CAIROSTRIDE;
-    config.output.u.RGBA.size = CAIROSTRIDE * HEIGHT;
-    config.output.is_external_memory = 1;
-    config.output.width = WIDTH;
-    config.output.height = HEIGHT;
+    config.output.u.RGBA.rgba          = CAIRODATA;
+    config.output.u.RGBA.stride        = CAIROSTRIDE;
+    config.output.u.RGBA.size          = CAIROSTRIDE * HEIGHT;
+    config.output.is_external_memory   = 1;
+    config.output.width                = WIDTH;
+    config.output.height               = HEIGHT;
 
     if (WebPDecode((const unsigned char*)imageRawData, fileInfo.st_size, &config) != VP8_STATUS_OK) {
         Debug::log(CRIT, "createSurfaceFromWEBP: WebP Decode Failed (?)");
@@ -81,5 +80,4 @@ cairo_surface_t* WEBP::createSurfaceFromWEBP(const std::filesystem::path& path) 
     WebPFreeDecBuffer(&config.output);
 
     return cairoSurface;
-
 }

@@ -1083,10 +1083,16 @@ void CHyprlock::attemptRestoreOnDeath() {
     if (m_bTerminate)
         return;
 
-    // dirty hack
-    uint64_t              timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
+    const auto XDG_RUNTIME_DIR = getenv("XDG_RUNTIME_DIR");
+    const auto HIS             = getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
-    constexpr const char* LASTRESTARTPATH = "/tmp/hypr/.hyprlockrestart";
+    if (!XDG_RUNTIME_DIR || !HIS)
+        return;
+
+    // dirty hack
+    uint64_t   timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
+
+    const auto LASTRESTARTPATH = std::string{XDG_RUNTIME_DIR} + "/.hyprlockrestart";
 
     if (std::filesystem::exists(LASTRESTARTPATH)) {
         std::ifstream ifs(LASTRESTARTPATH);
