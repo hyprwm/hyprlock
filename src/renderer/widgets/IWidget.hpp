@@ -8,6 +8,7 @@ class IWidget {
     struct SRenderData {
         float opacity = 1;
     };
+    virtual ~IWidget() = default;
 
     virtual bool     draw(const SRenderData& data) = 0;
 
