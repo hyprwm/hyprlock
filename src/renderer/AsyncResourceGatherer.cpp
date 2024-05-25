@@ -326,6 +326,9 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     if (!attrList)
         attrList = pango_attr_list_new();
 
+    if (buf)
+        free(buf);
+
     pango_attr_list_insert(attrList, pango_attr_scale_new(1));
     pango_layout_set_attributes(layout, attrList);
     pango_attr_list_unref(attrList);
