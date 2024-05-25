@@ -142,6 +142,7 @@ void CSessionLockSurface::render() {
 }
 
 void CSessionLockSurface::onCallback() {
+    wl_callback_destroy(frameCallback);
     frameCallback = nullptr;
 
     if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL)

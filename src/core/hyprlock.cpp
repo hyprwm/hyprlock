@@ -39,6 +39,17 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
     }
 }
 
+CHyprlock::~CHyprlock() {
+    if (g_pHyprlock->dma.gbmDevice)
+        gbm_device_destroy(g_pHyprlock->dma.gbmDevice);
+
+    if (g_pHyprlock->m_pXKBState)
+        xkb_state_unref(g_pHyprlock->m_pXKBState);
+
+    if (g_pHyprlock->m_pXKBKeymap)
+        xkb_keymap_unref(g_pHyprlock->m_pXKBKeymap);
+}
+
 // wl_seat
 
 static void                   handleCapabilities(void* data, wl_seat* wl_seat, uint32_t capabilities);
@@ -82,6 +93,7 @@ static void dmabufFeedbackMainDevice(void* data, zwp_linux_dmabuf_feedback_v1* f
     }
 
     g_pHyprlock->dma.gbmDevice = g_pHyprlock->createGBMDevice(drmDev);
+    drmFreeDevice(&drmDev);
 }
 
 static void dmabufFeedbackFormatTable(void* data, zwp_linux_dmabuf_feedback_v1* feedback, int fd, uint32_t size) {
