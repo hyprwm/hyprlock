@@ -42,6 +42,12 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
 CHyprlock::~CHyprlock() {
     if (g_pHyprlock->dma.gbmDevice)
         gbm_device_destroy(g_pHyprlock->dma.gbmDevice);
+
+    if (g_pHyprlock->m_pXKBState)
+        xkb_state_unref(g_pHyprlock->m_pXKBState);
+
+    if (g_pHyprlock->m_pXKBKeymap)
+        xkb_keymap_unref(g_pHyprlock->m_pXKBKeymap);
 }
 
 // wl_seat
