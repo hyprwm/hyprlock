@@ -5,8 +5,10 @@
 #include <cmath>
 
 CImage::~CImage() {
-    imageTimer->cancel();
-    imageTimer.reset();
+    if (imageTimer) {
+        imageTimer->cancel();
+        imageTimer.reset();
+    }
 }
 
 static void onTimer(std::shared_ptr<CTimer> self, void* data) {

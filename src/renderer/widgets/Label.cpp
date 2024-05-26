@@ -6,8 +6,10 @@
 #include "../../core/hyprlock.hpp"
 
 CLabel::~CLabel() {
-    labelTimer->cancel();
-    labelTimer.reset();
+    if (labelTimer) {
+        labelTimer->cancel();
+        labelTimer.reset();
+    }
 }
 
 static void onTimer(std::shared_ptr<CTimer> self, void* data) {
