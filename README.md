@@ -14,6 +14,11 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
 ## Docs / Configuration
 [See the wiki](https://wiki.hyprland.org/Hypr-Ecosystem/hyprlock/)
 
+## Arch install
+```sh
+yay -S hyprlock-git
+```
+
 ## Building
 
 ### Deps
