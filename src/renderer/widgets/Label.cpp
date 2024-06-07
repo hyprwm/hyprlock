@@ -141,7 +141,4 @@ static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
 
 void CLabel::renderSuper() {
     g_pHyprlock->renderOutput(outputStringPort);
-
-    if (!pendingResourceID.empty()) /* did not consume the pending resource */
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
 }
