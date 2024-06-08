@@ -12,6 +12,7 @@
   libxkbcommon,
   mesa,
   hyprlang,
+  hyprutils,
   pam,
   pango,
   wayland,
@@ -39,6 +40,7 @@ stdenv.mkDerivation {
     libxkbcommon
     mesa
     hyprlang
+    hyprutils
     pam
     pango
     wayland
