@@ -12,6 +12,7 @@ in {
 
   hyprlock = lib.composeManyExtensions [
     inputs.hyprlang.overlays.default
+    inputs.hyprutils.overlays.default
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
         stdenv = prev.gcc13Stdenv;
