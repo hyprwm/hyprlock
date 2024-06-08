@@ -1,10 +1,12 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
-#include "../../helpers/VarList.hpp"
 #include "../../core/hyprlock.hpp"
 #include <chrono>
 #include <unistd.h>
 #include <pwd.h>
+#include <hyprutils/string/VarList.hpp>
+
+using namespace Hyprutils::String;
 
 #if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 190100
 #pragma comment(lib, "date-tz")
