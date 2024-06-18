@@ -365,9 +365,6 @@ void CHyprlock::run() {
         exit(1);
     }
 
-    // gather info about monitors
-    wl_display_roundtrip(m_sWaylandState.display);
-
     g_pRenderer = std::make_unique<CRenderer>();
 
     const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
@@ -392,6 +389,9 @@ void CHyprlock::run() {
     }
 
     acquireSessionLock();
+
+    // gather info about monitors
+    wl_display_roundtrip(m_sWaylandState.display);
 
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
@@ -958,8 +958,7 @@ void CHyprlock::onLockLocked() {
 
 void CHyprlock::onLockFinished() {
     Debug::log(LOG, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
-    ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
-    m_sLockState.lock = nullptr;
+    exit(1);
 }
 
 ext_session_lock_manager_v1* CHyprlock::getSessionLockMgr() {
