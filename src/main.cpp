@@ -24,10 +24,10 @@ std::optional<std::string> parseArg(const std::vector<std::string>& args, const 
 }
 
 int main(int argc, char** argv, char** envp) {
-    std::string configPath;
-    std::string wlDisplay;
-    bool        immediate = false;
-    bool        showHelp = false;
+    std::string              configPath;
+    std::string              wlDisplay;
+    bool                     immediate = false;
+    bool                     showHelp  = false;
 
     std::vector<std::string> args(argv, argv + argc);
 
@@ -40,19 +40,16 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
 
-        else if ((arg == "--config" || arg == "-c") && i + 1 < static_cast<std::size_t>(argc))
-            if (auto value = parseArg(args, arg, i); value) {
+        else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc)
+            if (auto value = parseArg(args, arg, i); value)
                 configPath = *value;
-            } else {
+            else
                 return 1;
-            }
-
-        else if (arg == "--display" && i + 1 < static_cast<std::size_t>(argc)) {
-             if (auto value = parseArg(args, arg, i); value) {
+        else if (arg == "--display" && i + 1 < (std::size_t)argc) {
+            if (auto value = parseArg(args, arg, i); value)
                 wlDisplay = *value;
-            } else {
+            else
                 return 1;
-            }
         } else if (arg == "--immediate") {
             immediate = true;
         } else if (arg == "--help" || arg == "-h") {
@@ -76,20 +73,20 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager = std::move(configManager);
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
-        if (std::string(ex.what()).find("File does not exist") != std::string::npos) {
+        if (std::string(ex.what()).contains("File does not exist"))
             Debug::log(NONE, "           Make sure you have a config.");
-        }
+
         return 1;
     }
 
     try {
         auto hyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate);
-        g_pHyprlock = std::move(hyprlock);
+        g_pHyprlock   = std::move(hyprlock);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
         return 1;
-    } 
+    }
 
     return 0;
 }
