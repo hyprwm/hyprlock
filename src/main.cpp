@@ -89,8 +89,7 @@ int main(int argc, char** argv, char** envp) {
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
         return 1;
-    }    g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate);
-    g_pHyprlock->run();
+    } 
 
     return 0;
 }
