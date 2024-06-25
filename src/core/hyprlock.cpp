@@ -958,6 +958,7 @@ void CHyprlock::onLockLocked() {
 
 void CHyprlock::onLockFinished() {
     Debug::log(LOG, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
+    g_pRenderer = nullptr;
     exit(1);
 }
 
