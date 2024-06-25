@@ -40,21 +40,25 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
 
-        else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc)
+        else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
                 configPath = *value;
             else
                 return 1;
-        else if (arg == "--display" && i + 1 < (std::size_t)argc) {
+
+        } else if (arg == "--display" && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
                 wlDisplay = *value;
             else
                 return 1;
-        } else if (arg == "--immediate") {
+
+        } else if (arg == "--immediate")
             immediate = true;
-        } else if (arg == "--help" || arg == "-h") {
+
+        else if (arg == "--help" || arg == "-h") {
             showHelp = true;
             break;
+
         } else {
             std::cerr << "Unknown option: " << arg << "\n";
             help();
