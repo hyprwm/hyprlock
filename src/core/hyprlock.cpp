@@ -926,6 +926,9 @@ void CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = ext_session_lock_manager_v1_lock(m_sWaylandState.sessionLock);
     ext_session_lock_v1_add_listener(m_sLockState.lock, &sessionLockListener, nullptr);
+
+    // wait for wayland to signal whether the session lock has been acquired
+    wl_display_roundtrip(m_sWaylandState.display);
 }
 
 void CHyprlock::releaseSessionLock() {
@@ -958,8 +961,8 @@ void CHyprlock::onLockLocked() {
 
 void CHyprlock::onLockFinished() {
     Debug::log(LOG, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
-    ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
-    m_sLockState.lock = nullptr;
+    g_pRenderer = nullptr;
+    exit(1);
 }
 
 ext_session_lock_manager_v1* CHyprlock::getSessionLockMgr() {
