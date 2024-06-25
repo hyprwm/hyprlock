@@ -365,6 +365,9 @@ void CHyprlock::run() {
         exit(1);
     }
 
+    // gather info about monitors
+    wl_display_roundtrip(m_sWaylandState.display);
+
     g_pRenderer = std::make_unique<CRenderer>();
 
     const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
@@ -389,9 +392,6 @@ void CHyprlock::run() {
     }
 
     acquireSessionLock();
-
-    // gather info about monitors
-    wl_display_roundtrip(m_sWaylandState.display);
 
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
@@ -926,6 +926,9 @@ void CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = ext_session_lock_manager_v1_lock(m_sWaylandState.sessionLock);
     ext_session_lock_v1_add_listener(m_sLockState.lock, &sessionLockListener, nullptr);
+
+    // wait for wayland to signal whether the session lock has been acquired
+    wl_display_roundtrip(m_sWaylandState.display);
 }
 
 void CHyprlock::releaseSessionLock() {
