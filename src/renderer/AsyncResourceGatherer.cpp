@@ -11,8 +11,6 @@
 #include "../helpers/Jpeg.hpp"
 #include "../helpers/Webp.hpp"
 
-std::mutex cvmtx;
-
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     asyncLoopThread = std::thread([this]() {
         this->gather(); /* inital gather */
@@ -83,9 +81,6 @@ void CAsyncResourceGatherer::recheckDMAFramesFor(COutput* output) {
 }
 
 SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
-    if (asyncLoopState.busy)
-        return nullptr;
-
     std::lock_guard<std::mutex> lg(asyncLoopState.loopMutex);
 
     for (auto& a : assets) {
@@ -380,7 +375,7 @@ static void timerCallback(std::shared_ptr<CTimer> self, void* data_) {
 void CAsyncResourceGatherer::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
-        std::unique_lock lk(cvmtx);
+        std::unique_lock lk(asyncLoopState.loopMutex);
         if (asyncLoopState.pending == false) // avoid a lock if a thread managed to request something already since we .unlock()ed
             asyncLoopState.loopGuard.wait_for(lk, std::chrono::seconds(5), [this] { return asyncLoopState.pending; }); // wait for events
 
@@ -400,7 +395,6 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
         // process requests
 
-        asyncLoopState.busy = true;
         for (auto& r : requests) {
             if (r.type == TARGET_TEXT) {
                 renderText(r);
@@ -415,8 +409,6 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
             if (r.callback)
                 g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{r.callback, r.callbackData});
         }
-
-        asyncLoopState.busy = false;
     }
 
     dmas.clear();
