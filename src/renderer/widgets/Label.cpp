@@ -39,8 +39,10 @@ void CLabel::onTimerUpdate() {
     if (label.formatted == oldFormatted && !label.alwaysUpdate)
         return;
 
-    if (!pendingResourceID.empty())
-        return; // too many updates, we'll miss some. Shouldn't happen tbh
+    if (!pendingResourceID.empty()) {
+        Debug::log(WARN, "Trying to update label, but resource {} is still pending! Skipping update.", pendingResourceID);
+        return;
+    }
 
     // request new
     request.id        = getUniqueResourceId();
@@ -141,7 +143,4 @@ static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
 
 void CLabel::renderSuper() {
     g_pHyprlock->renderOutput(outputStringPort);
-
-    if (!pendingResourceID.empty()) /* did not consume the pending resource */
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
 }

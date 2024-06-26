@@ -11,8 +11,6 @@
 #include "../helpers/Jpeg.hpp"
 #include "../helpers/Webp.hpp"
 
-std::mutex cvmtx;
-
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     asyncLoopThread = std::thread([this]() {
         this->gather(); /* inital gather */
@@ -83,23 +81,17 @@ void CAsyncResourceGatherer::recheckDMAFramesFor(COutput* output) {
 }
 
 SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
-    if (asyncLoopState.busy)
-        return nullptr;
-
-    std::lock_guard<std::mutex> lg(asyncLoopState.loopMutex);
-
     for (auto& a : assets) {
         if (a.first == id)
             return &a.second;
     }
 
-    if (!preloadTargets.empty()) {
-        apply();
+    if (apply()) {
         for (auto& a : assets) {
             if (a.first == id)
                 return &a.second;
         }
-    }
+    };
 
     for (auto& dma : dmas) {
         if (id == "dma:" + dma->name)
@@ -210,18 +202,27 @@ void CAsyncResourceGatherer::gather() {
     ready = true;
 }
 
-void CAsyncResourceGatherer::apply() {
+bool CAsyncResourceGatherer::apply() {
+    preloadTargetsMutex.lock();
 
-    for (auto& t : preloadTargets) {
+    if (preloadTargets.empty()) {
+        preloadTargetsMutex.unlock();
+        return false;
+    }
+
+    auto currentPreloadTargets = preloadTargets;
+    preloadTargets.clear();
+    preloadTargetsMutex.unlock();
+
+    for (auto& t : currentPreloadTargets) {
         if (t.type == TARGET_IMAGE) {
-            std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
-            const auto                  ASSET = &assets[t.id];
+            const auto  ASSET = &assets[t.id];
 
-            const auto                  SURFACESTATUS = cairo_surface_status((cairo_surface_t*)t.cairosurface);
-            const auto                  CAIROFORMAT   = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
-            const GLint                 glIFormat     = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
-            const GLint                 glFormat      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
-            const GLint                 glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
+            const auto  SURFACESTATUS = cairo_surface_status((cairo_surface_t*)t.cairosurface);
+            const auto  CAIROFORMAT   = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
+            const GLint glIFormat     = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
+            const GLint glFormat      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
+            const GLint glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
             if (SURFACESTATUS != CAIRO_STATUS_SUCCESS) {
                 Debug::log(ERR, "Resource {} invalid ({})", t.id, cairo_status_to_string(SURFACESTATUS));
@@ -248,9 +249,8 @@ void CAsyncResourceGatherer::apply() {
         }
     }
 
-    preloadTargets.clear();
-
     applied = true;
+    return true;
 }
 
 void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
@@ -269,6 +269,7 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     target.data         = cairo_image_surface_get_data(CAIROISURFACE);
     target.size         = {(double)cairo_image_surface_get_width(CAIROISURFACE), (double)cairo_image_surface_get_height(CAIROISURFACE)};
 
+    std::lock_guard lg{preloadTargetsMutex};
     preloadTargets.push_back(target);
 }
 
@@ -363,6 +364,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     target.data         = cairo_image_surface_get_data(CAIROSURFACE);
     target.size         = {layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE};
 
+    std::lock_guard lg{preloadTargetsMutex};
     preloadTargets.push_back(target);
 }
 
@@ -380,27 +382,23 @@ static void timerCallback(std::shared_ptr<CTimer> self, void* data_) {
 void CAsyncResourceGatherer::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
-        std::unique_lock lk(cvmtx);
+        std::unique_lock lk(asyncLoopState.requestsMutex);
         if (asyncLoopState.pending == false) // avoid a lock if a thread managed to request something already since we .unlock()ed
-            asyncLoopState.loopGuard.wait_for(lk, std::chrono::seconds(5), [this] { return asyncLoopState.pending; }); // wait for events
-
-        asyncLoopState.requestMutex.lock();
+            asyncLoopState.requestsCV.wait_for(lk, std::chrono::seconds(5), [this] { return asyncLoopState.pending; }); // wait for events
 
         asyncLoopState.pending = false;
 
         if (asyncLoopState.requests.empty()) {
-            asyncLoopState.requestMutex.unlock();
+            lk.unlock();
             continue;
         }
 
         auto requests = asyncLoopState.requests;
         asyncLoopState.requests.clear();
 
-        asyncLoopState.requestMutex.unlock();
+        lk.unlock();
 
         // process requests
-
-        asyncLoopState.busy = true;
         for (auto& r : requests) {
             if (r.type == TARGET_TEXT) {
                 renderText(r);
@@ -415,29 +413,26 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
             if (r.callback)
                 g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{r.callback, r.callbackData});
         }
-
-        asyncLoopState.busy = false;
     }
 
     dmas.clear();
 }
 
 void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
-    std::lock_guard<std::mutex> lg(asyncLoopState.requestMutex);
+    std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
     asyncLoopState.requests.push_back(request);
     asyncLoopState.pending = true;
-    asyncLoopState.loopGuard.notify_all();
+    asyncLoopState.requestsCV.notify_all();
 }
 
 void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
-    std::lock_guard<std::mutex> lg(asyncLoopState.assetsMutex);
-
     std::erase_if(assets, [asset](const auto& a) { return &a.second == asset; });
 }
 
 void CAsyncResourceGatherer::notify() {
+    std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
     asyncLoopState.pending = true;
-    asyncLoopState.loopGuard.notify_all();
+    asyncLoopState.requestsCV.notify_all();
 }
 
 void CAsyncResourceGatherer::await() {

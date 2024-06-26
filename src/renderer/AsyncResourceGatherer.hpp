@@ -24,7 +24,7 @@ class CAsyncResourceGatherer {
     /* only call from ogl thread */
     SPreloadedAsset* getAssetByID(const std::string& id);
 
-    void             apply();
+    bool             apply();
 
     enum eTargetType {
         TARGET_IMAGE = 0,
@@ -59,12 +59,8 @@ class CAsyncResourceGatherer {
     void        renderImage(const SPreloadRequest& rq);
 
     struct {
-        std::condition_variable      loopGuard;
-        std::mutex                   loopMutex;
-
-        std::mutex                   requestMutex;
-
-        std::mutex                   assetsMutex;
+        std::condition_variable      requestsCV;
+        std::mutex                   requestsMutex;
 
         std::vector<SPreloadRequest> requests;
         bool                         pending = false;
@@ -86,6 +82,8 @@ class CAsyncResourceGatherer {
     std::vector<std::unique_ptr<CDMAFrame>>          dmas;
 
     std::vector<SPreloadTarget>                      preloadTargets;
+    std::mutex                                       preloadTargetsMutex;
+
     std::unordered_map<std::string, SPreloadedAsset> assets;
 
     void                                             gather();
