@@ -3,7 +3,6 @@
 #include "../core/Egl.hpp"
 #include <cairo/cairo.h>
 #include <magic.h>
-#include <mutex>
 #include <pango/pangocairo.h>
 #include <algorithm>
 #include <filesystem>
@@ -383,7 +382,7 @@ static void timerCallback(std::shared_ptr<CTimer> self, void* data_) {
 void CAsyncResourceGatherer::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
-        std::unique_lock<std::mutex> lk(asyncLoopState.requestsMutex);
+        std::unique_lock lk(asyncLoopState.requestsMutex);
         if (asyncLoopState.pending == false) // avoid a lock if a thread managed to request something already since we .unlock()ed
             asyncLoopState.requestsCV.wait_for(lk, std::chrono::seconds(5), [this] { return asyncLoopState.pending; }); // wait for events
 
