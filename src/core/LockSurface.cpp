@@ -27,6 +27,8 @@ static const wp_fractional_scale_v1_listener fsListener = {
 };
 
 CSessionLockSurface::~CSessionLockSurface() {
+    g_pRenderer->removeWidgetsFor(this);
+
     if (fractional) {
         wp_viewport_destroy(viewport);
         wp_fractional_scale_v1_destroy(fractional);
