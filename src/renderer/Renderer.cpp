@@ -512,3 +512,7 @@ void CRenderer::popFb() {
     boundFBs.pop_back();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, boundFBs.empty() ? 0 : boundFBs.back());
 }
+
+void CRenderer::removeWidgetsFor(const CSessionLockSurface* surf) {
+    widgets.erase(surf);
+}
