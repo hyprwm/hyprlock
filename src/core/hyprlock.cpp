@@ -570,9 +570,7 @@ void CHyprlock::unlock() {
     m_tFadeEnds    = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
     m_bFadeStarted = true;
 
-    for (auto& o : m_vOutputs) {
-        o->sessionLockSurface->render();
-    }
+    renderAllOutputs();
 }
 
 // wl_seat
@@ -758,9 +756,7 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 static void displayFailTextTimerCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pAuth->m_bDisplayFailText = false;
 
-    for (auto& o : g_pHyprlock->m_vOutputs) {
-        o->sessionLockSurface->render();
-    }
+    g_pHyprlock->renderAllOutputs();
 }
 
 void CHyprlock::onPasswordCheckTimer() {
@@ -779,9 +775,7 @@ void CHyprlock::onPasswordCheckTimer() {
 
         g_pAuth->start();
 
-        for (auto& o : m_vOutputs) {
-            o->sessionLockSurface->render();
-        }
+        renderAllOutputs();
     }
 }
 
@@ -790,9 +784,8 @@ void CHyprlock::clearPasswordBuffer() {
         return;
 
     m_sPasswordState.passBuffer = "";
-    for (auto& o : m_vOutputs) {
-        o->sessionLockSurface->render();
-    }
+
+    renderAllOutputs();
 }
 
 void CHyprlock::renderOutput(const std::string& stringPort) {
@@ -803,7 +796,19 @@ void CHyprlock::renderOutput(const std::string& stringPort) {
 
     const auto PMONITOR = MON->get();
 
+    if (!PMONITOR->sessionLockSurface)
+        return;
+
     PMONITOR->sessionLockSurface->render();
+}
+
+void CHyprlock::renderAllOutputs() {
+    for (auto& o : m_vOutputs) {
+        if (!o->sessionLockSurface)
+            continue;
+
+        o->sessionLockSurface->render();
+    }
 }
 
 void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
@@ -830,9 +835,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
         m_pKeyRepeatTimer = addTimer(
             std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 
-    for (auto& o : m_vOutputs) {
-        o->sessionLockSurface->render();
-    }
+    renderAllOutputs();
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
@@ -863,9 +866,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     }
 
     if (g_pAuth->checkWaiting()) {
-        for (auto& o : m_vOutputs) {
-            o->sessionLockSurface->render();
-        }
+        renderAllOutputs();
         return;
     }
 
@@ -881,9 +882,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
             startKeyRepeat(SYM);
     }
 
-    for (auto& o : m_vOutputs) {
-        o->sessionLockSurface->render();
-    }
+    renderAllOutputs();
 }
 
 void CHyprlock::handleKeySym(xkb_keysym_t sym) {
