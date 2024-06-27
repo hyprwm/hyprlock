@@ -300,7 +300,11 @@ void CHyprlock::onGlobal(void* data, struct wl_registry* registry, uint32_t name
 
 void CHyprlock::onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name) {
     Debug::log(LOG, "  | removed iface {}", name);
-    std::erase_if(m_vOutputs, [name](const auto& other) { return other->name == name; });
+    auto outputIt = std::find_if(m_vOutputs.begin(), m_vOutputs.end(), [name](const auto& other) { return other->name == name; });
+    if (outputIt != m_vOutputs.end()) {
+        g_pRenderer->removeWidgetsFor(outputIt->get()->sessionLockSurface.get());
+        m_vOutputs.erase(outputIt);
+    }
 }
 
 // end wl_registry
