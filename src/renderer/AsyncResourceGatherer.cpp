@@ -74,6 +74,12 @@ void CAsyncResourceGatherer::recheckDMAFramesFor(COutput* output) {
         }
     }
 
+    for (auto& dma : dmas) {
+        if (dma->name == output->stringPort) {
+            shouldMake = false;
+        }
+    }
+
     if (!shouldMake)
         return;
 
