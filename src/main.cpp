@@ -73,8 +73,8 @@ int main(int argc, char** argv, char** envp) {
 
     try {
         auto configManager = std::make_unique<CConfigManager>(configPath);
-        configManager->init();
-        g_pConfigManager = std::move(configManager);
+        g_pConfigManager   = std::move(configManager);
+        g_pConfigManager->init();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
         if (std::string(ex.what()).contains("File does not exist"))
