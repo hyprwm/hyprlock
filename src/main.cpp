@@ -72,8 +72,7 @@ int main(int argc, char** argv, char** envp) {
     }
 
     try {
-        auto configManager = std::make_unique<CConfigManager>(configPath);
-        g_pConfigManager   = std::move(configManager);
+        g_pConfigManager = std::make_unique<CConfigManager>(configPath);
         g_pConfigManager->init();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
@@ -84,8 +83,7 @@ int main(int argc, char** argv, char** envp) {
     }
 
     try {
-        auto hyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate);
-        g_pHyprlock   = std::move(hyprlock);
+        g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
