@@ -323,6 +323,12 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 std::string       resourceID = "";
                 if (PATH == "screenshot") {
                     resourceID = CDMAFrame::getResourceId(surf->output);
+                    // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
+                    // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
+                    if (asyncResourceGatherer->ready) {
+                        if (!asyncResourceGatherer->getAssetByID(resourceID))
+                            resourceID = ""; // Fallback to solid color (background:color)
+                    }
                 } else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 
