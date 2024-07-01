@@ -19,6 +19,8 @@ struct SScreencopyData {
 
 class CDMAFrame {
   public:
+    static std::string getResourceId(COutput* output);
+
     CDMAFrame(COutput* mon);
     ~CDMAFrame();
 
@@ -27,7 +29,7 @@ class CDMAFrame {
 
     wl_buffer*      wlBuffer = nullptr;
 
-    std::string     name;
+    std::string     resourceID;
 
     SPreloadedAsset asset;
 

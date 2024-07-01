@@ -4,6 +4,7 @@
 #include "../helpers/Color.hpp"
 #include "../core/Output.hpp"
 #include "../core/hyprlock.hpp"
+#include "../renderer/DMAFrame.hpp"
 #include "mtx.hpp"
 
 #include <GLES3/gl32.h>
@@ -320,9 +321,9 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 
                 std::string       resourceID = "";
-                if (PATH == "screenshot")
-                    resourceID = "dma:" + surf->output->stringPort;
-                else if (!PATH.empty())
+                if (PATH == "screenshot") {
+                    resourceID = CDMAFrame::getResourceId(surf->output);
+                } else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 
                 widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, surf->output, resourceID, c.values, PATH == "screenshot"));

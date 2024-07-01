@@ -86,7 +86,12 @@ static const zwlr_screencopy_frame_v1_listener wlrFrameListener = {
     .buffer_done  = wlrOnBufferDone,
 };
 
-CDMAFrame::CDMAFrame(COutput* output_) : output(output_) {
+std::string CDMAFrame::getResourceId(COutput* output) {
+    return std::format("dma:{}-{}x{}", output->stringPort, output->size.x, output->size.y);
+}
+
+CDMAFrame::CDMAFrame(COutput* output_) {
+    resourceID = getResourceId(output_);
 
     if (!glEGLImageTargetTexture2DOES) {
         glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
@@ -105,8 +110,6 @@ CDMAFrame::CDMAFrame(COutput* output_) : output(output_) {
     scdata.frame = this;
 
     zwlr_screencopy_frame_v1_add_listener(frameCb, &wlrFrameListener, &scdata);
-
-    name = output->stringPort;
 }
 
 CDMAFrame::~CDMAFrame() {

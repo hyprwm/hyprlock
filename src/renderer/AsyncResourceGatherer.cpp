@@ -70,7 +70,7 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     };
 
     for (auto& dma : dmas) {
-        if (id == "dma:" + dma->name)
+        if (id == dma->resourceID)
             return dma->asset.ready ? &dma->asset : nullptr;
     }
 
