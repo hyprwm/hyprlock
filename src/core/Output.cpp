@@ -25,11 +25,9 @@ static void handleDone(void* data, wl_output* output) {
     const auto POUTPUT = (COutput*)data;
     Debug::log(LOG, "output {} done", POUTPUT->name);
     if (g_pHyprlock->m_bLocked && !POUTPUT->sessionLockSurface) {
-        // if we are already locked, create a surface dynamically after a small timeout
-        // we also need to request a dma frame for screenshots
+        // if we are already locked, create a surface dynamically
         Debug::log(LOG, "Creating a surface dynamically for output as we are already locked");
         POUTPUT->sessionLockSurface = std::make_unique<CSessionLockSurface>(POUTPUT);
-        g_pRenderer->asyncResourceGatherer->recheckDMAFramesFor(POUTPUT);
     }
 }
 

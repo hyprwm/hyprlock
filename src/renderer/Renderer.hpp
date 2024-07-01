@@ -41,6 +41,8 @@ class CRenderer {
     void                                    pushFb(GLint fb);
     void                                    popFb();
 
+    void                                    removeWidgetsFor(const CSessionLockSurface* surf);
+
   private:
     widgetMap_t                            widgets;
 
