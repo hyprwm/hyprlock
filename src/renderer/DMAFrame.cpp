@@ -105,7 +105,7 @@ CDMAFrame::CDMAFrame(COutput* output_) {
         eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
 
     // firstly, plant a listener for the frame
-    frameCb = zwlr_screencopy_manager_v1_capture_output(g_pHyprlock->getScreencopy(), false, output->output);
+    frameCb = zwlr_screencopy_manager_v1_capture_output(g_pHyprlock->getScreencopy(), false, output_->output);
 
     scdata.frame = this;
 

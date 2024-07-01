@@ -44,7 +44,5 @@ class CDMAFrame {
     zwlr_screencopy_frame_v1* frameCb = nullptr;
     SScreencopyData           scdata;
 
-    COutput*                  output = nullptr;
-
     EGLImage                  image = nullptr;
 };
