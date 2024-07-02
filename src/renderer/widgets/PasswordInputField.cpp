@@ -28,6 +28,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+    configFontFamily         = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
     col.transitionMs         = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
     col.outer                = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     col.inner                = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -72,7 +73,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.id                   = placeholder.resourceID;
         request.asset                = placeholder.currentText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = std::string{"Sans"};
+        request.props["font_family"] = configFontFamily;
         request.props["color"]       = CColor{1.0 - col.font.r, 1.0 - col.font.g, 1.0 - col.font.b, 0.5};
         request.props["font_size"]   = (int)size.y / 4;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
@@ -347,7 +348,7 @@ void CPasswordInputField::updatePlaceholder() {
     request.id                   = placeholder.resourceID;
     request.asset                = placeholder.currentText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = std::string{"Sans"};
+    request.props["font_family"] = configFontFamily;
     request.props["color"]       = (placeholder.isFailText) ? col.fail : col.font;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
