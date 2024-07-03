@@ -12,12 +12,6 @@
 #include "../helpers/Webp.hpp"
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
-    asyncLoopThread = std::thread([this]() {
-        this->gather(); /* inital gather */
-        this->asyncAssetSpinLock();
-    });
-    asyncLoopThread.detach();
-
     // some things can't be done async :(
     // gather background textures when needed
 
@@ -54,6 +48,12 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
 
         dmas.emplace_back(std::make_unique<CDMAFrame>(PMONITOR));
     }
+
+    asyncLoopThread = std::thread([this]() {
+        this->gather(); /* inital gather */
+        this->asyncAssetSpinLock();
+    });
+    asyncLoopThread.detach();
 }
 
 SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
