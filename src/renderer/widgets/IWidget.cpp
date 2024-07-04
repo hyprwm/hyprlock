@@ -156,7 +156,7 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     if (in.starts_with("cmd[") && in.contains("]")) {
         // this is a command
-        CVarList vars(in.substr(4, in.find_first_of(']') - 4));
+        CVarList vars(in.substr(4, in.find_first_of(']') - 4), 0, ',', true);
 
         for (const auto& v : vars) {
             if (v.starts_with("update:")) {
