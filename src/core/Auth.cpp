@@ -58,7 +58,7 @@ CAuth::CAuth() {
     m_sPamModule                  = *PPAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
-        Debug::log(ERR, "Pam module \"{}\" not found! Falling back to \"su\"", m_sPamModule);
+        Debug::log(ERR, "Pam module \"/etc/pam.d/{}\" does not exist! Falling back to \"/etc/pam.d/su\"", m_sPamModule);
         m_sPamModule = "su";
     }
 }
@@ -91,6 +91,8 @@ bool CAuth::auth() {
     }
 
     ret = pam_authenticate(handle, 0);
+    pam_end(handle, ret);
+    handle = nullptr;
 
     m_sConversationState.waitingForPamAuth = false;
 
@@ -100,8 +102,6 @@ bool CAuth::auth() {
         Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
-
-    ret = pam_end(handle, ret);
 
     m_sConversationState.success  = true;
     m_sConversationState.failText = "Successfully authenticated";
