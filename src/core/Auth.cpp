@@ -58,7 +58,7 @@ CAuth::CAuth() {
     m_sPamModule                  = *PPAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
-        Debug::log(ERR, "Pam module \"{}\" not found! Falling back to \"su\"", m_sPamModule);
+        Debug::log(ERR, "Pam module \"/etc/pam.d/{}\" does not exist! Falling back to \"/etc/pam.d/su\"", m_sPamModule);
         m_sPamModule = "su";
     }
 }
