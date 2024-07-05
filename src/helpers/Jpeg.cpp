@@ -66,6 +66,7 @@ cairo_surface_t* JPEG::createSurfaceFromJPEG(const std::filesystem::path& path) 
         jpeg_read_scanlines(&decompressStruct, &rowRead, 1);
     }
 
+    cairo_surface_flush(cairoSurface);
     cairo_surface_mark_dirty(cairoSurface);
     cairo_surface_set_mime_data(cairoSurface, CAIRO_MIME_TYPE_JPEG, (const unsigned char*)imageRawData, fileInfo.st_size, free, imageRawData);
     jpeg_finish_decompress(&decompressStruct);
