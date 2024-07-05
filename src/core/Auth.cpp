@@ -91,6 +91,8 @@ bool CAuth::auth() {
     }
 
     ret = pam_authenticate(handle, 0);
+    pam_end(handle, ret);
+    handle = nullptr;
 
     m_sConversationState.waitingForPamAuth = false;
 
@@ -100,8 +102,6 @@ bool CAuth::auth() {
         Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
-
-    ret = pam_end(handle, ret);
 
     m_sConversationState.success  = true;
     m_sConversationState.failText = "Successfully authenticated";
