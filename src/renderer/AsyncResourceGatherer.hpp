@@ -52,6 +52,7 @@ class CAsyncResourceGatherer {
 
   private:
     std::thread asyncLoopThread;
+    std::thread initialGatherThread;
 
     void        asyncAssetSpinLock();
     void        renderText(const SPreloadRequest& rq);

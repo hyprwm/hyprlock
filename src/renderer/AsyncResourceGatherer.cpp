@@ -49,10 +49,10 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
         dmas.emplace_back(std::make_unique<CDMAFrame>(PMONITOR));
     }
 
-    asyncLoopThread = std::thread([this]() {
-        this->gather(); /* inital gather */
-        this->asyncAssetSpinLock();
-    });
+    initialGatherThread = std::thread([this]() { this->gather(); });
+    initialGatherThread.detach();
+
+    asyncLoopThread = std::thread([this]() { this->asyncAssetSpinLock(); });
     asyncLoopThread.detach();
 }
 
@@ -158,16 +158,19 @@ void CAsyncResourceGatherer::gather() {
             const auto CAIRO = cairo_create(CAIROISURFACE);
             cairo_scale(CAIRO, 1, 1);
 
-            const auto TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
+            {
+                std::lock_guard lg{preloadTargetsMutex};
+                const auto      TARGET = &preloadTargets.emplace_back(CAsyncResourceGatherer::SPreloadTarget{});
 
-            TARGET->size = {cairo_image_surface_get_width(CAIROISURFACE), cairo_image_surface_get_height(CAIROISURFACE)};
-            TARGET->type = TARGET_IMAGE;
-            TARGET->id   = id;
+                TARGET->size = {cairo_image_surface_get_width(CAIROISURFACE), cairo_image_surface_get_height(CAIROISURFACE)};
+                TARGET->type = TARGET_IMAGE;
+                TARGET->id   = id;
 
-            const auto DATA      = cairo_image_surface_get_data(CAIROISURFACE);
-            TARGET->cairo        = CAIRO;
-            TARGET->cairosurface = CAIROISURFACE;
-            TARGET->data         = DATA;
+                const auto DATA      = cairo_image_surface_get_data(CAIROISURFACE);
+                TARGET->cairo        = CAIRO;
+                TARGET->cairosurface = CAIROISURFACE;
+                TARGET->data         = DATA;
+            }
         }
     }
 
@@ -414,4 +417,6 @@ void CAsyncResourceGatherer::notify() {
 void CAsyncResourceGatherer::await() {
     if (asyncLoopThread.joinable())
         asyncLoopThread.join();
+    if (initialGatherThread.joinable())
+        initialGatherThread.join();
 }
