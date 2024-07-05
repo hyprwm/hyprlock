@@ -74,6 +74,7 @@ cairo_surface_t* WEBP::createSurfaceFromWEBP(const std::filesystem::path& path) 
         return nullptr;
     }
 
+    cairo_surface_flush(cairoSurface);
     cairo_surface_mark_dirty(cairoSurface);
     cairo_surface_set_mime_data(cairoSurface, CAIRO_MIME_TYPE_PNG, (const unsigned char*)imageRawData, fileInfo.st_size, free, imageRawData);
 
