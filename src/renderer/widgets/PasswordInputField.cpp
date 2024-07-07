@@ -28,7 +28,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-    configFailTimeoutSec     = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
+    configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
     col.transitionMs         = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
     col.outer                = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     col.inner                = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -334,7 +334,7 @@ void CPasswordInputField::updatePlaceholder() {
     placeholder.asset = nullptr;
 
     if (placeholder.isFailText) {
-        g_pHyprlock->addTimer(std::chrono::seconds(configFailTimeoutSec), failTimeoutCallback, nullptr);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(configFailTimeoutMs), failTimeoutCallback, nullptr);
         placeholder.currentText = configFailText;
         replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK);
         replaceAll(placeholder.currentText, "$ATTEMPTS", std::to_string(placeholder.failedAttempts));
