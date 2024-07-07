@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../helpers/Log.hpp"
-
 #include <hyprlang.hpp>
 
 #include <vector>

@@ -14,6 +14,7 @@
 
 #include "Shaders.hpp"
 
+#include "src/helpers/Log.hpp"
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
 #include "widgets/Label.hpp"

@@ -11,6 +11,7 @@
 #include "../helpers/Jpeg.hpp"
 #include "../helpers/Webp.hpp"
 #include "src/helpers/Color.hpp"
+#include "src/helpers/Log.hpp"
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     if (g_pHyprlock->getScreencopy())
