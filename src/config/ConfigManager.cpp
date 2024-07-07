@@ -123,6 +123,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "check_color", Hyprlang::INT{0xFFCC8822});
     m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
+    m_config.addSpecialConfigValue("input-field", "fail_timeout", Hyprlang::INT{2});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
     m_config.addSpecialConfigValue("input-field", "capslock_color", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "numlock_color", Hyprlang::INT{-1});
@@ -275,6 +276,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
+                {"fail_timeout", m_config.getSpecialConfigValue("input-field", "fail_timeout", k.c_str())},
                 {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},
                 {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
                 {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
