@@ -18,7 +18,7 @@
 #include <fstream>
 #include <algorithm>
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) : m_bImmediateRender(immediateRender) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -383,7 +383,7 @@ void CHyprlock::run() {
 
     // Hyprland violates the protocol a bit to allow for this.
     if (SZCURRENTD != "Hyprland") {
-        while (!g_pRenderer->asyncResourceGatherer->ready) {
+        while (!g_pRenderer->asyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
                 wl_display_read_events(m_sWaylandState.display);

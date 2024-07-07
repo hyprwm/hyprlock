@@ -178,7 +178,7 @@ void CAsyncResourceGatherer::gather() {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    ready = true;
+    gathered = true;
 }
 
 bool CAsyncResourceGatherer::apply() {
@@ -228,7 +228,6 @@ bool CAsyncResourceGatherer::apply() {
         }
     }
 
-    applied = true;
     return true;
 }
 

@@ -36,7 +36,7 @@ class CRenderer {
     void                                    blurFB(const CFramebuffer& outfb, SBlurParams params);
 
     std::unique_ptr<CAsyncResourceGatherer> asyncResourceGatherer;
-    std::chrono::system_clock::time_point   gatheredAt;
+    std::chrono::system_clock::time_point   firstFullFrameTime;
 
     void                                    pushFb(GLint fb);
     void                                    popFb();
