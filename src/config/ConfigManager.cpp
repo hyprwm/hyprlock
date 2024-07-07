@@ -55,6 +55,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});
     m_config.addConfigValue("general:no_fade_out", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
+    m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
     m_config.addConfigValue("general:pam_module", Hyprlang::STRING{"hyprlock"});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});

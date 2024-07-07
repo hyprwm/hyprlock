@@ -16,8 +16,7 @@
 class CAsyncResourceGatherer {
   public:
     CAsyncResourceGatherer();
-    std::atomic<bool>  ready   = false;
-    std::atomic<bool>  applied = false;
+    std::atomic<bool>  gathered = false;
 
     std::atomic<float> progress = 0;
 
@@ -52,6 +51,7 @@ class CAsyncResourceGatherer {
 
   private:
     std::thread asyncLoopThread;
+    std::thread initialGatherThread;
 
     void        asyncAssetSpinLock();
     void        renderText(const SPreloadRequest& rq);

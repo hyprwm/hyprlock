@@ -11,6 +11,7 @@ void help() {
                  "  -c FILE, --config FILE   - Specify config file to use\n"
                  "  --display (display)      - Specify the Wayland display to connect to\n"
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
+                 "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  -h, --help               - Show this help message\n";
 }
 
@@ -26,8 +27,9 @@ std::optional<std::string> parseArg(const std::vector<std::string>& args, const 
 int main(int argc, char** argv, char** envp) {
     std::string              configPath;
     std::string              wlDisplay;
-    bool                     immediate = false;
-    bool                     showHelp  = false;
+    bool                     immediate       = false;
+    bool                     immediateRender = false;
+    bool                     showHelp        = false;
 
     std::vector<std::string> args(argv, argv + argc);
 
@@ -54,6 +56,9 @@ int main(int argc, char** argv, char** envp) {
 
         } else if (arg == "--immediate")
             immediate = true;
+
+        else if (arg == "--immediate-render")
+            immediateRender = true;
 
         else if (arg == "--help" || arg == "-h") {
             showHelp = true;
@@ -83,7 +88,7 @@ int main(int argc, char** argv, char** envp) {
     }
 
     try {
-        g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate);
+        g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate, immediateRender);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());

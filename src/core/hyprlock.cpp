@@ -18,7 +18,7 @@
 #include <fstream>
 #include <algorithm>
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -32,11 +32,14 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate) {
         Debug::log(ERR, "Failed to create xkb context");
 
     if (!immediate) {
-        const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
-        m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
+        const auto PGRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
+        m_tGraceEnds      = **PGRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**PGRACE) : std::chrono::system_clock::from_time_t(0);
     } else {
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
     }
+
+    const auto PIMMEDIATERENDER = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:immediate_render");
+    m_bImmediateRender          = immediateRender || **PIMMEDIATERENDER;
 }
 
 CHyprlock::~CHyprlock() {
@@ -383,7 +386,7 @@ void CHyprlock::run() {
 
     // Hyprland violates the protocol a bit to allow for this.
     if (SZCURRENTD != "Hyprland") {
-        while (!g_pRenderer->asyncResourceGatherer->ready) {
+        while (!g_pRenderer->asyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
                 wl_display_read_events(m_sWaylandState.display);
@@ -1137,5 +1140,5 @@ void CHyprlock::attemptRestoreOnDeath() {
     ofs.close();
 
     spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
-    spawnAsync("sleep 2 && hyprlock --immediate & disown");
+    spawnAsync("sleep 2 && hyprlock --immediate --immediate-render & disown");
 }

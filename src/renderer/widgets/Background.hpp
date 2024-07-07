@@ -16,6 +16,7 @@ class CBackground : public IWidget {
     CBackground(const Vector2D& viewport, COutput* output_, const std::string& resourceID, const std::unordered_map<std::string, std::any>& props, bool ss_);
 
     virtual bool draw(const SRenderData& data);
+    void         renderRect(CColor color);
 
   private:
     // if needed

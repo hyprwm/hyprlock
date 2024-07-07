@@ -28,7 +28,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediate);
+    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender);
     ~CHyprlock();
 
     void                            run();
@@ -100,6 +100,8 @@ class CHyprlock {
     bool                            m_bNumLock     = false;
     bool                            m_bCtrl        = false;
     bool                            m_bFadeStarted = false;
+
+    bool                            m_bImmediateRender = false;
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
     std::chrono::system_clock::time_point m_tFadeEnds;

@@ -159,7 +159,8 @@ CRenderer::CRenderer() {
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
 }
 
-static int frames = 0;
+static int  frames         = 0;
+static bool firstFullFrame = false;
 
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
@@ -183,12 +184,11 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
+    float           bga           = 0.0;
+    const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !asyncResourceGatherer->gathered;
 
-    float           bga = asyncResourceGatherer->applied ?
-                  std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - gatheredAt).count() / 500000.0, 0.0, 1.0) :
-                  0.0;
+    if (WAITFORASSETS) {
 
-    if (!asyncResourceGatherer->ready) {
         // render status
         if (!**PDISABLEBAR) {
             CBox progress = {0, 0, asyncResourceGatherer->progress * surf.size.x, 2};
@@ -196,10 +196,12 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         }
     } else {
 
-        if (!asyncResourceGatherer->applied) {
-            asyncResourceGatherer->apply();
-            gatheredAt = std::chrono::system_clock::now();
+        if (!firstFullFrame) {
+            firstFullFrameTime = std::chrono::system_clock::now();
+            firstFullFrame     = true;
         }
+
+        bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - firstFullFrameTime).count() / 500000.0, 0.0, 1.0);
 
         if (**PNOFADEIN)
             bga = 1.0;
@@ -220,7 +222,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     Debug::log(TRACE, "frame {}", frames);
 
-    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->ready || bga < 1.0;
+    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered || bga < 1.0;
 
     glDisable(GL_BLEND);
 
@@ -325,7 +327,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                     resourceID = CDMAFrame::getResourceId(surf->output);
                     // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
                     // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-                    if (asyncResourceGatherer->ready) {
+                    if (asyncResourceGatherer->gathered) {
                         if (!asyncResourceGatherer->getAssetByID(resourceID))
                             resourceID = ""; // Fallback to solid color (background:color)
                     }
