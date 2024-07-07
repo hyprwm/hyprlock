@@ -32,7 +32,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
 
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
-                if (initialPrompt || PROMPTCHANGED) {
+                if (!initialPrompt && PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
                     g_pAuth->waitForInput();
                 }
@@ -70,6 +70,8 @@ static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data)
 void CAuth::start() {
     std::thread([this]() {
         resetConversation();
+        m_sConversationState.prompt = "Password: ";
+        waitForInput();
         auth();
 
         g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
