@@ -16,7 +16,7 @@ static const ext_session_lock_surface_v1_listener lockListener = {
 static void handlePreferredScale(void* data, wp_fractional_scale_v1* wp_fractional_scale_v1, uint32_t scale) {
     const auto PSURF       = (CSessionLockSurface*)data;
     PSURF->fractionalScale = scale / 120.0;
-    Debug::log(LOG, "got fractional {}", PSURF->fractionalScale);
+    Debug::log(LOG, "Got fractional scale: {}", PSURF->fractionalScale);
 
     if (PSURF->readyForFrame)
         PSURF->onScaleUpdate();
@@ -35,8 +35,12 @@ CSessionLockSurface::~CSessionLockSurface() {
     if (eglWindow)
         wl_egl_window_destroy(eglWindow);
 
-    ext_session_lock_surface_v1_destroy(lockSurface);
-    wl_surface_destroy(surface);
+    if (lockSurface)
+        ext_session_lock_surface_v1_destroy(lockSurface);
+
+    if (surface)
+        wl_surface_destroy(surface);
+
     if (frameCallback)
         wl_callback_destroy(frameCallback);
 }
@@ -58,7 +62,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
 
     lockSurface = ext_session_lock_v1_get_lock_surface(g_pHyprlock->getSessionLock(), surface, output->output);
 
-    if (!surface) {
+    if (!lockSurface) {
         Debug::log(CRIT, "Couldn't create ext_session_lock_surface_v1");
         exit(1);
     }
@@ -72,36 +76,41 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     const bool sameSerial = serial == serial_;
 
     serial      = serial_;
-    size        = (size_ * fractionalScale).floor();
     logicalSize = size_;
+
+    if (fractional) {
+        size = (size_ * fractionalScale).floor();
+        wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
+    } else {
+        size = size_;
+    }
 
     Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
     if (!sameSerial)
         ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
 
-    if (fractional)
-        wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
-
     wl_surface_set_buffer_scale(surface, 1);
     wl_surface_damage_buffer(surface, 0, 0, 0xFFFF, 0xFFFF);
 
-    if (!eglWindow)
+    if (!eglWindow) {
         eglWindow = wl_egl_window_create(surface, size.x, size.y);
-    else
+        if (!eglWindow) {
+            Debug::log(CRIT, "Couldn't create eglWindow");
+            exit(1);
+        }
+    } else
         wl_egl_window_resize(eglWindow, size.x, size.y, 0, 0);
 
-    if (!eglWindow) {
-        Debug::log(CRIT, "Couldn't create eglWindow");
-        exit(1);
-    }
-
-    if (!eglSurface)
-        eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
-
     if (!eglSurface) {
-        Debug::log(CRIT, "Couldn't create eglSurface: {}", (int)glGetError());
-        exit(1);
+        eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
+        if (!eglSurface) {
+            Debug::log(CRIT, "Couldn't create eglSurface: {}", (int)eglGetError());
+            // Clean up resources to prevent leaks
+            wl_egl_window_destroy(eglWindow);
+            eglWindow = nullptr;
+            exit(1); // Consider graceful exit or fallback
+        }
     }
 
     readyForFrame = true;
@@ -145,6 +154,8 @@ void CSessionLockSurface::onCallback() {
     wl_callback_destroy(frameCallback);
     frameCallback = nullptr;
 
-    if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL)
+    if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL) {
+        needsFrame = false;
         render();
+    }
 }
