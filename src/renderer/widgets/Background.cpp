@@ -15,21 +15,29 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
     contrast          = std::any_cast<Hyprlang::FLOAT>(props.at("contrast"));
 }
 
+void CBackground::renderRect(CColor color) {
+    CBox monbox = {0, 0, viewport.x, viewport.y};
+    g_pRenderer->renderRect(monbox, color, 0);
+}
+
 bool CBackground::draw(const SRenderData& data) {
 
     if (resourceID.empty()) {
-        CBox   monbox = {0, 0, viewport.x, viewport.y};
-        CColor col    = color;
+        CColor col = color;
         col.a *= data.opacity;
-        g_pRenderer->renderRect(monbox, col, 0);
+        renderRect(col);
         return data.opacity < 1.0;
     }
 
     if (!asset)
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
-    if (!asset)
+    if (!asset) {
+        CColor col = color;
+        col.a *= data.opacity;
+        renderRect(col);
         return true;
+    }
 
     if (asset->texture.m_iType == TEXTURE_INVALID) {
         g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
