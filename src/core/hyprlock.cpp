@@ -1140,5 +1140,5 @@ void CHyprlock::attemptRestoreOnDeath() {
     ofs.close();
 
     spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
-    spawnAsync("sleep 2 && hyprlock --immediate & disown");
+    spawnAsync("sleep 2 && hyprlock --immediate --immediate-render & disown");
 }
