@@ -18,7 +18,7 @@
 #include <fstream>
 #include <algorithm>
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) : m_bImmediateRender(immediateRender) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -32,11 +32,14 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
         Debug::log(ERR, "Failed to create xkb context");
 
     if (!immediate) {
-        const auto GRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
-        m_tGraceEnds     = **GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**GRACE) : std::chrono::system_clock::from_time_t(0);
+        const auto PGRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
+        m_tGraceEnds      = **PGRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**PGRACE) : std::chrono::system_clock::from_time_t(0);
     } else {
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
     }
+
+    const auto PIMMEDIATERENDER = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:immediate_render");
+    m_bImmediateRender          = immediateRender || **PIMMEDIATERENDER;
 }
 
 CHyprlock::~CHyprlock() {

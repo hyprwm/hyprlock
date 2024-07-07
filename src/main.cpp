@@ -11,6 +11,7 @@ void help() {
                  "  -c FILE, --config FILE   - Specify config file to use\n"
                  "  --display (display)      - Specify the Wayland display to connect to\n"
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
+                 "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  -h, --help               - Show this help message\n";
 }
 
