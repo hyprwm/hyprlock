@@ -198,9 +198,9 @@ static void wlr_matrix_project_box(float mat[9], const CBox* box, enum wl_output
     wlr_matrix_translate(mat, x, y);
 
     if (rotation != 0) {
-        wlr_matrix_translate(mat, width / 2, height / 2);
+        wlr_matrix_translate(mat, width / 2.0, height / 2.0);
         wlr_matrix_rotate(mat, rotation);
-        wlr_matrix_translate(mat, -width / 2, -height / 2);
+        wlr_matrix_translate(mat, -width / 2.0, -height / 2.0);
     }
 
     wlr_matrix_scale(mat, width, height);

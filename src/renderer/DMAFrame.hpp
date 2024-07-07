@@ -2,7 +2,6 @@
 
 #include "../core/Output.hpp"
 #include <gbm.h>
-#include "Texture.hpp"
 #include "Shared.hpp"
 
 struct zwlr_screencopy_frame_v1;
