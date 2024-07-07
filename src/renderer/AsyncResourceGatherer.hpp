@@ -86,4 +86,5 @@ class CAsyncResourceGatherer {
     std::unordered_map<std::string, SPreloadedAsset> assets;
 
     void                                             gather();
+    void                                             enqueueDMAFrames();
 };

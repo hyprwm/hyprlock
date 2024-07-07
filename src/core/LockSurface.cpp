@@ -53,12 +53,20 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         exit(1);
     }
 
-    fractional = wp_fractional_scale_manager_v1_get_fractional_scale(g_pHyprlock->getFractionalMgr(), surface);
-    if (fractional) {
-        wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
-        viewport = wp_viewporter_get_viewport(g_pHyprlock->getViewporter(), surface);
-    } else
+    const auto PFRACTIONALMGR = g_pHyprlock->getFractionalMgr();
+    const auto PVIEWPORTER    = g_pHyprlock->getViewporter();
+    if (PFRACTIONALMGR && PVIEWPORTER) {
+        fractional = wp_fractional_scale_manager_v1_get_fractional_scale(PFRACTIONALMGR, surface);
+        if (fractional) {
+            wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
+            viewport = wp_viewporter_get_viewport(PVIEWPORTER, surface);
+        }
+    }
+
+    if (!PFRACTIONALMGR || !fractional)
         Debug::log(LOG, "No fractional-scale support! Oops, won't be able to scale!");
+    if (!PVIEWPORTER)
+        Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
 
     lockSurface = ext_session_lock_v1_get_lock_surface(g_pHyprlock->getSessionLock(), surface, output->output);
 

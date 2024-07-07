@@ -331,6 +331,12 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                         if (!asyncResourceGatherer->getAssetByID(resourceID))
                             resourceID = ""; // Fallback to solid color (background:color)
                     }
+
+                    if (!g_pHyprlock->getScreencopy()) {
+                        Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
+                        resourceID = "";
+                    }
+
                 } else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 
