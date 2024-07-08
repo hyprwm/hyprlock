@@ -36,7 +36,7 @@ int main(int argc, char** argv, char** envp) {
     std::vector<std::string> args(argv, argv + argc);
 
     for (std::size_t i = 1; i < args.size(); ++i) {
-        const std::string arg = argv[i];
+        const std::string arg = args[i];
 
         if (arg == "--verbose" || arg == "-v")
             Debug::verbose = true;
