@@ -3,7 +3,6 @@
 #include <memory>
 #include <chrono>
 #include <optional>
-
 #include "../core/LockSurface.hpp"
 #include "Shader.hpp"
 #include "../helpers/Box.hpp"

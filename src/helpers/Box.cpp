@@ -1,5 +1,5 @@
 #include "Box.hpp"
-
+#include <cmath>
 #include <limits>
 #include <algorithm>
 

@@ -6,14 +6,10 @@
 #include "../core/hyprlock.hpp"
 #include "../renderer/DMAFrame.hpp"
 #include "mtx.hpp"
-
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
-
 #include <algorithm>
-
 #include "Shaders.hpp"
-
 #include "src/helpers/Log.hpp"
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"

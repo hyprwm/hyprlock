@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Framebuffer.hpp"
-#include "../Texture.hpp"
 #include "../../helpers/Color.hpp"
 #include "IWidget.hpp"
 

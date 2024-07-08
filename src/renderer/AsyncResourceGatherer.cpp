@@ -347,7 +347,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     target.cairo        = CAIRO;
     target.cairosurface = CAIROSURFACE;
     target.data         = cairo_image_surface_get_data(CAIROSURFACE);
-    target.size         = {layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE};
+    target.size         = {layoutWidth / (double)PANGO_SCALE, layoutHeight / (double)PANGO_SCALE};
 
     std::lock_guard lg{preloadTargetsMutex};
     preloadTargets.push_back(target);
