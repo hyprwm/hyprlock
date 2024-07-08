@@ -827,8 +827,7 @@ void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
     if (m_iKeebRepeatDelay <= 0)
         return;
 
-    m_pKeyRepeatTimer = addTimer(
-        std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+    m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 }
 
 void CHyprlock::repeatKey(xkb_keysym_t sym) {
@@ -839,8 +838,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 
     // This condition is for backspace and delete keys, but should also be ok for other keysyms since our buffer won't be empty anyways
     if (bool CONTINUE = m_sPasswordState.passBuffer.length() > 0; CONTINUE)
-        m_pKeyRepeatTimer = addTimer(
-            std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+        m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 
     renderAllOutputs();
 }
@@ -1022,8 +1020,7 @@ std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
 }
 
 void CHyprlock::enqueueForceUpdateTimers() {
-    addTimer(
-        std::chrono::milliseconds(1), [](std::shared_ptr<CTimer> self, void* data) { forceUpdateTimers(); }, nullptr, false);
+    addTimer(std::chrono::milliseconds(1), [](std::shared_ptr<CTimer> self, void* data) { forceUpdateTimers(); }, nullptr, false);
 }
 
 void CHyprlock::spawnAsync(const std::string& args) {
@@ -1111,7 +1108,7 @@ void CHyprlock::attemptRestoreOnDeath() {
         return;
 
     // dirty hack
-    uint64_t   timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
+    uint64_t   timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t(0)).count();
 
     const auto LASTRESTARTPATH = std::string{XDG_RUNTIME_DIR} + "/.hyprlockrestart";
 

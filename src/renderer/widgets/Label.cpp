@@ -1,6 +1,7 @@
 #include "Label.hpp"
 #include "../../helpers/Color.hpp"
 #include <hyprlang.hpp>
+#include <stdexcept>
 #include "../Renderer.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
@@ -13,6 +14,8 @@ CLabel::~CLabel() {
 }
 
 static void onTimer(std::shared_ptr<CTimer> self, void* data) {
+    if (data == nullptr)
+        return;
     const auto PLABEL = (CLabel*)data;
 
     // update label
@@ -64,41 +67,49 @@ void CLabel::plantTimer() {
 
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
-    labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
-    std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
-    std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-    CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
-    int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
+    try {
+        labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
+        std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
+        std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
+        CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
+        int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
 
-    label = formatString(labelPreFormat);
+        label = formatString(labelPreFormat);
 
-    request.id                   = getUniqueResourceId();
-    resourceID                   = request.id;
-    request.asset                = label.formatted;
-    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = fontFamily;
-    request.props["color"]       = labelColor;
-    request.props["font_size"]   = fontSize;
-    request.props["cmd"]         = label.cmd;
+        request.id                   = getUniqueResourceId();
+        resourceID                   = request.id;
+        request.asset                = label.formatted;
+        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+        request.props["font_family"] = fontFamily;
+        request.props["color"]       = labelColor;
+        request.props["font_size"]   = fontSize;
+        request.props["cmd"]         = label.cmd;
 
-    if (!textAlign.empty())
-        request.props["text_align"] = textAlign;
+        if (!textAlign.empty())
+            request.props["text_align"] = textAlign;
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+        g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
-    auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
-    pos        = {POS__.x, POS__.y};
-    configPos  = pos;
+        auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+        pos        = {POS__.x, POS__.y};
+        configPos  = pos;
 
-    viewport = viewport_;
+        viewport = viewport_;
 
-    halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-    valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
-    angle = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-    angle = angle * M_PI / 180.0;
+        angle = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        angle = angle * M_PI / 180.0;
 
-    plantTimer();
+        plantTimer();
+    } catch (const std::bad_any_cast& e) {
+        Debug::log(ERR, "Failed to construct CLabel: {}", e.what());
+        throw;
+    } catch (const std::out_of_range& e) {
+        Debug::log(ERR, "Missing propperty for CLabel:{}", e.what());
+        throw;
+    }
 }
 
 bool CLabel::draw(const SRenderData& data) {

@@ -19,7 +19,7 @@ enum eLogLevel {
                    std::format(reason, ##__VA_ARGS__), __LINE__,                                                                                                                   \
                    ([]() constexpr -> std::string { return std::string(__FILE__).substr(std::string(__FILE__).find_last_of('/') + 1); })().c_str());                               \
         printf("Assertion failed! See the log in /tmp/hypr/hyprland.log for more info.");                                                                                          \
-        *((int*)nullptr) = 1; /* so that we crash and get a coredump */                                                                                                            \
+        std::abort();                                                                                                         \
     }
 
 #define ASSERT(expr) RASSERT(expr, "?")
