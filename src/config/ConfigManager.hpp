@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hyprlang.hpp>
-
+#include <optional>
 #include <vector>
 #include <memory>
 #include <unordered_map>
