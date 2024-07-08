@@ -16,7 +16,9 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
 
 ## Arch install
 ```sh
-yay -S hyprlock-git
+pacman -S hyprlock # binary x86 tagged release
+# or
+yay -S hyprlock-git # compiles from latest source
 ```
 
 ## Building
