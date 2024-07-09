@@ -4,7 +4,7 @@
 #include "../renderer/Renderer.hpp"
 #include "Auth.hpp"
 #include "Egl.hpp"
-
+#include "linux-dmabuf-unstable-v1-protocol.h"
 #include <sys/wait.h>
 #include <sys/poll.h>
 #include <sys/mman.h>
@@ -1111,7 +1111,7 @@ void CHyprlock::attemptRestoreOnDeath() {
         return;
 
     // dirty hack
-    uint64_t   timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t({0})).count();
+    uint64_t   timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t(0)).count();
 
     const auto LASTRESTARTPATH = std::string{XDG_RUNTIME_DIR} + "/.hyprlockrestart";
 

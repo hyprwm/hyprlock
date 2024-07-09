@@ -1,9 +1,9 @@
 #include "DMAFrame.hpp"
+#include "linux-dmabuf-unstable-v1-protocol.h"
 #include "wlr-screencopy-unstable-v1-protocol.h"
 #include "../helpers/Log.hpp"
 #include "../core/hyprlock.hpp"
 #include "../core/Egl.hpp"
-
 #include <EGL/eglext.h>
 #include <libdrm/drm_fourcc.h>
 #include <GLES3/gl32.h>

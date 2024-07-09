@@ -1,6 +1,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
+#include "src/core/Auth.hpp"
 #include <chrono>
 #include <unistd.h>
 #include <pwd.h>

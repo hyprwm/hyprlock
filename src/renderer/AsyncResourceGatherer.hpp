@@ -1,10 +1,6 @@
 #pragma once
 
-#include "Shader.hpp"
-#include "../helpers/Box.hpp"
-#include "../helpers/Color.hpp"
 #include "DMAFrame.hpp"
-#include "Texture.hpp"
 #include <thread>
 #include <atomic>
 #include <vector>

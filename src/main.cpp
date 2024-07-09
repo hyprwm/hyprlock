@@ -1,7 +1,9 @@
 
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
+#include "src/helpers/Log.hpp"
 #include <cstddef>
+#include <iostream>
 
 void help() {
     std::cout << "Usage: hyprlock [options]\n\n"

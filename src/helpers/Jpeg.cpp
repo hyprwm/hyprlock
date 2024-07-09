@@ -1,6 +1,5 @@
 #include "Jpeg.hpp"
 #include "Log.hpp"
-
 #include <jpeglib.h>
 #include <sys/stat.h>
 #include <sys/types.h>

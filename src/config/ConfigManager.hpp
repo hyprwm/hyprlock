@@ -1,9 +1,7 @@
 #pragma once
 
-#include "../helpers/Log.hpp"
-
 #include <hyprlang.hpp>
-
+#include <optional>
 #include <vector>
 #include <memory>
 #include <unordered_map>
