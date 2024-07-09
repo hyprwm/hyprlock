@@ -39,6 +39,7 @@ class CPasswordInputField : public IWidget {
     Vector2D    configSize;
 
     std::string halign, valign, configFailText, outputStringPort, configPlaceholderText;
+    uint64_t    configFailTimeoutMs = 2000;
 
     int         outThick, rounding;
 
