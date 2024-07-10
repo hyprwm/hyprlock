@@ -147,11 +147,6 @@ bool CLabel::draw(const SRenderData& data) {
     return false;
 }
 
-static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
-    const auto PLABEL = (CLabel*)data;
-    PLABEL->renderSuper();
-}
-
 void CLabel::renderSuper() {
     g_pHyprlock->renderOutput(outputStringPort);
 }
