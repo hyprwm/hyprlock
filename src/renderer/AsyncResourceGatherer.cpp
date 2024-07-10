@@ -385,6 +385,8 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
         // process requests
         for (auto& r : requests) {
+            Debug::log(TRACE, "Processing requested resourceID {}", r.id);
+
             if (r.type == TARGET_TEXT) {
                 renderText(r);
             } else if (r.type == TARGET_IMAGE) {
@@ -404,6 +406,8 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 }
 
 void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
+    Debug::log(TRACE, "Requesting label resource {}", request.id);
+
     std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
     asyncLoopState.requests.push_back(request);
     asyncLoopState.pending = true;
