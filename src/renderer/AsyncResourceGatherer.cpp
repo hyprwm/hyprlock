@@ -401,8 +401,6 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
                 g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{r.callback, r.callbackData});
         }
     }
-
-    dmas.clear();
 }
 
 void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
@@ -420,13 +418,14 @@ void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
 
 void CAsyncResourceGatherer::notify() {
     std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
+    asyncLoopState.requests.clear();
     asyncLoopState.pending = true;
     asyncLoopState.requestsCV.notify_all();
 }
 
 void CAsyncResourceGatherer::await() {
-    if (asyncLoopThread.joinable())
-        asyncLoopThread.join();
     if (initialGatherThread.joinable())
         initialGatherThread.join();
+    if (asyncLoopThread.joinable())
+        asyncLoopThread.join();
 }
