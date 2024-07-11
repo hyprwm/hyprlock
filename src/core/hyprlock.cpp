@@ -959,8 +959,15 @@ void CHyprlock::onLockLocked() {
 
 void CHyprlock::onLockFinished() {
     Debug::log(LOG, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
-    g_pRenderer = nullptr;
-    exit(1);
+    if (m_bLocked)
+        // The `finished` event specifies that whenever the `locked` event has been recieved and the compositor sends `finished`,
+        // `unlock_and_destroy` should be called by the client.
+        // This does not mean the session gets unlocked! That is ultimatly the responsiblity of the compositor.
+        ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
+    else
+        ext_session_lock_v1_destroy(m_sLockState.lock);
+
+    m_bTerminate = true;
 }
 
 ext_session_lock_manager_v1* CHyprlock::getSessionLockMgr() {
