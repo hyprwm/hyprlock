@@ -400,6 +400,9 @@ void CHyprlock::run() {
 
     acquireSessionLock();
 
+    if (m_bTerminate) // Recieved finished
+        exit(1);
+
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
 
@@ -408,6 +411,8 @@ void CHyprlock::run() {
     registerSignalAction(SIGRTMIN, handlePollTerminate);
     registerSignalAction(SIGSEGV, handleCriticalSignal);
     registerSignalAction(SIGABRT, handleCriticalSignal);
+
+    createSessionLockSurfaces();
 
     pollfd pollfds[] = {
         {
@@ -925,7 +930,7 @@ void CHyprlock::acquireSessionLock() {
     m_sLockState.lock = ext_session_lock_manager_v1_lock(m_sWaylandState.sessionLock);
     ext_session_lock_v1_add_listener(m_sLockState.lock, &sessionLockListener, nullptr);
 
-    // wait for wayland to signal whether the session lock has been acquired
+    // roundtrip in case the compositor sends `finished` right away
     wl_display_roundtrip(m_sWaylandState.display);
 }
 
@@ -947,12 +952,14 @@ void CHyprlock::releaseSessionLock() {
     wl_display_roundtrip(m_sWaylandState.display);
 }
 
-void CHyprlock::onLockLocked() {
-    Debug::log(LOG, "onLockLocked called");
-
+void CHyprlock::createSessionLockSurfaces() {
     for (auto& o : m_vOutputs) {
         o->sessionLockSurface = std::make_unique<CSessionLockSurface>(o.get());
     }
+}
+
+void CHyprlock::onLockLocked() {
+    Debug::log(LOG, "onLockLocked called");
 
     m_bLocked = true;
 }
