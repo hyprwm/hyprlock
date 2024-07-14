@@ -46,6 +46,8 @@ class CHyprlock {
     void                            acquireSessionLock();
     void                            releaseSessionLock();
 
+    void                            createSessionLockSurfaces();
+
     void                            attemptRestoreOnDeath();
 
     void                            spawnAsync(const std::string& cmd);
