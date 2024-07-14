@@ -941,6 +941,12 @@ void CHyprlock::releaseSessionLock() {
         return;
     }
 
+    if (!m_bLocked) {
+        // Would be a protocol error to allow this
+        Debug::log(ERR, "Trying to unlock the session, but never recieved the locked event!");
+        return;
+    }
+
     ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
     m_sLockState.lock = nullptr;
 
