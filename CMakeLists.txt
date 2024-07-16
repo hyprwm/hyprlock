@@ -39,7 +39,7 @@ message(STATUS "Checking deps...")
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
-pkg_check_modules(deps REQUIRED IMPORTED_TARGET wayland-client wayland-protocols wayland-egl hyprlang>=0.4.0 egl opengl xkbcommon libjpeg libwebp libmagic cairo pangocairo libdrm gbm hyprutils>=0.1.1)
+pkg_check_modules(deps REQUIRED IMPORTED_TARGET wayland-client wayland-protocols wayland-egl hyprlang>=0.4.0 egl opengl xkbcommon libjpeg libwebp libmagic cairo pangocairo libdrm gbm hyprutils>=0.2.0)
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
