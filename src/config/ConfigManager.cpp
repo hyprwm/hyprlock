@@ -1,6 +1,7 @@
 #include "ConfigManager.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "src/helpers/Log.hpp"
+#include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
@@ -18,22 +19,12 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     return result;
 }
 
-static std::string getConfigDir() {
-    static const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
-
-    if (xdgConfigHome && std::filesystem::path(xdgConfigHome).is_absolute())
-        return xdgConfigHome;
-
-    static const char* home = getenv("HOME");
-
-    if (!home)
-        throw std::runtime_error("Neither HOME nor XDG_CONFIG_HOME is set in the environment. Cannot determine config directory.");
-
-    return home + std::string("/.config");
-}
-
 static std::string getMainConfigPath() {
-    return getConfigDir() + "/hypr/hyprlock.conf";
+    static const auto paths = Hyprutils::Path::findConfig("hyprlock");
+    if (paths.first.has_value())
+        return paths.first.value();
+    else
+        throw std::runtime_error("Could not find config in HOME, XDG_CONFIG_HOME, XDG_CONFIG_DIRS or /etc/hypr.");
 }
 
 CConfigManager::CConfigManager(std::string configPath) :
