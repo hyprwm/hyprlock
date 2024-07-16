@@ -1,7 +1,11 @@
-.cache
+**/.cache
 .direnv
 .envrc
 .vscode/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
 build/
 compile_commands.json
 protocols/*.c
