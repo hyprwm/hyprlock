@@ -31,6 +31,7 @@ class CHyprlock {
     void                            run();
 
     void                            unlock();
+    bool                            isUnlocked();
 
     void                            onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     void                            onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
@@ -45,6 +46,8 @@ class CHyprlock {
 
     void                            acquireSessionLock();
     void                            releaseSessionLock();
+
+    void                            createSessionLockSurfaces();
 
     void                            attemptRestoreOnDeath();
 

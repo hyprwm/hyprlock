@@ -385,6 +385,8 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
         // process requests
         for (auto& r : requests) {
+            Debug::log(TRACE, "Processing requested resourceID {}", r.id);
+
             if (r.type == TARGET_TEXT) {
                 renderText(r);
             } else if (r.type == TARGET_IMAGE) {
@@ -399,11 +401,11 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
                 g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{r.callback, r.callbackData});
         }
     }
-
-    dmas.clear();
 }
 
 void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
+    Debug::log(TRACE, "Requesting label resource {}", request.id);
+
     std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
     asyncLoopState.requests.push_back(request);
     asyncLoopState.pending = true;
@@ -416,13 +418,14 @@ void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
 
 void CAsyncResourceGatherer::notify() {
     std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
+    asyncLoopState.requests.clear();
     asyncLoopState.pending = true;
     asyncLoopState.requestsCV.notify_all();
 }
 
 void CAsyncResourceGatherer::await() {
-    if (asyncLoopThread.joinable())
-        asyncLoopThread.join();
     if (initialGatherThread.joinable())
         initialGatherThread.join();
+    if (asyncLoopThread.joinable())
+        asyncLoopThread.join();
 }

@@ -1,6 +1,9 @@
 #include "ConfigManager.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "src/helpers/Log.hpp"
+
+#include <hyprutils/path/Path.hpp>
+
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
@@ -18,22 +21,12 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     return result;
 }
 
-static std::string getConfigDir() {
-    static const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
-
-    if (xdgConfigHome && std::filesystem::path(xdgConfigHome).is_absolute())
-        return xdgConfigHome;
-
-    static const char* home = getenv("HOME");
-
-    if (!home)
-        throw std::runtime_error("Neither HOME nor XDG_CONFIG_HOME is set in the environment. Cannot determine config directory.");
-
-    return home + std::string("/.config");
-}
-
 static std::string getMainConfigPath() {
-    return getConfigDir() + "/hypr/hyprlock.conf";
+    static const auto paths = Hyprutils::Path::findConfig("hyprlock");
+    if (paths.first.has_value())
+        return paths.first.value();
+    else
+        throw std::runtime_error("Could not find config in HOME, XDG_CONFIG_HOME, XDG_CONFIG_DIRS or /etc/hypr.");
 }
 
 CConfigManager::CConfigManager(std::string configPath) :
@@ -125,6 +118,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "check_color", Hyprlang::INT{0xFFCC8822});
     m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
+    m_config.addSpecialConfigValue("input-field", "fail_timeout", Hyprlang::INT{2000});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
     m_config.addSpecialConfigValue("input-field", "capslock_color", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "numlock_color", Hyprlang::INT{-1});
@@ -277,6 +271,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
+                {"fail_timeout", m_config.getSpecialConfigValue("input-field", "fail_timeout", k.c_str())},
                 {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},
                 {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
                 {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
