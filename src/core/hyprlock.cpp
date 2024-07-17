@@ -585,6 +585,10 @@ void CHyprlock::unlock() {
     renderAllOutputs();
 }
 
+bool CHyprlock::isUnlocked() {
+    return m_bFadeStarted || m_bTerminate;
+}
+
 // wl_seat
 
 static void handlePointerEnter(void* data, struct wl_pointer* wl_pointer, uint32_t serial, struct wl_surface* surface, wl_fixed_t surface_x, wl_fixed_t surface_y) {
@@ -613,9 +617,7 @@ static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint3
     if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
         return;
 
-    const auto UNLOCKED = g_pHyprlock->m_bTerminate || g_pHyprlock->m_bFadeStarted;
-    if (!UNLOCKED && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
-
+    if (!g_pHyprlock->isUnlocked() && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
         Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
         g_pHyprlock->unlock();
     }
