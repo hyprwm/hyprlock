@@ -772,13 +772,13 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 void CHyprlock::onPasswordCheckTimer() {
     // check result
-    if (g_pAuth->didAuthSucceed()) {
+    if (g_pAuth->isAuthenticated()) {
         unlock();
     } else {
-        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
-
         m_sPasswordState.passBuffer = "";
         m_sPasswordState.failedAttempts += 1;
+        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
+
         g_pAuth->m_bDisplayFailText = true;
         forceUpdateTimers();
 

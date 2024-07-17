@@ -38,7 +38,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 }
 
                 // Needed for unlocks via SIGUSR1
-                if (g_pHyprlock->m_bTerminate)
+                if (g_pHyprlock->isUnlocked())
                     return PAM_CONV_ERR;
 
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
@@ -70,9 +70,21 @@ static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data)
 void CAuth::start() {
     std::thread([this]() {
         resetConversation();
+
+        // Initial input
         m_sConversationState.prompt = "Password: ";
         waitForInput();
-        auth();
+
+        // For grace or SIGUSR1 unlocks
+        if (g_pHyprlock->isUnlocked())
+            return;
+
+        const auto AUTHENTICATED = auth();
+        m_bAuthenticated         = AUTHENTICATED;
+
+        // For SIGUSR1 unlocks
+        if (g_pHyprlock->isUnlocked())
+            return;
 
         g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
     }).detach();
@@ -86,7 +98,6 @@ bool CAuth::auth() {
     int            ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.success  = false;
         m_sConversationState.failText = "pam_start failed";
         Debug::log(ERR, "auth: pam_start failed for {}", m_sPamModule);
         return false;
@@ -99,21 +110,19 @@ bool CAuth::auth() {
     m_sConversationState.waitingForPamAuth = false;
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.success  = false;
         m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
         Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
 
-    m_sConversationState.success  = true;
     m_sConversationState.failText = "Successfully authenticated";
     Debug::log(LOG, "auth: authenticated for {}", m_sPamModule);
 
     return true;
 }
 
-bool CAuth::didAuthSucceed() {
-    return m_sConversationState.success;
+bool CAuth::isAuthenticated() {
+    return m_bAuthenticated;
 }
 
 // clearing the input must be done from the main thread
@@ -164,5 +173,4 @@ void CAuth::resetConversation() {
     m_sConversationState.input             = "";
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
-    m_sConversationState.success           = false;
 }
