@@ -610,8 +610,11 @@ static void handlePointerAxis(void* data, wl_pointer* wl_pointer, uint32_t time,
 }
 
 static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
-    if (g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5 &&
-        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds && !g_pHyprlock->m_bFadeStarted) {
+    if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
+        return;
+
+    const auto UNLOCKED = g_pHyprlock->m_bTerminate || g_pHyprlock->m_bFadeStarted;
+    if (!UNLOCKED && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
 
         Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
         g_pHyprlock->unlock();
@@ -843,7 +846,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    if (m_bFadeStarted)
+    if (m_bFadeStarted || m_bTerminate)
         return;
 
     if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
