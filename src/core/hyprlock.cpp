@@ -983,7 +983,8 @@ void CHyprlock::onLockFinished() {
     else
         ext_session_lock_v1_destroy(m_sLockState.lock);
 
-    m_bTerminate = true;
+    m_sLockState.lock = nullptr;
+    m_bTerminate      = true;
 }
 
 ext_session_lock_manager_v1* CHyprlock::getSessionLockMgr() {
