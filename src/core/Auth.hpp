@@ -18,15 +18,13 @@ class CAuth {
 
         bool                    waitingForPamAuth = false;
         bool                    inputRequested    = false;
-
-        bool                    success = false;
     };
 
     CAuth();
 
     void                       start();
     bool                       auth();
-    bool                       didAuthSucceed();
+    bool                       isAuthenticated();
 
     void                       waitForInput();
     void                       submitInput(std::string input);
@@ -44,7 +42,8 @@ class CAuth {
   private:
     SPamConversationState m_sConversationState;
 
-    bool                  m_bBlockInput = true;
+    bool                  m_bBlockInput    = true;
+    bool                  m_bAuthenticated = false;
 
     std::string           m_sPamModule;
 

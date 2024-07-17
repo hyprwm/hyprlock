@@ -585,6 +585,10 @@ void CHyprlock::unlock() {
     renderAllOutputs();
 }
 
+bool CHyprlock::isUnlocked() {
+    return m_bFadeStarted || m_bTerminate;
+}
+
 // wl_seat
 
 static void handlePointerEnter(void* data, struct wl_pointer* wl_pointer, uint32_t serial, struct wl_surface* surface, wl_fixed_t surface_x, wl_fixed_t surface_y) {
@@ -610,9 +614,10 @@ static void handlePointerAxis(void* data, wl_pointer* wl_pointer, uint32_t time,
 }
 
 static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
-    if (g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5 &&
-        std::chrono::system_clock::now() < g_pHyprlock->m_tGraceEnds && !g_pHyprlock->m_bFadeStarted) {
+    if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
+        return;
 
+    if (!g_pHyprlock->isUnlocked() && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
         Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
         g_pHyprlock->unlock();
     }
@@ -767,13 +772,13 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 
 void CHyprlock::onPasswordCheckTimer() {
     // check result
-    if (g_pAuth->didAuthSucceed()) {
+    if (g_pAuth->isAuthenticated()) {
         unlock();
     } else {
-        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
-
         m_sPasswordState.passBuffer = "";
         m_sPasswordState.failedAttempts += 1;
+        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
+
         g_pAuth->m_bDisplayFailText = true;
         forceUpdateTimers();
 
@@ -843,7 +848,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    if (m_bFadeStarted)
+    if (m_bFadeStarted || m_bTerminate)
         return;
 
     if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
@@ -980,7 +985,8 @@ void CHyprlock::onLockFinished() {
     else
         ext_session_lock_v1_destroy(m_sLockState.lock);
 
-    m_bTerminate = true;
+    m_sLockState.lock = nullptr;
+    m_bTerminate      = true;
 }
 
 ext_session_lock_manager_v1* CHyprlock::getSessionLockMgr() {
