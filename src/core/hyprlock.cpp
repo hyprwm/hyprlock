@@ -941,8 +941,13 @@ void CHyprlock::acquireSessionLock() {
 
 void CHyprlock::releaseSessionLock() {
     Debug::log(LOG, "Unlocking session");
-    if (m_bTerminate && !m_sLockState.lock) {
+    if (m_bTerminate) {
         Debug::log(ERR, "Unlock already happend?");
+        return;
+    }
+
+    if (!m_sLockState.lock) {
+        Debug::log(ERR, "Unlock without a lock object!");
         return;
     }
 
@@ -977,6 +982,12 @@ void CHyprlock::onLockLocked() {
 
 void CHyprlock::onLockFinished() {
     Debug::log(LOG, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
+
+    if (!m_sLockState.lock) {
+        Debug::log(ERR, "onLockFinished without a lock object!");
+        return;
+    }
+
     if (m_bLocked)
         // The `finished` event specifies that whenever the `locked` event has been recieved and the compositor sends `finished`,
         // `unlock_and_destroy` should be called by the client.
