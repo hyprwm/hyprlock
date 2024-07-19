@@ -91,7 +91,7 @@ enum class FileType {
     UNKNOWN,
 };
 
-FileType getFileType(std::filesystem::path path) {
+FileType getFileType(const std::filesystem::path& path) {
     std::string ext = path.extension().string();
     // convert the extension to lower case
     std::transform(ext.begin(), ext.end(), ext.begin(), [](char c) { return c <= 'Z' && c >= 'A' ? c - ('Z' - 'z') : c; });
