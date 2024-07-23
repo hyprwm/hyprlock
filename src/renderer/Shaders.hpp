@@ -4,28 +4,22 @@
 
 inline static constexpr auto ROUNDED_SHADER_FUNC = [](const std::string colorVarName) -> std::string {
     return R"#(
-
     // branchless baby!
-    highp vec2 pixCoord = vec2(gl_FragCoord);
-    pixCoord -= topLeft + fullSize * 0.5;
+    highp vec2 pixCoord = vec2(gl_FragCoord)- (topLeft + fullSize * 0.5);;
     pixCoord *= vec2(lessThan(pixCoord, vec2(0.0))) * -2.0 + 1.0;
     pixCoord -= fullSize * 0.5 - radius;
     pixCoord += vec2(1.0, 1.0) / fullSize; // center the pix dont make it top-left
 
     if (pixCoord.x + pixCoord.y > radius) {
-
 	    float dist = length(pixCoord);
-
 	    if (dist > radius + 1.0)
 	        discard;
 
 	    if (dist > radius - 1.0) {
 	        float dist = length(pixCoord);
-
             float normalized = 1.0 - smoothstep(0.0, 1.0, dist - radius + 0.5);
-
 	        )#" +
-        colorVarName + R"#( = )#" + colorVarName + R"#( * normalized;
+        colorVarName + R"#( = )#" + colorVarName + R"#( *= normalized;
         }
 
     }
@@ -33,6 +27,7 @@ inline static constexpr auto ROUNDED_SHADER_FUNC = [](const std::string colorVar
 };
 
 inline const std::string QUADVERTSRC = R"#(
+#version 100
 uniform mat3 proj;
 uniform vec4 color;
 attribute vec2 pos;
@@ -50,15 +45,14 @@ void main() {
 })#";
 
 inline const std::string QUADFRAGSRC = R"#(
+#version 100
 precision highp float;
 varying vec4 v_color;
-
 uniform vec2 topLeft;
 uniform vec2 fullSize;
 uniform float radius;
 
 void main() {
-
     vec4 pixColor = v_color;
 
     if (radius > 0.0) {
@@ -70,6 +64,7 @@ void main() {
 })#";
 
 inline const std::string TEXVERTSRC = R"#(
+#version 100
 uniform mat3 proj;
 attribute vec2 pos;
 attribute vec2 texcoord;
@@ -81,19 +76,18 @@ void main() {
 })#";
 
 inline const std::string TEXFRAGSRCRGBA = R"#(
+#version 100
 precision highp float;
 varying vec2 v_texcoord; // is in 0-1
+
 uniform sampler2D tex;
 uniform float alpha;
-
 uniform vec2 topLeft;
 uniform vec2 fullSize;
 uniform float radius;
-
 uniform int discardOpaque;
 uniform int discardAlpha;
 uniform float discardAlphaValue;
-
 uniform int applyTint;
 uniform vec3 tint;
 
@@ -101,30 +95,29 @@ void main() {
 
     vec4 pixColor = texture2D(tex, v_texcoord);
 
-    if (discardOpaque == 1 && pixColor[3] * alpha == 1.0)
+    if (discardOpaque == 1 && pixColor.a * alpha == 1.0)
 	    discard;
 
-    if (discardAlpha == 1 && pixColor[3] <= discardAlphaValue)
+    if (discardAlpha == 1 && pixColor.a <= discardAlphaValue)
         discard;
 
-    if (applyTint == 1) {
-	    pixColor[0] = pixColor[0] * tint[0];
-	    pixColor[1] = pixColor[1] * tint[1];
-	    pixColor[2] = pixColor[2] * tint[2];
-    }
+    if (applyTint == 1) 
+	    pixColor.rgb *= tint;
 
     if (radius > 0.0) {
     )#" +
     ROUNDED_SHADER_FUNC("pixColor") + R"#(
     }
-
     gl_FragColor = pixColor * alpha;
 })#";
 
 inline const std::string FRAGBLUR1 = R"#(
 #version 100
 precision            highp float;
+
 varying highp vec2   v_texcoord; // is in 0-1
+varying vec4         FragColor;
+
 uniform sampler2D    tex;
 
 uniform float        radius;
@@ -133,6 +126,7 @@ uniform int          passes;
 uniform float        vibrancy;
 uniform float        vibrancy_darkness;
 
+// Constants for color conversion
 // see http://alienryderflex.com/hsp.html
 const float Pr = 0.299;
 const float Pg = 0.587;
@@ -144,21 +138,22 @@ const float Pb = 0.114;
 const float a = 0.93;
 const float b = 0.11;
 const float c = 0.66; //  Determines the smoothness of the transition of unboosted to boosted colors
-//
 
+// Sigmoid function for double circle
 // http://www.flong.com/archive/texts/code/shapers_circ/
 float doubleCircleSigmoid(float x, float a) {
     a = clamp(a, 0.0, 1.0);
 
-    float y = .0;
+    float y = 0.0;
     if (x <= a) {
         y = a - sqrt(a * a - x * x);
     } else {
-        y = a + sqrt(pow(1. - a, 2.) - pow(x - 1., 2.));
+        y = a + sqrt(pow(1.0 - a, 2.0) - pow(x - 1.0, 2.0));
     }
     return y;
 }
 
+// RGB to HSL conversion
 vec3 rgb2hsl(vec3 col) {
     float red   = col.r;
     float green = col.g;
@@ -179,11 +174,10 @@ vec3 rgb2hsl(vec3 col) {
 
     if (delta > 0.0) {
         vec3  maxcVec = vec3(maxc);
-        vec3  masks = vec3(equal(maxcVec, col)) * vec3(notEqual(maxcVec, vec3(green, blue, red)));
-        vec3  adds = vec3(0.0, 2.0, 4.0) + vec3(green - blue, blue - red, red - green) / delta;
+        vec3  masks = vec3(equal(maxcVec, col)) * vec3(notEqual(maxcVec, vec3(col.g, col.b, col.r)));
+        vec3  adds = vec3(0.0, 2.0, 4.0) + vec3(col.g - col.b, col.b - col.r, col.r - col.g) / delta;
 
-        hue += dot(adds, masks);
-        hue /= 6.0;
+        hue += dot(adds, masks)/6.0;
 
         if (hue < 0.0)
             hue += 1.0;
@@ -292,6 +286,7 @@ void main() {
 )#";
 
 inline const std::string FRAGBLURPREPARE = R"#(
+#version 100
 precision         highp float;
 varying vec2      v_texcoord; // is in 0-1
 uniform sampler2D tex;
@@ -324,13 +319,13 @@ void main() {
 )#";
 
 inline const std::string FRAGBLURFINISH = R"#(
+#version 100
 precision         highp float;
-varying vec2      v_texcoord; // is in 0-1
-uniform sampler2D tex;
+varying highp vec2      v_texcoord; // is in 0-1
 
+uniform sampler2D tex;
 uniform float     noise;
 uniform float     brightness;
-
 uniform int       colorize;
 uniform vec3      colorizeTint;
 uniform float     boostA;
