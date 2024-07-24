@@ -30,6 +30,7 @@ add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-unused-value
 
 # position independent build: __FILE__
 add_compile_options(-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
+add_compile_definitions(HYPRLOCK_VERSION="${VERSION}")
 
 # dependencies
 message(STATUS "Checking deps...")

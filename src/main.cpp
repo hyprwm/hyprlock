@@ -41,6 +41,11 @@ int main(int argc, char** argv, char** envp) {
         if (arg == "--verbose" || arg == "-v")
             Debug::verbose = true;
 
+        if (arg == "--version" || arg == "-V") {
+            std::cout << "Hyprlock version " << HYPRLOCK_VERSION << "\n";
+            return 0;
+        }
+
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
 
