@@ -28,9 +28,11 @@ body:
     attributes:
       label: Hyprlock Info and Version
       description: |
-        Please check and enter your hyprlock version.
-        If you are on a packaged version, use your package manager to find your hyprlock version.
-        If you built it yourself, please provide the commit hash.
+        Please enter your hyprlock version and config.
+        Use `hyprlock --version` if it is available (Introduced after v0.4.1).
+
+        Otherwise please figure out the hyprlock version via your distribution.
+        If you built it yourself, post the commit hash.
 
         Provide your hyprlock config. Usually `~/.config/hypr/hyprlock.conf`.
       value: "<Enter your hyprlock version here>
@@ -51,12 +53,12 @@ body:
       required: true
 
   - type: textarea
-    id: ver
+    id: compositor
     attributes:
       label: Compositor Info and Version
       description: |
-        If you are on hyprland, Paste the output of `hyprctl systeminfo` here.
-        If you are on another compositor, enter compositor name and version you are on.
+        If you are on hyprland, paste the output of `hyprctl systeminfo` here.
+        If you are on another compositor, enter the compositor name and version you are on.
       value: "<details>
         <summary>System/Version info</summary>
 
