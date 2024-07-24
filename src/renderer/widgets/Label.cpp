@@ -27,7 +27,11 @@ static void onTimer(std::shared_ptr<CTimer> self, void* data) {
 
 static void onAssetCallback(void* data) {
     const auto PLABEL = (CLabel*)data;
-    PLABEL->renderSuper();
+    PLABEL->renderUpdate();
+}
+
+static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
+    onAssetCallback(data);
 }
 
 std::string CLabel::getUniqueResourceId() {
@@ -122,19 +126,6 @@ bool CLabel::draw(const SRenderData& data) {
         shadow.markShadowDirty();
     }
 
-    if (!pendingResourceID.empty()) {
-        // new asset is pending
-        auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
-        if (newAsset) {
-            // new asset is ready :D
-            g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
-            asset             = newAsset;
-            resourceID        = pendingResourceID;
-            pendingResourceID = "";
-            shadow.markShadowDirty();
-        }
-    }
-
     shadow.draw(data);
 
     // calc pos
@@ -147,6 +138,21 @@ bool CLabel::draw(const SRenderData& data) {
     return false;
 }
 
-void CLabel::renderSuper() {
+void CLabel::renderUpdate() {
+    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    if (newAsset) {
+        // new asset is ready :D
+        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        asset             = newAsset;
+        resourceID        = pendingResourceID;
+        pendingResourceID = "";
+        shadow.markShadowDirty();
+    } else {
+        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
+
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
+        return;
+    }
+
     g_pHyprlock->renderOutput(outputStringPort);
 }

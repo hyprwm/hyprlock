@@ -19,7 +19,7 @@ class CLabel : public IWidget {
 
     virtual bool draw(const SRenderData& data);
 
-    void         renderSuper();
+    void         renderUpdate();
     void         onTimerUpdate();
     void         plantTimer();
 

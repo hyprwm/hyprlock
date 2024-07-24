@@ -20,7 +20,11 @@ static void onTimer(std::shared_ptr<CTimer> self, void* data) {
 
 static void onAssetCallback(void* data) {
     const auto PIMAGE = (CImage*)data;
-    PIMAGE->renderSuper();
+    PIMAGE->renderUpdate();
+}
+
+static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
+    onAssetCallback(data);
 }
 
 void CImage::onTimerUpdate() {
@@ -100,23 +104,6 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
 
 bool CImage::draw(const SRenderData& data) {
 
-    if (!pendingResourceID.empty()) {
-        auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
-        if (newAsset) {
-            if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-                g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
-            } else if (resourceID != pendingResourceID) {
-                g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
-                imageFB.release();
-
-                asset       = newAsset;
-                resourceID  = pendingResourceID;
-                firstRender = true;
-            }
-            pendingResourceID = "";
-        }
-    }
-
     if (resourceID.empty())
         return false;
 
@@ -190,14 +177,25 @@ bool CImage::draw(const SRenderData& data) {
     return data.opacity < 1.0;
 }
 
-static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
-    const auto PIMAGE = (CImage*)data;
-    PIMAGE->renderSuper();
-}
+void CImage::renderUpdate() {
+    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    if (newAsset) {
+        if (newAsset->texture.m_iType == TEXTURE_INVALID) {
+            g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
+        } else if (resourceID != pendingResourceID) {
+            g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+            imageFB.release();
 
-void CImage::renderSuper() {
-    g_pHyprlock->renderOutput(output->stringPort);
+            asset       = newAsset;
+            resourceID  = pendingResourceID;
+            firstRender = true;
+        }
+        pendingResourceID = "";
+    } else if (!pendingResourceID.empty()) {
+        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
 
-    if (!pendingResourceID.empty()) /* did not consume the pending resource */
         g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
+    }
+
+    g_pHyprlock->renderOutput(output->stringPort);
 }
