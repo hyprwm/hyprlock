@@ -11,7 +11,7 @@ void help() {
                  "  -v, --verbose            - Enable verbose logging\n"
                  "  -q, --quiet              - Disable logging\n"
                  "  -c FILE, --config FILE   - Specify config file to use\n"
-                 "  --display (display)      - Specify the Wayland display to connect to\n"
+                 "  --display NAME           - Specify the Wayland display to connect to\n"
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  -V, --version            - Show version information\n"
