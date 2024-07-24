@@ -1,0 +1,102 @@
+name: Bug Report
+description: Something is not working right
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before opening a new issue, please take a moment to search through the current open and closed issues to check if it already exists.
+
+        ---
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Regression?
+      description: |
+        Regression means that something used to work but no longer does.
+        **BEFORE CONTINUING**, please check if this bug is a regression or not, and if it is, we need you to bisect with the help of the wiki: https://wiki.hyprland.org/Crashes-and-Bugs/#bisecting-an-issue
+      multiple: true
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+
+  - type: textarea
+    id: ver
+    attributes:
+      label: Hyprlock Info and Version
+      description: |
+        Please check and enter your hyprlock version.
+        If you are on a packaged version, use your package manager to find your hyprlock version.
+        If you built it yourself, please provide the commit hash.
+
+        Provide your hyprlock config. Usually `~/.config/hypr/hyprlock.conf`.
+      value: "<Enter your hyprlock version here>
+
+        <details>
+        <summary>Hyprlock config<summary>
+
+
+        ```sh
+
+        <Paste your hyprlock config here>
+
+        ```
+
+
+        </details>"
+    validations:
+      required: true
+
+  - type: textarea
+    id: ver
+    attributes:
+      label: Compositor Info and Version
+      description: |
+        If you are on hyprland, Paste the output of `hyprctl systeminfo` here.
+        If you are on another compositor, enter compositor name and version you are on.
+      value: "<details>
+        <summary>System/Version info</summary>
+
+
+        ```sh
+
+        <Paste the output of the command here>
+
+        ```
+
+
+        </details>"
+    validations:
+      required: true
+
+  - type: textarea
+    id: desc
+    attributes:
+      label: Description
+      description: "What went wrong?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: "How can someone else reproduce the issue?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Crash reports, logs, images, videos
+      description: |
+        Anything that can help. Please always ATTACH and not paste them.
+        To get hyprlock logs, start it from the commandline.
+        If you are using hypridle/swayidle as a systemd service, you can use `journalctl -b0 --user -u hypridle/swayidle` to get some logs.
+        Compositor logs and crashes are sometimes relevant as well.
+        Hyprland logs can be found in $XDG_RUNTIME_DIR/hypr.
+        Hyprland crash reports are stored in ~/.cache/hyprland or $XDG_CACHE_HOME/hyprland.
+
