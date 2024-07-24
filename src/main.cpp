@@ -59,16 +59,14 @@ int main(int argc, char** argv, char** envp) {
                 configPath = *value;
             else
                 return 1;
-        }
 
-        else if (arg == "--display" && i + 1 < (std::size_t)argc) {
+        } else if (arg == "--display" && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
                 wlDisplay = *value;
             else
                 return 1;
-        }
 
-        else if (arg == "--immediate")
+        } else if (arg == "--immediate")
             immediate = true;
 
         else if (arg == "--immediate-render")
