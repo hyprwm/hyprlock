@@ -14,6 +14,7 @@ void help() {
                  "  --display (display)      - Specify the Wayland display to connect to\n"
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
+                 "  -V, --version            - Show version information\n"
                  "  -h, --help               - Show this help message\n";
 }
 
