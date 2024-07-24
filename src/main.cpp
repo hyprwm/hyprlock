@@ -31,20 +31,24 @@ int main(int argc, char** argv, char** envp) {
     std::string              wlDisplay;
     bool                     immediate       = false;
     bool                     immediateRender = false;
-    bool                     showHelp        = false;
 
     std::vector<std::string> args(argv, argv + argc);
 
     for (std::size_t i = 1; i < args.size(); ++i) {
         const std::string arg = argv[i];
 
-        if (arg == "--verbose" || arg == "-v")
-            Debug::verbose = true;
+        if (arg == "--help" || arg == "-h") {
+            help();
+            return 0;
+        }
 
         if (arg == "--version" || arg == "-V") {
             std::cout << "Hyprlock version " << HYPRLOCK_VERSION << "\n";
             return 0;
         }
+
+        if (arg == "--verbose" || arg == "-v")
+            Debug::verbose = true;
 
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
@@ -54,33 +58,26 @@ int main(int argc, char** argv, char** envp) {
                 configPath = *value;
             else
                 return 1;
+        }
 
-        } else if (arg == "--display" && i + 1 < (std::size_t)argc) {
+        else if (arg == "--display" && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
                 wlDisplay = *value;
             else
                 return 1;
+        }
 
-        } else if (arg == "--immediate")
+        else if (arg == "--immediate")
             immediate = true;
 
         else if (arg == "--immediate-render")
             immediateRender = true;
 
-        else if (arg == "--help" || arg == "-h") {
-            showHelp = true;
-            break;
-
-        } else {
+        else {
             std::cerr << "Unknown option: " << arg << "\n";
             help();
             return 1;
         }
-    }
-
-    if (showHelp) {
-        help();
-        return 0;
     }
 
     try {
