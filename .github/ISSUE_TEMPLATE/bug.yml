@@ -38,7 +38,7 @@ body:
       value: "<Enter your hyprlock version here>
 
         <details>
-        <summary>Hyprlock config<summary>
+        <summary>Hyprlock config</summary>
 
 
         ```sh
