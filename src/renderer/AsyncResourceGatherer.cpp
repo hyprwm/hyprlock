@@ -12,6 +12,7 @@
 #include "../helpers/Webp.hpp"
 #include "src/helpers/Color.hpp"
 #include "src/helpers/Log.hpp"
+#include <src/helpers/Bmp.hpp>
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     if (g_pHyprlock->getScreencopy())
@@ -85,6 +86,7 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
 }
 
 enum class FileType {
+    BMP,
     PNG,
     JPEG,
     WEBP,
@@ -104,6 +106,8 @@ FileType getFileType(const std::filesystem::path& path) {
         ft = FileType::JPEG;
     else if (ext == ".webp")
         ft = FileType::WEBP;
+    else if (ext == ".bmp")
+        ft = FileType::BMP;
     else {
         // magic is slow, so only use it when no recognized extension is found
         auto handle = magic_open(MAGIC_NONE | MAGIC_COMPRESS);
@@ -130,6 +134,7 @@ cairo_surface_t* getCairoSurfaceFromImageFile(const std::filesystem::path& path)
         case FileType::PNG: cairoSurface = cairo_image_surface_create_from_png(path.c_str()); break;
         case FileType::JPEG: cairoSurface = JPEG::createSurfaceFromJPEG(path); break;
         case FileType::WEBP: cairoSurface = WEBP::createSurfaceFromWEBP(path); break;
+        case FileType::BMP: cairoSurface = BMP::createSurfaceFromBMP(path); break;
         default: Debug::log(ERR, "unrecognized image format of {}", path.c_str());
     }
 
