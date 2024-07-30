@@ -45,7 +45,14 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 initialPrompt    = false;
             } break;
             case PAM_ERROR_MSG: Debug::log(ERR, "PAM: {}", msg[i]->msg); break;
-            case PAM_TEXT_INFO: Debug::log(LOG, "PAM: {}", msg[i]->msg); break;
+            case PAM_TEXT_INFO:
+                Debug::log(LOG, "PAM: {}", msg[i]->msg);
+                // Targets this log from pam_faillock: https://github.com/linux-pam/linux-pam/blob/fa3295e079dbbc241906f29bde5fb71bc4172771/modules/pam_faillock/pam_faillock.c#L417
+                if (const auto MSG = std::string(msg[i]->msg); MSG.contains("left to unlock")) {
+                    CONVERSATIONSTATE->failText        = std::move(MSG);
+                    CONVERSATIONSTATE->failTextFromPam = true;
+                }
+                break;
         }
     }
 
@@ -110,7 +117,8 @@ bool CAuth::auth() {
     m_sConversationState.waitingForPamAuth = false;
 
     if (ret != PAM_SUCCESS) {
-        m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
+        if (!m_sConversationState.failTextFromPam)
+            m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
         Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
@@ -173,4 +181,5 @@ void CAuth::resetConversation() {
     m_sConversationState.input             = "";
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
+    m_sConversationState.failTextFromPam   = false;
 }
