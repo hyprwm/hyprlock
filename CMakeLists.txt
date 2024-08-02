@@ -118,3 +118,8 @@ install(TARGETS hyprlock)
 
 install(FILES ${CMAKE_SOURCE_DIR}/pam/hyprlock
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d)
+
+install(
+  FILES ${CMAKE_SOURCE_DIR}/assets/example.conf
+  DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/hypr
+  RENAME hyprlock.conf)
