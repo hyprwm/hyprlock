@@ -18,7 +18,7 @@
 #include <fstream>
 #include <algorithm>
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -40,6 +40,9 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
 
     const auto PIMMEDIATERENDER = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:immediate_render");
     m_bImmediateRender          = immediateRender || **PIMMEDIATERENDER;
+
+    const auto* const PNOFADEIN   = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
+    m_bNoFadeIn = noFadeIn || **PNOFADEIN;
 }
 
 CHyprlock::~CHyprlock() {

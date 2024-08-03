@@ -162,7 +162,6 @@ static bool firstFullFrame = false;
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
-    static auto* const PNOFADEIN   = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
     static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
     matrixProjection(projection.data(), surf.size.x, surf.size.y, WL_OUTPUT_TRANSFORM_NORMAL);
@@ -200,7 +199,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
         bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - firstFullFrameTime).count() / 500000.0, 0.0, 1.0);
 
-        if (**PNOFADEIN)
+        if (g_pHyprlock->m_bNoFadeIn)
             bga = 1.0;
 
         if (g_pHyprlock->m_bFadeStarted && !**PNOFADEOUT) {
