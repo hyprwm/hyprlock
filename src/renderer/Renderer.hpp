@@ -29,7 +29,8 @@ class CRenderer {
     };
 
     SRenderFeedback                         renderLock(const CSessionLockSurface& surface);
-
+    void                                    setVertexAttributes(const CShader& Shader,const CBox& box);
+    void                                    setUpShader(const CShader& shader, const float* glMatrix, const CColor& col, int rounding);
     void                                    renderRect(const CBox& box, const CColor& col, int rounding = 0);
     void                                    renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, std::optional<wl_output_transform> tr = {});
     void                                    blurFB(const CFramebuffer& outfb, SBlurParams params);
