@@ -14,7 +14,7 @@ void help() {
                  "  --display NAME           - Specify the Wayland display to connect to\n"
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
-                 "  --no-fade-in              - Disable the fade-in animation when the lock screen appears\n"
+                 "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
                  "  -V, --version            - Show version information\n"
                  "  -h, --help               - Show this help message\n";
 }
