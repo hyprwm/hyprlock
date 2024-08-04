@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 #include "Egl.hpp"
 #include "../renderer/Renderer.hpp"
+#include "src/config/ConfigManager.hpp"
 
 static void handleConfigure(void* data, ext_session_lock_surface_v1* surf, uint32_t serial, uint32_t width, uint32_t height) {
     const auto PSURF = (CSessionLockSurface*)data;
@@ -53,9 +54,11 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         exit(1);
     }
 
-    const auto PFRACTIONALMGR = g_pHyprlock->getFractionalMgr();
-    const auto PVIEWPORTER    = g_pHyprlock->getViewporter();
-    if (PFRACTIONALMGR && PVIEWPORTER) {
+    const auto PFRACTIONALMGR     = g_pHyprlock->getFractionalMgr();
+    const auto PVIEWPORTER        = g_pHyprlock->getViewporter();
+    const auto PFRACTIONALSCALING = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:fractional_scaling");
+
+    if (PFRACTIONALMGR && PVIEWPORTER && **PFRACTIONALSCALING) {
         fractional = wp_fractional_scale_manager_v1_get_fractional_scale(PFRACTIONALMGR, surface);
         if (fractional) {
             wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
@@ -63,7 +66,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         }
     }
 
-    if (!PFRACTIONALMGR || !fractional)
+    if (!PFRACTIONALMGR)
         Debug::log(LOG, "No fractional-scale support! Oops, won't be able to scale!");
     if (!PVIEWPORTER)
         Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
