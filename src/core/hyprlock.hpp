@@ -105,6 +105,8 @@ class CHyprlock {
 
     bool                            m_bNoFadeIn = false;
 
+    std::string                     m_sCurrentDesktop = "";
+
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
     std::chrono::system_clock::time_point m_tFadeEnds;
