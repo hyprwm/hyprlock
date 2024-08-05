@@ -41,8 +41,12 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
     const auto PIMMEDIATERENDER = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:immediate_render");
     m_bImmediateRender          = immediateRender || **PIMMEDIATERENDER;
 
-    const auto* const PNOFADEIN   = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
-    m_bNoFadeIn = noFadeIn || **PNOFADEIN;
+    const auto* const PNOFADEIN = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
+    m_bNoFadeIn                 = noFadeIn || **PNOFADEIN;
+
+    const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
+    const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+    m_sCurrentDesktop         = SZCURRENTD;
 }
 
 CHyprlock::~CHyprlock() {
@@ -380,15 +384,13 @@ void CHyprlock::run() {
 
     g_pRenderer = std::make_unique<CRenderer>();
 
-    const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
-    const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
-    static auto* const PNOFADEOUT     = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const bool         NOFADEOUT      = **PNOFADEOUT;
+    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
+    const bool         NOFADEOUT  = **PNOFADEOUT;
 
-    Debug::log(LOG, "Running on {}", SZCURRENTD);
+    Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
     // Hyprland violates the protocol a bit to allow for this.
-    if (SZCURRENTD != "Hyprland") {
+    if (m_sCurrentDesktop != "Hyprland") {
         while (!g_pRenderer->asyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
@@ -573,11 +575,9 @@ void CHyprlock::run() {
 }
 
 void CHyprlock::unlock() {
-    static auto* const PNOFADEOUT     = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const auto         CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
-    const auto         SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
+    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
-    if (**PNOFADEOUT || SZCURRENTD != "Hyprland") {
+    if (**PNOFADEOUT || m_sCurrentDesktop != "Hyprland") {
         releaseSessionLock();
         return;
     }

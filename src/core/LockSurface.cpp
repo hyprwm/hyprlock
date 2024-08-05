@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 #include "Egl.hpp"
 #include "../renderer/Renderer.hpp"
+#include "src/config/ConfigManager.hpp"
 
 static void handleConfigure(void* data, ext_session_lock_surface_v1* surf, uint32_t serial, uint32_t width, uint32_t height) {
     const auto PSURF = (CSessionLockSurface*)data;
@@ -53,9 +54,13 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         exit(1);
     }
 
+    const auto PFRACTIONALSCALING = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:fractional_scaling");
+    const auto ENABLE_FSV1        = **PFRACTIONALSCALING == 1 ||
+        /* auto */ (**PFRACTIONALSCALING == 2 && (g_pHyprlock->m_sCurrentDesktop == "Hyprland" || g_pHyprlock->m_sCurrentDesktop == "niri"));
     const auto PFRACTIONALMGR = g_pHyprlock->getFractionalMgr();
     const auto PVIEWPORTER    = g_pHyprlock->getViewporter();
-    if (PFRACTIONALMGR && PVIEWPORTER) {
+
+    if (ENABLE_FSV1 && PFRACTIONALMGR && PVIEWPORTER) {
         fractional = wp_fractional_scale_manager_v1_get_fractional_scale(PFRACTIONALMGR, surface);
         if (fractional) {
             wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
@@ -63,7 +68,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         }
     }
 
-    if (!PFRACTIONALMGR || !fractional)
+    if (!PFRACTIONALMGR)
         Debug::log(LOG, "No fractional-scale support! Oops, won't be able to scale!");
     if (!PVIEWPORTER)
         Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
@@ -81,7 +86,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
 void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     Debug::log(LOG, "configure with serial {}", serial_);
 
-    const bool sameSerial = serial == serial_;
+    const bool SAMESERIAL = serial == serial_;
 
     serial      = serial_;
     logicalSize = size_;
@@ -89,16 +94,17 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     if (fractional) {
         size = (size_ * fractionalScale).floor();
         wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
+        wl_surface_set_buffer_scale(surface, 1);
     } else {
-        size = size_;
+        size = size_ * output->scale;
+        wl_surface_set_buffer_scale(surface, output->scale);
     }
+
+    if (!SAMESERIAL)
+        ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
 
     Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
-    if (!sameSerial)
-        ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
-
-    wl_surface_set_buffer_scale(surface, 1);
     wl_surface_damage_buffer(surface, 0, 0, 0xFFFF, 0xFFFF);
 
     if (!eglWindow) {
