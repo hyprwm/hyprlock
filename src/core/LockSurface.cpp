@@ -17,6 +17,7 @@ static const ext_session_lock_surface_v1_listener lockListener = {
 static void handlePreferredScale(void* data, wp_fractional_scale_v1* wp_fractional_scale_v1, uint32_t scale) {
     const auto PSURF       = (CSessionLockSurface*)data;
     PSURF->fractionalScale = scale / 120.0;
+
     Debug::log(LOG, "Got fractional scale: {}", PSURF->fractionalScale);
 
     if (PSURF->readyForFrame)
@@ -87,9 +88,12 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     Debug::log(LOG, "configure with serial {}", serial_);
 
     const bool SAMESERIAL = serial == serial_;
+    const bool SAMESIZE   = logicalSize == size_;
+    const bool SAMESCALE  = appliedScale == fractionalScale;
 
-    serial      = serial_;
-    logicalSize = size_;
+    serial       = serial_;
+    logicalSize  = size_;
+    appliedScale = fractionalScale;
 
     if (fractional) {
         size = (size_ * fractionalScale).floor();
@@ -125,6 +129,11 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
             eglWindow = nullptr;
             exit(1); // Consider graceful exit or fallback
         }
+    }
+
+    if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
+        g_pRenderer->removeWidgetsFor(this);
+        Debug::log(LOG, "Reloading widgets");
     }
 
     readyForFrame = true;

@@ -34,6 +34,7 @@ class CSessionLockSurface {
     wl_egl_window*               eglWindow   = nullptr;
     Vector2D                     size;
     Vector2D                     logicalSize;
+    float                        appliedScale;
     EGLSurface                   eglSurface = nullptr;
     wp_fractional_scale_v1*      fractional = nullptr;
     wp_viewport*                 viewport   = nullptr;
