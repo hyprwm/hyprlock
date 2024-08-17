@@ -16,11 +16,12 @@ static const ext_session_lock_surface_v1_listener lockListener = {
 
 static void handlePreferredScale(void* data, wp_fractional_scale_v1* wp_fractional_scale_v1, uint32_t scale) {
     const auto PSURF       = (CSessionLockSurface*)data;
+    const bool SAMESCALE   = PSURF->fractionalScale == scale / 120.0;
     PSURF->fractionalScale = scale / 120.0;
 
     Debug::log(LOG, "Got fractional scale: {}", PSURF->fractionalScale);
 
-    if (PSURF->readyForFrame)
+    if (!SAMESCALE && PSURF->readyForFrame)
         PSURF->onScaleUpdate();
 }
 
