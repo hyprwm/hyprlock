@@ -405,8 +405,14 @@ void CHyprlock::run() {
 
     acquireSessionLock();
 
-    if (m_bTerminate) // Recieved finished
+    // Recieved finished
+    if (m_bTerminate) {
+        m_sLoopState.timerEvent = true;
+        m_sLoopState.timerCV.notify_all();
+        g_pRenderer->asyncResourceGatherer->notify();
+        g_pRenderer->asyncResourceGatherer->await();
         exit(1);
+    }
 
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
