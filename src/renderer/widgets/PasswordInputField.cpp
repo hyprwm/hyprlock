@@ -63,8 +63,6 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     colorState.outer = colorConfig.outer;
     colorState.font  = colorConfig.font;
 
-    g_pHyprlock->m_bNumLock = colorConfig.invertNum;
-
     // Render placeholder if either placeholder_text or fail_text are non-empty
     // as placeholder must be rendered to show fail_text
     if (!configPlaceholderText.empty() || !configFailText.empty()) {
@@ -416,6 +414,7 @@ static void changeColor(const CColor& source, const CColor& target, CColor& subj
 
 void CPasswordInputField::updateColors() {
     const bool BORDERLESS = outThick == 0;
+    const bool NUMLOCK    = g_pHyprlock->m_bNumLock || (colorConfig.invertNum && !g_pHyprlock->m_bNumLock);
     const auto MULTI      = colorConfig.transitionMs == 0 ?
              1.0 :
              std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs, 0.016,
@@ -429,11 +428,11 @@ void CPasswordInputField::updateColors() {
         targetColor = colorConfig.fail;
     }
 
-    if (g_pHyprlock->m_bCapsLock && g_pHyprlock->m_bNumLock) {
+    if (g_pHyprlock->m_bCapsLock && NUMLOCK) {
         targetColor = colorConfig.both;
     } else if (g_pHyprlock->m_bCapsLock) {
         targetColor = colorConfig.caps;
-    } else if (g_pHyprlock->m_bNumLock || !g_pHyprlock->m_bNumLock) {
+    } else if (NUMLOCK) {
         targetColor = colorConfig.num;
     }
 
@@ -441,12 +440,12 @@ void CPasswordInputField::updateColors() {
     CColor innerTarget = colorConfig.inner;
     CColor fontTarget  = (displayFail) ? colorConfig.fail : colorConfig.font;
 
-    if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || g_pHyprlock->m_bNumLock) {
+    if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || NUMLOCK) {
         if (BORDERLESS && colorConfig.swapFont) {
             fontTarget = targetColor;
         } else if (BORDERLESS && !colorConfig.swapFont) {
             innerTarget = targetColor;
-            // When changing the inne color the font cannot be fail_color
+            // When changing the inner color the font cannot be fail_color
             fontTarget = colorConfig.font;
         } else {
             outerTarget = targetColor;
