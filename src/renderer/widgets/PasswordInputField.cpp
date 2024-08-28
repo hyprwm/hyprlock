@@ -63,23 +63,8 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     colorState.outer = colorConfig.outer;
     colorState.font  = colorConfig.font;
 
-    // Render placeholder if either placeholder_text or fail_text are non-empty
-    // as placeholder must be rendered to show fail_text
-    if (!configPlaceholderText.empty() || !configFailText.empty()) {
-        placeholder.currentText = configPlaceholderText;
-
-        replaceAll(placeholder.currentText, "$PROMPT", "");
-
-        placeholder.resourceID = "placeholder:" + placeholder.currentText + std::to_string((uintptr_t)this);
-        CAsyncResourceGatherer::SPreloadRequest request;
-        request.id                   = placeholder.resourceID;
-        request.asset                = placeholder.currentText;
-        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = std::string{"Sans"};
-        request.props["color"]       = CColor{1.0 - colorState.font.r, 1.0 - colorState.font.g, 1.0 - colorState.font.b, 0.5};
-        request.props["font_size"]   = (int)size.y / 4;
-        g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-    }
+    // request the inital placeholder asset
+    updatePlaceholder();
 }
 
 static void fadeOutCallback(std::shared_ptr<CTimer> self, void* data) {
