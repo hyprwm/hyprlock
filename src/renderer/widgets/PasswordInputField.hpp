@@ -24,11 +24,13 @@ class CPasswordInputField : public IWidget {
     void        updateFade();
     void        updatePlaceholder();
     void        updateHiddenInputState();
+    void        updateInputState();
     void        updateColors();
 
     bool        firstRender  = true;
     bool        redrawShadow = false;
     bool        checkWaiting = false;
+    bool        displayFail  = false;
 
     size_t      passwordLength = 0;
 
@@ -69,7 +71,6 @@ class CPasswordInputField : public IWidget {
         std::string              currentText    = "";
         size_t                   failedAttempts = 0;
         bool                     canGetNewText  = true;
-        bool                     isFailText     = false;
 
         std::string              lastAuthFeedback;
 
@@ -96,15 +97,24 @@ class CPasswordInputField : public IWidget {
 
         int    transitionMs = 0;
         bool   invertNum    = false;
-        bool   animated     = false;
-        bool   stateNum     = false;
-        bool   stateCaps    = false;
         bool   swapFont     = false;
-        bool   shouldStart;
+    } colorConfig;
+
+    struct {
+        CColor outer;
+        CColor inner;
+        CColor font;
+
+        CColor outerSource;
+        CColor innerSource;
+
+        CColor currentTarget;
+
+        bool   animated = false;
 
         //
         std::chrono::system_clock::time_point lastFrame;
-    } col;
+    } colorState;
 
     bool        fadeOnEmpty;
     uint64_t    fadeTimeoutMs;

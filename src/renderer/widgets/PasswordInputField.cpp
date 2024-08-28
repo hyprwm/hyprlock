@@ -1,7 +1,7 @@
 #include "PasswordInputField.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
-#include "src/core/Auth.hpp"
+#include "../../core/Auth.hpp"
 #include <algorithm>
 
 static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
@@ -29,17 +29,17 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
     configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
-    col.transitionMs         = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-    col.outer                = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
-    col.inner                = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
-    col.font                 = std::any_cast<Hyprlang::INT>(props.at("font_color"));
-    col.fail                 = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
-    col.check                = std::any_cast<Hyprlang::INT>(props.at("check_color"));
-    col.both                 = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
-    col.caps                 = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
-    col.num                  = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
-    col.invertNum            = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
-    col.swapFont             = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
+    colorConfig.transitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
+    colorConfig.outer        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+    colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+    colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+    colorConfig.fail         = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
+    colorConfig.check        = std::any_cast<Hyprlang::INT>(props.at("check_color"));
+    colorConfig.both         = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
+    colorConfig.caps         = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
+    colorConfig.num          = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
+    colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
+    colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
     viewport                 = viewport_;
 
     auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
@@ -50,16 +50,20 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
-    pos              = posFromHVAlign(viewport, size, pos, halign, valign);
-    dots.size        = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing     = std::clamp(dots.spacing, 0.f, 1.f);
-    col.transitionMs = std::clamp(col.transitionMs, 0, 1000);
+    pos                      = posFromHVAlign(viewport, size, pos, halign, valign);
+    dots.size                = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.spacing             = std::clamp(dots.spacing, 0.f, 1.f);
+    colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
 
-    col.both = col.both == -1 ? col.outer : col.both;
-    col.caps = col.caps == -1 ? col.outer : col.caps;
-    col.num  = col.num == -1 ? col.outer : col.num;
+    colorConfig.both = colorConfig.both == -1 ? colorConfig.outer : colorConfig.both;
+    colorConfig.caps = colorConfig.caps == -1 ? colorConfig.outer : colorConfig.caps;
+    colorConfig.num  = colorConfig.num == -1 ? colorConfig.outer : colorConfig.num;
 
-    g_pHyprlock->m_bNumLock = col.invertNum;
+    colorState.inner = colorConfig.inner;
+    colorState.outer = colorConfig.outer;
+    colorState.font  = colorConfig.font;
+
+    g_pHyprlock->m_bNumLock = colorConfig.invertNum;
 
     // Render placeholder if either placeholder_text or fail_text are non-empty
     // as placeholder must be rendered to show fail_text
@@ -74,7 +78,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.asset                = placeholder.currentText;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = std::string{"Sans"};
-        request.props["color"]       = CColor{1.0 - col.font.r, 1.0 - col.font.g, 1.0 - col.font.b, 0.5};
+        request.props["color"]       = CColor{1.0 - colorState.font.r, 1.0 - colorState.font.g, 1.0 - colorState.font.b, 0.5};
         request.props["font_size"]   = (int)size.y / 4;
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
@@ -180,11 +184,12 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
     checkWaiting   = g_pAuth->checkWaiting();
+    displayFail    = g_pAuth->m_bDisplayFailText;
 
     updateFade();
     updateDots();
-    updatePlaceholder();
     updateColors();
+    updatePlaceholder();
     updateHiddenInputState();
 
     static auto TIMER = std::chrono::system_clock::now();
@@ -215,11 +220,11 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     shadowData.opacity *= fade.a;
     shadow.draw(shadowData);
 
-    CColor outerCol = col.outer;
+    CColor outerCol = colorState.outer;
     outerCol.a *= fade.a * data.opacity;
-    CColor innerCol = col.inner;
+    CColor innerCol = colorState.inner;
     innerCol.a *= fade.a * data.opacity;
-    CColor fontCol = col.font;
+    CColor fontCol = colorState.font;
     fontCol.a *= fade.a * data.opacity;
 
     if (outThick > 0) {
@@ -302,7 +307,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != passwordLength || fade.animated || col.animated || redrawShadow || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != passwordLength || fade.animated || colorState.animated || redrawShadow || data.opacity < 1.0 || forceReload;
 }
 
 static void failTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
@@ -312,7 +317,7 @@ static void failTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
 
 void CPasswordInputField::updatePlaceholder() {
     if (passwordLength != 0) {
-        if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ placeholder.isFailText) {
+        if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
             std::erase(placeholder.registeredResourceIDs, placeholder.resourceID);
             g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.asset);
             placeholder.asset      = nullptr;
@@ -328,12 +333,11 @@ void CPasswordInputField::updatePlaceholder() {
         return;
 
     placeholder.failedAttempts   = g_pHyprlock->getPasswordFailedAttempts();
-    placeholder.isFailText       = g_pAuth->m_bDisplayFailText;
     placeholder.lastAuthFeedback = AUTHFEEDBACK;
 
     placeholder.asset = nullptr;
 
-    if (placeholder.isFailText) {
+    if (displayFail) {
         g_pHyprlock->addTimer(std::chrono::milliseconds(configFailTimeoutMs), failTimeoutCallback, nullptr);
         placeholder.currentText = configFailText;
         replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK);
@@ -343,7 +347,9 @@ void CPasswordInputField::updatePlaceholder() {
         replaceAll(placeholder.currentText, "$PROMPT", AUTHFEEDBACK);
     }
 
-    placeholder.resourceID = "placeholder:" + placeholder.currentText + std::to_string((uintptr_t)this);
+    placeholder.resourceID =
+        std::format("placeholder:{}{}{}{}{}{}", placeholder.currentText, (uintptr_t)this, colorState.font.r, colorState.font.g, colorState.font.b, colorState.font.a);
+
     if (std::find(placeholder.registeredResourceIDs.begin(), placeholder.registeredResourceIDs.end(), placeholder.resourceID) != placeholder.registeredResourceIDs.end())
         return;
 
@@ -355,7 +361,7 @@ void CPasswordInputField::updatePlaceholder() {
     request.asset                = placeholder.currentText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = std::string{"Sans"};
-    request.props["color"]       = (placeholder.isFailText) ? col.fail : col.font;
+    request.props["color"]       = colorState.font;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
@@ -409,104 +415,59 @@ static void changeColor(const CColor& source, const CColor& target, CColor& subj
 }
 
 void CPasswordInputField::updateColors() {
-    static auto OUTER = col.outer, TARGET = OUTER, SOURCE = OUTER;
-    static auto INNER = col.inner, ITARGET = INNER, ISOURCE = INNER;
-    static auto FONT = col.font, FTARGET = FONT, FSOURCE = FONT;
+    const bool BORDERLESS = outThick == 0;
+    const auto MULTI      = colorConfig.transitionMs == 0 ?
+             1.0 :
+             std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs, 0.016,
+                        0.5);
 
-    const bool  BORDERLESS = outThick == 0;
+    CColor     targetColor;
 
-    if (col.animated) {
-        // some cases when events happen too quick (within transitionMs)
-        // TODO: find more?
-        const bool LOCKCHANGED = col.stateNum != (col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock) || col.stateCaps != g_pHyprlock->m_bCapsLock;
-        const bool ANIMONCHECK = checkWaiting && (TARGET == (BORDERLESS ? INNER : OUTER) || TARGET == col.fail);
-
-        if (LOCKCHANGED || ANIMONCHECK) {
-            const bool EQUALCOLORS = ANIMONCHECK && OUTER == col.check;
-            // to avoid throttle when check_color set to the same as outer.
-            SOURCE  = BORDERLESS ? (EQUALCOLORS ? INNER : col.inner) : col.outer;
-            FSOURCE = EQUALCOLORS ? FONT : col.font;
-            ISOURCE = EQUALCOLORS ? INNER : col.inner;
-        }
-    } else {
-        SOURCE  = BORDERLESS ? col.inner : col.outer;
-        FSOURCE = col.font;
-        ISOURCE = col.inner;
+    if (checkWaiting) {
+        targetColor = colorConfig.check;
+    } else if (displayFail) {
+        targetColor = colorConfig.fail;
     }
 
-    col.stateNum  = col.invertNum ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
-    col.stateCaps = g_pHyprlock->m_bCapsLock;
+    if (g_pHyprlock->m_bCapsLock && g_pHyprlock->m_bNumLock) {
+        targetColor = colorConfig.both;
+    } else if (g_pHyprlock->m_bCapsLock) {
+        targetColor = colorConfig.caps;
+    } else if (g_pHyprlock->m_bNumLock || !g_pHyprlock->m_bNumLock) {
+        targetColor = colorConfig.num;
+    }
 
-    if (!placeholder.isFailText || passwordLength > 0 || (passwordLength == 0 && checkWaiting)) {
-        if (g_pHyprlock->m_bFadeStarted) {
-            if (TARGET == col.check)
-                SOURCE = BORDERLESS ? col.inner : col.outer;
-            col.transitionMs = 100;
-            TARGET           = BORDERLESS ? INNER : OUTER;
-        } else if (checkWaiting) {
-            FTARGET               = col.swapFont ? INNER : FONT;
-            const float PASSALPHA = FTARGET.a * 0.5;
-            FTARGET.a             = PASSALPHA;
+    CColor outerTarget = colorConfig.outer;
+    CColor innerTarget = colorConfig.inner;
+    CColor fontTarget  = (displayFail) ? colorConfig.fail : colorConfig.font;
 
-            TARGET  = col.check;
-            ITARGET = col.swapFont ? FONT : INNER;
-        } else if (col.stateCaps && col.stateNum && col.both != OUTER) {
-            TARGET  = col.both;
-            FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
-        } else if (col.stateCaps && col.caps != OUTER) {
-            TARGET  = col.caps;
-            FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
-        } else if (col.stateNum && col.num != OUTER) {
-            TARGET  = col.num;
-            FTARGET = col.swapFont && BORDERLESS ? INNER : FONT;
+    if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || g_pHyprlock->m_bNumLock) {
+        if (BORDERLESS && colorConfig.swapFont) {
+            fontTarget = targetColor;
+        } else if (BORDERLESS && !colorConfig.swapFont) {
+            innerTarget = targetColor;
+            // When changing the inne color the font cannot be fail_color
+            fontTarget = colorConfig.font;
         } else {
-            // if quickly pressed after failure
-            if (col.animated && TARGET == col.fail)
-                SOURCE = BORDERLESS ? col.inner : col.outer;
-
-            TARGET  = BORDERLESS ? INNER : OUTER;
-            FTARGET = FONT;
-            ITARGET = INNER;
-        }
-    } else {
-        FSOURCE               = col.swapFont ? INNER : FONT;
-        const float PASSALPHA = FSOURCE.a * 0.5;
-        FSOURCE.a             = PASSALPHA;
-        FTARGET               = FONT;
-
-        SOURCE  = col.check;
-        TARGET  = col.fail;
-        ISOURCE = FONT;
-        ITARGET = FONT;
-
-        if (fade.animated || fade.a < 1.0) {
-            TARGET = BORDERLESS ? INNER : OUTER;
-            SOURCE = col.fail;
+            outerTarget = targetColor;
         }
     }
 
-    col.animated = false;
+    if (targetColor != colorState.currentTarget) {
+        colorState.outerSource = colorState.outer;
+        colorState.innerSource = colorState.inner;
 
-    const bool SWAPDONE = !BORDERLESS && col.swapFont ? col.inner == ITARGET : true;
-
-    if ((BORDERLESS ? col.inner : col.outer) == TARGET && col.font == FTARGET && SWAPDONE) {
-        col.shouldStart = true;
-        return;
+        colorState.currentTarget = targetColor;
     }
 
-    if (col.shouldStart) {
-        col.lastFrame   = std::chrono::system_clock::now();
-        col.shouldStart = false;
-    }
+    colorState.animated = false;
 
-    const auto MULTI = col.transitionMs == 0 ?
-        1.0 :
-        std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - col.lastFrame).count() / (double)col.transitionMs, 0.016, 0.5);
+    changeColor(colorState.outerSource, outerTarget, colorState.outer, MULTI, colorState.animated);
+    changeColor(colorState.innerSource, innerTarget, colorState.inner, MULTI, colorState.animated);
 
-    changeColor(SOURCE, TARGET, (BORDERLESS ? col.inner : col.outer), MULTI, col.animated);
-    changeColor(FSOURCE, FTARGET, col.font, MULTI, col.animated);
-    if (col.swapFont && !BORDERLESS)
-        changeColor(ISOURCE, ITARGET, col.inner, MULTI, col.animated);
+    // Font color is only chaned, when `swap_font_color` is set to true and no boarder is present.
+    // It is not animated, because that does not look good and we would need to rerender the text for each frame.
+    colorState.font = fontTarget;
 
-    col.lastFrame = std::chrono::system_clock::now();
+    colorState.lastFrame = std::chrono::system_clock::now();
 }
