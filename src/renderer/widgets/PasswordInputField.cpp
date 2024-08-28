@@ -402,8 +402,8 @@ void CPasswordInputField::updateColors() {
     const bool NUMLOCK    = g_pHyprlock->m_bNumLock || (colorConfig.invertNum && !g_pHyprlock->m_bNumLock);
     const auto MULTI      = colorConfig.transitionMs == 0 ?
              1.0 :
-             std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs, 0.016,
-                        0.5);
+             std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs,
+                        0.0016, 0.5);
 
     CColor     targetColor;
 
