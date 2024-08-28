@@ -310,9 +310,10 @@ void CPasswordInputField::updatePlaceholder() {
         return;
     }
 
-    const auto AUTHFEEDBACK = g_pAuth->m_bDisplayFailText ? g_pAuth->getLastFailText().value_or("Ups, no fail text?") : g_pAuth->getLastPrompt().value_or("Ups, no prompt?");
+    const auto AUTHFEEDBACK   = g_pAuth->m_bDisplayFailText ? g_pAuth->getLastFailText().value_or("Ups, no fail text?") : g_pAuth->getLastPrompt().value_or("Ups, no prompt?");
+    const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
 
-    if (placeholder.lastAuthFeedback == AUTHFEEDBACK && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts)
+    if (!ALLOWCOLORSWAP && placeholder.lastAuthFeedback == AUTHFEEDBACK && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts)
         return;
 
     placeholder.failedAttempts   = g_pHyprlock->getPasswordFailedAttempts();
