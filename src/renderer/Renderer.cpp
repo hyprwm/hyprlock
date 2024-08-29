@@ -311,7 +311,8 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
         });
 
         for (auto& c : CWIDGETS) {
-            if (!c.monitor.empty() && c.monitor != surf->output->stringPort && !surf->output->stringDesc.starts_with(c.monitor))
+            if (!c.monitor.empty() && c.monitor != surf->output->stringPort && !surf->output->stringDesc.starts_with(c.monitor) &&
+                !surf->output->stringDesc.starts_with("desc:" + c.monitor))
                 continue;
 
             // by type
