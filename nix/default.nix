@@ -17,6 +17,7 @@
   pango,
   wayland,
   wayland-protocols,
+  wayland-scanner,
   version ? "git",
 }:
 stdenv.mkDerivation {
@@ -28,6 +29,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     cmake
     pkg-config
+    wayland-scanner
   ];
 
   buildInputs = [
