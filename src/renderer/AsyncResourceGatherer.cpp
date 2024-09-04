@@ -18,10 +18,7 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
         enqueueDMAFrames();
 
     initialGatherThread = std::thread([this]() { this->gather(); });
-    initialGatherThread.detach();
-
-    asyncLoopThread = std::thread([this]() { this->asyncAssetSpinLock(); });
-    asyncLoopThread.detach();
+    asyncLoopThread     = std::thread([this]() { this->asyncAssetSpinLock(); });
 }
 
 void CAsyncResourceGatherer::enqueueDMAFrames() {
