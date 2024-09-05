@@ -171,7 +171,7 @@ void CAsyncResourceGatherer::gather() {
         }
     }
 
-    while (std::any_of(dmas.begin(), dmas.end(), [](const auto& d) { return !d->asset.ready; })) {
+    while (!g_pHyprlock->m_bTerminate && std::any_of(dmas.begin(), dmas.end(), [](const auto& d) { return !d->asset.ready; })) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
