@@ -4,6 +4,7 @@
 #include "src/helpers/Log.hpp"
 #include <cstddef>
 #include <iostream>
+#include <unistd.h>
 
 void help() {
     std::cout << "Usage: hyprlock [options]\n\n"
@@ -34,6 +35,7 @@ int main(int argc, char** argv, char** envp) {
     bool                     immediate       = false;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
+    bool                     daemonize       = false;
 
     std::vector<std::string> args(argv, argv + argc);
 
@@ -52,10 +54,10 @@ int main(int argc, char** argv, char** envp) {
 
         if (arg == "--verbose" || arg == "-v")
             Debug::verbose = true;
-
+        else if (arg == "-d" || arg == "--daemonize")
+            daemonize = true;
         else if (arg == "--quiet" || arg == "-q")
             Debug::quiet = true;
-
         else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
                 configPath = *value;
@@ -81,6 +83,20 @@ int main(int argc, char** argv, char** envp) {
             std::cerr << "Unknown option: " << arg << "\n";
             help();
             return 1;
+        }
+    }
+
+    if (daemonize) {
+
+        auto pid = fork();
+
+        if (pid < 0) {
+            Debug::log(CRIT, "Falied to daemonize.");
+            return 1;
+        } else if (pid == 0) {
+            setsid();
+        } else {
+            return 0;
         }
     }
 
