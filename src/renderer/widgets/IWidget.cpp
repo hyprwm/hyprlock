@@ -1,11 +1,12 @@
-#include "IWidget.hpp"
-#include "../../helpers/Log.hpp"
-#include "../../core/hyprlock.hpp"
-#include "src/core/Auth.hpp"
+#include <pwd.h>
 #include <chrono>
 #include <unistd.h>
-#include <pwd.h>
 #include <hyprutils/string/VarList.hpp>
+
+#include "IWidget.hpp"
+#include "src/core/Auth.hpp"
+#include "../../helpers/Log.hpp"
+#include "../../core/hyprlock.hpp"
 
 using namespace Hyprutils::String;
 

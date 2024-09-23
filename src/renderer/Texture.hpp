@@ -3,7 +3,7 @@
 #include <GLES3/gl32.h>
 #include "../helpers/Vector2D.hpp"
 
-enum TEXTURETYPE {
+enum class TEXTURETYPE {
     TEXTURE_INVALID,  // Invalid
     TEXTURE_RGBA,     // 4 channels
     TEXTURE_RGBX,     // discard A
@@ -18,7 +18,7 @@ class CTexture {
     void        destroyTexture();
     void        allocate();
 
-    TEXTURETYPE m_iType      = TEXTURE_RGBA;
+    TEXTURETYPE m_iType      = TEXTURETYPE::TEXTURE_RGBA;
     GLenum      m_iTarget    = GL_TEXTURE_2D;
     bool        m_bAllocated = false;
     GLuint      m_iTexID     = 0;

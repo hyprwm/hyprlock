@@ -113,7 +113,7 @@ bool CImage::draw(const SRenderData& data) {
     if (!asset)
         return true;
 
-    if (asset->texture.m_iType == TEXTURE_INVALID) {
+    if (asset->texture.m_iType == TEXTURETYPE::TEXTURE_INVALID) {
         g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
         resourceID = "";
         return false;
@@ -180,7 +180,7 @@ bool CImage::draw(const SRenderData& data) {
 void CImage::renderUpdate() {
     auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
-        if (newAsset->texture.m_iType == TEXTURE_INVALID) {
+        if (newAsset->texture.m_iType == TEXTURETYPE::TEXTURE_INVALID) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
         } else if (resourceID != pendingResourceID) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(asset);

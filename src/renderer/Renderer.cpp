@@ -1,21 +1,22 @@
-#include "Renderer.hpp"
-#include "../core/Egl.hpp"
-#include "../config/ConfigManager.hpp"
-#include "../helpers/Color.hpp"
-#include "../core/Output.hpp"
-#include "../core/hyprlock.hpp"
-#include "../renderer/DMAFrame.hpp"
-#include "mtx.hpp"
+#include <algorithm>
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
-#include <algorithm>
+
+#include "mtx.hpp"
 #include "Shaders.hpp"
-#include "src/helpers/Log.hpp"
-#include "widgets/PasswordInputField.hpp"
-#include "widgets/Background.hpp"
-#include "widgets/Label.hpp"
+#include "Renderer.hpp"
+#include "../core/Egl.hpp"
 #include "widgets/Image.hpp"
+#include "widgets/Label.hpp"
 #include "widgets/Shape.hpp"
+#include "../core/Output.hpp"
+#include "src/helpers/Log.hpp"
+#include "../core/hyprlock.hpp"
+#include "../helpers/Color.hpp"
+#include "widgets/Background.hpp"
+#include "../renderer/DMAFrame.hpp"
+#include "../config/ConfigManager.hpp"
+#include "widgets/PasswordInputField.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -151,7 +152,7 @@ CRenderer::CRenderer() {
     blurFinishShader.colorizeTint = glGetUniformLocation(prog, "colorizeTint");
     blurFinishShader.boostA       = glGetUniformLocation(prog, "boostA");
 
-    wlr_matrix_identity(projMatrix.data());
+    matrixIdentity(projMatrix.data());
 
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
 }
@@ -227,11 +228,11 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
 void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     float matrix[9];
-    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, box.rot,
-                           projMatrix.data()); // TODO: write own, don't use WLR here
+    matrixProjectBox(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, box.rot,
+                     projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
-    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+    matrixMultiply(glMatrix, projection.data(), matrix);
 
     glUseProgram(rectShader.program);
 
@@ -259,11 +260,11 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
 
 void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<wl_output_transform> tr) {
     float matrix[9];
-    wlr_matrix_project_box(matrix, &box, tr.value_or(WL_OUTPUT_TRANSFORM_FLIPPED_180) /* ugh coordinate spaces */, box.rot,
-                           projMatrix.data()); // TODO: write own, don't use WLR here
+    matrixProjectBox(matrix, &box, tr.value_or(WL_OUTPUT_TRANSFORM_FLIPPED_180) /* ugh coordinate spaces */, box.rot,
+                     projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
-    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+    matrixMultiply(glMatrix, projection.data(), matrix);
 
     CShader* shader = &texShader;
 
@@ -365,11 +366,11 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
 
     float matrix[9];
     CBox  box{0, 0, outfb.m_vSize.x, outfb.m_vSize.y};
-    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
-                           projMatrix.data()); // TODO: write own, don't use WLR here
+    matrixProjectBox(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
+                     projMatrix.data()); // TODO: write own, don't use WLR here
 
     float glMatrix[9];
-    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+    matrixMultiply(glMatrix, projection.data(), matrix);
 
     CFramebuffer mirrors[2];
     mirrors[0].alloc(outfb.m_vSize.x, outfb.m_vSize.y, true);

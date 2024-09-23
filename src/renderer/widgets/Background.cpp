@@ -1,6 +1,6 @@
+#include "../mtx.hpp"
 #include "Background.hpp"
 #include "../Renderer.hpp"
-#include "../mtx.hpp"
 
 CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std::string& resourceID_, const std::unordered_map<std::string, std::any>& props, bool ss) :
     viewport(viewport_), resourceID(resourceID_), output(output_), isScreenshot(ss) {
@@ -39,7 +39,7 @@ bool CBackground::draw(const SRenderData& data) {
         return true;
     }
 
-    if (asset->texture.m_iType == TEXTURE_INVALID) {
+    if (asset->texture.m_iType == TEXTURETYPE::TEXTURE_INVALID) {
         g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
         resourceID = "";
         return true;
@@ -54,25 +54,25 @@ bool CBackground::draw(const SRenderData& data) {
             size.y = asset->texture.m_vSize.x;
         }
 
-        CBox  texbox = {{}, size};
+        CBox  textbox = {{}, size};
 
         float scaleX = viewport.x / size.x;
         float scaleY = viewport.y / size.y;
 
-        texbox.w *= std::max(scaleX, scaleY);
-        texbox.h *= std::max(scaleX, scaleY);
+        textbox.w *= std::max(scaleX, scaleY);
+        textbox.h *= std::max(scaleX, scaleY);
 
         if (scaleX > scaleY)
-            texbox.y = -(texbox.h - viewport.y) / 2.f;
+            textbox.y = -(textbox.h - viewport.y) / 2.f;
         else
-            texbox.x = -(texbox.w - viewport.x) / 2.f;
-        texbox.round();
+            textbox.x = -(textbox.w - viewport.x) / 2.f;
+        textbox.round();
         blurredFB.alloc(viewport.x, viewport.y); // TODO 10 bit
         blurredFB.bind();
 
-        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
+        g_pRenderer->renderTexture(textbox, asset->texture, 1.0, 0,
                                    isScreenshot ?
-                                       wlr_output_transform_invert(output->transform) :
+                                       invertOutputTransform(output->transform) :
                                        WL_OUTPUT_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
         if (blurPasses > 0)
             g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});

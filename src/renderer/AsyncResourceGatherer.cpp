@@ -202,7 +202,7 @@ bool CAsyncResourceGatherer::apply() {
 
             if (SURFACESTATUS != CAIRO_STATUS_SUCCESS) {
                 Debug::log(ERR, "Resource {} invalid ({})", t.id, cairo_status_to_string(SURFACESTATUS));
-                ASSET->texture.m_iType = TEXTURE_INVALID;
+                ASSET->texture.m_iType = TEXTURETYPE::TEXTURE_INVALID;
             }
 
             ASSET->texture.m_vSize = t.size;

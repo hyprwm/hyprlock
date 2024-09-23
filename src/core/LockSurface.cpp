@@ -1,7 +1,7 @@
-#include "LockSurface.hpp"
-#include "hyprlock.hpp"
-#include "../helpers/Log.hpp"
 #include "Egl.hpp"
+#include "hyprlock.hpp"
+#include "LockSurface.hpp"
+#include "../helpers/Log.hpp"
 #include "../renderer/Renderer.hpp"
 #include "src/config/ConfigManager.hpp"
 
@@ -85,7 +85,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
 }
 
 void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
-    Debug::log(LOG, "configure with serial {}", serial_);
+    Debug::log(LOG, "Configure with serial {}", serial_);
 
     const bool SAMESERIAL = serial == serial_;
     const bool SAMESIZE   = logicalSize == size_;
@@ -159,7 +159,7 @@ static const wl_callback_listener callbackListener = {
 };
 
 void CSessionLockSurface::render() {
-    Debug::log(TRACE, "render lock");
+    Debug::log(TRACE, "Render lock");
 
     if (frameCallback || !readyForFrame) {
         needsFrame = true;
