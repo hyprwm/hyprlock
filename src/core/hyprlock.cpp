@@ -728,6 +728,8 @@ static void handleKeyboardModifiers(void* data, wl_keyboard* wl_keyboard, uint s
     }
 
     xkb_state_update_mask(g_pHyprlock->m_pXKBState, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+    g_pHyprlock->m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
+    g_pHyprlock->m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
 }
 
 static void handleRepeatInfo(void* data, struct wl_keyboard* wl_keyboard, int32_t rate, int32_t delay) {
