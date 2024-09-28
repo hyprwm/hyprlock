@@ -111,6 +111,15 @@ static std::string getTime() {
     return (HRS < 10 ? "0" : "") + std::to_string(HRS) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS);
 }
 
+static std::string getTime12h() {
+    const auto current_zone = std::chrono::current_zone();
+    const auto HHMMSS       = std::chrono::hh_mm_ss{current_zone->to_local(std::chrono::system_clock::now()) -
+                                              std::chrono::floor<std::chrono::days>(current_zone->to_local(std::chrono::system_clock::now()))};
+    const auto HRS          = HHMMSS.hours().count();
+    const auto MINS         = HHMMSS.minutes().count();
+    return (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) + (HRS < 12 ? " AM" : " PM");
+}
+
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     auto  uidPassword = getpwuid(getuid());
@@ -127,6 +136,11 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     replaceAll(in, "$DESC", std::string{user_gecos ? user_gecos : ""});
     replaceAll(in, "$USER", std::string{username ? username : ""});
     replaceAll(in, "<br/>", std::string{"\n"});
+
+    if (in.contains("$TIME12")) {
+        replaceAll(in, "$TIME12", getTime12h());
+        result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
 
     if (in.contains("$TIME")) {
         replaceAll(in, "$TIME", getTime());
