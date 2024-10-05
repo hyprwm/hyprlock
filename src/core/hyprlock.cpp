@@ -1138,7 +1138,7 @@ zwlr_screencopy_manager_v1* CHyprlock::getScreencopy() {
 }
 
 void CHyprlock::attemptRestoreOnDeath() {
-    if (m_bTerminate)
+    if (m_bTerminate || m_sCurrentDesktop != "Hyprland")
         return;
 
     const auto XDG_RUNTIME_DIR = getenv("XDG_RUNTIME_DIR");
@@ -1177,5 +1177,5 @@ void CHyprlock::attemptRestoreOnDeath() {
     ofs.close();
 
     spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
-    spawnAsync("sleep 2 && hyprlock --immediate --immediate-render & disown");
+    spawnSync("hyprctl dispatch exec \"hyprlock --immediate --immediate-render\"");
 }
