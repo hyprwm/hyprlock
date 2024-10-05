@@ -1176,6 +1176,13 @@ void CHyprlock::attemptRestoreOnDeath() {
     ofs << timeNowMs;
     ofs.close();
 
+    if (m_bLocked && m_sLockState.lock) {
+        ext_session_lock_v1_destroy(m_sLockState.lock);
+
+        // Destroy sessionLockSurfaces
+        m_vOutputs.clear();
+    }
+
     spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
     spawnSync("hyprctl dispatch exec \"hyprlock --immediate --immediate-render\"");
 }
