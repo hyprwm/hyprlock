@@ -49,10 +49,13 @@ class CPasswordInputField : public IWidget {
         float                                 currentAmount  = 0;
         int                                   fadeMs         = 0;
         std::chrono::system_clock::time_point lastFrame;
-        bool                                  center   = false;
-        float                                 size     = 0;
-        float                                 spacing  = 0;
-        int                                   rounding = 0;
+        bool                                  center     = false;
+        float                                 size       = 0;
+        float                                 spacing    = 0;
+        int                                   rounding   = 0;
+        std::string                           textFormat = "";
+        SPreloadedAsset*                      textAsset  = nullptr;
+        std::string                           textResourceID;
     } dots;
 
     struct {
