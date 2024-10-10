@@ -22,6 +22,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
     dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
     dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
+    dots.fadeMs              = std::any_cast<Hyprlang::INT>(props.at("dots_fade_time"));
     fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
     fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
     hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -138,7 +139,7 @@ void CPasswordInputField::updateDots() {
 
     const auto  DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count(), 0, 20000);
 
-    const float TOADD = DELTA / 1000000.0 * dots.speedPerSecond;
+    const float TOADD = dots.fadeMs > 0 ? ((double)DELTA / 1000000.0) * (1000.0 / (double)dots.fadeMs) : 1;
 
     if (passwordLength > dots.currentAmount) {
         dots.currentAmount += TOADD;
