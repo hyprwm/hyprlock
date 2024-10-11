@@ -2,17 +2,10 @@
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../core/Auth.hpp"
+#include <hyprutils/string/String.hpp>
 #include <algorithm>
 
-static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
-    if (from.empty())
-        return;
-    size_t pos = 0;
-    while ((pos = str.find(from, pos)) != std::string::npos) {
-        str.replace(pos, from.length(), to);
-        pos += to.length();
-    }
-}
+using namespace Hyprutils::String;
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
@@ -325,11 +318,11 @@ void CPasswordInputField::updatePlaceholder() {
     if (displayFail) {
         g_pHyprlock->addTimer(std::chrono::milliseconds(configFailTimeoutMs), failTimeoutCallback, nullptr);
         placeholder.currentText = configFailText;
-        replaceAll(placeholder.currentText, "$FAIL", AUTHFEEDBACK);
-        replaceAll(placeholder.currentText, "$ATTEMPTS", std::to_string(placeholder.failedAttempts));
+        replaceInString(placeholder.currentText, "$FAIL", AUTHFEEDBACK);
+        replaceInString(placeholder.currentText, "$ATTEMPTS", std::to_string(placeholder.failedAttempts));
     } else {
         placeholder.currentText = configPlaceholderText;
-        replaceAll(placeholder.currentText, "$PROMPT", AUTHFEEDBACK);
+        replaceInString(placeholder.currentText, "$PROMPT", AUTHFEEDBACK);
     }
 
     placeholder.resourceID =
