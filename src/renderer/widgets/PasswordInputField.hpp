@@ -40,14 +40,14 @@ class CPasswordInputField : public IWidget {
     Vector2D    configPos;
     Vector2D    configSize;
 
-    std::string halign, valign, configFailText, outputStringPort, configPlaceholderText;
+    std::string halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
     uint64_t    configFailTimeoutMs = 2000;
 
     int         outThick, rounding;
 
     struct {
-        float                                 currentAmount  = 0;
-        int                                   fadeMs         = 0;
+        float                                 currentAmount = 0;
+        int                                   fadeMs        = 0;
         std::chrono::system_clock::time_point lastFrame;
         bool                                  center     = false;
         float                                 size       = 0;

@@ -31,6 +31,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
     configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
     configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
+    fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
     colorConfig.transitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
     colorConfig.outer        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
     colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -71,7 +72,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.id                   = dots.textResourceID;
         request.asset                = dots.textFormat;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = std::string{"Sans"};
+        request.props["font_family"] = fontFamily;
         request.props["color"]       = colorState.font;
         request.props["font_size"]   = (int)(std::nearbyint(size.y * dots.size * 0.5f) * 2.f);
 
@@ -380,7 +381,7 @@ void CPasswordInputField::updatePlaceholder() {
     request.id                   = placeholder.resourceID;
     request.asset                = placeholder.currentText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = std::string{"Sans"};
+    request.props["font_family"] = fontFamily;
     request.props["color"]       = colorState.font;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
