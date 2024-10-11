@@ -55,7 +55,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
 
     pos                      = posFromHVAlign(viewport, size, pos, halign, valign);
     dots.size                = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing             = std::clamp(dots.spacing, 0.f, 1.f);
+    dots.spacing             = std::clamp(dots.spacing, -1.f, 1.f);
     colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
 
     colorConfig.both = colorConfig.both == -1 ? colorConfig.outer : colorConfig.both;
