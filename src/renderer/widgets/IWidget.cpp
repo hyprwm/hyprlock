@@ -5,6 +5,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <pwd.h>
+#include <hyprutils/string/String.hpp>
 #include <hyprutils/string/VarList.hpp>
 
 using namespace Hyprutils::String;
@@ -46,16 +47,6 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
         Debug::log(ERR, "IWidget: invalid valign {}", valign);
 
     return pos;
-}
-
-static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
-    if (from.empty())
-        return;
-    size_t pos = 0;
-    while ((pos = str.find(from, pos)) != std::string::npos) {
-        str.replace(pos, from.length(), to);
-        pos += to.length();
-    }
 }
 
 static void replaceAllAttempts(std::string& str) {
@@ -133,29 +124,29 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         Debug::log(WARN, "Error in formatString, user_gecos null. Errno: ", errno);
 
     IWidget::SFormatResult result;
-    replaceAll(in, "$DESC", std::string{user_gecos ? user_gecos : ""});
-    replaceAll(in, "$USER", std::string{username ? username : ""});
-    replaceAll(in, "<br/>", std::string{"\n"});
+    replaceInString(in, "$DESC", std::string{user_gecos ? user_gecos : ""});
+    replaceInString(in, "$USER", std::string{username ? username : ""});
+    replaceInString(in, "<br/>", std::string{"\n"});
 
     if (in.contains("$TIME12")) {
-        replaceAll(in, "$TIME12", getTime12h());
+        replaceInString(in, "$TIME12", getTime12h());
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
     if (in.contains("$TIME")) {
-        replaceAll(in, "$TIME", getTime());
+        replaceInString(in, "$TIME", getTime());
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
     if (in.contains("$FAIL")) {
         const auto FAIL = g_pAuth->getLastFailText();
-        replaceAll(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+        replaceInString(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$PROMPT")) {
         const auto PROMPT = g_pAuth->getLastPrompt();
-        replaceAll(in, "$PROMPT", PROMPT.has_value() ? PROMPT.value() : "");
+        replaceInString(in, "$PROMPT", PROMPT.has_value() ? PROMPT.value() : "");
         result.allowForceUpdate = true;
     }
 
