@@ -4,6 +4,7 @@
 #include "../renderer/Renderer.hpp"
 #include "Auth.hpp"
 #include "Egl.hpp"
+#include "Fingerprint.hpp"
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include <sys/wait.h>
 #include <sys/poll.h>
@@ -17,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
+#include <sdbus-c++/sdbus-c++.h>
 
 CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -417,6 +419,9 @@ void CHyprlock::run() {
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
 
+    g_pFingerprint                           = std::make_unique<CFingerprint>();
+    std::shared_ptr<sdbus::IConnection> conn = g_pFingerprint->start();
+
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
@@ -425,16 +430,22 @@ void CHyprlock::run() {
 
     createSessionLockSurfaces();
 
-    pollfd pollfds[] = {
-        {
-            .fd     = wl_display_get_fd(m_sWaylandState.display),
-            .events = POLLIN,
-        },
+    pollfd pollfds[2];
+    pollfds[0] = {
+        .fd     = wl_display_get_fd(m_sWaylandState.display),
+        .events = POLLIN,
     };
+    if (conn) {
+        pollfds[1] = {
+            .fd     = conn->getEventLoopPollData().fd,
+            .events = POLLIN,
+        };
+    }
+    size_t      fdcount = conn ? 2 : 1;
 
-    std::thread pollThr([this, &pollfds]() {
+    std::thread pollThr([this, &pollfds, fdcount]() {
         while (!m_bTerminate) {
-            int ret = poll(pollfds, 1, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
+            int ret = poll(pollfds, fdcount, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
 
             if (ret < 0) {
                 if (errno == EINTR)
@@ -446,7 +457,7 @@ void CHyprlock::run() {
                 exit(1);
             }
 
-            for (size_t i = 0; i < 1; ++i) {
+            for (size_t i = 0; i < fdcount; ++i) {
                 if (pollfds[i].revents & POLLHUP) {
                     Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
                     attemptRestoreOnDeath();
@@ -508,6 +519,12 @@ void CHyprlock::run() {
         std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
 
         m_sLoopState.event = false;
+
+        if (pollfds[1].revents & POLLIN /* dbus */) {
+            while (conn && conn->processPendingEvent()) {
+                ;
+            }
+        }
 
         if (pollfds[0].revents & POLLIN /* wl */) {
             Debug::log(TRACE, "got wl event");
@@ -572,6 +589,7 @@ void CHyprlock::run() {
     pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
     g_pAuth->terminate();
+    g_pFingerprint->terminate();
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
