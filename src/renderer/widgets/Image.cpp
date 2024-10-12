@@ -3,6 +3,7 @@
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Log.hpp"
 #include <cmath>
+#include <hyprlang.hpp>
 
 CImage::~CImage() {
     if (imageTimer) {
@@ -84,7 +85,7 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
     color    = std::any_cast<Hyprlang::INT>(props.at("border_color"));
-    pos      = std::any_cast<Hyprlang::VEC2>(props.at("position"));
+    pos      = VEC2CONVERT(std::any_cast<Hyprlang::VEC2>(props.at("position")));
     halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
     angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
@@ -151,7 +152,7 @@ bool CImage::draw(const SRenderData& data) {
             g_pRenderer->renderRect(borderBox, color, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : std::min(borderBox.w, borderBox.h) / 2.0);
 
         texbox.round();
-        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, WL_OUTPUT_TRANSFORM_NORMAL);
+        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, HYPRUTILS_TRANSFORM_NORMAL);
         g_pRenderer->popFb();
     }
 
@@ -172,7 +173,7 @@ bool CImage::draw(const SRenderData& data) {
 
     texbox.round();
     texbox.rot = angle;
-    g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
+    g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
 
     return data.opacity < 1.0;
 }

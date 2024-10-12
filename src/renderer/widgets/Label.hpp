@@ -2,7 +2,7 @@
 
 #include "IWidget.hpp"
 #include "Shadowable.hpp"
-#include "../../helpers/Vector2D.hpp"
+#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "../AsyncResourceGatherer.hpp"
 #include <string>

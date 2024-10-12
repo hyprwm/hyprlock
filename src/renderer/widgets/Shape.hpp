@@ -1,10 +1,9 @@
 #pragma once
 
 #include "IWidget.hpp"
-#include "../../helpers/Vector2D.hpp"
 #include "../../helpers/Color.hpp"
-#include "../../helpers/Box.hpp"
 #include "Shadowable.hpp"
+#include <hyprutils/math/Box.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>

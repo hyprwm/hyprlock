@@ -5,10 +5,11 @@
 #include "../core/Output.hpp"
 #include "../core/hyprlock.hpp"
 #include "../renderer/DMAFrame.hpp"
-#include "mtx.hpp"
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
 #include <algorithm>
+#include <hyprutils/math/Mat3x3.hpp>
+#include <hyprutils/math/Misc.hpp>
 #include "Shaders.hpp"
 #include "src/helpers/Log.hpp"
 #include "widgets/PasswordInputField.hpp"
@@ -151,8 +152,6 @@ CRenderer::CRenderer() {
     blurFinishShader.colorizeTint = glGetUniformLocation(prog, "colorizeTint");
     blurFinishShader.boostA       = glGetUniformLocation(prog, "boostA");
 
-    wlr_matrix_identity(projMatrix.data());
-
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
 }
 
@@ -164,7 +163,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
     static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
-    matrixProjection(projection.data(), surf.size.x, surf.size.y, WL_OUTPUT_TRANSFORM_NORMAL);
+    projection = Mat3x3::outputProjection(surf.size, HYPRUTILS_TRANSFORM_NORMAL);
 
     g_pEGL->makeCurrent(surf.eglSurface);
     glViewport(0, 0, surf.size.x, surf.size.y);
@@ -226,16 +225,12 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 }
 
 void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
-    float matrix[9];
-    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, box.rot,
-                           projMatrix.data()); // TODO: write own, don't use WLR here
-
-    float glMatrix[9];
-    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+    Mat3x3 matrix   = projMatrix.projectBox(box, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
+    Mat3x3 glMatrix = projection.copy().multiply(matrix);
 
     glUseProgram(rectShader.program);
 
-    glUniformMatrix3fv(rectShader.proj, 1, GL_TRUE, glMatrix);
+    glUniformMatrix3fv(rectShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
 
     // premultiply the color as well as we don't work with straight alpha
     glUniform4f(rectShader.color, col.r * col.a, col.g * col.a, col.b * col.a, col.a);
@@ -257,13 +252,9 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     glDisableVertexAttribArray(rectShader.posAttrib);
 }
 
-void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<wl_output_transform> tr) {
-    float matrix[9];
-    wlr_matrix_project_box(matrix, &box, tr.value_or(WL_OUTPUT_TRANSFORM_FLIPPED_180) /* ugh coordinate spaces */, box.rot,
-                           projMatrix.data()); // TODO: write own, don't use WLR here
-
-    float glMatrix[9];
-    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<eTransform> tr) {
+    Mat3x3   matrix   = projMatrix.projectBox(box, tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
+    Mat3x3   glMatrix = projection.copy().multiply(matrix);
 
     CShader* shader = &texShader;
 
@@ -272,7 +263,7 @@ void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int
 
     glUseProgram(shader->program);
 
-    glUniformMatrix3fv(shader->proj, 1, GL_TRUE, glMatrix);
+    glUniformMatrix3fv(shader->proj, 1, GL_TRUE, glMatrix.getMatrix().data());
     glUniform1i(shader->tex, 0);
     glUniform1f(shader->alpha, a);
     const auto TOPLEFT  = Vector2D(box.x, box.y);
@@ -363,13 +354,9 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     glDisable(GL_BLEND);
     glDisable(GL_STENCIL_TEST);
 
-    float matrix[9];
-    CBox  box{0, 0, outfb.m_vSize.x, outfb.m_vSize.y};
-    wlr_matrix_project_box(matrix, &box, WL_OUTPUT_TRANSFORM_NORMAL, 0,
-                           projMatrix.data()); // TODO: write own, don't use WLR here
-
-    float glMatrix[9];
-    wlr_matrix_multiply(glMatrix, projection.data(), matrix);
+    CBox         box{0, 0, outfb.m_vSize.x, outfb.m_vSize.y};
+    Mat3x3       matrix   = projMatrix.projectBox(box, HYPRUTILS_TRANSFORM_NORMAL, 0);
+    Mat3x3       glMatrix = projection.copy().multiply(matrix);
 
     CFramebuffer mirrors[2];
     mirrors[0].alloc(outfb.m_vSize.x, outfb.m_vSize.y, true);
@@ -390,7 +377,7 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
 
         glUseProgram(blurPrepareShader.program);
 
-        glUniformMatrix3fv(blurPrepareShader.proj, 1, GL_TRUE, glMatrix);
+        glUniformMatrix3fv(blurPrepareShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
         glUniform1f(blurPrepareShader.contrast, params.contrast);
         glUniform1f(blurPrepareShader.brightness, params.brightness);
         glUniform1i(blurPrepareShader.tex, 0);
@@ -425,7 +412,7 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
         glUseProgram(pShader->program);
 
         // prep two shaders
-        glUniformMatrix3fv(pShader->proj, 1, GL_TRUE, glMatrix);
+        glUniformMatrix3fv(pShader->proj, 1, GL_TRUE, glMatrix.getMatrix().data());
         glUniform1f(pShader->radius, params.size);
         if (pShader == &blurShader1) {
             glUniform2f(blurShader1.halfpixel, 0.5f / (outfb.m_vSize.x / 2.f), 0.5f / (outfb.m_vSize.y / 2.f));
@@ -481,7 +468,7 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
 
         glUseProgram(blurFinishShader.program);
 
-        glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix);
+        glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
         glUniform1f(blurFinishShader.noise, params.noise);
         glUniform1f(blurFinishShader.brightness, params.brightness);
         glUniform1i(blurFinishShader.colorize, params.colorize.has_value());
@@ -510,7 +497,7 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
 
     // finish
     outfb.bind();
-    renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, WL_OUTPUT_TRANSFORM_NORMAL);
+    renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, HYPRUTILS_TRANSFORM_NORMAL);
 
     glEnable(GL_BLEND);
 }

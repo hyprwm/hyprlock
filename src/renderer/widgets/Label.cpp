@@ -1,10 +1,10 @@
 #include "Label.hpp"
-#include "../../helpers/Color.hpp"
-#include <hyprlang.hpp>
-#include <stdexcept>
 #include "../Renderer.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
+#include "../../helpers/Color.hpp"
+#include <hyprlang.hpp>
+#include <stdexcept>
 
 CLabel::~CLabel() {
     if (labelTimer) {

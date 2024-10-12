@@ -7,7 +7,7 @@
 
 static void handleConfigure(void* data, ext_session_lock_surface_v1* surf, uint32_t serial, uint32_t width, uint32_t height) {
     const auto PSURF = (CSessionLockSurface*)data;
-    PSURF->configure({width, height}, serial);
+    PSURF->configure({(double)width, (double)height}, serial);
 }
 
 static const ext_session_lock_surface_v1_listener lockListener = {

@@ -8,6 +8,7 @@
 #include "Output.hpp"
 #include "CursorShape.hpp"
 #include "Timer.hpp"
+#include "../helpers/Math.hpp"
 #include <memory>
 #include <vector>
 #include <condition_variable>
