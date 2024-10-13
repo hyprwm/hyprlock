@@ -2,7 +2,7 @@
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../core/Auth.hpp"
-#include "src/renderer/widgets/IWidget.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include <hyprutils/string/String.hpp>
 #include <algorithm>
 #include <hyprlang.hpp>
@@ -11,7 +11,7 @@ using namespace Hyprutils::String;
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
-    size                     = VEC2CONVERT(std::any_cast<Hyprlang::VEC2>(props.at("size")));
+    size                     = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("size")));
     outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
     dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));

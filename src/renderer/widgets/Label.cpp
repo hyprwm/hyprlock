@@ -3,6 +3,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Color.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include <hyprlang.hpp>
 #include <stdexcept>
 
@@ -94,9 +95,8 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
 
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
-        auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
-        pos        = {POS__.x, POS__.y};
-        configPos  = pos;
+        pos       = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("position")));
+        configPos = pos;
 
         viewport = viewport_;
 

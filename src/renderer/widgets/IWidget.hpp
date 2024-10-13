@@ -3,8 +3,6 @@
 #include "../../helpers/Math.hpp"
 #include <string>
 
-#define VEC2CONVERT(vec) Vector2D(vec.x, vec.y)
-
 class IWidget {
   public:
     struct SRenderData {
