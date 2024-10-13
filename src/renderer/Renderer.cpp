@@ -8,8 +8,6 @@
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
 #include <algorithm>
-#include <hyprutils/math/Mat3x3.hpp>
-#include <hyprutils/math/Misc.hpp>
 #include "Shaders.hpp"
 #include "src/helpers/Log.hpp"
 #include "widgets/PasswordInputField.hpp"
