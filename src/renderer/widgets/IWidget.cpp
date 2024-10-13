@@ -1,7 +1,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
-#include "src/core/Auth.hpp"
+#include "../../core/Auth.hpp"
 #include <chrono>
 #include <unistd.h>
 #include <pwd.h>
@@ -20,12 +20,18 @@ namespace std {
 }
 #endif
 
+Vector2D rotateVector(const Vector2D& vec, const double& ang) {
+    const double COS = std::abs(std::cos(ang));
+    const double SIN = std::abs(std::sin(ang));
+    return Vector2D(vec.x * COS + vec.y * SIN, vec.x * SIN + vec.y * COS);
+}
+
 Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign, const double& ang) {
 
     // offset after rotation for alignment
     Vector2D rot;
     if (ang != 0)
-        rot = (size - size.rotated(ang)) / 2.0;
+        rot = (size - rotateVector(size, ang)) / 2.0;
 
     Vector2D pos = offset;
     if (halign == "center")

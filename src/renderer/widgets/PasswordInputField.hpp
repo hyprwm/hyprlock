@@ -1,8 +1,8 @@
 #pragma once
 
 #include "IWidget.hpp"
-#include "../../helpers/Vector2D.hpp"
 #include "../../helpers/Color.hpp"
+#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
 #include <chrono>

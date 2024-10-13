@@ -1,6 +1,6 @@
 #include "ConfigManager.hpp"
 #include "../helpers/MiscFunctions.hpp"
-#include "src/helpers/Log.hpp"
+#include "../helpers/Log.hpp"
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>

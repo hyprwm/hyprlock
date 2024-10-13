@@ -1,7 +1,7 @@
 #pragma once
 
 #include <GLES3/gl32.h>
-#include "../helpers/Vector2D.hpp"
+#include "../helpers/Math.hpp"
 
 enum TEXTURETYPE {
     TEXTURE_INVALID,  // Invalid

@@ -1,5 +1,6 @@
 #include "Shadowable.hpp"
 #include "../Renderer.hpp"
+#include <hyprlang.hpp>
 
 CShadowable::CShadowable(IWidget* widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) : widget(widget_), viewport(viewport_) {
     size   = std::any_cast<Hyprlang::INT>(props.at("shadow_size"));
@@ -37,6 +38,6 @@ bool CShadowable::draw(const IWidget::SRenderData& data) {
         return true;
 
     CBox box = {0, 0, viewport.x, viewport.y};
-    g_pRenderer->renderTexture(box, shadowFB.m_cTex, data.opacity, 0, WL_OUTPUT_TRANSFORM_NORMAL);
+    g_pRenderer->renderTexture(box, shadowFB.m_cTex, data.opacity, 0, HYPRUTILS_TRANSFORM_NORMAL);
     return true;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <wayland-client.h>
-#include "../helpers/Vector2D.hpp"
+#include "../helpers/Math.hpp"
 #include "LockSurface.hpp"
 #include <memory>
 

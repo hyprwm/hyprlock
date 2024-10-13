@@ -4,8 +4,8 @@
 #include "ext-session-lock-v1-protocol.h"
 #include "viewporter-protocol.h"
 #include "fractional-scale-v1-protocol.h"
+#include "../helpers/Math.hpp"
 #include <wayland-egl.h>
-#include "../helpers/Vector2D.hpp"
 #include <EGL/egl.h>
 
 class COutput;

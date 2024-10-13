@@ -1,6 +1,6 @@
 #include "Background.hpp"
 #include "../Renderer.hpp"
-#include "../mtx.hpp"
+#include <hyprlang.hpp>
 
 CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std::string& resourceID_, const std::unordered_map<std::string, std::any>& props, bool ss) :
     viewport(viewport_), resourceID(resourceID_), output(output_), isScreenshot(ss) {
@@ -72,8 +72,8 @@ bool CBackground::draw(const SRenderData& data) {
 
         g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
                                    isScreenshot ?
-                                       wlr_output_transform_invert(output->transform) :
-                                       WL_OUTPUT_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
+                                       wlTransformToHyprutils(invertTransform(output->transform)) :
+                                       HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
         if (blurPasses > 0)
             g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -95,7 +95,7 @@ bool CBackground::draw(const SRenderData& data) {
     else
         texbox.x = -(texbox.w - viewport.x) / 2.f;
     texbox.round();
-    g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, WL_OUTPUT_TRANSFORM_FLIPPED_180);
+    g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
 
     return data.opacity < 1.0;
 }

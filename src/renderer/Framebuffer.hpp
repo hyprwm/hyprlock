@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../helpers/Vector2D.hpp"
+#include "../helpers/Math.hpp"
 #include <GLES3/gl32.h>
 #include "Texture.hpp"
 

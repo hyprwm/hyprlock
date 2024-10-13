@@ -2,6 +2,7 @@
 
 #include "../Framebuffer.hpp"
 #include "../../helpers/Color.hpp"
+#include "../../helpers/Math.hpp"
 #include "IWidget.hpp"
 
 #include <string>
