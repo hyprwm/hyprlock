@@ -4,6 +4,7 @@
 #include "../renderer/Renderer.hpp"
 #include "Auth.hpp"
 #include "Egl.hpp"
+#include "Fingerprint.hpp"
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include <sys/wait.h>
 #include <sys/poll.h>
@@ -417,6 +418,9 @@ void CHyprlock::run() {
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
 
+    g_pFingerprint = std::make_unique<CFingerprint>();
+    std::optional<std::thread> fingerThr = g_pFingerprint->start();
+
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
@@ -572,8 +576,11 @@ void CHyprlock::run() {
     pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
     g_pAuth->terminate();
+    g_pFingerprint->terminate();
 
     // wait for threads to exit cleanly to avoid a coredump
+    if (fingerThr)
+        fingerThr->join();
     pollThr.join();
     timersThr.join();
 
