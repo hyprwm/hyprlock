@@ -61,7 +61,7 @@ bool CFramebuffer::alloc(int w, int h, bool highres) {
             abort();
         }
 
-        Debug::log(LOG, "Framebuffer created, status {}", status);
+        Debug::log(TRACE, "Framebuffer created, status {}", status);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
