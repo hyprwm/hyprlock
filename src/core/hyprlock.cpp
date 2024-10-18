@@ -909,6 +909,16 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym) {
         Debug::log(LOG, "Clearing password buffer");
 
         m_sPasswordState.passBuffer = "";
+        const auto PLOCK_TIME = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:lock_duration");
+        Debug::log(LOG, "{}", **PLOCK_TIME);
+        if (**PLOCK_TIME < 0)
+            return;
+        if (g_pAuth->getTimeSinceLocked().count() >= **PLOCK_TIME) {
+            // force unlock and logout the session
+            Debug::log(LOG, "Unlocking because of time limit exceeded");
+            g_pHyprlock->releaseSessionLock();
+            throw std::runtime_error("Manual unlock after lock duration");
+        }
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
         Debug::log(LOG, "Authenticating");
 

@@ -19,6 +19,8 @@ class CAuth {
         bool                    waitingForPamAuth = false;
         bool                    inputRequested    = false;
         bool                    failTextFromPam   = false;
+
+        std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
     };
 
     CAuth();
@@ -30,8 +32,10 @@ class CAuth {
     void                       waitForInput();
     void                       submitInput(std::string input);
 
-    std::optional<std::string> getLastFailText();
-    std::optional<std::string> getLastPrompt();
+    std::optional<std::string>                          getLastFailText();
+    std::optional<std::string>                             getLastPrompt();
+    std::chrono::duration<double> getTimeSinceLocked();
+    std::optional<std::string>                          getTimeSinceLockedString();
 
     bool                       checkWaiting();
 

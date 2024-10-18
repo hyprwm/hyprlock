@@ -169,6 +169,37 @@ std::optional<std::string> CAuth::getLastPrompt() {
     return m_sConversationState.prompt.empty() ? std::nullopt : std::optional(m_sConversationState.prompt);
 }
 
+template<class...Durations, class DurationIn>
+std::tuple<Durations...> break_down_durations( DurationIn d ) {
+    std::tuple<Durations...> retval;
+    using discard=int[];
+    (void)discard{0,(void((
+      (std::get<Durations>(retval) = std::chrono::duration_cast<Durations>(d)),
+      (d -= std::chrono::duration_cast<DurationIn>(std::get<Durations>(retval)))
+    )),0)...};
+    return retval;
+}
+
+std::string formatDuration(long num) {
+    std::string s = std::to_string(num);
+    if (num < 10)
+        s = "0" + s;
+    return s;
+}
+
+std::chrono::duration<double> CAuth::getTimeSinceLocked() {
+    return std::chrono::system_clock::now() - m_sConversationState.startTime;
+}
+
+std::optional<std::string> CAuth::getTimeSinceLockedString() {
+    auto end = std::chrono::system_clock::now();
+    auto duration = end-m_sConversationState.startTime;
+    auto clean_duration = break_down_durations<std::chrono::hours, std::chrono::minutes, std::chrono::seconds>( duration );
+    return formatDuration(std::get<0>(clean_duration).count()) + ":"
+           + formatDuration(std::get<1>(clean_duration).count()) + ":"
+           + formatDuration(std::get<2>(clean_duration).count());
+}
+
 bool CAuth::checkWaiting() {
     return m_bBlockInput || m_sConversationState.waitingForPamAuth;
 }

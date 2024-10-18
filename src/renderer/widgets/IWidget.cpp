@@ -166,6 +166,18 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.allowForceUpdate = true;
     }
 
+    if (in.contains("$LOCK_TIME_STR")) {
+        const auto TIME_LOCKED = g_pAuth->getTimeSinceLockedString();
+        replaceInString(in, "$LOCK_TIME_STR", TIME_LOCKED.has_value() ? TIME_LOCKED.value() : "");
+        result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+
+    if (in.contains("$LOCK_TIME")) {
+        const auto TIME_LOCKED = g_pAuth->getTimeSinceLocked();
+        replaceInString(in, "$LOCK_TIME", std::to_string((long)TIME_LOCKED.count()));
+        result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+
     if (in.starts_with("cmd[") && in.contains("]")) {
         // this is a command
         CVarList vars(in.substr(4, in.find_first_of(']') - 4), 0, ',', true);
