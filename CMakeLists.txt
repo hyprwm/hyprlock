@@ -56,7 +56,8 @@ pkg_check_modules(
   pangocairo
   libdrm
   gbm
-  hyprutils>=0.2.3)
+  hyprutils>=0.2.3
+  sdbus-c++>=2.0.0)
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
