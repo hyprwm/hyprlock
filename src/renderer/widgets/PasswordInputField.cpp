@@ -432,7 +432,7 @@ static void changeColor(const CColor& source, const CColor& target, CColor& subj
 
 void CPasswordInputField::updateColors() {
     const bool BORDERLESS = outThick == 0;
-    const bool NUMLOCK    = g_pHyprlock->m_bNumLock || (colorConfig.invertNum && !g_pHyprlock->m_bNumLock);
+    const bool NUMLOCK    = (colorConfig.invertNum) ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
     const auto MULTI      = colorConfig.transitionMs == 0 ?
              1.0 :
              std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs,
