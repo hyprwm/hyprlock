@@ -113,9 +113,8 @@ static std::string getTime() {
             logMissingTzOnce = false;
         }
         hhmmss = std::chrono::hh_mm_ss{TPNOW - std::chrono::floor<std::chrono::days>(TPNOW)};
-    } else {
+    } else
         hhmmss = std::chrono::hh_mm_ss{PCURRENTTZ->to_local(TPNOW) - std::chrono::floor<std::chrono::days>(PCURRENTTZ->to_local(TPNOW))};
-    }
 
     const auto HRS  = hhmmss.hours().count();
     const auto MINS = hhmmss.minutes().count();
@@ -134,9 +133,8 @@ static std::string getTime12h() {
             logMissingTzOnce = false;
         }
         hhmmss = std::chrono::hh_mm_ss{TPNOW - std::chrono::floor<std::chrono::days>(TPNOW)};
-    } else {
+    } else
         hhmmss = std::chrono::hh_mm_ss{PCURRENTTZ->to_local(TPNOW) - std::chrono::floor<std::chrono::days>(PCURRENTTZ->to_local(TPNOW))};
-    }
 
     const auto HRS  = hhmmss.hours().count();
     const auto MINS = hhmmss.minutes().count();
