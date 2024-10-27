@@ -102,7 +102,7 @@ static void replaceAllLayout(std::string& str) {
 
 static bool        logMissingTzOnce = true;
 static std::string getTime() {
-    const auto PCURRENTTZ = (true) ? nullptr : std::chrono::current_zone();
+    const auto PCURRENTTZ = std::chrono::current_zone();
     const auto TPNOW      = std::chrono::system_clock::now();
 
     //
