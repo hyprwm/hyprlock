@@ -336,18 +336,10 @@ static void handleUnlockSignal(int sig) {
     }
 }
 
-static void forceUpdateTimers() {
-    for (auto& t : g_pHyprlock->getTimers()) {
-        if (t->canForceUpdate()) {
-            t->call(t);
-            t->cancel();
-        }
-    }
-}
-
 static void handleForceUpdateSignal(int sig) {
     if (sig == SIGUSR2) {
-        forceUpdateTimers();
+        Debug::log(TRACE, "Recieved SIGUSR2");
+        g_pHyprlock->enqueueForceUpdateTimers();
     }
 }
 
@@ -549,6 +541,15 @@ void CHyprlock::run() {
         auto timerscpy = m_vTimers;
         m_sLoopState.timersMutex.unlock();
 
+        if (m_sLoopState.forceUpdateTimers.exchange(false)) {
+            for (auto& t : timerscpy) {
+                if (t->canForceUpdate()) {
+                    t->call(t);
+                    t->cancel();
+                }
+            }
+        }
+
         std::vector<std::shared_ptr<CTimer>> passed;
 
         for (auto& t : timerscpy) {
@@ -742,7 +743,7 @@ static void handleKeyboardModifiers(void* data, wl_keyboard* wl_keyboard, uint s
 
     if (group != g_pHyprlock->m_uiActiveLayout) {
         g_pHyprlock->m_uiActiveLayout = group;
-        forceUpdateTimers();
+        g_pHyprlock->enqueueForceUpdateTimers();
     }
 
     xkb_state_update_mask(g_pHyprlock->m_pXKBState, mods_depressed, mods_latched, mods_locked, 0, 0, group);
@@ -809,7 +810,7 @@ void CHyprlock::onPasswordCheckTimer() {
         Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
 
         g_pAuth->m_bDisplayFailText = true;
-        forceUpdateTimers();
+        g_pHyprlock->enqueueForceUpdateTimers();
 
         g_pAuth->start();
 
@@ -1073,12 +1074,8 @@ std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::dur
     return T;
 }
 
-std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
-    return m_vTimers;
-}
-
 void CHyprlock::enqueueForceUpdateTimers() {
-    addTimer(std::chrono::milliseconds(1), [](std::shared_ptr<CTimer> self, void* data) { forceUpdateTimers(); }, nullptr, false);
+    m_sLoopState.forceUpdateTimers = true;
 }
 
 void CHyprlock::spawnAsync(const std::string& args) {

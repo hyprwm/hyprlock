@@ -115,7 +115,6 @@ class CHyprlock {
     std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
 
     std::vector<std::unique_ptr<COutput>> m_vOutputs;
-    std::vector<std::shared_ptr<CTimer>>  getTimers();
 
     struct {
         void*                        linuxDmabuf         = nullptr;
@@ -163,7 +162,9 @@ class CHyprlock {
 
         std::condition_variable timerCV;
         std::mutex              timerRequestMutex;
-        bool                    timerEvent = false;
+        bool                    timerEvent        = false;
+        std::atomic<bool>       forceUpdateTimers = false;
+
     } m_sLoopState;
 
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
