@@ -52,6 +52,6 @@ namespace Debug {
             std::cout << "] ";
         }
 
-        std::cout << std::vformat(fmt, std::make_format_args(args...)) << "\n";
+        std::cout << std::vformat(fmt, std::make_format_args(args...)) << std::endl;
     }
 };
