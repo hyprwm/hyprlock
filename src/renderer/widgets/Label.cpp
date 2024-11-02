@@ -3,7 +3,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Color.hpp"
-#include "../../helpers/MiscFunctions.hpp"
+#include "../../config/ConfigDataValues.hpp"
 #include <hyprlang.hpp>
 #include <stdexcept>
 
@@ -73,7 +73,13 @@ void CLabel::plantTimer() {
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
     try {
-        labelPreFormat         = std::any_cast<Hyprlang::STRING>(props.at("text"));
+        pos            = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
+        labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));
+        halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        angle          = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        angle          = angle * M_PI / 180.0;
+
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
         std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
@@ -93,20 +99,6 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
         if (!textAlign.empty())
             request.props["text_align"] = textAlign;
 
-        g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-
-        pos       = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("position")));
-        configPos = pos;
-
-        viewport = viewport_;
-
-        halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-        valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-
-        angle = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-        angle = angle * M_PI / 180.0;
-
-        plantTimer();
     } catch (const std::bad_any_cast& e) {
         Debug::log(ERR, "Failed to construct CLabel: {}", e.what());
         throw;
@@ -114,6 +106,13 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
         Debug::log(ERR, "Missing propperty for CLabel:{}", e.what());
         throw;
     }
+
+    configPos = pos;
+    viewport  = viewport_;
+
+    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+
+    plantTimer();
 }
 
 bool CLabel::draw(const SRenderData& data) {

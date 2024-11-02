@@ -2,7 +2,8 @@
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../core/Auth.hpp"
-#include "../../helpers/MiscFunctions.hpp"
+#include "../../config/ConfigDataValues.hpp"
+#include "../../helpers/Log.hpp"
 #include <hyprutils/string/String.hpp>
 #include <algorithm>
 #include <hyprlang.hpp>
@@ -10,8 +11,11 @@
 using namespace Hyprutils::String;
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
-    outputStringPort(output), shadow(this, props, viewport_) {
-    size                     = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("size")));
+    viewport(viewport_), outputStringPort(output), shadow(this, props, viewport_) {
+    pos                      = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
+    size                     = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
+    halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+    valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
     outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
     dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
     dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
@@ -38,15 +42,9 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     colorConfig.num          = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
     colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
     colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
-    viewport                 = viewport_;
 
-    auto POS__ = std::any_cast<Hyprlang::VEC2>(props.at("position"));
-    pos        = {POS__.x, POS__.y};
     configPos  = pos;
     configSize = size;
-
-    halign = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-    valign = std::any_cast<Hyprlang::STRING>(props.at("valign"));
 
     pos                      = posFromHVAlign(viewport, size, pos, halign, valign);
     dots.size                = std::clamp(dots.size, 0.2f, 0.8f);

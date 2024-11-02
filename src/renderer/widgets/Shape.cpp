@@ -1,17 +1,17 @@
 #include "Shape.hpp"
 #include "../Renderer.hpp"
-#include "../../helpers/MiscFunctions.hpp"
+#include "../../config/ConfigDataValues.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
 
 CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
 
-    size        = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("size")));
+    size        = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
     rounding    = std::any_cast<Hyprlang::INT>(props.at("rounding"));
     border      = std::any_cast<Hyprlang::INT>(props.at("border_size"));
     color       = std::any_cast<Hyprlang::INT>(props.at("color"));
     borderColor = std::any_cast<Hyprlang::INT>(props.at("border_color"));
-    pos         = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("position")));
+    pos         = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
     halign      = std::any_cast<Hyprlang::STRING>(props.at("halign"));
     valign      = std::any_cast<Hyprlang::STRING>(props.at("valign"));
     angle       = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
