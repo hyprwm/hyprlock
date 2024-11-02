@@ -12,36 +12,42 @@ using namespace Hyprutils::String;
 
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     viewport(viewport_), outputStringPort(output), shadow(this, props, viewport_) {
-    pos                      = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
-    size                     = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
-    halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-    valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-    outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
-    dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
-    dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
-    dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
-    dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
-    dots.fadeMs              = std::any_cast<Hyprlang::INT>(props.at("dots_fade_time"));
-    dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
-    fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
-    fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
-    hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
-    rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-    configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
-    configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-    configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
-    fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-    colorConfig.transitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-    colorConfig.outer        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
-    colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
-    colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
-    colorConfig.fail         = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
-    colorConfig.check        = std::any_cast<Hyprlang::INT>(props.at("check_color"));
-    colorConfig.both         = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
-    colorConfig.caps         = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
-    colorConfig.num          = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
-    colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
-    colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
+    try {
+        pos                      = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
+        size                     = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
+        halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
+        dots.size                = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
+        dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
+        dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
+        dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
+        dots.fadeMs              = std::any_cast<Hyprlang::INT>(props.at("dots_fade_time"));
+        dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
+        fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
+        fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
+        hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
+        rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+        configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
+        configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+        configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
+        fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
+        colorConfig.transitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
+        colorConfig.outer        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+        colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
+        colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+        colorConfig.fail         = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
+        colorConfig.check        = std::any_cast<Hyprlang::INT>(props.at("check_color"));
+        colorConfig.both         = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
+        colorConfig.caps         = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
+        colorConfig.num          = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
+        colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
+        colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
+    } catch (const std::bad_any_cast& e) {
+        RASSERT(false, "Failed to construct CPasswordInputField: {}", e.what()); //
+    } catch (const std::out_of_range& e) {
+        RASSERT(false, "Missing property for CPasswordInputField: {}", e.what()); //
+    }
 
     configPos  = pos;
     configSize = size;

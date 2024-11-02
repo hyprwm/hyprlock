@@ -6,16 +6,22 @@
 
 CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
 
-    size        = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
-    rounding    = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-    border      = std::any_cast<Hyprlang::INT>(props.at("border_size"));
-    color       = std::any_cast<Hyprlang::INT>(props.at("color"));
-    borderColor = std::any_cast<Hyprlang::INT>(props.at("border_color"));
-    pos         = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
-    halign      = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-    valign      = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-    angle       = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-    xray        = std::any_cast<Hyprlang::INT>(props.at("xray"));
+    try {
+        size        = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
+        rounding    = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+        border      = std::any_cast<Hyprlang::INT>(props.at("border_size"));
+        color       = std::any_cast<Hyprlang::INT>(props.at("color"));
+        borderColor = std::any_cast<Hyprlang::INT>(props.at("border_color"));
+        pos         = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
+        halign      = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign      = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        angle       = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        xray        = std::any_cast<Hyprlang::INT>(props.at("xray"));
+    } catch (const std::bad_any_cast& e) {
+        RASSERT(false, "Failed to construct CShape: {}", e.what()); //
+    } catch (const std::out_of_range& e) {
+        RASSERT(false, "Missing property for CShape: {}", e.what()); //
+    }
 
     viewport = viewport_;
     angle    = angle * M_PI / 180.0;

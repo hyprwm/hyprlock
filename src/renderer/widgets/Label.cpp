@@ -100,11 +100,9 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
             request.props["text_align"] = textAlign;
 
     } catch (const std::bad_any_cast& e) {
-        Debug::log(ERR, "Failed to construct CLabel: {}", e.what());
-        throw;
+        RASSERT(false, "Failed to construct CLabel: {}", e.what()); //
     } catch (const std::out_of_range& e) {
-        Debug::log(ERR, "Missing propperty for CLabel:{}", e.what());
-        throw;
+        RASSERT(false, "Missing property for CLabel: {}", e.what()); //
     }
 
     configPos = pos;
