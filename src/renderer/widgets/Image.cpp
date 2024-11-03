@@ -87,7 +87,7 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
         rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
         color    = std::any_cast<Hyprlang::INT>(props.at("border_color"));
-        pos      = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
+        pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
         halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));

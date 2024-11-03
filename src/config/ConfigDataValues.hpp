@@ -31,7 +31,8 @@ class CLayoutValueData : public ICustomConfigValueData {
         return std::format("{}{},{}{}", m_vValues.x, (m_sIsRelative.x) ? "%" : "px", m_vValues.y, (m_sIsRelative.y) ? "%" : "px");
     }
 
-    static CLayoutValueData* fromAny(const std::any& v) {
+    static CLayoutValueData* fromAnyPv(const std::any& v) {
+        RASSERT(v.type() == typeid(void*), "Invalid config value type");
         const auto P = (CLayoutValueData*)std::any_cast<void*>(v);
         RASSERT(P, "Empty config value");
         return P;

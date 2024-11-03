@@ -73,7 +73,7 @@ void CLabel::plantTimer() {
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
     try {
-        pos            = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
+        pos            = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
         labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));
         halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));

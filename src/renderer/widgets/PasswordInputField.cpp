@@ -13,8 +13,8 @@ using namespace Hyprutils::String;
 CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     viewport(viewport_), outputStringPort(output), shadow(this, props, viewport_) {
     try {
-        pos                      = CLayoutValueData::fromAny(props.at("position"))->getAbsolute(viewport_);
-        size                     = CLayoutValueData::fromAny(props.at("size"))->getAbsolute(viewport_);
+        pos                      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        size                     = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
         halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
