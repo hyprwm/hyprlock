@@ -31,21 +31,20 @@ class CFingerprint {
         bool                                sleeping = false;
     } m_sDBUSState;
 
-    std::string                        m_sFingerprintReady;
-    std::string                        m_sFingerprintPresent;
-    bool                               m_bAuthenticated = false;
-    bool                               m_bEnabled       = false;
+    std::string m_sFingerprintReady;
+    std::string m_sFingerprintPresent;
+    bool        m_bAuthenticated = false;
+    bool        m_bEnabled       = false;
 
-    void                               handleVerifyStatus(const std::string& result, const bool done);
+    void        handleVerifyStatus(const std::string& result, const bool done);
 
-    void                               registerSleepHandler();
-    void                               inhibitSleep();
+    void        inhibitSleep();
 
-    bool                               createDeviceProxy();
-    bool                               claimDevice();
-    bool                               startVerify(bool updateMessage = true);
-    bool                               stopVerify();
-    bool                               releaseDevice();
+    bool        createDeviceProxy();
+    void        claimDevice();
+    void        startVerify(bool isRetry = false);
+    bool        stopVerify();
+    bool        releaseDevice();
 };
 
 inline std::unique_ptr<CFingerprint> g_pFingerprint;
