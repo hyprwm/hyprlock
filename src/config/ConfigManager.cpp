@@ -25,18 +25,15 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
 }
 
 static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** data) {
-    const std::string VALUE = v;
+    const std::string      VALUE = v;
+
+    Hyprlang::CParseResult result;
 
     if (!*data)
         *data = new CLayoutValueData();
 
-    const auto DATA = (CLayoutValueData*)(*data);
-    Debug::log(LOG, "data outer: {:x}", (uintptr_t)data);
-    Debug::log(LOG, "data inner: {:x}", (uintptr_t)DATA);
-
-    Hyprlang::CParseResult result;
-
-    const auto             SPLIT = VALUE.find(',');
+    const auto DATA  = (CLayoutValueData*)(*data);
+    const auto SPLIT = VALUE.find(',');
     if (SPLIT == std::string::npos) {
         result.setError(std::format("expected two comma seperated values, got {}", VALUE).c_str());
         return result;
