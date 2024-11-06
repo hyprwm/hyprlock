@@ -2,6 +2,7 @@
 
 #include "IWidget.hpp"
 #include "../../helpers/Color.hpp"
+#include "../../config/ConfigDataValues.hpp"
 #include "Shadowable.hpp"
 #include <hyprutils/math/Box.hpp>
 #include <string>
@@ -15,23 +16,23 @@ class CShape : public IWidget {
     virtual bool draw(const SRenderData& data);
 
   private:
-    CFramebuffer shapeFB;
+    CFramebuffer       shapeFB;
 
-    int          rounding;
-    double       border;
-    double       angle;
-    CColor       color;
-    CColor       borderColor;
-    Vector2D     size;
-    Vector2D     pos;
-    CBox         shapeBox;
-    CBox         borderBox;
-    bool         xray;
+    int                rounding;
+    double             border;
+    double             angle;
+    CColor             color;
+    CGradientValueData borderGrad;
+    Vector2D           size;
+    Vector2D           pos;
+    CBox               shapeBox;
+    CBox               borderBox;
+    bool               xray;
 
-    std::string  halign, valign;
+    std::string        halign, valign;
 
-    bool         firstRender = true;
+    bool               firstRender = true;
 
-    Vector2D     viewport;
-    CShadowable  shadow;
+    Vector2D           viewport;
+    CShadowable        shadow;
 };
