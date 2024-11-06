@@ -1,6 +1,10 @@
 #pragma once
 
 #include <string>
+#include <format>
+#include <cmath>
+
+constexpr float              SHADER_ROUNDED_SMOOTHING_FACTOR = M_PI / 5.34665792551;
 
 inline static constexpr auto ROUNDED_SHADER_FUNC = [](const std::string colorVarName) -> std::string {
     return R"#(
@@ -12,17 +16,21 @@ inline static constexpr auto ROUNDED_SHADER_FUNC = [](const std::string colorVar
     pixCoord -= fullSize * 0.5 - radius;
     pixCoord += vec2(1.0, 1.0) / fullSize; // center the pix dont make it top-left
 
+    // smoothing constant for the edge: more = blurrier, but smoother
+    const float SMOOTHING_CONSTANT = )#" +
+        std::format("{:.7f}", SHADER_ROUNDED_SMOOTHING_FACTOR) + R"#(;
+
     if (pixCoord.x + pixCoord.y > radius) {
 
 	    float dist = length(pixCoord);
 
-	    if (dist > radius + 1.0)
+	    if (dist > radius + SMOOTHING_CONSTANT * 2.0)
 	        discard;
 
-	    if (dist > radius - 1.0) {
+	    if (dist > radius - SMOOTHING_CONSTANT * 2.0) {
 	        float dist = length(pixCoord);
 
-            float normalized = 1.0 - smoothstep(0.0, 1.0, dist - radius + 0.5);
+            float normalized = 1.0 - smoothstep(0.0, 1.0, (dist - radius + SMOOTHING_CONSTANT) / (SMOOTHING_CONSTANT * 2.0));
 
 	        )#" +
         colorVarName + R"#( = )#" + colorVarName + R"#( * normalized;
@@ -433,18 +441,22 @@ void main() {
     pixCoordOuter += vec2(1.0, 1.0) / fullSize;
 
     if (min(pixCoord.x, pixCoord.y) > 0.0 && radius > 0.0) {
+        // smoothing constant for the edge: more = blurrier, but smoother
+        const float SMOOTHING_CONSTANT = )#" +
+    std::format("{:.7f}", SHADER_ROUNDED_SMOOTHING_FACTOR) + R"#(;
+
 	    float dist = length(pixCoord);
 	    float distOuter = length(pixCoordOuter);
         float h = (thick / 2.0);
 
 	    if (dist < radius - h) {
             // lower
-            float normalized = smoothstep(0.0, 1.0, dist - radius + thick + 0.5);
+            float normalized = smoothstep(0.0, 1.0, (dist - radius + thick + SMOOTHING_CONSTANT) / (SMOOTHING_CONSTANT * 2.0));
             additionalAlpha *= normalized;
             done = true;
         } else if (min(pixCoordOuter.x, pixCoordOuter.y) > 0.0) {
             // higher
-            float normalized = 1.0 - smoothstep(0.0, 1.0, distOuter - radiusOuter + 0.5);
+            float normalized = 1.0 - smoothstep(0.0, 1.0, (distOuter - radiusOuter + SMOOTHING_CONSTANT) / (SMOOTHING_CONSTANT * 2.0));
             additionalAlpha *= normalized;
             done = true;
         } else if (distOuter < radiusOuter - h) {
