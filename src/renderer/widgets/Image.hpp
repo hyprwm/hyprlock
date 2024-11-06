@@ -3,6 +3,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../helpers/Math.hpp"
+#include "../../config/ConfigDataValues.hpp"
 #include "../../core/Timer.hpp"
 #include "../AsyncResourceGatherer.hpp"
 #include "Shadowable.hpp"
@@ -32,7 +33,7 @@ class CImage : public IWidget {
     int                                     rounding;
     double                                  border;
     double                                  angle;
-    CColor                                  color;
+    CGradientValueData                      color;
     Vector2D                                pos;
 
     std::string                             halign, valign, path;

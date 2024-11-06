@@ -86,7 +86,7 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
         size     = std::any_cast<Hyprlang::INT>(props.at("size"));
         rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
-        color    = std::any_cast<Hyprlang::INT>(props.at("border_color"));
+        color    = *CGradientValueData::fromAnyPv(props.at("border_color"));
         pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
         halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
@@ -156,7 +156,8 @@ bool CImage::draw(const SRenderData& data) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderRect(borderBox, color, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : std::min(borderBox.w, borderBox.h) / 2.0);
+            g_pRenderer->renderBorder(borderBox, color, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : std::min(borderBox.w, borderBox.h) / 2.0,
+                                      data.opacity);
 
         texbox.round();
         g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, HYPRUTILS_TRANSFORM_NORMAL);
