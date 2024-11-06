@@ -150,6 +150,23 @@ CRenderer::CRenderer() {
     blurFinishShader.colorizeTint = glGetUniformLocation(prog, "colorizeTint");
     blurFinishShader.boostA       = glGetUniformLocation(prog, "boostA");
 
+    prog                               = createProgram(QUADVERTSRC, FRAGBORDER);
+    borderShader.program               = prog;
+    borderShader.proj                  = glGetUniformLocation(prog, "proj");
+    borderShader.thick                 = glGetUniformLocation(prog, "thick");
+    borderShader.posAttrib             = glGetAttribLocation(prog, "pos");
+    borderShader.texAttrib             = glGetAttribLocation(prog, "texcoord");
+    borderShader.topLeft               = glGetUniformLocation(prog, "topLeft");
+    borderShader.bottomRight           = glGetUniformLocation(prog, "bottomRight");
+    borderShader.fullSize              = glGetUniformLocation(prog, "fullSize");
+    borderShader.fullSizeUntransformed = glGetUniformLocation(prog, "fullSizeUntransformed");
+    borderShader.radius                = glGetUniformLocation(prog, "radius");
+    borderShader.radiusOuter           = glGetUniformLocation(prog, "radiusOuter");
+    borderShader.gradient              = glGetUniformLocation(prog, "gradient");
+    borderShader.gradientLength        = glGetUniformLocation(prog, "gradientLength");
+    borderShader.angle                 = glGetUniformLocation(prog, "angle");
+    borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
+
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
 }
 
@@ -248,6 +265,43 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     glDisableVertexAttribArray(rectShader.posAttrib);
+}
+
+void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding, float alpha) {
+    Mat3x3 matrix   = projMatrix.projectBox(box, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
+    Mat3x3 glMatrix = projection.copy().multiply(matrix);
+
+    glUseProgram(borderShader.program);
+
+    glUniformMatrix3fv(borderShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
+
+    static_assert(sizeof(CColor) == 4 * sizeof(float)); // otherwise the line below this will fail
+
+    glUniform4fv(borderShader.gradient, gradient.m_vColors.size(), (float*)gradient.m_vColors.data());
+    glUniform1i(borderShader.gradientLength, gradient.m_vColors.size());
+    glUniform1f(borderShader.angle, (int)(gradient.m_fAngle / (M_PI / 180.0)) % 360 * (M_PI / 180.0));
+    glUniform1f(borderShader.alpha, alpha);
+
+    const auto TOPLEFT  = Vector2D(box.x, box.y);
+    const auto FULLSIZE = Vector2D(box.width, box.height);
+
+    glUniform2f(borderShader.topLeft, (float)TOPLEFT.x, (float)TOPLEFT.y);
+    glUniform2f(borderShader.fullSize, (float)FULLSIZE.x, (float)FULLSIZE.y);
+    glUniform2f(borderShader.fullSizeUntransformed, (float)box.width, (float)box.height);
+    glUniform1f(borderShader.radius, rounding);
+    glUniform1f(borderShader.radiusOuter, rounding);
+    glUniform1f(borderShader.thick, thickness);
+
+    glVertexAttribPointer(borderShader.posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+    glVertexAttribPointer(borderShader.texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+
+    glEnableVertexAttribArray(borderShader.posAttrib);
+    glEnableVertexAttribArray(borderShader.texAttrib);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glDisableVertexAttribArray(borderShader.posAttrib);
+    glDisableVertexAttribArray(borderShader.texAttrib);
 }
 
 void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<eTransform> tr) {

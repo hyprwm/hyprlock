@@ -6,8 +6,8 @@
 #include "Shader.hpp"
 #include "../core/LockSurface.hpp"
 #include "../helpers/Color.hpp"
-#include "../helpers/Math.hpp"
 #include "AsyncResourceGatherer.hpp"
+#include "../config/ConfigDataValues.hpp"
 #include "widgets/IWidget.hpp"
 #include "Framebuffer.hpp"
 
@@ -31,6 +31,7 @@ class CRenderer {
     SRenderFeedback                         renderLock(const CSessionLockSurface& surface);
 
     void                                    renderRect(const CBox& box, const CColor& col, int rounding = 0);
+    void                                    renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding = 0, float alpha = 1.0);
     void                                    renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, std::optional<eTransform> tr = {});
     void                                    blurFB(const CFramebuffer& outfb, SBlurParams params);
 
@@ -53,6 +54,7 @@ class CRenderer {
     CShader                                blurShader2;
     CShader                                blurPrepareShader;
     CShader                                blurFinishShader;
+    CShader                                borderShader;
 
     Mat3x3                                 projMatrix = Mat3x3::identity();
     Mat3x3                                 projection;
