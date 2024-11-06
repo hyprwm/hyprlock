@@ -1,11 +1,16 @@
 #include "ConfigManager.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
+#include "../config/ConfigDataValues.hpp"
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
 #include <mutex>
+
+ICustomConfigValueData::~ICustomConfigValueData() {
+    ; // empty
+}
 
 static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     const std::string      VALUE   = v;
@@ -17,6 +22,51 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     if (RESULT.has_value())
         result.setError(RESULT.value().c_str());
     return result;
+}
+
+static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** data) {
+    const std::string      VALUE = v;
+
+    Hyprlang::CParseResult result;
+
+    if (!*data)
+        *data = new CLayoutValueData();
+
+    const auto DATA  = (CLayoutValueData*)(*data);
+    const auto SPLIT = VALUE.find(',');
+    if (SPLIT == std::string::npos) {
+        result.setError(std::format("expected two comma seperated values, got {}", VALUE).c_str());
+        return result;
+    }
+
+    auto lhs = VALUE.substr(0, SPLIT);
+    auto rhs = VALUE.substr(SPLIT + 1);
+    if (rhs.starts_with(" "))
+        rhs = rhs.substr(1);
+
+    if (lhs.contains(",") || rhs.contains(",")) {
+        result.setError(std::format("too many arguments in {}", VALUE).c_str());
+        return result;
+    }
+
+    if (lhs.ends_with("%")) {
+        DATA->m_sIsRelative.x = true;
+        lhs.pop_back();
+    }
+
+    if (rhs.ends_with("%")) {
+        DATA->m_sIsRelative.y = true;
+        rhs.pop_back();
+    }
+
+    DATA->m_vValues = Hyprutils::Math::Vector2D{std::stof(lhs), std::stof(rhs)};
+
+    return result;
+}
+
+static void configHandleLayoutOptionDestroy(void** data) {
+    if (*data)
+        delete reinterpret_cast<CLayoutValueData*>(*data);
 }
 
 static std::string getMainConfigPath() {
@@ -39,7 +89,6 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue(name, "shadow_passes", Hyprlang::INT{0});                                                                                                       \
     m_config.addSpecialConfigValue(name, "shadow_color", Hyprlang::INT{0xFF000000});                                                                                               \
     m_config.addSpecialConfigValue(name, "shadow_boost", Hyprlang::FLOAT{1.2});
-
     m_config.addConfigValue("general:disable_loading_bar", Hyprlang::INT{0});
     m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
@@ -69,12 +118,12 @@ void CConfigManager::init() {
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("shape", "size", Hyprlang::VEC2{100, 100});
+    m_config.addSpecialConfigValue("shape", "size", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "100,100"});
     m_config.addSpecialConfigValue("shape", "rounding", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("shape", "border_size", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("shape", "border_color", Hyprlang::INT{0xFF00CFE6});
     m_config.addSpecialConfigValue("shape", "color", Hyprlang::INT{0xFF111111});
-    m_config.addSpecialConfigValue("shape", "position", Hyprlang::VEC2{0, 0});
+    m_config.addSpecialConfigValue("shape", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
     m_config.addSpecialConfigValue("shape", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "rotate", Hyprlang::FLOAT{0});
@@ -89,7 +138,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("image", "border_size", Hyprlang::INT{4});
     m_config.addSpecialConfigValue("image", "border_color", Hyprlang::INT{0xFFDDDDDD});
-    m_config.addSpecialConfigValue("image", "position", Hyprlang::VEC2{0, 0});
+    m_config.addSpecialConfigValue("image", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
     m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
@@ -100,7 +149,7 @@ void CConfigManager::init() {
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("input-field", "size", Hyprlang::VEC2{400, 90});
+    m_config.addSpecialConfigValue("input-field", "size", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "400,90"});
     m_config.addSpecialConfigValue("input-field", "inner_color", Hyprlang::INT{0xFFDDDDDD});
     m_config.addSpecialConfigValue("input-field", "outer_color", Hyprlang::INT{0xFF111111});
     m_config.addSpecialConfigValue("input-field", "outline_thickness", Hyprlang::INT{4});
@@ -116,7 +165,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "font_family", Hyprlang::STRING{"Sans"});
     m_config.addSpecialConfigValue("input-field", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "valign", Hyprlang::STRING{"center"});
-    m_config.addSpecialConfigValue("input-field", "position", Hyprlang::VEC2{0, 0});
+    m_config.addSpecialConfigValue("input-field", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
@@ -135,7 +184,7 @@ void CConfigManager::init() {
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("label", "monitor", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("label", "position", Hyprlang::VEC2{0, 0});
+    m_config.addSpecialConfigValue("label", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
     m_config.addSpecialConfigValue("label", "color", Hyprlang::INT{0xFFFFFFFF});
     m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});

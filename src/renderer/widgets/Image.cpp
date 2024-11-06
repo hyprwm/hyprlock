@@ -2,7 +2,7 @@
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Log.hpp"
-#include "../../helpers/MiscFunctions.hpp"
+#include "../../config/ConfigDataValues.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
 
@@ -82,18 +82,24 @@ void CImage::plantTimer() {
 CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& resourceID_, const std::unordered_map<std::string, std::any>& props) :
     viewport(viewport_), resourceID(resourceID_), output(output_), shadow(this, props, viewport_) {
 
-    size     = std::any_cast<Hyprlang::INT>(props.at("size"));
-    rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-    border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
-    color    = std::any_cast<Hyprlang::INT>(props.at("border_color"));
-    pos      = Vector2DFromHyprlang(std::any_cast<Hyprlang::VEC2>(props.at("position")));
-    halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-    valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-    angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+    try {
+        size     = std::any_cast<Hyprlang::INT>(props.at("size"));
+        rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+        border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
+        color    = std::any_cast<Hyprlang::INT>(props.at("border_color"));
+        pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
 
-    path          = std::any_cast<Hyprlang::STRING>(props.at("path"));
-    reloadTime    = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
-    reloadCommand = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
+        path          = std::any_cast<Hyprlang::STRING>(props.at("path"));
+        reloadTime    = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
+        reloadCommand = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
+    } catch (const std::bad_any_cast& e) {
+        RASSERT(false, "Failed to construct CImage: {}", e.what()); //
+    } catch (const std::out_of_range& e) {
+        RASSERT(false, "Missing propperty for CImage: {}", e.what()); //
+    }
 
     try {
         modificationTime = std::filesystem::last_write_time(path);
