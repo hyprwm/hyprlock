@@ -33,14 +33,14 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         colorConfig.transitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
-        colorConfig.outer        = std::any_cast<Hyprlang::INT>(props.at("outer_color"));
+        colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
         colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
-        colorConfig.fail         = std::any_cast<Hyprlang::INT>(props.at("fail_color"));
-        colorConfig.check        = std::any_cast<Hyprlang::INT>(props.at("check_color"));
-        colorConfig.both         = std::any_cast<Hyprlang::INT>(props.at("bothlock_color"));
-        colorConfig.caps         = std::any_cast<Hyprlang::INT>(props.at("capslock_color"));
-        colorConfig.num          = std::any_cast<Hyprlang::INT>(props.at("numlock_color"));
+        colorConfig.fail         = CGradientValueData::fromAnyPv(props.at("fail_color"));
+        colorConfig.check        = CGradientValueData::fromAnyPv(props.at("check_color"));
+        colorConfig.both         = CGradientValueData::fromAnyPv(props.at("bothlock_color"));
+        colorConfig.caps         = CGradientValueData::fromAnyPv(props.at("capslock_color"));
+        colorConfig.num          = CGradientValueData::fromAnyPv(props.at("numlock_color"));
         colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
         colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
     } catch (const std::bad_any_cast& e) {
@@ -57,13 +57,14 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.spacing             = std::clamp(dots.spacing, -1.f, 1.f);
     colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
 
-    colorConfig.both = colorConfig.both == -1 ? colorConfig.outer : colorConfig.both;
-    colorConfig.caps = colorConfig.caps == -1 ? colorConfig.outer : colorConfig.caps;
-    colorConfig.num  = colorConfig.num == -1 ? colorConfig.outer : colorConfig.num;
+    colorConfig.both = colorConfig.both->m_vColors.empty() ? colorConfig.outer : colorConfig.both;
+    colorConfig.caps = colorConfig.caps->m_vColors.empty() ? colorConfig.outer : colorConfig.caps;
+    colorConfig.num  = colorConfig.num->m_vColors.empty() ? colorConfig.outer : colorConfig.num;
 
-    colorState.inner = colorConfig.inner;
-    colorState.outer = colorConfig.outer;
-    colorState.font  = colorConfig.font;
+    colorState.inner       = colorConfig.inner;
+    colorState.outer       = *colorConfig.outer;
+    colorState.font        = colorConfig.font;
+    colorState.outerSource = colorConfig.outer;
 
     if (!dots.textFormat.empty()) {
         dots.textResourceID = std::format("input:{}-{}", (uintptr_t)this, dots.textFormat);
@@ -218,15 +219,18 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     shadowData.opacity *= fade.a;
     shadow.draw(shadowData);
 
-    CColor outerCol = colorState.outer;
-    outerCol.a *= fade.a * data.opacity;
+    CGradientValueData outerGrad = colorState.outer;
+    for (auto& c : outerGrad.m_vColors)
+        c.a *= fade.a * data.opacity;
+
     CColor innerCol = colorState.inner;
     innerCol.a *= fade.a * data.opacity;
     CColor fontCol = colorState.font;
     fontCol.a *= fade.a * data.opacity;
 
     if (outThick > 0) {
-        g_pRenderer->renderRect(outerBox, outerCol, rounding == -1 ? outerBox.h / 2.0 : rounding);
+        const auto OUTERROUND = rounding == -1 ? outerBox.h / 2.0 : rounding;
+        g_pRenderer->renderBorder(outerBox, outerGrad, outThick, OUTERROUND, fade.a * data.opacity);
 
         if (passwordLength != 0 && hiddenInputState.enabled && !fade.animated && data.opacity == 1.0) {
             CBox     outerBoxScaled = outerBox;
@@ -238,13 +242,13 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 outerBoxScaled.x += outerBoxScaled.w;
             glEnable(GL_SCISSOR_TEST);
             glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-            g_pRenderer->renderRect(outerBox, hiddenInputState.lastColor, rounding == -1 ? outerBox.h / 2.0 : rounding);
+            g_pRenderer->renderBorder(outerBox, hiddenInputState.lastColor, outThick, OUTERROUND, fade.a * data.opacity);
             glScissor(0, 0, viewport.x, viewport.y);
             glDisable(GL_SCISSOR_TEST);
         }
     }
 
-    g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - outThick);
+    g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - outThick - 1);
 
     if (!hiddenInputState.enabled && !g_pHyprlock->m_bFadeStarted) {
         const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
@@ -434,6 +438,28 @@ static void changeColor(const CColor& source, const CColor& target, CColor& subj
     changeChannel(source.a, target.a, subject.a, multi, animated);
 }
 
+static void changeGrad(CGradientValueData* psource, CGradientValueData* ptarget, CGradientValueData& subject, const double& multi, bool& animated) {
+    if (!psource || !ptarget)
+        return;
+
+    subject.m_vColors.resize(ptarget->m_vColors.size(), subject.m_vColors.back());
+
+    for (size_t i = 0; i < subject.m_vColors.size(); ++i) {
+        const CColor& sourceCol = (i < psource->m_vColors.size()) ? psource->m_vColors[i] : psource->m_vColors.back();
+        const CColor& targetCol = (i < ptarget->m_vColors.size()) ? ptarget->m_vColors[i] : ptarget->m_vColors.back();
+        changeColor(sourceCol, targetCol, subject.m_vColors[i], multi, animated);
+    }
+
+    if (psource->m_fAngle != ptarget->m_fAngle) {
+        const float DELTA = ptarget->m_fAngle - psource->m_fAngle;
+        subject.m_fAngle += DELTA * multi;
+        animated = true;
+
+        if ((psource->m_fAngle < ptarget->m_fAngle && subject.m_fAngle > ptarget->m_fAngle) || (psource->m_fAngle > ptarget->m_fAngle && subject.m_fAngle < ptarget->m_fAngle))
+            subject.m_fAngle = ptarget->m_fAngle;
+    }
+}
+
 void CPasswordInputField::updateColors() {
     const bool BORDERLESS = outThick == 0;
     const bool NUMLOCK    = (colorConfig.invertNum) ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
@@ -442,51 +468,51 @@ void CPasswordInputField::updateColors() {
              std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs,
                         0.0016, 0.5);
 
-    CColor     targetColor;
+    //
+    CGradientValueData* targetGrad = nullptr;
 
-    if (checkWaiting) {
-        targetColor = colorConfig.check;
-    } else if (displayFail) {
-        targetColor = colorConfig.fail;
-    }
+    if (checkWaiting)
+        targetGrad = colorConfig.check;
+    else if (displayFail)
+        targetGrad = colorConfig.fail;
 
-    if (g_pHyprlock->m_bCapsLock && NUMLOCK) {
-        targetColor = colorConfig.both;
-    } else if (g_pHyprlock->m_bCapsLock) {
-        targetColor = colorConfig.caps;
-    } else if (NUMLOCK) {
-        targetColor = colorConfig.num;
-    }
+    if (g_pHyprlock->m_bCapsLock && NUMLOCK)
+        targetGrad = colorConfig.both;
+    else if (g_pHyprlock->m_bCapsLock)
+        targetGrad = colorConfig.caps;
+    else if (NUMLOCK)
+        targetGrad = colorConfig.num;
 
-    CColor outerTarget = colorConfig.outer;
-    CColor innerTarget = colorConfig.inner;
-    CColor fontTarget  = (displayFail) ? colorConfig.fail : colorConfig.font;
+    CGradientValueData* outerTarget = colorConfig.outer;
+    CColor              innerTarget = colorConfig.inner;
+    CColor              fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : colorConfig.font;
 
     if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || NUMLOCK) {
         if (BORDERLESS && colorConfig.swapFont) {
-            fontTarget = targetColor;
+            fontTarget = colorConfig.fail->m_vColors.front();
         } else if (BORDERLESS && !colorConfig.swapFont) {
-            innerTarget = targetColor;
+            innerTarget = colorConfig.fail->m_vColors.front();
             // When changing the inner color the font cannot be fail_color
             fontTarget = colorConfig.font;
         } else {
-            outerTarget = targetColor;
+            outerTarget = targetGrad;
         }
     }
 
-    if (targetColor != colorState.currentTarget) {
-        colorState.outerSource = colorState.outer;
+    if (targetGrad != colorState.currentTarget) {
+        colorState.outerSource = &colorState.outer;
         colorState.innerSource = colorState.inner;
 
-        colorState.currentTarget = targetColor;
+        colorState.currentTarget = targetGrad;
     }
 
     colorState.animated = false;
 
-    changeColor(colorState.outerSource, outerTarget, colorState.outer, MULTI, colorState.animated);
+    if (!BORDERLESS)
+        changeGrad(colorState.outerSource, outerTarget, colorState.outer, MULTI, colorState.animated);
     changeColor(colorState.innerSource, innerTarget, colorState.inner, MULTI, colorState.animated);
 
-    // Font color is only chaned, when `swap_font_color` is set to true and no boarder is present.
+    // Font color is only chaned, when `swap_font_color` is set to true and no border is present.
     // It is not animated, because that does not look good and we would need to rerender the text for each frame.
     colorState.font = fontTarget;
 
