@@ -5,6 +5,7 @@
 #include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
+#include "src/config/ConfigDataValues.hpp"
 #include <chrono>
 #include <vector>
 #include <any>
@@ -89,31 +90,31 @@ class CPasswordInputField : public IWidget {
     } hiddenInputState;
 
     struct {
-        CColor outer;
-        CColor inner;
-        CColor font;
-        CColor fail;
-        CColor check;
-        CColor caps;
-        CColor num;
-        CColor both;
+        CGradientValueData* outer = nullptr;
+        CColor              inner;
+        CColor              font;
+        CGradientValueData* fail  = nullptr;
+        CGradientValueData* check = nullptr;
+        CGradientValueData* caps  = nullptr;
+        CGradientValueData* num   = nullptr;
+        CGradientValueData* both  = nullptr;
 
-        int    transitionMs = 0;
-        bool   invertNum    = false;
-        bool   swapFont     = false;
+        int                 transitionMs = 0;
+        bool                invertNum    = false;
+        bool                swapFont     = false;
     } colorConfig;
 
     struct {
-        CColor outer;
-        CColor inner;
-        CColor font;
+        CGradientValueData  outer;
+        CColor              inner;
+        CColor              font;
 
-        CColor outerSource;
-        CColor innerSource;
+        CGradientValueData* outerSource = nullptr;
+        CColor              innerSource;
 
-        CColor currentTarget;
+        CGradientValueData* currentTarget = nullptr;
 
-        bool   animated = false;
+        bool                animated = false;
 
         //
         std::chrono::system_clock::time_point lastFrame;

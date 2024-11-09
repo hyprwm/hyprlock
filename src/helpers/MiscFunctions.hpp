@@ -5,3 +5,4 @@
 #include <hyprutils/math/Vector2D.hpp>
 
 std::string absolutePath(const std::string&, const std::string&);
+int64_t     configStringToInt(const std::string& VALUE);

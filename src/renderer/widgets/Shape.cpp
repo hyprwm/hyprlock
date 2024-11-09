@@ -7,16 +7,16 @@
 CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
 
     try {
-        size        = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
-        rounding    = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-        border      = std::any_cast<Hyprlang::INT>(props.at("border_size"));
-        color       = std::any_cast<Hyprlang::INT>(props.at("color"));
-        borderColor = std::any_cast<Hyprlang::INT>(props.at("border_color"));
-        pos         = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
-        halign      = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-        valign      = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-        angle       = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-        xray        = std::any_cast<Hyprlang::INT>(props.at("xray"));
+        size       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
+        rounding   = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+        border     = std::any_cast<Hyprlang::INT>(props.at("border_size"));
+        color      = std::any_cast<Hyprlang::INT>(props.at("color"));
+        borderGrad = *CGradientValueData::fromAnyPv(props.at("border_color"));
+        pos        = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        halign     = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign     = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        angle      = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        xray       = std::any_cast<Hyprlang::INT>(props.at("xray"));
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CShape: {}", e.what()); //
     } catch (const std::out_of_range& e) {
@@ -54,10 +54,8 @@ bool CShape::draw(const SRenderData& data) {
 
     if (xray) {
         if (border > 0) {
-            const int PIROUND   = std::min(MINHALFBORDER, std::round(border * M_PI));
-            CColor    borderCol = borderColor;
-            borderCol.a *= data.opacity;
-            g_pRenderer->renderRect(borderBox, borderCol, rounding == -1 ? PIROUND : std::clamp(rounding, 0, PIROUND));
+            const int PIROUND = std::min(MINHALFBORDER, std::round(border * M_PI));
+            g_pRenderer->renderBorder(borderBox, borderGrad, border, rounding == -1 ? PIROUND : std::clamp(rounding, 0, PIROUND), data.opacity);
         }
 
         glEnable(GL_SCISSOR_TEST);
@@ -79,7 +77,7 @@ bool CShape::draw(const SRenderData& data) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderRect(borderBox, borderColor, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER);
+            g_pRenderer->renderBorder(borderBox, borderGrad, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER, data.opacity);
 
         g_pRenderer->renderRect(shapeBox, color, ALLOWROUND ? rounding : MINHALFSHAPE);
         g_pRenderer->popFb();

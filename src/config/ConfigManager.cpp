@@ -2,6 +2,7 @@
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigDataValues.hpp"
+#include <hyprlang.hpp>
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>
@@ -69,6 +70,65 @@ static void configHandleLayoutOptionDestroy(void** data) {
         delete reinterpret_cast<CLayoutValueData*>(*data);
 }
 
+static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** data) {
+    std::string V = VALUE;
+
+    if (!*data)
+        *data = new CGradientValueData();
+
+    const auto DATA = reinterpret_cast<CGradientValueData*>(*data);
+
+    CVarList   varlist(V, 0, ' ');
+    DATA->m_vColors.clear();
+
+    std::string parseError = "";
+
+    for (auto const& var : varlist) {
+        if (var.find("deg") != std::string::npos) {
+            // last arg
+            try {
+                DATA->m_fAngle = std::stoi(var.substr(0, var.find("deg"))) * (M_PI / 180.0); // radians
+            } catch (...) {
+                Debug::log(WARN, "Error parsing gradient {}", V);
+                parseError = "Error parsing gradient " + V;
+            }
+
+            break;
+        }
+
+        if (DATA->m_vColors.size() >= 10) {
+            Debug::log(WARN, "Error parsing gradient {}: max colors is 10.", V);
+            parseError = "Error parsing gradient " + V + ": max colors is 10.";
+            break;
+        }
+
+        try {
+            DATA->m_vColors.push_back(CColor(configStringToInt(var)));
+        } catch (std::exception& e) {
+            Debug::log(WARN, "Error parsing gradient {}", V);
+            parseError = "Error parsing gradient " + V + ": " + e.what();
+        }
+    }
+
+    if (DATA->m_vColors.size() == 0) {
+        Debug::log(WARN, "Error parsing gradient {}", V);
+        parseError = "Error parsing gradient " + V + ": No colors?";
+
+        DATA->m_vColors.push_back(0); // transparent
+    }
+
+    Hyprlang::CParseResult result;
+    if (!parseError.empty())
+        result.setError(parseError.c_str());
+
+    return result;
+}
+
+static void configHandleGradientDestroy(void** data) {
+    if (*data)
+        delete reinterpret_cast<CGradientValueData*>(*data);
+}
+
 static std::string getMainConfigPath() {
     static const auto paths = Hyprutils::Path::findConfig("hyprlock");
     if (paths.first.has_value())
@@ -81,6 +141,14 @@ CConfigManager::CConfigManager(std::string configPath) :
     m_config(configPath.empty() ? getMainConfigPath().c_str() : configPath.c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = configPath.empty()}) {
     configCurrentPath = configPath.empty() ? getMainConfigPath() : configPath;
 }
+
+inline static constexpr auto GRADIENTCONFIG = [](const char* default_value) -> Hyprlang::CUSTOMTYPE {
+    return Hyprlang::CUSTOMTYPE{&configHandleGradientSet, configHandleGradientDestroy, default_value};
+};
+
+inline static constexpr auto LAYOUTCONFIG = [](const char* default_value) -> Hyprlang::CUSTOMTYPE {
+    return Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, default_value};
+};
 
 void CConfigManager::init() {
 
@@ -118,12 +186,12 @@ void CConfigManager::init() {
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("shape", "size", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "100,100"});
+    m_config.addSpecialConfigValue("shape", "size", LAYOUTCONFIG("100,100"));
     m_config.addSpecialConfigValue("shape", "rounding", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("shape", "border_size", Hyprlang::INT{0});
-    m_config.addSpecialConfigValue("shape", "border_color", Hyprlang::INT{0xFF00CFE6});
+    m_config.addSpecialConfigValue("shape", "border_color", GRADIENTCONFIG("0xFF00CFE6"));
     m_config.addSpecialConfigValue("shape", "color", Hyprlang::INT{0xFF111111});
-    m_config.addSpecialConfigValue("shape", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
+    m_config.addSpecialConfigValue("shape", "position", LAYOUTCONFIG("0,0"));
     m_config.addSpecialConfigValue("shape", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("shape", "rotate", Hyprlang::FLOAT{0});
@@ -137,8 +205,8 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "size", Hyprlang::INT{150});
     m_config.addSpecialConfigValue("image", "rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("image", "border_size", Hyprlang::INT{4});
-    m_config.addSpecialConfigValue("image", "border_color", Hyprlang::INT{0xFFDDDDDD});
-    m_config.addSpecialConfigValue("image", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
+    m_config.addSpecialConfigValue("image", "border_color", GRADIENTCONFIG("0xFFDDDDDD"));
+    m_config.addSpecialConfigValue("image", "position", LAYOUTCONFIG("0,0"));
     m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
@@ -149,9 +217,9 @@ void CConfigManager::init() {
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("input-field", "size", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "400,90"});
+    m_config.addSpecialConfigValue("input-field", "size", LAYOUTCONFIG("400,90"));
     m_config.addSpecialConfigValue("input-field", "inner_color", Hyprlang::INT{0xFFDDDDDD});
-    m_config.addSpecialConfigValue("input-field", "outer_color", Hyprlang::INT{0xFF111111});
+    m_config.addSpecialConfigValue("input-field", "outer_color", GRADIENTCONFIG("0xFF111111"));
     m_config.addSpecialConfigValue("input-field", "outline_thickness", Hyprlang::INT{4});
     m_config.addSpecialConfigValue("input-field", "dots_size", Hyprlang::FLOAT{0.25});
     m_config.addSpecialConfigValue("input-field", "dots_center", Hyprlang::INT{1});
@@ -165,18 +233,18 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "font_family", Hyprlang::STRING{"Sans"});
     m_config.addSpecialConfigValue("input-field", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "valign", Hyprlang::STRING{"center"});
-    m_config.addSpecialConfigValue("input-field", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
+    m_config.addSpecialConfigValue("input-field", "position", LAYOUTCONFIG("0,0"));
     m_config.addSpecialConfigValue("input-field", "placeholder_text", Hyprlang::STRING{"<i>Input Password</i>"});
     m_config.addSpecialConfigValue("input-field", "hide_input", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
-    m_config.addSpecialConfigValue("input-field", "check_color", Hyprlang::INT{0xFFCC8822});
-    m_config.addSpecialConfigValue("input-field", "fail_color", Hyprlang::INT{0xFFCC2222});
+    m_config.addSpecialConfigValue("input-field", "check_color", GRADIENTCONFIG("0xFF22CC88"));
+    m_config.addSpecialConfigValue("input-field", "fail_color", GRADIENTCONFIG("0xFFCC2222"));
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_timeout", Hyprlang::INT{2000});
     m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
-    m_config.addSpecialConfigValue("input-field", "capslock_color", Hyprlang::INT{-1});
-    m_config.addSpecialConfigValue("input-field", "numlock_color", Hyprlang::INT{-1});
-    m_config.addSpecialConfigValue("input-field", "bothlock_color", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("input-field", "capslock_color", GRADIENTCONFIG(""));
+    m_config.addSpecialConfigValue("input-field", "numlock_color", GRADIENTCONFIG(""));
+    m_config.addSpecialConfigValue("input-field", "bothlock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "invert_numlock", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "swap_font_color", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "zindex", Hyprlang::INT{0});
@@ -184,7 +252,7 @@ void CConfigManager::init() {
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("label", "monitor", Hyprlang::STRING{""});
-    m_config.addSpecialConfigValue("label", "position", Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, "0,0"});
+    m_config.addSpecialConfigValue("label", "position", LAYOUTCONFIG("0,0"));
     m_config.addSpecialConfigValue("label", "color", Hyprlang::INT{0xFFFFFFFF});
     m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});
