@@ -722,6 +722,15 @@ static void handleKeyboardKeymap(void* data, wl_keyboard* wl_keyboard, uint form
         Debug::log(ERR, "Failed to create xkb state");
         return;
     }
+
+    const auto PCOMOPOSETABLE = xkb_compose_table_new_from_locale(g_pHyprlock->m_pXKBContext, setlocale(LC_CTYPE, nullptr), XKB_COMPOSE_COMPILE_NO_FLAGS);
+
+    if (!PCOMOPOSETABLE) {
+        Debug::log(ERR, "Failed to create xkb compose table");
+        return;
+    }
+
+    g_pHyprlock->m_pXKBComposeState = xkb_compose_state_new(PCOMOPOSETABLE, XKB_COMPOSE_STATE_NO_FLAGS);
 }
 
 static void handleKeyboardKey(void* data, struct wl_keyboard* keyboard, uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
@@ -855,6 +864,9 @@ void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
         m_pKeyRepeatTimer.reset();
     }
 
+    if (m_pXKBComposeState)
+        xkb_compose_state_reset(m_pXKBComposeState);
+
     if (m_iKeebRepeatDelay <= 0)
         return;
 
@@ -865,7 +877,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
     if (m_iKeebRepeatRate <= 0)
         return;
 
-    handleKeySym(sym);
+    handleKeySym(sym, false);
 
     // This condition is for backspace and delete keys, but should also be ok for other keysyms since our buffer won't be empty anyways
     if (bool CONTINUE = m_sPasswordState.passBuffer.length() > 0; CONTINUE)
@@ -907,22 +919,32 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     }
 
     if (down) {
-        const auto SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
-
         m_bCapsLock = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
         m_bNumLock  = xkb_state_mod_name_is_active(g_pHyprlock->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
         m_bCtrl     = xkb_state_mod_name_is_active(m_pXKBState, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE);
 
-        handleKeySym(SYM);
+        const auto              SYM = xkb_state_key_get_one_sym(m_pXKBState, key + 8);
+
+        enum xkb_compose_status composeStatus = XKB_COMPOSE_NOTHING;
+        if (m_pXKBComposeState) {
+            xkb_compose_state_feed(m_pXKBComposeState, SYM);
+            composeStatus = xkb_compose_state_get_status(m_pXKBComposeState);
+        }
+
+        handleKeySym(SYM, composeStatus == XKB_COMPOSE_COMPOSED);
+
         if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) // keys allowed to repeat
             startKeyRepeat(SYM);
-    }
+
+    } else if (m_pXKBComposeState && xkb_compose_state_get_status(m_pXKBComposeState) == XKB_COMPOSE_COMPOSED)
+        xkb_compose_state_reset(m_pXKBComposeState);
 
     renderAllOutputs();
 }
 
-void CHyprlock::handleKeySym(xkb_keysym_t sym) {
+void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     const auto SYM = sym;
+
     if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace))) {
         Debug::log(LOG, "Clearing password buffer");
 
@@ -951,7 +973,9 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym) {
         m_bNumLock = !m_bNumLock;
     } else {
         char buf[16] = {0};
-        int  len     = xkb_keysym_to_utf8(SYM, buf, 16);
+        int  len     = (composed) ? xkb_compose_state_get_utf8(m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
+                                    xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* already includes a nullbyte */;
+
         if (len > 1)
             m_sPasswordState.passBuffer += std::string{buf, len - 1};
     }
