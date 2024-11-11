@@ -14,6 +14,7 @@
 #include <optional>
 
 #include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-compose.h>
 
 #include <gbm.h>
 #include <xf86drm.h>
@@ -55,9 +56,9 @@ class CHyprlock {
     std::string                     spawnSync(const std::string& cmd);
 
     void                            onKey(uint32_t key, bool down);
-    void                            handleKeySym(xkb_keysym_t sym);
     void                            startKeyRepeat(xkb_keysym_t sym);
     void                            repeatKey(xkb_keysym_t sym);
+    void                            handleKeySym(xkb_keysym_t sym, bool compose);
     void                            onPasswordCheckTimer();
     void                            clearPasswordBuffer();
     bool                            passwordCheckWaiting();
@@ -79,13 +80,13 @@ class CHyprlock {
     zwlr_screencopy_manager_v1*     getScreencopy();
 
     wl_pointer*                     m_pPointer = nullptr;
-    wl_keyboard*                    m_pKeeb    = nullptr;
-
     std::unique_ptr<CCursorShape>   m_pCursorShape;
 
-    xkb_context*                    m_pXKBContext = nullptr;
-    xkb_keymap*                     m_pXKBKeymap  = nullptr;
-    xkb_state*                      m_pXKBState   = nullptr;
+    wl_keyboard*                    m_pKeeb            = nullptr;
+    xkb_context*                    m_pXKBContext      = nullptr;
+    xkb_keymap*                     m_pXKBKeymap       = nullptr;
+    xkb_state*                      m_pXKBState        = nullptr;
+    xkb_compose_state*              m_pXKBComposeState = nullptr;
 
     int32_t                         m_iKeebRepeatRate  = 25;
     int32_t                         m_iKeebRepeatDelay = 600;
