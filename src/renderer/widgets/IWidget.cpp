@@ -138,7 +138,7 @@ static std::string getTime12h() {
 
     const auto HRS  = hhmmss.hours().count();
     const auto MINS = hhmmss.minutes().count();
-    return (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) + (HRS < 12 ? " AM" : " PM");
+    return (HRS == 12 ? "12" : (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12)) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) + (HRS < 12 ? " AM" : " PM");
 }
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
