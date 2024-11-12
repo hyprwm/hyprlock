@@ -157,7 +157,7 @@ bool CImage::draw(const SRenderData& data) {
 
         if (border > 0)
             g_pRenderer->renderBorder(borderBox, color, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : std::min(borderBox.w, borderBox.h) / 2.0,
-                                      data.opacity);
+                                      1.0);
 
         texbox.round();
         g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, HYPRUTILS_TRANSFORM_NORMAL);
