@@ -77,7 +77,7 @@ bool CShape::draw(const SRenderData& data) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderBorder(borderBox, borderGrad, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER, data.opacity);
+            g_pRenderer->renderBorder(borderBox, borderGrad, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER, 1.0);
 
         g_pRenderer->renderRect(shapeBox, color, ALLOWROUND ? rounding : MINHALFSHAPE);
         g_pRenderer->popFb();
