@@ -83,7 +83,9 @@ class CGradientValueData : public ICustomConfigValueData {
     /* Float corresponding to the angle (rad) */
     float m_fAngle = 0;
 
-    //
+    /* Whether this gradient stores a fallback value (not exlicitly set) */
+    bool m_bIsFallback = false;
+
     bool operator==(const CGradientValueData& other) const {
         if (other.m_vColors.size() != m_vColors.size() || m_fAngle != other.m_fAngle)
             return false;

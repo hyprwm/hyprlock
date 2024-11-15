@@ -80,6 +80,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
     CVarList   varlist(V, 0, ' ');
     DATA->m_vColors.clear();
+    DATA->m_bIsFallback = false;
 
     std::string parseError = "";
 
@@ -108,6 +109,11 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             Debug::log(WARN, "Error parsing gradient {}", V);
             parseError = "Error parsing gradient " + V + ": " + e.what();
         }
+    }
+
+    if (V.empty()) {
+        DATA->m_bIsFallback = true;
+        DATA->m_vColors.push_back(0); // transparent
     }
 
     if (DATA->m_vColors.size() == 0) {
