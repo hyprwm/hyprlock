@@ -78,7 +78,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
     const auto DATA = reinterpret_cast<CGradientValueData*>(*data);
 
-    CVarList   varlist(V, 0, ' ');
+    CVarList   varlist(V, 0, ' ', true);
     DATA->m_vColors.clear();
     DATA->m_bIsFallback = false;
 
