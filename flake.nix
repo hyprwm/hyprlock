@@ -5,6 +5,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     systems.url = "github:nix-systems/default-linux";
 
+    hyprgraphics = {
+      url = "github:hyprwm/hyprgraphics";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.systems.follows = "systems";
+      inputs.hyprutils.follows = "hyprutils";
+    };
+
     hyprutils = {
       url = "github:hyprwm/hyprutils";
       inputs.nixpkgs.follows = "nixpkgs";

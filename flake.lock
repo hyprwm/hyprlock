@@ -1,5 +1,31 @@
 {
   "nodes": {
+    "hyprgraphics": {
+      "inputs": {
+        "hyprutils": [
+          "hyprutils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "systems": [
+          "systems"
+        ]
+      },
+      "locked": {
+        "lastModified": 1732808127,
+        "narHash": "sha256-jwqYmLVfvoLPu8UScEzZgdbbiNU3ioYcrsthjEEnGqI=",
+        "owner": "hyprwm",
+        "repo": "hyprgraphics",
+        "rev": "4d927a52be7e15e0846456f2aa1b0ad76b5bf059",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hyprwm",
+        "repo": "hyprgraphics",
+        "type": "github"
+      }
+    },
     "hyprlang": {
       "inputs": {
         "hyprutils": [
@@ -67,6 +93,7 @@
     },
     "root": {
       "inputs": {
+        "hyprgraphics": "hyprgraphics",
         "hyprlang": "hyprlang",
         "hyprutils": "hyprutils",
         "nixpkgs": "nixpkgs",

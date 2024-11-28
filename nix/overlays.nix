@@ -13,6 +13,7 @@ in {
   default = inputs.self.overlays.hyprlock;
 
   hyprlock = lib.composeManyExtensions [
+    inputs.hyprgraphics.overlays.default
     inputs.hyprlang.overlays.default
     inputs.hyprutils.overlays.default
     inputs.self.overlays.sdbuscpp

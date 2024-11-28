@@ -11,6 +11,7 @@
   libwebp,
   libxkbcommon,
   mesa,
+  hyprgraphics,
   hyprlang,
   hyprutils,
   pam,
@@ -43,6 +44,7 @@ stdenv.mkDerivation {
     libwebp
     libxkbcommon
     mesa
+    hyprgraphics
     hyprlang
     hyprutils
     pam
