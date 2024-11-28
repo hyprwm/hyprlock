@@ -24,7 +24,7 @@ yay -S hyprlock-git # compiles from latest source
 ## Building
 
 ### Deps
-You also need the following dependencies
+You need the following dependencies
 - wayland-client
 - wayland-protocols
 - mesa
@@ -37,6 +37,7 @@ And the development libraries for the following
 - pam
 - hyprlang
 - hyprutils
+- hyprgraphics
 - libmagic (file-devel on Fedora)
 
 Development libraries are usually suffixed with `-devel` or `-dev` in most distro repos.
