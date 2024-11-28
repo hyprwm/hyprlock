@@ -8,10 +8,10 @@
 #include <filesystem>
 #include "../core/hyprlock.hpp"
 #include "../helpers/MiscFunctions.hpp"
-#include "../helpers/Jpeg.hpp"
-#include "../helpers/Webp.hpp"
 #include "src/helpers/Color.hpp"
 #include "src/helpers/Log.hpp"
+#include <hyprgraphics/image/Image.hpp>
+using namespace Hyprgraphics;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     if (g_pHyprlock->getScreencopy())
@@ -81,56 +81,15 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     return nullptr;
 }
 
-enum class FileType {
-    PNG,
-    JPEG,
-    WEBP,
-    UNKNOWN,
-};
+static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::path& path) {
 
-FileType getFileType(const std::filesystem::path& path) {
-    std::string ext = path.extension().string();
-    // convert the extension to lower case
-    std::transform(ext.begin(), ext.end(), ext.begin(), [](char c) { return c <= 'Z' && c >= 'A' ? c - ('Z' - 'z') : c; });
-
-    FileType ft = FileType::UNKNOWN;
-    Debug::log(TRACE, "Extension: {}", ext);
-    if (ext == ".png")
-        ft = FileType::PNG;
-    else if (ext == ".jpg" || ext == ".jpeg")
-        ft = FileType::JPEG;
-    else if (ext == ".webp")
-        ft = FileType::WEBP;
-    else {
-        // magic is slow, so only use it when no recognized extension is found
-        auto handle = magic_open(MAGIC_NONE | MAGIC_COMPRESS | MAGIC_SYMLINK);
-        magic_load(handle, nullptr);
-
-        const auto type_str   = std::string(magic_file(handle, path.c_str()));
-        const auto first_word = type_str.substr(0, type_str.find(" "));
-        magic_close(handle);
-
-        if (first_word == "PNG")
-            ft = FileType::PNG;
-        else if (first_word == "JPEG")
-            ft = FileType::JPEG;
-        else if (first_word == "RIFF" && type_str.find("Web/P image") != std::string::npos)
-            ft = FileType::WEBP;
+    auto image = CImage(path);
+    if (!image.success()) {
+        Debug::log(ERR, "Image {} could not be loaded: {}", path.string(), image.getError());
+        return nullptr;
     }
 
-    return ft;
-}
-
-cairo_surface_t* getCairoSurfaceFromImageFile(const std::filesystem::path& path) {
-    cairo_surface_t* cairoSurface = nullptr;
-    switch (getFileType(path)) {
-        case FileType::PNG: cairoSurface = cairo_image_surface_create_from_png(path.c_str()); break;
-        case FileType::JPEG: cairoSurface = JPEG::createSurfaceFromJPEG(path); break;
-        case FileType::WEBP: cairoSurface = WEBP::createSurfaceFromWEBP(path); break;
-        default: Debug::log(ERR, "unrecognized image format of {}", path.c_str());
-    }
-
-    return cairoSurface;
+    return image.cairoSurface();
 }
 
 void CAsyncResourceGatherer::gather() {
@@ -192,13 +151,13 @@ bool CAsyncResourceGatherer::apply() {
 
     for (auto& t : currentPreloadTargets) {
         if (t.type == TARGET_IMAGE) {
-            const auto  ASSET = &assets[t.id];
+            const auto           ASSET = &assets[t.id];
 
-            const auto  SURFACESTATUS = cairo_surface_status((cairo_surface_t*)t.cairosurface);
-            const auto  CAIROFORMAT   = cairo_image_surface_get_format((cairo_surface_t*)t.cairosurface);
-            const GLint glIFormat     = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
-            const GLint glFormat      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
-            const GLint glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
+            const cairo_status_t SURFACESTATUS = (cairo_status_t)t.cairosurface->status();
+            const auto           CAIROFORMAT   = cairo_image_surface_get_format(t.cairosurface->cairo());
+            const GLint          glIFormat     = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB32F : GL_RGBA;
+            const GLint          glFormat      = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_RGB : GL_RGBA;
+            const GLint          glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
             if (SURFACESTATUS != CAIRO_STATUS_SUCCESS) {
                 Debug::log(ERR, "Resource {} invalid ({})", t.id, cairo_status_to_string(SURFACESTATUS));
@@ -218,11 +177,9 @@ bool CAsyncResourceGatherer::apply() {
             glTexImage2D(GL_TEXTURE_2D, 0, glIFormat, ASSET->texture.m_vSize.x, ASSET->texture.m_vSize.y, 0, glFormat, glType, t.data);
 
             cairo_destroy((cairo_t*)t.cairo);
-            cairo_surface_destroy((cairo_surface_t*)t.cairosurface);
-
-        } else {
-            Debug::log(ERR, "Unsupported type in ::apply() {}", (int)t.type);
-        }
+            t.cairosurface.reset();
+        } else
+            Debug::log(ERR, "Unsupported type in ::apply(): {}", (int)t.type);
     }
 
     return true;
@@ -237,17 +194,17 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     const auto            CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH);
 
     if (!CAIROISURFACE) {
-        Debug::log(ERR, "No cairo surface!");
+        Debug::log(ERR, "renderImage: No cairo surface!");
         return;
     }
 
-    const auto CAIRO = cairo_create(CAIROISURFACE);
+    const auto CAIRO = cairo_create(CAIROISURFACE->cairo());
     cairo_scale(CAIRO, 1, 1);
 
     target.cairo        = CAIRO;
     target.cairosurface = CAIROISURFACE;
-    target.data         = cairo_image_surface_get_data(CAIROISURFACE);
-    target.size         = {(double)cairo_image_surface_get_width(CAIROISURFACE), (double)cairo_image_surface_get_height(CAIROISURFACE)};
+    target.data         = CAIROISURFACE->data();
+    target.size         = CAIROISURFACE->size();
 
     std::lock_guard lg{preloadTargetsMutex};
     preloadTargets.push_back(target);
@@ -271,8 +228,8 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
         TEXT.erase(TEXT.find_last_not_of(" \n\r\t") + 1);
     }
 
-    auto CAIROSURFACE = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080 /* dummy value */);
-    auto CAIRO        = cairo_create(CAIROSURFACE);
+    auto CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080 /* dummy value */));
+    auto CAIRO        = cairo_create(CAIROSURFACE->cairo());
 
     // draw title using Pango
     PangoLayout*          layout = pango_cairo_create_layout(CAIRO);
@@ -319,9 +276,8 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
 
     // TODO: avoid this?
     cairo_destroy(CAIRO);
-    cairo_surface_destroy(CAIROSURFACE);
-    CAIROSURFACE = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE);
-    CAIRO        = cairo_create(CAIROSURFACE);
+    CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE));
+    CAIRO        = cairo_create(CAIROSURFACE->cairo());
 
     // clear the pixmap
     cairo_save(CAIRO);
@@ -337,11 +293,11 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
 
     g_object_unref(layout);
 
-    cairo_surface_flush(CAIROSURFACE);
+    cairo_surface_flush(CAIROSURFACE->cairo());
 
     target.cairo        = CAIRO;
     target.cairosurface = CAIROSURFACE;
-    target.data         = cairo_image_surface_get_data(CAIROSURFACE);
+    target.data         = CAIROSURFACE->data();
     target.size         = {layoutWidth / (double)PANGO_SCALE, layoutHeight / (double)PANGO_SCALE};
 
     std::lock_guard lg{preloadTargetsMutex};

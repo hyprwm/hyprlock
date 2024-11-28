@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <any>
 #include "Shared.hpp"
+#include <hyprgraphics/cairo/CairoSurface.hpp>
 
 class CAsyncResourceGatherer {
   public:
@@ -64,14 +65,14 @@ class CAsyncResourceGatherer {
     } asyncLoopState;
 
     struct SPreloadTarget {
-        eTargetType type = TARGET_IMAGE;
-        std::string id   = "";
+        eTargetType                     type = TARGET_IMAGE;
+        std::string                     id   = "";
 
-        void*       data;
-        void*       cairo;
-        void*       cairosurface;
+        void*                           data  = nullptr;
+        void*                           cairo = nullptr;
+        SP<Hyprgraphics::CCairoSurface> cairosurface;
 
-        Vector2D    size;
+        Vector2D                        size;
     };
 
     std::vector<std::unique_ptr<CDMAFrame>>          dmas;
