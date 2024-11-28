@@ -57,7 +57,8 @@ pkg_check_modules(
   libdrm
   gbm
   hyprutils>=0.2.3
-  sdbus-c++>=2.0.0)
+  sdbus-c++>=2.0.0
+  hyprgraphics)
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
