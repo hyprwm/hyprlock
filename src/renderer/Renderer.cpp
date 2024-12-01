@@ -240,7 +240,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 }
 
 void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
-    Mat3x3 matrix   = projMatrix.projectBox(box, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
+    Mat3x3 matrix   = projMatrix.projectBox(box.copy().round(), HYPRUTILS_TRANSFORM_NORMAL, box.rot);
     Mat3x3 glMatrix = projection.copy().multiply(matrix);
 
     glUseProgram(rectShader.program);
@@ -268,7 +268,7 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
 }
 
 void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding, float alpha) {
-    Mat3x3 matrix   = projMatrix.projectBox(box, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
+    Mat3x3 matrix   = projMatrix.projectBox(box.copy().round(), HYPRUTILS_TRANSFORM_NORMAL, box.rot);
     Mat3x3 glMatrix = projection.copy().multiply(matrix);
 
     glUseProgram(borderShader.program);
@@ -305,7 +305,7 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
 }
 
 void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<eTransform> tr) {
-    Mat3x3   matrix   = projMatrix.projectBox(box, tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
+    Mat3x3   matrix   = projMatrix.projectBox(box.copy().round(), tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
     Mat3x3   glMatrix = projection.copy().multiply(matrix);
 
     CShader* shader = &texShader;
