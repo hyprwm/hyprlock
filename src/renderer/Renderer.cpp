@@ -240,8 +240,9 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 }
 
 void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
-    Mat3x3 matrix   = projMatrix.projectBox(box.copy().round(), HYPRUTILS_TRANSFORM_NORMAL, box.rot);
-    Mat3x3 glMatrix = projection.copy().multiply(matrix);
+    const auto ROUNDEDBOX = box.copy().round();
+    Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
+    Mat3x3     glMatrix   = projection.copy().multiply(matrix);
 
     glUseProgram(rectShader.program);
 
@@ -250,8 +251,8 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
     // premultiply the color as well as we don't work with straight alpha
     glUniform4f(rectShader.color, col.r * col.a, col.g * col.a, col.b * col.a, col.a);
 
-    const auto TOPLEFT  = Vector2D(box.x, box.y);
-    const auto FULLSIZE = Vector2D(box.width, box.height);
+    const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
+    const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);
 
     // Rounded corners
     glUniform2f(rectShader.topLeft, (float)TOPLEFT.x, (float)TOPLEFT.y);
@@ -268,8 +269,9 @@ void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
 }
 
 void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding, float alpha) {
-    Mat3x3 matrix   = projMatrix.projectBox(box.copy().round(), HYPRUTILS_TRANSFORM_NORMAL, box.rot);
-    Mat3x3 glMatrix = projection.copy().multiply(matrix);
+    const auto ROUNDEDBOX = box.copy().round();
+    Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
+    Mat3x3     glMatrix   = projection.copy().multiply(matrix);
 
     glUseProgram(borderShader.program);
 
@@ -282,8 +284,8 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
     glUniform1f(borderShader.angle, (int)(gradient.m_fAngle / (M_PI / 180.0)) % 360 * (M_PI / 180.0));
     glUniform1f(borderShader.alpha, alpha);
 
-    const auto TOPLEFT  = Vector2D(box.x, box.y);
-    const auto FULLSIZE = Vector2D(box.width, box.height);
+    const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
+    const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);
 
     glUniform2f(borderShader.topLeft, (float)TOPLEFT.x, (float)TOPLEFT.y);
     glUniform2f(borderShader.fullSize, (float)FULLSIZE.x, (float)FULLSIZE.y);
@@ -305,10 +307,11 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
 }
 
 void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<eTransform> tr) {
-    Mat3x3   matrix   = projMatrix.projectBox(box.copy().round(), tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
-    Mat3x3   glMatrix = projection.copy().multiply(matrix);
+    const auto ROUNDEDBOX = box.copy().round();
+    Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
+    Mat3x3     glMatrix   = projection.copy().multiply(matrix);
 
-    CShader* shader = &texShader;
+    CShader*   shader = &texShader;
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(tex.m_iTarget, tex.m_iTexID);
@@ -318,8 +321,8 @@ void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int
     glUniformMatrix3fv(shader->proj, 1, GL_TRUE, glMatrix.getMatrix().data());
     glUniform1i(shader->tex, 0);
     glUniform1f(shader->alpha, a);
-    const auto TOPLEFT  = Vector2D(box.x, box.y);
-    const auto FULLSIZE = Vector2D(box.width, box.height);
+    const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
+    const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);
 
     // Rounded corners
     glUniform2f(shader->topLeft, TOPLEFT.x, TOPLEFT.y);
@@ -406,7 +409,8 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     glDisable(GL_BLEND);
     glDisable(GL_STENCIL_TEST);
 
-    CBox         box{0, 0, outfb.m_vSize.x, outfb.m_vSize.y};
+    CBox box{0, 0, outfb.m_vSize.x, outfb.m_vSize.y};
+    box.round();
     Mat3x3       matrix   = projMatrix.projectBox(box, HYPRUTILS_TRANSFORM_NORMAL, 0);
     Mat3x3       glMatrix = projection.copy().multiply(matrix);
 
