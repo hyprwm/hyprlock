@@ -51,6 +51,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:pam_module", Hyprlang::STRING{"hyprlock"});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
     m_config.addConfigValue("general:lock_duration", Hyprlang::INT{-1});
+    m_config.addConfigValue("general:force_unclock_script", Hyprlang::STRING{"~/afs/scripts/logout.sh"});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
