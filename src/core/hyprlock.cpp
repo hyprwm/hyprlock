@@ -921,7 +921,7 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym) {
             // force unlock and logout the session
             Debug::log(LOG, "Unlocking because of time limit exceeded");
             g_pHyprlock->releaseSessionLock();
-            system("sh ~/.config/hyprland/logout.sh");
+            system("sh ~/.config/hypr/logout.sh");
         }
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
         Debug::log(LOG, "Authenticating");
