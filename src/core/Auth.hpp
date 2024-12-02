@@ -1,12 +1,12 @@
 #pragma once
 
-#include <memory>
+#include "IAuth.hpp"
 #include <optional>
 #include <string>
 #include <mutex>
 #include <condition_variable>
 
-class CAuth {
+class CAuth : public CIAuth {
   public:
     struct SPamConversationState {
         std::string             input    = "";
@@ -21,7 +21,8 @@ class CAuth {
         bool                    failTextFromPam   = false;
     };
 
-    CAuth();
+    explicit CAuth();
+    CAuth(const CAuth&) = delete;
 
     void                       start();
     bool                       auth();
@@ -37,9 +38,6 @@ class CAuth {
 
     void                       terminate();
 
-    // Should only be set via the main thread
-    bool m_bDisplayFailText = false;
-
   private:
     SPamConversationState m_sConversationState;
 
@@ -50,5 +48,3 @@ class CAuth {
 
     void                  resetConversation();
 };
-
-inline std::unique_ptr<CAuth> g_pAuth;

@@ -2,7 +2,9 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
+#include "IAuth.hpp"
 #include "Auth.hpp"
+#include "PwAuth.hpp"
 #include "Egl.hpp"
 #include "Fingerprint.hpp"
 #include "linux-dmabuf-unstable-v1-protocol.h"
@@ -416,7 +418,11 @@ void CHyprlock::run() {
         exit(1);
     }
 
-    g_pAuth = std::make_unique<CAuth>();
+    auto H = std::string(*(Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:password_hash")));
+    if (H.empty())
+        g_pAuth = std::make_unique<CAuth>();
+    else
+        g_pAuth = std::make_unique<CPwAuth>();
     g_pAuth->start();
 
     g_pFingerprint                           = std::make_unique<CFingerprint>();
