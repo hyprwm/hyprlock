@@ -7,6 +7,7 @@
   file,
   libdrm,
   libGL,
+  libgcrypt,
   libjpeg,
   libwebp,
   libxkbcommon,
@@ -39,6 +40,7 @@ stdenv.mkDerivation {
     file
     libdrm
     libGL
+    libgcrypt
     libjpeg
     libwebp
     libxkbcommon
