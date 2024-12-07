@@ -82,10 +82,21 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
 }
 
 static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::path& path) {
+    std::filesystem::path resolvedPath;
 
-    auto image = CImage(path);
+    try {
+        if (std::filesystem::is_symlink(path))
+            resolvedPath = std::filesystem::canonical(path);
+        else
+            resolvedPath = path;
+    } catch (const std::filesystem::filesystem_error& e) {
+        Debug::log(ERR, "Failed to resolve symlink for {}: {}", path.string(), e.what());
+        return nullptr;
+    }
+
+    auto image = CImage(resolvedPath);
     if (!image.success()) {
-        Debug::log(ERR, "Image {} could not be loaded: {}", path.string(), image.getError());
+        Debug::log(ERR, "Image {} could not be loaded: {}", resolvedPath.string(), image.getError());
         return nullptr;
     }
 
