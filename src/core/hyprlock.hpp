@@ -52,7 +52,6 @@ class CHyprlock {
 
     void                            attemptRestoreOnDeath();
 
-    void                            spawnAsync(const std::string& cmd);
     std::string                     spawnSync(const std::string& cmd);
 
     void                            onKey(uint32_t key, bool down);
