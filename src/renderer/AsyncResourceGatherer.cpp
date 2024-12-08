@@ -221,11 +221,11 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     const bool         ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
 
     static auto* const TRIM = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:text_trim");
-    std::string        TEXT = ISCMD ? g_pHyprlock->spawnSync(rq.asset) : rq.asset;
+    std::string        text = ISCMD ? g_pHyprlock->spawnSync(rq.asset) : rq.asset;
 
     if (**TRIM) {
-        TEXT.erase(0, TEXT.find_first_not_of(" \n\r\t"));
-        TEXT.erase(TEXT.find_last_not_of(" \n\r\t") + 1);
+        text.erase(0, text.find_first_not_of(" \n\r\t"));
+        text.erase(text.find_last_not_of(" \n\r\t") + 1);
     }
 
     auto CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080 /* dummy value */));
@@ -253,12 +253,12 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     PangoAttrList* attrList = nullptr;
     GError*        gError   = nullptr;
     char*          buf      = nullptr;
-    if (pango_parse_markup(TEXT.c_str(), -1, 0, &attrList, &buf, nullptr, &gError))
+    if (pango_parse_markup(text.c_str(), -1, 0, &attrList, &buf, nullptr, &gError))
         pango_layout_set_text(layout, buf, -1);
     else {
-        Debug::log(ERR, "Pango markup parsing for {} failed: {}", TEXT, gError->message);
+        Debug::log(ERR, "Pango markup parsing for {} failed: {}", text, gError->message);
         g_error_free(gError);
-        pango_layout_set_text(layout, TEXT.c_str(), -1);
+        pango_layout_set_text(layout, text.c_str(), -1);
     }
 
     if (!attrList)
