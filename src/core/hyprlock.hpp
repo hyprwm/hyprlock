@@ -69,7 +69,6 @@ class CHyprlock {
 
     size_t                          getPasswordBufferLen();
     size_t                          getPasswordBufferDisplayLen();
-    size_t                          getPasswordFailedAttempts();
 
     ext_session_lock_manager_v1*    getSessionLockMgr();
     ext_session_lock_v1*            getSessionLock();
