@@ -1,20 +1,29 @@
 #pragma once
 
-#include "hyprlock.hpp"
+#include "Auth.hpp"
 
 #include <memory>
 #include <optional>
 #include <string>
 #include <sdbus-c++/sdbus-c++.h>
 
-class CFingerprint {
+class CFingerprint : public IAuthImplementation {
   public:
     CFingerprint();
 
-    std::shared_ptr<sdbus::IConnection> start();
-    bool                                isAuthenticated();
-    std::optional<std::string>          getLastMessage();
-    void                                terminate();
+    ~CFingerprint() override;
+    eAuthImplementations getImplType() override {
+        return AUTH_IMPL_FINGERPRINT;
+    }
+    void                                init() override;
+    void                                handleInput(const std::string& input) override;
+    bool                                isAuthenticated() override;
+    bool                                checkWaiting() override;
+    std::optional<std::string>          getLastFailText() override;
+    std::optional<std::string>          getLastPrompt() override;
+    void                                terminate() override;
+
+    std::shared_ptr<sdbus::IConnection> getConnection();
 
   private:
     struct SDBUSState {
@@ -34,7 +43,6 @@ class CFingerprint {
     std::string m_sFingerprintReady;
     std::string m_sFingerprintPresent;
     bool        m_bAuthenticated = false;
-    bool        m_bEnabled       = false;
 
     void        handleVerifyStatus(const std::string& result, const bool done);
 
@@ -46,5 +54,3 @@ class CFingerprint {
     bool        stopVerify();
     bool        releaseDevice();
 };
-
-inline std::unique_ptr<CFingerprint> g_pFingerprint;

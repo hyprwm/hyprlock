@@ -1,12 +1,14 @@
 #pragma once
 
-#include <memory>
+#include "Auth.hpp"
+
 #include <optional>
 #include <string>
 #include <mutex>
 #include <condition_variable>
+#include <functional>
 
-class CAuth {
+class CPam : public IAuthImplementation {
   public:
     struct SPamConversationState {
         std::string             input    = "";
@@ -19,26 +21,24 @@ class CAuth {
         bool                    waitingForPamAuth = false;
         bool                    inputRequested    = false;
         bool                    failTextFromPam   = false;
+        std::function<void()>   waitForInput      = []() {};
     };
 
-    CAuth();
+    CPam();
 
-    void                       start();
-    bool                       auth();
-    bool                       isAuthenticated();
+    void waitForInput();
 
-    void                       waitForInput();
-    void                       submitInput(std::string input);
-
-    std::optional<std::string> getLastFailText();
-    std::optional<std::string> getLastPrompt();
-
-    bool                       checkWaiting();
-
-    void                       terminate();
-
-    // Should only be set via the main thread
-    bool m_bDisplayFailText = false;
+    ~CPam() override;
+    eAuthImplementations getImplType() override {
+        return AUTH_IMPL_PAM;
+    }
+    void                       init() override;
+    void                       handleInput(const std::string& input) override;
+    bool                       isAuthenticated() override;
+    bool                       checkWaiting() override;
+    std::optional<std::string> getLastFailText() override;
+    std::optional<std::string> getLastPrompt() override;
+    void                       terminate() override;
 
   private:
     SPamConversationState m_sConversationState;
@@ -48,7 +48,6 @@ class CAuth {
 
     std::string           m_sPamModule;
 
+    bool                  auth();
     void                  resetConversation();
 };
-
-inline std::unique_ptr<CAuth> g_pAuth;
