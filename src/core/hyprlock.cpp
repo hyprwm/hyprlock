@@ -2,9 +2,9 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
-#include "Auth.hpp"
+#include "../auth/Auth.hpp"
+#include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
-#include "Fingerprint.hpp"
 #include "linux-dmabuf-unstable-v1-protocol.h"
 #include <sys/wait.h>
 #include <sys/poll.h>
@@ -422,8 +422,8 @@ void CHyprlock::run() {
     g_pAuth = std::make_unique<CAuth>();
     g_pAuth->start();
 
-    g_pFingerprint                           = std::make_unique<CFingerprint>();
-    std::shared_ptr<sdbus::IConnection> conn = g_pFingerprint->start();
+    const auto fingerprintAuth = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
+    const auto dbusConn        = (fingerprintAuth) ? ((CFingerprint*)fingerprintAuth.get())->getConnection() : nullptr;
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
@@ -438,13 +438,13 @@ void CHyprlock::run() {
         .fd     = wl_display_get_fd(m_sWaylandState.display),
         .events = POLLIN,
     };
-    if (conn) {
+    if (dbusConn) {
         pollfds[1] = {
-            .fd     = conn->getEventLoopPollData().fd,
+            .fd     = dbusConn->getEventLoopPollData().fd,
             .events = POLLIN,
         };
     }
-    size_t      fdcount = conn ? 2 : 1;
+    size_t      fdcount = dbusConn ? 2 : 1;
 
     std::thread pollThr([this, &pollfds, fdcount]() {
         while (!m_bTerminate) {
@@ -524,7 +524,7 @@ void CHyprlock::run() {
         m_sLoopState.event = false;
 
         if (pollfds[1].revents & POLLIN /* dbus */) {
-            while (conn && conn->processPendingEvent()) {
+            while (dbusConn && dbusConn->processPendingEvent()) {
                 ;
             }
         }
@@ -592,7 +592,6 @@ void CHyprlock::run() {
     pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
     g_pAuth->terminate();
-    g_pFingerprint->terminate();
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
@@ -810,24 +809,6 @@ static const ext_session_lock_v1_listener sessionLockListener = {
 };
 
 // end session_lock
-
-void CHyprlock::onPasswordCheckTimer() {
-    // check result
-    if (g_pAuth->isAuthenticated()) {
-        unlock();
-    } else {
-        m_sPasswordState.passBuffer = "";
-        m_sPasswordState.failedAttempts += 1;
-        Debug::log(LOG, "Failed attempts: {}", m_sPasswordState.failedAttempts);
-
-        g_pAuth->m_bDisplayFailText = true;
-        forceUpdateTimers();
-
-        g_pAuth->start();
-
-        renderAllOutputs();
-    }
-}
 
 void CHyprlock::clearPasswordBuffer() {
     if (m_sPasswordState.passBuffer.empty())
@@ -1085,10 +1066,6 @@ size_t CHyprlock::getPasswordBufferLen() {
 size_t CHyprlock::getPasswordBufferDisplayLen() {
     // Counts utf-8 codepoints in the buffer. A byte is counted if it does not match 0b10xxxxxx.
     return std::count_if(m_sPasswordState.passBuffer.begin(), m_sPasswordState.passBuffer.end(), [](char c) { return (c & 0xc0) != 0x80; });
-}
-
-size_t CHyprlock::getPasswordFailedAttempts() {
-    return m_sPasswordState.failedAttempts;
 }
 
 std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,

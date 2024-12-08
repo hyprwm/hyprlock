@@ -1,7 +1,7 @@
 #include "PasswordInputField.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
-#include "../../core/Auth.hpp"
+#include "../../auth/Auth.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../helpers/Log.hpp"
 #include <hyprutils/string/String.hpp>
@@ -334,13 +334,13 @@ void CPasswordInputField::updatePlaceholder() {
         return;
     }
 
-    const auto AUTHFEEDBACK   = g_pAuth->m_bDisplayFailText ? g_pAuth->getLastFailText().value_or("Ups, no fail text?") : g_pAuth->getLastPrompt().value_or("Ups, no prompt?");
+    const auto AUTHFEEDBACK   = g_pAuth->getInlineFeedback();
     const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
 
-    if (!ALLOWCOLORSWAP && placeholder.lastAuthFeedback == AUTHFEEDBACK && g_pHyprlock->getPasswordFailedAttempts() == placeholder.failedAttempts)
+    if (!ALLOWCOLORSWAP && placeholder.lastAuthFeedback == AUTHFEEDBACK && g_pAuth->m_iFailedAttempts == placeholder.failedAttempts)
         return;
 
-    placeholder.failedAttempts   = g_pHyprlock->getPasswordFailedAttempts();
+    placeholder.failedAttempts   = g_pAuth->m_iFailedAttempts;
     placeholder.lastAuthFeedback = AUTHFEEDBACK;
 
     placeholder.asset = nullptr;
