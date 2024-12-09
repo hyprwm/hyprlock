@@ -171,11 +171,13 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:no_fade_out", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
-    m_config.addConfigValue("general:pam_module", Hyprlang::STRING{"hyprlock"});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
-    m_config.addConfigValue("general:enable_fingerprint", Hyprlang::INT{0});
-    m_config.addConfigValue("general:fingerprint_ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
-    m_config.addConfigValue("general:fingerprint_present_message", Hyprlang::STRING{"Scanning fingerprint"});
+
+    m_config.addConfigValue("auth:pam:enabled", Hyprlang::INT{1});
+    m_config.addConfigValue("auth:pam:module", Hyprlang::STRING{"hyprlock"});
+    m_config.addConfigValue("auth:fingerprint:enabled", Hyprlang::INT{0});
+    m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
+    m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});

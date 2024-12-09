@@ -37,9 +37,9 @@ static std::map<std::string, MatchResult> s_mapStringToTestType = {{"verify-no-m
                                                                    {"verify-unknown-error", MATCH_UNKNOWN_ERROR}};
 
 CFingerprint::CFingerprint() {
-    static auto* const PFINGERPRINTREADY   = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:fingerprint_ready_message"));
+    static auto* const PFINGERPRINTREADY   = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("auth:fingerprint:ready_message"));
     m_sFingerprintReady                    = *PFINGERPRINTREADY;
-    static auto* const PFINGERPRINTPRESENT = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:fingerprint_present_message"));
+    static auto* const PFINGERPRINTPRESENT = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("auth:fingerprint:present_message"));
     m_sFingerprintPresent                  = *PFINGERPRINTPRESENT;
 }
 
