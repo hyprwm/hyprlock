@@ -153,6 +153,7 @@ bool CFingerprint::createDeviceProxy() {
 }
 
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
+    g_pAuth->postActivity(AUTH_IMPL_FINGERPRINT);
     Debug::log(LOG, "fprint: handling status {}", result);
     auto matchResult = s_mapStringToTestType[result];
     if (m_sDBUSState.sleeping && matchResult != MATCH_DISCONNECTED)
