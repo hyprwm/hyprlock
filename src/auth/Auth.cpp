@@ -46,13 +46,20 @@ bool CAuth::checkWaiting() {
 }
 
 std::string CAuth::getInlineFeedback() {
+    std::optional<std::string> firstFeedback = std::nullopt;
     for (const auto& i : m_vImpls) {
         const auto FEEDBACK = (m_bDisplayFailText) ? i->getLastFailText() : i->getLastPrompt();
-        if (FEEDBACK.has_value())
+        if (!FEEDBACK.has_value())
+            continue;
+
+        if (!firstFeedback.has_value())
+            firstFeedback = FEEDBACK;
+
+        if (i->getImplType() == m_eLastActiveImpl)
             return FEEDBACK.value();
     }
 
-    return "Ups, empty authentication feedack";
+    return firstFeedback.value_or("Ups, no authentication feedack");
 }
 
 std::optional<std::string> CAuth::getFailText(eAuthImplementations implType) {
@@ -106,4 +113,8 @@ static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data)
 
 void CAuth::enqueueCheckAuthenticated() {
     g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
+}
+
+void CAuth::postActivity(eAuthImplementations implType) {
+    m_eLastActiveImpl = implType;
 }
