@@ -7,12 +7,17 @@
 
 #include <hyprlang.hpp>
 #include <memory>
+#include <optional>
 
 CAuth::CAuth() {
-    m_vImpls.push_back(std::make_shared<CPam>());
-    static auto* const PENABLEFINGERPRINT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:enable_fingerprint");
+    static auto* const PENABLEPAM = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("auth:pam:enabled");
+    if (**PENABLEPAM)
+        m_vImpls.push_back(std::make_shared<CPam>());
+    static auto* const PENABLEFINGERPRINT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("auth:fingerprint:enabled");
     if (**PENABLEFINGERPRINT)
         m_vImpls.push_back(std::make_shared<CFingerprint>());
+
+    RASSERT(!m_vImpls.empty(), "At least one authentication method must be enabled!");
 }
 
 void CAuth::start() {

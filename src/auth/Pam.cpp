@@ -61,7 +61,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
 }
 
 CPam::CPam() {
-    static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:pam_module"));
+    static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("auth:pam:module"));
     m_sPamModule                  = *PPAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
