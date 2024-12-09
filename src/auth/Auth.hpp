@@ -36,7 +36,8 @@ class CAuth {
     bool checkWaiting();
 
     // Used by the PasswordInput field. We are constraint to a single line for the authentication feedback there.
-    // Based on m_bDisplayFailText, this will return either the fail text or the prompt. This result can also be influence by the auth configuration.
+    // Based on m_bDisplayFailText, this will return either the fail text or the prompt.
+    // Based on m_eLastActiveImpl, it will select the implementation.
     std::string                          getInlineFeedback();
 
     std::optional<std::string>           getFailText(eAuthImplementations implType);
@@ -51,9 +52,11 @@ class CAuth {
     size_t m_iFailedAttempts  = 0;
 
     void   enqueueCheckAuthenticated();
+    void   postActivity(eAuthImplementations implType);
 
   private:
     std::vector<std::shared_ptr<IAuthImplementation>> m_vImpls;
+    std::optional<eAuthImplementations>               m_eLastActiveImpl = std::nullopt;
 };
 
 inline std::unique_ptr<CAuth> g_pAuth;
