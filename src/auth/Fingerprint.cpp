@@ -177,7 +177,7 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             stopVerify();
             m_sDBUSState.message = "";
             m_bAuthenticated     = true;
-            g_pAuth->enqueueCheckAuthenticated();
+            g_pAuth->enqueueCheckAuthenticated(false);
             break;
         case MATCH_RETRY: m_sDBUSState.message = "Please retry fingerprint scan"; break;
         case MATCH_SWIPE_TOO_SHORT: m_sDBUSState.message = "Swipe too short - try again"; break;

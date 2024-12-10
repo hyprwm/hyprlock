@@ -51,7 +51,7 @@ class CAuth {
     bool   m_bDisplayFailText = false;
     size_t m_iFailedAttempts  = 0;
 
-    void   enqueueCheckAuthenticated();
+    void   enqueueCheckAuthenticated(bool clearPasswordBuffer = true);
     void   postActivity(eAuthImplementations implType);
 
   private:
