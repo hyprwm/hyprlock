@@ -172,6 +172,9 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
     m_config.addConfigValue("general:pam_module", Hyprlang::STRING{"hyprlock"});
+    m_config.addConfigValue("general:hash_algorithm", Hyprlang::STRING{"SHA256"});
+    m_config.addConfigValue("general:hash_salt", Hyprlang::STRING{""});
+    m_config.addConfigValue("general:password_hash", Hyprlang::STRING{""});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
     m_config.addConfigValue("general:enable_fingerprint", Hyprlang::INT{0});
     m_config.addConfigValue("general:fingerprint_ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
