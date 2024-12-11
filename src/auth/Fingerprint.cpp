@@ -163,21 +163,22 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_NO_MATCH:
             stopVerify();
             if (m_sDBUSState.retries >= 3) {
-                m_sDBUSState.message = "Fingerprint auth disabled: too many failed attempts";
+                m_sDBUSState.message = "Fingerprint auth disabled (too many failed attempts)";
             } else {
                 done = false;
                 startVerify(true);
+                m_sDBUSState.message = "Fingerprint not matched";
             }
             break;
         case MATCH_UNKNOWN_ERROR:
             stopVerify();
-            m_sDBUSState.message = "Unknown fingerprint error, disabling fingerprint auth";
+            m_sDBUSState.message = "Fingerprint auth disabled (unknown error)";
             break;
         case MATCH_MATCHED:
             stopVerify();
             m_sDBUSState.message = "";
             m_bAuthenticated     = true;
-            g_pAuth->enqueueCheckAuthenticated(false);
+            g_pAuth->enqueueCheckAuthenticated();
             break;
         case MATCH_RETRY: m_sDBUSState.message = "Please retry fingerprint scan"; break;
         case MATCH_SWIPE_TOO_SHORT: m_sDBUSState.message = "Swipe too short - try again"; break;
@@ -188,6 +189,7 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             m_sDBUSState.abort   = true;
             break;
     }
+    g_pAuth->enqueueCheckAuthenticated();
     g_pHyprlock->enqueueForceUpdateTimers();
     if (done || m_sDBUSState.abort)
         m_sDBUSState.done = true;
@@ -218,7 +220,7 @@ void CFingerprint::startVerify(bool isRetry) {
         if (e) {
             Debug::log(WARN, "fprint: could not start verifying, {}", e->what());
             if (isRetry)
-                m_sDBUSState.message = "Fingerprint auth disabled: could not restart verification";
+                m_sDBUSState.message = "Fingerprint auth disabled (failed to restart)";
         } else {
             Debug::log(LOG, "fprint: started verifying");
             if (isRetry) {
