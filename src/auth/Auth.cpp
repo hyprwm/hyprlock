@@ -100,14 +100,11 @@ void CAuth::terminate() {
 }
 
 static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data) {
-    const auto PCLEAR = (bool*)data;
     // check result
     if (g_pAuth->isAuthenticated()) {
         g_pHyprlock->unlock();
     } else {
-        if (*PCLEAR)
-            g_pHyprlock->clearPasswordBuffer();
-
+        g_pHyprlock->clearPasswordBuffer();
         g_pAuth->m_iFailedAttempts += 1;
         Debug::log(LOG, "Failed attempts: {}", g_pAuth->m_iFailedAttempts);
 
@@ -118,8 +115,8 @@ static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data)
     }
 }
 
-void CAuth::enqueueCheckAuthenticated(bool clearPasswordBuffer) {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, new bool(clearPasswordBuffer));
+void CAuth::enqueueCheckAuthenticated() {
+    g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
 }
 
 void CAuth::postActivity(eAuthImplementations implType) {
