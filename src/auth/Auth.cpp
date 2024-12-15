@@ -68,18 +68,16 @@ std::string CAuth::getInlineFeedback() {
 
 std::optional<std::string> CAuth::getFailText(eAuthImplementations implType) {
     for (const auto& i : m_vImpls) {
-        if (i->getImplType() == implType) {
+        if (i->getImplType() == implType)
             return i->getLastFailText();
-        }
     }
     return std::nullopt;
 }
 
 std::optional<std::string> CAuth::getPrompt(eAuthImplementations implType) {
     for (const auto& i : m_vImpls) {
-        if (i->getImplType() == implType) {
+        if (i->getImplType() == implType)
             return i->getLastPrompt();
-        }
     }
     return std::nullopt;
 }
@@ -101,11 +99,11 @@ void CAuth::terminate() {
 
 static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data) {
     // check result
-    if (g_pAuth->isAuthenticated()) {
+    if (g_pAuth->isAuthenticated())
         g_pHyprlock->unlock();
-    } else {
+    else {
         g_pHyprlock->clearPasswordBuffer();
-        g_pAuth->m_iFailedAttempts += 1;
+        g_pAuth->m_iFailedAttempts++;
         Debug::log(LOG, "Failed attempts: {}", g_pAuth->m_iFailedAttempts);
 
         g_pAuth->m_bDisplayFailText = true;

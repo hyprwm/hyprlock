@@ -11,17 +11,17 @@ class CFingerprint : public IAuthImplementation {
   public:
     CFingerprint();
 
-    ~CFingerprint() override;
-    eAuthImplementations getImplType() override {
+    virtual ~CFingerprint();
+    virtual eAuthImplementations getImplType() {
         return AUTH_IMPL_FINGERPRINT;
     }
-    void                                init() override;
-    void                                handleInput(const std::string& input) override;
-    bool                                isAuthenticated() override;
-    bool                                checkWaiting() override;
-    std::optional<std::string>          getLastFailText() override;
-    std::optional<std::string>          getLastPrompt() override;
-    void                                terminate() override;
+    virtual void                        init();
+    virtual void                        handleInput(const std::string& input);
+    virtual bool                        isAuthenticated();
+    virtual bool                        checkWaiting();
+    virtual std::optional<std::string>  getLastFailText();
+    virtual std::optional<std::string>  getLastPrompt();
+    virtual void                        terminate();
 
     std::shared_ptr<sdbus::IConnection> getConnection();
 
