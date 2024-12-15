@@ -146,6 +146,12 @@ void CPasswordInputField::updateDots() {
     if (passwordLength == dots.currentAmount)
         return;
 
+    // Fully fading the dots to 0 currently does not look good
+    if (passwordLength == 0 && dots.currentAmount > 2) {
+        dots.currentAmount = 0;
+        return;
+    }
+
     if (std::abs(passwordLength - dots.currentAmount) > 1) {
         dots.currentAmount = std::clamp(dots.currentAmount, passwordLength - 1.f, passwordLength + 1.f);
         dots.lastFrame     = std::chrono::system_clock::now();
@@ -188,35 +194,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updateDots();
     updateColors();
     updatePlaceholder();
+    updateWidth();
     updateHiddenInputState();
-
-    static auto TIMER = std::chrono::system_clock::now();
-
-    if (placeholder.asset) {
-        const auto TARGETSIZEX = placeholder.asset->texture.m_vSize.x + inputFieldBox.h;
-
-        if (size.x < TARGETSIZEX) {
-            const auto DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - TIMER).count(), 8000, 20000);
-            TIMER            = std::chrono::system_clock::now();
-            forceReload      = true;
-
-            size.x += std::clamp((TARGETSIZEX - size.x) * DELTA / 100000.0, 1.0, 1000.0);
-
-            if (size.x > TARGETSIZEX) {
-                size.x       = TARGETSIZEX;
-                redrawShadow = true;
-            }
-        }
-
-        pos = posFromHVAlign(viewport, size, configPos, halign, valign);
-    } else if (size.x != configSize.x) {
-        size.x = configSize.x;
-        pos    = posFromHVAlign(viewport, size, configPos, halign, valign);
-    }
 
     SRenderData shadowData = data;
     shadowData.opacity *= fade.a;
-    shadow.draw(shadowData);
+
+    if (!dynamicWidth.animated || size.x > dynamicWidth.source)
+        shadow.draw(shadowData);
 
     CGradientValueData outerGrad = colorState.outer;
     for (auto& c : outerGrad.m_vColors)
@@ -320,7 +305,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         currAsset = placeholder.asset;
 
-        if (currAsset) {
+        if (currAsset && currAsset->texture.m_vSize.x + size.y <= size.x) {
             Vector2D pos = outerBox.pos() + outerBox.size() / 2.f;
             pos          = pos - currAsset->texture.m_vSize / 2.f;
             CBox textbox{pos, currAsset->texture.m_vSize};
@@ -329,7 +314,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             forceReload = true;
     }
 
-    return dots.currentAmount != passwordLength || fade.animated || colorState.animated || redrawShadow || data.opacity < 1.0 || forceReload;
+    return dots.currentAmount != passwordLength || fade.animated || colorState.animated || redrawShadow || data.opacity < 1.0 || dynamicWidth.animated || forceReload;
 }
 
 static void failTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
@@ -387,6 +372,40 @@ void CPasswordInputField::updatePlaceholder() {
     request.props["color"]       = colorState.font;
     request.props["font_size"]   = (int)size.y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+}
+
+void CPasswordInputField::updateWidth() {
+    const auto NOW         = std::chrono::system_clock::now();
+    double     targetSizeX = configSize.x;
+
+    if (placeholder.asset)
+        targetSizeX = placeholder.asset->texture.m_vSize.x + size.y;
+
+    if (targetSizeX < configSize.x)
+        targetSizeX = configSize.x;
+
+    if (size.x != targetSizeX) {
+        if (!dynamicWidth.animated) {
+            dynamicWidth.source   = size.x;
+            dynamicWidth.start    = NOW;
+            dynamicWidth.animated = true;
+        }
+
+        const auto TIMEDELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(NOW - dynamicWidth.start).count(), 1000, 100000);
+        const auto INCR      = std::clamp(std::abs(targetSizeX - dynamicWidth.source) * TIMEDELTA / 1000000.0, 1.0, 1000.0);
+        if (size.x > targetSizeX)
+            size.x -= INCR;
+        else
+            size.x += INCR;
+
+        if ((dynamicWidth.source < targetSizeX && size.x > targetSizeX) || (dynamicWidth.source > targetSizeX && size.x < targetSizeX)) {
+            size.x                = targetSizeX;
+            redrawShadow          = true;
+            dynamicWidth.animated = false;
+        }
+    }
+
+    pos = posFromHVAlign(viewport, size, configPos, halign, valign);
 }
 
 void CPasswordInputField::updateHiddenInputState() {
