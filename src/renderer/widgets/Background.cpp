@@ -10,9 +10,9 @@
 
 CBackground::~CBackground() {
 
-    if (bgTimer) {
-        bgTimer->cancel();
-        bgTimer.reset();
+    if (reloadTimer) {
+        reloadTimer->cancel();
+        reloadTimer.reset();
     }
 
     if (fade) {
@@ -39,7 +39,7 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
         path              = std::any_cast<Hyprlang::STRING>(props.at("path"));
         reloadCommand     = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
         reloadTime        = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
-        crossfade_time    = std::any_cast<Hyprlang::FLOAT>(props.at("crossfade_time"));
+        crossFadeTime    = std::any_cast<Hyprlang::FLOAT>(props.at("crossfade_time"));
 
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CBackground: {}", e.what()); //
@@ -52,7 +52,7 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
     } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
 
     if (!isScreenshot)
-        plantTimer(); // No reloads for screenshots.
+        plantReloadTimer(); // No reloads for screenshots.
 }
 
 void CBackground::renderRect(CColor color) {
@@ -60,21 +60,21 @@ void CBackground::renderRect(CColor color) {
     g_pRenderer->renderRect(monbox, color, 0);
 }
 
-static void onTimer(std::shared_ptr<CTimer> self, void* data) {
+static void onReloadTimer(std::shared_ptr<CTimer> self, void* data) {
     const auto PBG = (CBackground*)data;
 
-    PBG->onTimerUpdate();
-    PBG->plantTimer();
+    PBG->onReloadTimerUpdate();
+    PBG->plantReloadTimer();
 }
 
-static void onFadeTimer(std::shared_ptr<CTimer> self, void* data) {
+static void onCrossFadeTimer(std::shared_ptr<CTimer> self, void* data) {
     const auto PBG = (CBackground*)data;
-    PBG->onFadeTimerUpdate();
+    PBG->onCrossFadeTimerUpdate();
 }
 
 static void onAssetCallback(void* data) {
     const auto PBG = (CBackground*)data;
-    PBG->startFadeOrUpdateRender();
+    PBG->startCrossFadeOrUpdateRender();
 }
 
 static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
@@ -137,16 +137,16 @@ bool CBackground::draw(const SRenderData& data) {
 
         blurredFB.bind();
 
-        if (fade) {
+        if (fade)
             g_pRenderer->renderTextureMix(texbox, asset->texture, pendingAsset->texture, 1.0,
-                                          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count() / (1000 * crossfade_time),
+                                          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count() / (1000 * crossFadeTime),
                                           0, HYPRUTILS_TRANSFORM_NORMAL);
-        } else {
+        else
             g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
                                        isScreenshot ?
                                            wlTransformToHyprutils(invertTransform(output->transform)) :
                                            HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
-        }
+        
 
         if (blurPasses > 0)
             g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
@@ -171,23 +171,18 @@ bool CBackground::draw(const SRenderData& data) {
     texbox.round();
     g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
 
-    if (fade)
-        return true; // actively redraw during fading
-    else
-        return data.opacity < 1.0;
+    return fade || data.opacity < 1.0; // actively render during fading
 }
 
-void CBackground::plantTimer() {
-
-    RASSERT(!(reloadTime >= 0 && isScreenshot), "Reloadable background can't be used with screenshot")
+void CBackground::plantReloadTimer() {
 
     if (reloadTime == 0) {
-        bgTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onTimer, this, true);
+        reloadTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onReloadTimer, this, true);
     } else if (reloadTime > 0)
-        bgTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), onTimer, this, false);
+        reloadTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), onReloadTimer, this, false);
 };
 
-void CBackground::onFadeTimerUpdate() {
+void CBackground::onCrossFadeTimerUpdate() {
 
     // Animation done: Unload previous asset, deinitialize the fade and pass the asset
 
@@ -209,7 +204,7 @@ void CBackground::onFadeTimerUpdate() {
     g_pHyprlock->renderOutput(output->stringPort);
 };
 
-void CBackground::onTimerUpdate() {
+void CBackground::onReloadTimerUpdate() {
     const std::string OLDPATH = path;
 
     // Path parsing and early returns
@@ -223,9 +218,8 @@ void CBackground::onTimerUpdate() {
         if (path.starts_with("file://"))
             path = path.substr(7);
 
-        if (path.empty()) {
+        if (path.empty()) 
             return;
-        }
     }
 
     try {
@@ -241,9 +235,8 @@ void CBackground::onTimerUpdate() {
         return;
     }
 
-    if (!pendingResourceID.empty()) {
+    if (!pendingResourceID.empty())
         return;
-    }
 
     // Issue the next request
 
@@ -258,7 +251,7 @@ void CBackground::onTimerUpdate() {
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 };
 
-void CBackground::startFadeOrUpdateRender() {
+void CBackground::startCrossFadeOrUpdateRender() {
     auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
         if (newAsset->texture.m_iType == TEXTURE_INVALID) {
@@ -268,7 +261,7 @@ void CBackground::startFadeOrUpdateRender() {
 
             pendingAsset = newAsset;
 
-            if (crossfade_time > 0) {
+            if (crossFadeTime > 0) {
                 // Start a fade
                 if (!fade) {
 
@@ -286,9 +279,9 @@ void CBackground::startFadeOrUpdateRender() {
 
                 fade->start          = std::chrono::system_clock::now();
                 fade->a              = 0;
-                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossfade_time)), onFadeTimer, this);
+                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossFadeTime)), onCrossFadeTimer, this);
             } else {
-                onFadeTimerUpdate();
+                onCrossFadeTimerUpdate();
             }
         }
     } else if (!pendingResourceID.empty()) {

@@ -29,10 +29,10 @@ class CBackground : public IWidget {
     virtual bool draw(const SRenderData& data);
     void         renderRect(CColor color);
 
-    void         onTimerUpdate();
-    void         onFadeTimerUpdate();
-    void         plantTimer();
-    void         startFadeOrUpdateRender();
+    void         onReloadTimerUpdate();
+    void         onCrossFadeTimerUpdate();
+    void         plantReloadTimer();
+    void         startCrossFadeOrUpdateRender();
 
   private:
     // if needed
@@ -51,7 +51,7 @@ class CBackground : public IWidget {
     std::string                             resourceID;
     std::string                             pendingResourceID;
 
-    float                                   crossfade_time = -1.0;
+    float                                   crossFadeTime = -1.0;
 
     CColor                                  color;
     SPreloadedAsset*                        asset        = nullptr;
@@ -65,6 +65,6 @@ class CBackground : public IWidget {
     int                                     reloadTime;
     std::string                             reloadCommand;
     CAsyncResourceGatherer::SPreloadRequest request;
-    std::shared_ptr<CTimer>                 bgTimer;
+    std::shared_ptr<CTimer>                 reloadTimer;
     std::filesystem::file_time_type         modificationTime;
 };
