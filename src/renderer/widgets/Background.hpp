@@ -16,9 +16,9 @@ struct SPreloadedAsset;
 class COutput;
 
 struct SFade {
-    std::chrono::system_clock::time_point   start;
-    float                                   a                 = 0;
-    std::shared_ptr<CTimer>                 crossFadeTimer    = nullptr;
+    std::chrono::system_clock::time_point start;
+    float                                 a              = 0;
+    std::shared_ptr<CTimer>               crossFadeTimer = nullptr;
 };
 
 class CBackground : public IWidget {
@@ -36,30 +36,29 @@ class CBackground : public IWidget {
 
   private:
     // if needed
-    CFramebuffer     blurredFB;
+    CFramebuffer                            blurredFB;
 
-    int              blurSize          = 10;
-    int              blurPasses        = 3;
-    float            noise             = 0.0117;
-    float            contrast          = 0.8916;
-    float            brightness        = 0.8172;
-    float            vibrancy          = 0.1696;
-    float            vibrancy_darkness = 0.0;
-    Vector2D         viewport;
-    std::string      path              = "";
+    int                                     blurSize          = 10;
+    int                                     blurPasses        = 3;
+    float                                   noise             = 0.0117;
+    float                                   contrast          = 0.8916;
+    float                                   brightness        = 0.8172;
+    float                                   vibrancy          = 0.1696;
+    float                                   vibrancy_darkness = 0.0;
+    Vector2D                                viewport;
+    std::string                             path = "";
 
+    std::string                             resourceID;
+    std::string                             pendingResourceID;
 
-    std::string      resourceID;
-    std::string      pendingResourceID;
+    float                                   crossfade_time = -1.0;
 
-    float            crossfade_time   = -1.0;
-
-    CColor           color;
-    SPreloadedAsset* asset            = nullptr;
-    COutput*         output           = nullptr;
-    bool             isScreenshot     = false;
-    SPreloadedAsset* pendingAsset     = nullptr;
-    bool             firstRender      = true;
+    CColor                                  color;
+    SPreloadedAsset*                        asset        = nullptr;
+    COutput*                                output       = nullptr;
+    bool                                    isScreenshot = false;
+    SPreloadedAsset*                        pendingAsset = nullptr;
+    bool                                    firstRender  = true;
 
     std::unique_ptr<SFade>                  fade;
 

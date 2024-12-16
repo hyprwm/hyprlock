@@ -16,11 +16,11 @@ CBackground::~CBackground() {
     }
 
     if (fade) {
-      if (fade->crossFadeTimer) {
-        fade->crossFadeTimer->cancel();
-        fade->crossFadeTimer.reset();
-      }
-      fade.reset();
+        if (fade->crossFadeTimer) {
+            fade->crossFadeTimer->cancel();
+            fade->crossFadeTimer.reset();
+        }
+        fade.reset();
     }
 }
 
@@ -59,7 +59,6 @@ void CBackground::renderRect(CColor color) {
     CBox monbox = {0, 0, viewport.x, viewport.y};
     g_pRenderer->renderRect(monbox, color, 0);
 }
-
 
 static void onTimer(std::shared_ptr<CTimer> self, void* data) {
     const auto PBG = (CBackground*)data;
@@ -107,7 +106,6 @@ bool CBackground::draw(const SRenderData& data) {
         return true;
     }
 
-
     if (fade || ((blurPasses > 0 || isScreenshot) && (!blurredFB.isAllocated() || firstRender))) {
 
         if (firstRender)
@@ -141,13 +139,13 @@ bool CBackground::draw(const SRenderData& data) {
 
         if (fade) {
             g_pRenderer->renderTextureMix(texbox, asset->texture, pendingAsset->texture, 1.0,
-                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count()/(1000*crossfade_time),
-                    0, HYPRUTILS_TRANSFORM_NORMAL);
+                                          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count() / (1000 * crossfade_time),
+                                          0, HYPRUTILS_TRANSFORM_NORMAL);
         } else {
             g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
-                    isScreenshot ?
-                      wlTransformToHyprutils(invertTransform(output->transform)) :
-                      HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
+                                       isScreenshot ?
+                                           wlTransformToHyprutils(invertTransform(output->transform)) :
+                                           HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
         }
 
         if (blurPasses > 0)
@@ -177,12 +175,11 @@ bool CBackground::draw(const SRenderData& data) {
         return true; // actively redraw during fading
     else
         return data.opacity < 1.0;
-
 }
 
 void CBackground::plantTimer() {
 
-    RASSERT(!(reloadTime >= 0 && isScreenshot), "Reloadable background can't be used with screenshot" )
+    RASSERT(!(reloadTime >= 0 && isScreenshot), "Reloadable background can't be used with screenshot")
 
     if (reloadTime == 0) {
         bgTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onTimer, this, true);
@@ -203,14 +200,13 @@ void CBackground::onFadeTimerUpdate() {
         blurredFB.release();
     }
 
-    asset       = pendingAsset;
-    resourceID  = pendingResourceID;
+    asset             = pendingAsset;
+    resourceID        = pendingResourceID;
     pendingResourceID = "";
-    pendingAsset = nullptr;
-    firstRender = true;
+    pendingAsset      = nullptr;
+    firstRender       = true;
 
     g_pHyprlock->renderOutput(output->stringPort);
-
 };
 
 void CBackground::onTimerUpdate() {
@@ -260,7 +256,6 @@ void CBackground::onTimerUpdate() {
     request.callbackData = this;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-
 };
 
 void CBackground::startFadeOrUpdateRender() {
@@ -268,7 +263,7 @@ void CBackground::startFadeOrUpdateRender() {
     if (newAsset) {
         if (newAsset->texture.m_iType == TEXTURE_INVALID) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
-            Debug::log( ERR, "New asset had an invalid texture!");
+            Debug::log(ERR, "New asset had an invalid texture!");
         } else if (resourceID != pendingResourceID) {
 
             pendingAsset = newAsset;
@@ -277,22 +272,21 @@ void CBackground::startFadeOrUpdateRender() {
                 // Start a fade
                 if (!fade) {
 
-                  fade = std::make_unique<SFade>(std::chrono::system_clock::now(), 0, nullptr);
+                    fade = std::make_unique<SFade>(std::chrono::system_clock::now(), 0, nullptr);
 
                 } else {
 
-                  // Maybe we where already fading so reset it just in case, but should'nt be happening.
+                    // Maybe we where already fading so reset it just in case, but should'nt be happening.
 
-                  if (fade->crossFadeTimer) {
-                    fade->crossFadeTimer->cancel();
-                    fade->crossFadeTimer.reset();
-                  };
-
+                    if (fade->crossFadeTimer) {
+                        fade->crossFadeTimer->cancel();
+                        fade->crossFadeTimer.reset();
+                    };
                 };
 
-                fade->start = std::chrono::system_clock::now();
-                fade->a = 0;
-                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0*crossfade_time)), onFadeTimer, this);
+                fade->start          = std::chrono::system_clock::now();
+                fade->a              = 0;
+                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossfade_time)), onFadeTimer, this);
             } else {
                 onFadeTimerUpdate();
             }
