@@ -116,8 +116,12 @@ protocol("protocols/wlr-screencopy-unstable-v1.xml"
 protocol("unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml"
          "linux-dmabuf-unstable-v1" false)
 
+# hyprlock-setpwhash
+add_executable(hyprlock-setpwhash "setpwhash/main.cpp")
+target_link_libraries(hyprlock-setpwhash PRIVATE sodium hyprutils)
+
 # Installation
-install(TARGETS hyprlock)
+install(TARGETS hyprlock hyprlock-setpwhash)
 
 install(FILES ${CMAKE_SOURCE_DIR}/pam/hyprlock
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d)
