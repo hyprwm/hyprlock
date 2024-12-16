@@ -19,7 +19,7 @@ in {
     inputs.self.overlays.sdbuscpp
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
-        stdenv = prev.gcc13Stdenv;
+        stdenv = prev.gcc14Stdenv;
         version = version + "+date=" + (mkDate (inputs.self.lastModifiedDate or "19700101")) + "_" + (inputs.self.shortRev or "dirty");
         inherit (final) hyprlang;
       };
