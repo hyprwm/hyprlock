@@ -41,6 +41,7 @@ class CPam : public IAuthImplementation {
     virtual void                       terminate();
 
   private:
+    std::thread           m_thread;
     SPamConversationState m_sConversationState;
 
     bool                  m_bBlockInput    = true;

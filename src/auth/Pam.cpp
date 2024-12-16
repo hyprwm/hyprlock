@@ -77,7 +77,7 @@ CPam::~CPam() {
 }
 
 void CPam::init() {
-    std::thread([this]() {
+    m_thread = std::thread([this]() {
         while (true) {
             resetConversation();
 
@@ -97,8 +97,10 @@ void CPam::init() {
                 return;
 
             g_pAuth->enqueueCheckAuthenticated();
+            if (AUTHENTICATED)
+                return;
         }
-    }).detach();
+    });
 }
 
 bool CPam::auth() {
@@ -181,6 +183,8 @@ bool CPam::checkWaiting() {
 
 void CPam::terminate() {
     m_sConversationState.inputSubmittedCondition.notify_all();
+    if (m_thread.joinable())
+        m_thread.join();
 }
 
 void CPam::resetConversation() {
