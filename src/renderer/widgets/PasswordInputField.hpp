@@ -24,6 +24,7 @@ class CPasswordInputField : public IWidget {
     void        updateDots();
     void        updateFade();
     void        updatePlaceholder();
+    void        updateWidth();
     void        updateHiddenInputState();
     void        updateInputState();
     void        updateColors();
@@ -45,6 +46,12 @@ class CPasswordInputField : public IWidget {
     uint64_t    configFailTimeoutMs = 2000;
 
     int         outThick, rounding;
+
+    struct {
+        std::chrono::system_clock::time_point start;
+        bool                                  animated = false;
+        double                                source   = 0;
+    } dynamicWidth;
 
     struct {
         float                                 currentAmount = 0;
