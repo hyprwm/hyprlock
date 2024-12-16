@@ -37,7 +37,5 @@ class CSodiumPWHash : public IAuthImplementation {
     std::thread       m_checkerThread;
     void              checkerLoop();
 
-    void              rehash(std::string& input);
-
     Hyprlang::CConfig m_config;
 };
