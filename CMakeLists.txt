@@ -49,6 +49,7 @@ pkg_check_modules(
   egl
   opengl
   xkbcommon
+  libgcrypt
   libjpeg
   libwebp
   libmagic
