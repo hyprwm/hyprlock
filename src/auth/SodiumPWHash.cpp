@@ -72,30 +72,9 @@ void CSodiumPWHash::terminate() {
         m_checkerThread.join();
 }
 
-void CSodiumPWHash::rehash(std::string& input) {
-    const auto CONFIGPATH = getSecretsConfigPath();
-
-    char       hash[crypto_pwhash_STRBYTES];
-    if (crypto_pwhash_str(hash, input.c_str(), input.size(), crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE) != 0) {
-        Debug::log(ERR, "[Sodium] Failed to hash password");
-        return;
-    }
-
-    std::ofstream out(CONFIGPATH);
-    out << "hyprlock {\n  pw_hash = " << hash << "\n}\n";
-    out.close();
-
-    // set perms to -rw-------
-    using std::filesystem::perms;
-    std::filesystem::permissions(CONFIGPATH, perms::owner_read | perms::owner_write);
-}
-
 void CSodiumPWHash::checkerLoop() {
-    static auto* const PPWHASH     = (Hyprlang::STRING*)getConfigValuePtr("pw_hash");
-    const auto         PWHASH      = std::string(*PPWHASH);
-    const bool         NEEDSREHASH = crypto_pwhash_str_needs_rehash(PWHASH.c_str(), crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE) != 0;
-    if (NEEDSREHASH)
-        Debug::log(WARN, "[Sodium] Password hash needs rehashing");
+    static auto* const PPWHASH = (Hyprlang::STRING*)getConfigValuePtr("pw_hash");
+    const auto         PWHASH  = std::string(*PPWHASH);
 
     while (true) {
         std::unique_lock<std::mutex> lk(m_sCheckerState.requestMutex);
@@ -109,8 +88,6 @@ void CSodiumPWHash::checkerLoop() {
             Debug::log(ERR, "[SodiumAuth] Invalid password hash set in secrets.conf");
             g_pAuth->enqueueFail();
         } else if (crypto_pwhash_str_verify(PWHASH.c_str(), m_sCheckerState.input.c_str(), m_sCheckerState.input.length()) == 0) {
-            if (NEEDSREHASH)
-                rehash(m_sCheckerState.input);
             g_pAuth->enqueueUnlock();
         } else {
             g_pAuth->enqueueFail();
