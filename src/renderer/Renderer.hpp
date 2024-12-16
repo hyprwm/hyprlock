@@ -33,6 +33,7 @@ class CRenderer {
     void                                    renderRect(const CBox& box, const CColor& col, int rounding = 0);
     void                                    renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding = 0, float alpha = 1.0);
     void                                    renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, std::optional<eTransform> tr = {});
+    void                                    renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
     void                                    blurFB(const CFramebuffer& outfb, SBlurParams params);
 
     std::unique_ptr<CAsyncResourceGatherer> asyncResourceGatherer;
@@ -50,6 +51,7 @@ class CRenderer {
 
     CShader                                rectShader;
     CShader                                texShader;
+    CShader                                texMixShader;
     CShader                                blurShader1;
     CShader                                blurShader2;
     CShader                                blurPrepareShader;

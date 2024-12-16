@@ -13,7 +13,9 @@ class CShader {
     GLint   color             = -1;
     GLint   alphaMatte        = -1;
     GLint   tex               = -1;
+    GLint   tex2              = -1;
     GLint   alpha             = -1;
+    GLfloat mixFactor         = -1;
     GLint   posAttrib         = -1;
     GLint   texAttrib         = -1;
     GLint   matteTexAttrib    = -1;

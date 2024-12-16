@@ -106,6 +106,27 @@ CRenderer::CRenderer() {
     texShader.tint              = glGetUniformLocation(prog, "tint");
     texShader.useAlphaMatte     = glGetUniformLocation(prog, "useAlphaMatte");
 
+    prog                           = createProgram(TEXVERTSRC, TEXMIXFRAGSRCRGBA);
+    texMixShader.program           = prog;
+    texMixShader.proj              = glGetUniformLocation(prog, "proj");
+    texMixShader.tex               = glGetUniformLocation(prog, "tex1");
+    texMixShader.tex2              = glGetUniformLocation(prog, "tex2");
+    texMixShader.alphaMatte        = glGetUniformLocation(prog, "texMatte");
+    texMixShader.alpha             = glGetUniformLocation(prog, "alpha");
+    texMixShader.mixFactor         = glGetUniformLocation(prog, "mixFactor");
+    texMixShader.texAttrib         = glGetAttribLocation(prog, "texcoord");
+    texMixShader.matteTexAttrib    = glGetAttribLocation(prog, "texcoordMatte");
+    texMixShader.posAttrib         = glGetAttribLocation(prog, "pos");
+    texMixShader.discardOpaque     = glGetUniformLocation(prog, "discardOpaque");
+    texMixShader.discardAlpha      = glGetUniformLocation(prog, "discardAlpha");
+    texMixShader.discardAlphaValue = glGetUniformLocation(prog, "discardAlphaValue");
+    texMixShader.topLeft           = glGetUniformLocation(prog, "topLeft");
+    texMixShader.fullSize          = glGetUniformLocation(prog, "fullSize");
+    texMixShader.radius            = glGetUniformLocation(prog, "radius");
+    texMixShader.applyTint         = glGetUniformLocation(prog, "applyTint");
+    texMixShader.tint              = glGetUniformLocation(prog, "tint");
+    texMixShader.useAlphaMatte     = glGetUniformLocation(prog, "useAlphaMatte");
+
     prog                          = createProgram(TEXVERTSRC, FRAGBLUR1);
     blurShader1.program           = prog;
     blurShader1.tex               = glGetUniformLocation(prog, "tex");
@@ -321,6 +342,52 @@ void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int
     glUniformMatrix3fv(shader->proj, 1, GL_TRUE, glMatrix.getMatrix().data());
     glUniform1i(shader->tex, 0);
     glUniform1f(shader->alpha, a);
+    const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
+    const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);
+
+    // Rounded corners
+    glUniform2f(shader->topLeft, TOPLEFT.x, TOPLEFT.y);
+    glUniform2f(shader->fullSize, FULLSIZE.x, FULLSIZE.y);
+    glUniform1f(shader->radius, rounding);
+
+    glUniform1i(shader->discardOpaque, 0);
+    glUniform1i(shader->discardAlpha, 0);
+    glUniform1i(shader->applyTint, 0);
+
+    glVertexAttribPointer(shader->posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+    glVertexAttribPointer(shader->texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+
+    glEnableVertexAttribArray(shader->posAttrib);
+    glEnableVertexAttribArray(shader->texAttrib);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glDisableVertexAttribArray(shader->posAttrib);
+    glDisableVertexAttribArray(shader->texAttrib);
+
+    glBindTexture(tex.m_iTarget, 0);
+}
+
+void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a, float mixFactor, int rounding, std::optional<eTransform> tr) {
+    const auto ROUNDEDBOX = box.copy().round();
+    Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
+    Mat3x3     glMatrix   = projection.copy().multiply(matrix);
+
+    CShader*   shader = &texMixShader;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(tex.m_iTarget, tex.m_iTexID);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(tex2.m_iTarget, tex2.m_iTexID);
+
+    glUseProgram(shader->program);
+
+    glUniformMatrix3fv(shader->proj, 1, GL_TRUE, glMatrix.getMatrix().data());
+    glUniform1i(shader->tex, 0);
+    glUniform1i(shader->tex2, 1);
+    glUniform1f(shader->alpha, a);
+    glUniform1f(shader->mixFactor, mixFactor);
     const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
     const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);
 
