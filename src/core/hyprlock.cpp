@@ -388,6 +388,8 @@ void CHyprlock::run() {
     wl_display_roundtrip(m_sWaylandState.display);
 
     g_pRenderer = std::make_unique<CRenderer>();
+    g_pAuth     = std::make_unique<CAuth>();
+    g_pAuth->start();
 
     static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
     const bool         NOFADEOUT  = **PNOFADEOUT;
@@ -418,9 +420,6 @@ void CHyprlock::run() {
         g_pRenderer->asyncResourceGatherer->await();
         exit(1);
     }
-
-    g_pAuth = std::make_unique<CAuth>();
-    g_pAuth->start();
 
     const auto fingerprintAuth = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
     const auto dbusConn        = (fingerprintAuth) ? ((CFingerprint*)fingerprintAuth.get())->getConnection() : nullptr;
