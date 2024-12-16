@@ -58,6 +58,7 @@ pkg_check_modules(
   gbm
   hyprutils>=0.2.6
   sdbus-c++>=2.0.0
+  libsodium
   hyprgraphics)
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
