@@ -146,7 +146,7 @@ bool CBackground::draw(const SRenderData& data) {
                                        isScreenshot ?
                                            wlTransformToHyprutils(invertTransform(output->transform)) :
                                            HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
-        
+
 
         if (blurPasses > 0)
             g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
@@ -176,11 +176,11 @@ bool CBackground::draw(const SRenderData& data) {
 
 void CBackground::plantReloadTimer() {
 
-    if (reloadTime == 0) {
+    if (reloadTime == 0)
         reloadTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onReloadTimer, this, true);
-    } else if (reloadTime > 0)
+    else if (reloadTime > 0)
         reloadTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), onReloadTimer, this, false);
-};
+}
 
 void CBackground::onCrossFadeTimerUpdate() {
 
@@ -189,11 +189,10 @@ void CBackground::onCrossFadeTimerUpdate() {
     if (fade) {
         fade->crossFadeTimer.reset();
         fade.reset(nullptr);
-    };
-
-    if (!(blurPasses > 0 || isScreenshot)) {
-        blurredFB.release();
     }
+
+    if (!(blurPasses > 0 || isScreenshot))
+        blurredFB.release();
 
     asset             = pendingAsset;
     resourceID        = pendingResourceID;
@@ -202,7 +201,7 @@ void CBackground::onCrossFadeTimerUpdate() {
     firstRender       = true;
 
     g_pHyprlock->renderOutput(output->stringPort);
-};
+}
 
 void CBackground::onReloadTimerUpdate() {
     const std::string OLDPATH = path;
@@ -218,15 +217,14 @@ void CBackground::onReloadTimerUpdate() {
         if (path.starts_with("file://"))
             path = path.substr(7);
 
-        if (path.empty()) 
+        if (path.empty())
             return;
     }
 
     try {
         const auto MTIME = std::filesystem::last_write_time(path);
-        if (OLDPATH == path && MTIME == modificationTime) {
+        if (OLDPATH == path && MTIME == modificationTime)
             return;
-        }
 
         modificationTime = MTIME;
     } catch (std::exception& e) {
@@ -249,7 +247,7 @@ void CBackground::onReloadTimerUpdate() {
     request.callbackData = this;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-};
+}
 
 void CBackground::startCrossFadeOrUpdateRender() {
     auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
@@ -258,25 +256,18 @@ void CBackground::startCrossFadeOrUpdateRender() {
             g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
             Debug::log(ERR, "New asset had an invalid texture!");
         } else if (resourceID != pendingResourceID) {
-
             pendingAsset = newAsset;
-
             if (crossFadeTime > 0) {
                 // Start a fade
-                if (!fade) {
-
+                if (!fade)
                     fade = std::make_unique<SFade>(std::chrono::system_clock::now(), 0, nullptr);
-
-                } else {
-
+                else {
                     // Maybe we where already fading so reset it just in case, but should'nt be happening.
-
                     if (fade->crossFadeTimer) {
                         fade->crossFadeTimer->cancel();
                         fade->crossFadeTimer.reset();
-                    };
-                };
-
+                    }
+                }
                 fade->start          = std::chrono::system_clock::now();
                 fade->a              = 0;
                 fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossFadeTime)), onCrossFadeTimer, this);
@@ -286,7 +277,6 @@ void CBackground::startCrossFadeOrUpdateRender() {
         }
     } else if (!pendingResourceID.empty()) {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-
         g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
     }
 

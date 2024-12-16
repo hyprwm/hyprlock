@@ -62,7 +62,7 @@ class CBackground : public IWidget {
 
     std::unique_ptr<SFade>                  fade;
 
-    int                                     reloadTime;
+    int                                     reloadTime = -1;
     std::string                             reloadCommand;
     CAsyncResourceGatherer::SPreloadRequest request;
     std::shared_ptr<CTimer>                 reloadTimer;
