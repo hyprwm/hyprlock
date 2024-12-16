@@ -7,6 +7,7 @@
 enum eAuthImplementations {
     AUTH_IMPL_PAM         = 0,
     AUTH_IMPL_FINGERPRINT = 1,
+    AUTH_IMPL_SODIUM      = 2,
 };
 
 class IAuthImplementation {
