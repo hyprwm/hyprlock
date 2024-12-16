@@ -34,7 +34,6 @@ class CPam : public IAuthImplementation {
     }
     virtual void                       init();
     virtual void                       handleInput(const std::string& input);
-    virtual bool                       isAuthenticated();
     virtual bool                       checkWaiting();
     virtual std::optional<std::string> getLastFailText();
     virtual std::optional<std::string> getLastPrompt();
@@ -44,8 +43,7 @@ class CPam : public IAuthImplementation {
     std::thread           m_thread;
     SPamConversationState m_sConversationState;
 
-    bool                  m_bBlockInput    = true;
-    bool                  m_bAuthenticated = false;
+    bool                  m_bBlockInput = true;
 
     std::string           m_sPamModule;
 

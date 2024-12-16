@@ -76,10 +76,6 @@ void CFingerprint::init() {
     });
 }
 
-bool CFingerprint::isAuthenticated() {
-    return m_bAuthenticated;
-}
-
 void CFingerprint::handleInput(const std::string& input) {
     ;
 }
@@ -155,7 +151,8 @@ bool CFingerprint::createDeviceProxy() {
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
     g_pAuth->postActivity(AUTH_IMPL_FINGERPRINT);
     Debug::log(LOG, "fprint: handling status {}", result);
-    auto matchResult = s_mapStringToTestType[result];
+    auto matchResult   = s_mapStringToTestType[result];
+    bool authenticated = false;
     if (m_sDBUSState.sleeping && matchResult != MATCH_DISCONNECTED)
         return;
     switch (matchResult) {
@@ -177,8 +174,8 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_MATCHED:
             stopVerify();
             m_sDBUSState.message = "";
-            m_bAuthenticated     = true;
-            g_pAuth->enqueueCheckAuthenticated();
+            authenticated        = true;
+            g_pAuth->enqueueUnlock();
             break;
         case MATCH_RETRY: m_sDBUSState.message = "Please retry fingerprint scan"; break;
         case MATCH_SWIPE_TOO_SHORT: m_sDBUSState.message = "Swipe too short - try again"; break;
@@ -189,8 +186,10 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             m_sDBUSState.abort   = true;
             break;
     }
-    g_pAuth->enqueueCheckAuthenticated();
-    g_pHyprlock->enqueueForceUpdateTimers();
+
+    if (!authenticated)
+        g_pAuth->enqueueFail();
+
     if (done || m_sDBUSState.abort)
         m_sDBUSState.done = true;
 }

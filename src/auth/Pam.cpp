@@ -90,15 +90,17 @@ void CPam::init() {
                 return;
 
             const auto AUTHENTICATED = auth();
-            m_bAuthenticated         = AUTHENTICATED;
 
             // For SIGUSR1 unlocks
             if (g_pHyprlock->isUnlocked())
                 return;
 
-            g_pAuth->enqueueCheckAuthenticated();
-            if (AUTHENTICATED)
+            if (!AUTHENTICATED)
+                g_pAuth->enqueueFail();
+            else {
+                g_pAuth->enqueueUnlock();
                 return;
+            }
         }
     });
 }
@@ -134,10 +136,6 @@ bool CPam::auth() {
     Debug::log(LOG, "auth: authenticated for {}", m_sPamModule);
 
     return true;
-}
-
-bool CPam::isAuthenticated() {
-    return m_bAuthenticated;
 }
 
 // clearing the input must be done from the main thread

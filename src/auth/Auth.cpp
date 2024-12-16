@@ -31,15 +31,6 @@ void CAuth::submitInput(const std::string& input) {
     }
 }
 
-bool CAuth::isAuthenticated() {
-    for (const auto& i : m_vImpls) {
-        if (i->isAuthenticated())
-            return true;
-    }
-
-    return false;
-}
-
 bool CAuth::checkWaiting() {
     for (const auto& i : m_vImpls) {
         if (i->checkWaiting())
@@ -97,24 +88,27 @@ void CAuth::terminate() {
     }
 }
 
-static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data) {
-    // check result
-    if (g_pAuth->isAuthenticated())
-        g_pHyprlock->unlock();
-    else {
-        g_pHyprlock->clearPasswordBuffer();
-        g_pAuth->m_iFailedAttempts++;
-        Debug::log(LOG, "Failed attempts: {}", g_pAuth->m_iFailedAttempts);
+static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pHyprlock->clearPasswordBuffer();
+    g_pAuth->m_iFailedAttempts++;
+    Debug::log(LOG, "Failed attempts: {}", g_pAuth->m_iFailedAttempts);
 
-        g_pAuth->m_bDisplayFailText = true;
-        g_pHyprlock->enqueueForceUpdateTimers();
+    g_pAuth->m_bDisplayFailText = true;
+    g_pHyprlock->enqueueForceUpdateTimers();
 
-        g_pHyprlock->renderAllOutputs();
-    }
+    g_pHyprlock->renderAllOutputs();
 }
 
-void CAuth::enqueueCheckAuthenticated() {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
+static void passwordUnlockCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pHyprlock->unlock();
+}
+
+void CAuth::enqueueFail() {
+    g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordFailCallback, nullptr);
+}
+
+void CAuth::enqueueUnlock() {
+    g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordUnlockCallback, nullptr);
 }
 
 void CAuth::postActivity(eAuthImplementations implType) {

@@ -17,7 +17,6 @@ class CFingerprint : public IAuthImplementation {
     }
     virtual void                        init();
     virtual void                        handleInput(const std::string& input);
-    virtual bool                        isAuthenticated();
     virtual bool                        checkWaiting();
     virtual std::optional<std::string>  getLastFailText();
     virtual std::optional<std::string>  getLastPrompt();
@@ -42,7 +41,6 @@ class CFingerprint : public IAuthImplementation {
 
     std::string m_sFingerprintReady;
     std::string m_sFingerprintPresent;
-    bool        m_bAuthenticated = false;
 
     void        handleVerifyStatus(const std::string& result, const bool done);
 
