@@ -1,7 +1,7 @@
-#include "Auth.hpp"
-#include "hyprlock.hpp"
+#include "Pam.hpp"
+#include "../core/hyprlock.hpp"
 #include "../helpers/Log.hpp"
-#include "src/config/ConfigManager.hpp"
+#include "../config/ConfigManager.hpp"
 
 #include <filesystem>
 #include <unistd.h>
@@ -15,7 +15,7 @@
 #include <thread>
 
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
-    const auto           CONVERSATIONSTATE = (CAuth::SPamConversationState*)appdata_ptr;
+    const auto           CONVERSATIONSTATE = (CPam::SPamConversationState*)appdata_ptr;
     struct pam_response* pamReply          = (struct pam_response*)calloc(num_msg, sizeof(struct pam_response));
     bool                 initialPrompt     = true;
 
@@ -34,7 +34,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 // When the prompt is the same as the last one, I guess our answer can be the same.
                 if (!initialPrompt && PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
-                    g_pAuth->waitForInput();
+                    CONVERSATIONSTATE->waitForInput();
                 }
 
                 // Needed for unlocks via SIGUSR1
@@ -60,44 +60,52 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
     return PAM_SUCCESS;
 }
 
-CAuth::CAuth() {
-    static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:pam_module"));
+CPam::CPam() {
+    static auto* const PPAMMODULE = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("auth:pam:module"));
     m_sPamModule                  = *PPAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
         Debug::log(ERR, "Pam module \"/etc/pam.d/{}\" does not exist! Falling back to \"/etc/pam.d/su\"", m_sPamModule);
         m_sPamModule = "su";
     }
+
+    m_sConversationState.waitForInput = [this]() { this->waitForInput(); };
 }
 
-static void passwordCheckTimerCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pHyprlock->onPasswordCheckTimer();
+CPam::~CPam() {
+    ;
 }
 
-void CAuth::start() {
-    std::thread([this]() {
-        resetConversation();
+void CPam::init() {
+    m_thread = std::thread([this]() {
+        while (true) {
+            resetConversation();
 
-        // Initial input
-        m_sConversationState.prompt = "Password: ";
-        waitForInput();
+            // Initial input
+            m_sConversationState.prompt = "Password: ";
+            waitForInput();
 
-        // For grace or SIGUSR1 unlocks
-        if (g_pHyprlock->isUnlocked())
-            return;
+            // For grace or SIGUSR1 unlocks
+            if (g_pHyprlock->isUnlocked())
+                return;
 
-        const auto AUTHENTICATED = auth();
-        m_bAuthenticated         = AUTHENTICATED;
+            const auto AUTHENTICATED = auth();
 
-        // For SIGUSR1 unlocks
-        if (g_pHyprlock->isUnlocked())
-            return;
+            // For SIGUSR1 unlocks
+            if (g_pHyprlock->isUnlocked())
+                return;
 
-        g_pHyprlock->addTimer(std::chrono::milliseconds(1), passwordCheckTimerCallback, nullptr);
-    }).detach();
+            if (!AUTHENTICATED)
+                g_pAuth->enqueueFail();
+            else {
+                g_pAuth->enqueueUnlock();
+                return;
+            }
+        }
+    });
 }
 
-bool CAuth::auth() {
+bool CPam::auth() {
     const pam_conv localConv   = {conv, (void*)&m_sConversationState};
     pam_handle_t*  handle      = NULL;
     auto           uidPassword = getpwuid(getuid());
@@ -115,6 +123,7 @@ bool CAuth::auth() {
     handle = nullptr;
 
     m_sConversationState.waitingForPamAuth = false;
+    g_pAuth->postActivity(AUTH_IMPL_PAM);
 
     if (ret != PAM_SUCCESS) {
         if (!m_sConversationState.failTextFromPam)
@@ -129,16 +138,12 @@ bool CAuth::auth() {
     return true;
 }
 
-bool CAuth::isAuthenticated() {
-    return m_bAuthenticated;
-}
-
 // clearing the input must be done from the main thread
 static void clearInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->clearPasswordBuffer();
 }
 
-void CAuth::waitForInput() {
+void CPam::waitForInput() {
     g_pHyprlock->addTimer(std::chrono::milliseconds(1), clearInputTimerCallback, nullptr);
 
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
@@ -149,7 +154,8 @@ void CAuth::waitForInput() {
     m_bBlockInput = true;
 }
 
-void CAuth::submitInput(std::string input) {
+void CPam::handleInput(const std::string& input) {
+    g_pAuth->postActivity(AUTH_IMPL_PAM);
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
 
     if (!m_sConversationState.inputRequested)
@@ -161,23 +167,25 @@ void CAuth::submitInput(std::string input) {
     m_sConversationState.inputSubmittedCondition.notify_all();
 }
 
-std::optional<std::string> CAuth::getLastFailText() {
+std::optional<std::string> CPam::getLastFailText() {
     return m_sConversationState.failText.empty() ? std::nullopt : std::optional(m_sConversationState.failText);
 }
 
-std::optional<std::string> CAuth::getLastPrompt() {
+std::optional<std::string> CPam::getLastPrompt() {
     return m_sConversationState.prompt.empty() ? std::nullopt : std::optional(m_sConversationState.prompt);
 }
 
-bool CAuth::checkWaiting() {
+bool CPam::checkWaiting() {
     return m_bBlockInput || m_sConversationState.waitingForPamAuth;
 }
 
-void CAuth::terminate() {
+void CPam::terminate() {
     m_sConversationState.inputSubmittedCondition.notify_all();
+    if (m_thread.joinable())
+        m_thread.join();
 }
 
-void CAuth::resetConversation() {
+void CPam::resetConversation() {
     m_sConversationState.input             = "";
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;

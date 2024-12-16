@@ -1,13 +1,13 @@
 #include "Fingerprint.hpp"
+#include "../core/hyprlock.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 
-#include <filesystem>
+#include <memory>
 #include <unistd.h>
 #include <pwd.h>
 
 #include <cstring>
-#include <thread>
 
 static const auto FPRINT        = sdbus::ServiceName{"net.reactivated.Fprint"};
 static const auto DEVICE        = sdbus::ServiceName{"net.reactivated.Fprint.Device"};
@@ -37,18 +37,17 @@ static std::map<std::string, MatchResult> s_mapStringToTestType = {{"verify-no-m
                                                                    {"verify-unknown-error", MATCH_UNKNOWN_ERROR}};
 
 CFingerprint::CFingerprint() {
-    static auto* const PFINGERPRINTREADY   = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:fingerprint_ready_message"));
+    static auto* const PFINGERPRINTREADY   = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("auth:fingerprint:ready_message"));
     m_sFingerprintReady                    = *PFINGERPRINTREADY;
-    static auto* const PFINGERPRINTPRESENT = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:fingerprint_present_message"));
+    static auto* const PFINGERPRINTPRESENT = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("auth:fingerprint:present_message"));
     m_sFingerprintPresent                  = *PFINGERPRINTPRESENT;
-    static auto* const PENABLEFINGERPRINT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:enable_fingerprint");
-    m_bEnabled                             = **PENABLEFINGERPRINT;
 }
 
-std::shared_ptr<sdbus::IConnection> CFingerprint::start() {
-    if (!m_bEnabled)
-        return {};
+CFingerprint::~CFingerprint() {
+    ;
+}
 
+void CFingerprint::init() {
     m_sDBUSState.connection = sdbus::createSystemBusConnection();
     m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
     m_sDBUSState.login->getPropertyAsync("PreparingForSleep").onInterface(LOGIN_MANAGER).uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::Variant preparingForSleep) {
@@ -75,20 +74,31 @@ std::shared_ptr<sdbus::IConnection> CFingerprint::start() {
             startVerify();
         }
     });
-    return m_sDBUSState.connection;
 }
 
-bool CFingerprint::isAuthenticated() {
-    return m_bAuthenticated;
+void CFingerprint::handleInput(const std::string& input) {
+    ;
 }
 
-std::optional<std::string> CFingerprint::getLastMessage() {
+std::optional<std::string> CFingerprint::getLastFailText() {
     return m_sDBUSState.message.empty() ? std::nullopt : std::optional(m_sDBUSState.message);
+}
+
+std::optional<std::string> CFingerprint::getLastPrompt() {
+    return std::nullopt;
+}
+
+bool CFingerprint::checkWaiting() {
+    return false;
 }
 
 void CFingerprint::terminate() {
     if (!m_sDBUSState.abort)
         releaseDevice();
+}
+
+std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
+    return m_sDBUSState.connection;
 }
 
 void CFingerprint::inhibitSleep() {
@@ -139,8 +149,10 @@ bool CFingerprint::createDeviceProxy() {
 }
 
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
+    g_pAuth->postActivity(AUTH_IMPL_FINGERPRINT);
     Debug::log(LOG, "fprint: handling status {}", result);
-    auto matchResult = s_mapStringToTestType[result];
+    auto matchResult   = s_mapStringToTestType[result];
+    bool authenticated = false;
     if (m_sDBUSState.sleeping && matchResult != MATCH_DISCONNECTED)
         return;
     switch (matchResult) {
@@ -148,21 +160,22 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_NO_MATCH:
             stopVerify();
             if (m_sDBUSState.retries >= 3) {
-                m_sDBUSState.message = "Fingerprint auth disabled: too many failed attempts";
+                m_sDBUSState.message = "Fingerprint auth disabled (too many failed attempts)";
             } else {
                 done = false;
                 startVerify(true);
+                m_sDBUSState.message = "Fingerprint not matched";
             }
             break;
         case MATCH_UNKNOWN_ERROR:
             stopVerify();
-            m_sDBUSState.message = "Unknown fingerprint error, disabling fingerprint auth";
+            m_sDBUSState.message = "Fingerprint auth disabled (unknown error)";
             break;
         case MATCH_MATCHED:
             stopVerify();
-            m_bAuthenticated     = true;
             m_sDBUSState.message = "";
-            g_pHyprlock->unlock();
+            authenticated        = true;
+            g_pAuth->enqueueUnlock();
             break;
         case MATCH_RETRY: m_sDBUSState.message = "Please retry fingerprint scan"; break;
         case MATCH_SWIPE_TOO_SHORT: m_sDBUSState.message = "Swipe too short - try again"; break;
@@ -173,7 +186,10 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             m_sDBUSState.abort   = true;
             break;
     }
-    g_pHyprlock->enqueueForceUpdateTimers();
+
+    if (!authenticated)
+        g_pAuth->enqueueFail();
+
     if (done || m_sDBUSState.abort)
         m_sDBUSState.done = true;
 }
@@ -203,7 +219,7 @@ void CFingerprint::startVerify(bool isRetry) {
         if (e) {
             Debug::log(WARN, "fprint: could not start verifying, {}", e->what());
             if (isRetry)
-                m_sDBUSState.message = "Fingerprint auth disabled: could not restart verification";
+                m_sDBUSState.message = "Fingerprint auth disabled (failed to restart)";
         } else {
             Debug::log(LOG, "fprint: started verifying");
             if (isRetry) {

@@ -1,8 +1,8 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
-#include "../../core/Auth.hpp"
-#include "../../core/Fingerprint.hpp"
+#include "../../auth/Auth.hpp"
+#include "../../auth/Fingerprint.hpp"
 #include <chrono>
 #include <unistd.h>
 #include <pwd.h>
@@ -58,7 +58,7 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
 
 static void replaceAllAttempts(std::string& str) {
 
-    const size_t      ATTEMPTS = g_pHyprlock->getPasswordFailedAttempts();
+    const size_t      ATTEMPTS = g_pAuth->m_iFailedAttempts;
     const std::string STR      = std::to_string(ATTEMPTS);
     size_t            pos      = 0;
 
@@ -138,7 +138,8 @@ static std::string getTime12h() {
 
     const auto HRS  = hhmmss.hours().count();
     const auto MINS = hhmmss.minutes().count();
-    return (HRS == 12 || HRS == 0 ? "12" : (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12)) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) + (HRS < 12 ? " AM" : " PM");
+    return (HRS == 12 || HRS == 0 ? "12" : (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12)) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) +
+        (HRS < 12 ? " AM" : " PM");
 }
 
 IWidget::SFormatResult IWidget::formatString(std::string in) {
@@ -169,14 +170,14 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$FAIL")) {
-        const auto FAIL = g_pAuth->getLastFailText();
-        replaceInString(in, "$FAIL", FAIL.has_value() ? FAIL.value() : "");
+        const auto FAIL = g_pAuth->getFailText(AUTH_IMPL_PAM);
+        replaceInString(in, "$FAIL", FAIL.value_or(""));
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$PROMPT")) {
-        const auto PROMPT = g_pAuth->getLastPrompt();
-        replaceInString(in, "$PROMPT", PROMPT.has_value() ? PROMPT.value() : "");
+        const auto PROMPT = g_pAuth->getPrompt(AUTH_IMPL_PAM);
+        replaceInString(in, "$PROMPT", PROMPT.value_or(""));
         result.allowForceUpdate = true;
     }
 
@@ -191,8 +192,8 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$FPRINTMESSAGE")) {
-        const auto FPRINTMESSAGE = g_pFingerprint->getLastMessage();
-        replaceInString(in, "$FPRINTMESSAGE", FPRINTMESSAGE.has_value() ? FPRINTMESSAGE.value() : "");
+        const auto FPRINTMESSAGE = g_pAuth->getFailText(AUTH_IMPL_FINGERPRINT);
+        replaceInString(in, "$FPRINTMESSAGE", FPRINTMESSAGE.value_or(""));
         result.allowForceUpdate = true;
     }
 
