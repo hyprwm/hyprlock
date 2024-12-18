@@ -418,6 +418,7 @@ void CHyprlock::run() {
         m_sLoopState.timerCV.notify_all();
         g_pRenderer->asyncResourceGatherer->notify();
         g_pRenderer->asyncResourceGatherer->await();
+        g_pAuth->terminate();
         exit(1);
     }
 
