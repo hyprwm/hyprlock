@@ -4,6 +4,7 @@
 #include "src/helpers/Log.hpp"
 #include <cstddef>
 #include <iostream>
+#include <string_view>
 
 void help() {
     std::cout << "Usage: hyprlock [options]\n\n"
@@ -46,7 +47,12 @@ int main(int argc, char** argv, char** envp) {
         }
 
         if (arg == "--version" || arg == "-V") {
-            std::cout << "Hyprlock version " << HYPRLOCK_VERSION << "\n";
+            constexpr bool ISTAGGEDRELEASE = std::string_view(HYPRLOCK_COMMIT) == HYPRLOCK_VERSION_COMMIT;
+
+            std::cout << "Hyprlock version v" << HYPRLOCK_VERSION;
+            if (!ISTAGGEDRELEASE)
+                std::cout << " (commit " << HYPRLOCK_COMMIT << ")";
+            std::cout << std::endl;
             return 0;
         }
 

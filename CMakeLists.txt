@@ -28,9 +28,28 @@ set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-unused-value
                     -Wno-missing-field-initializers -Wno-narrowing)
 
+# get git commit
+execute_process(
+  OUTPUT_VARIABLE GIT_SHORT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMAND git rev-parse --short HEAD
+)
+
+# get git commit of v$VERSION
+execute_process(
+  OUTPUT_VARIABLE GIT_TAG_SHORT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMAND git rev-parse --short v${VERSION}
+)
+
+add_compile_definitions(HYPRLOCK_VERSION="${VERSION}")
+add_compile_definitions(HYPRLOCK_COMMIT="${GIT_SHORT_HASH}")
+add_compile_definitions(HYPRLOCK_VERSION_COMMIT="${GIT_TAG_SHORT_HASH}")
+
 # position independent build: __FILE__
 add_compile_options(-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
-add_compile_definitions(HYPRLOCK_VERSION="${VERSION}")
 
 # dependencies
 message(STATUS "Checking deps...")
