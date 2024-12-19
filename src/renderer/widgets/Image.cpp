@@ -2,6 +2,7 @@
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Log.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
@@ -46,7 +47,7 @@ void CImage::onTimerUpdate() {
     }
 
     try {
-        const auto MTIME = std::filesystem::last_write_time(path);
+        const auto MTIME = std::filesystem::last_write_time(absolutePath(path, "/"));
         if (OLDPATH == path && MTIME == modificationTime)
             return;
 
@@ -83,11 +84,11 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     viewport(viewport_), resourceID(resourceID_), output(output_), shadow(this, props, viewport_) {
 
     try {
-        size     = std::any_cast<Hyprlang::INT>(props.at("size"));
+        sizex    = CLayoutXValueData::fromAnyPv(props.at("sizex"))->getAbsolute(viewport_);
         rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
         color    = *CGradientValueData::fromAnyPv(props.at("border_color"));
-        pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        pos      = CLayoutXYValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
         halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
@@ -102,7 +103,7 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
     }
 
     try {
-        modificationTime = std::filesystem::last_write_time(path);
+        modificationTime = std::filesystem::last_write_time(absolutePath(path, "/"));
     } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
 
     angle = angle * M_PI / 180.0;
@@ -132,14 +133,11 @@ bool CImage::draw(const SRenderData& data) {
         const Vector2D IMAGEPOS  = {border, border};
         const Vector2D BORDERPOS = {0.0, 0.0};
         const Vector2D TEXSIZE   = asset->texture.m_vSize;
-        const float    SCALEX    = size / TEXSIZE.x;
-        const float    SCALEY    = size / TEXSIZE.y;
+        const auto     XYRATIO   = asset->texture.m_vSize.y / asset->texture.m_vSize.x;
+        const Vector2D SIZE      = {sizex, sizex * XYRATIO};
 
         // image with borders offset, with extra pixel for anti-aliasing when rotated
-        CBox texbox = {angle == 0 ? IMAGEPOS : IMAGEPOS + Vector2D{1.0, 1.0}, TEXSIZE};
-
-        texbox.w *= std::max(SCALEX, SCALEY);
-        texbox.h *= std::max(SCALEX, SCALEY);
+        CBox       texbox = {angle == 0 ? IMAGEPOS : IMAGEPOS + Vector2D{1.0, 1.0}, SIZE.round()};
 
         const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
 

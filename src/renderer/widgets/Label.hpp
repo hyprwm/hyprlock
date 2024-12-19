@@ -32,6 +32,7 @@ class CLabel : public IWidget {
     Vector2D                                viewport;
     Vector2D                                pos;
     Vector2D                                configPos;
+    double                                  sizex;
     double                                  angle;
     std::string                             resourceID;
     std::string                             pendingResourceID; // if dynamic label

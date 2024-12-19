@@ -12,8 +12,9 @@ using namespace Hyprutils::String;
 
 enum eConfigValueDataTypes {
     CVD_TYPE_INVALID  = -1,
-    CVD_TYPE_LAYOUT   = 0,
+    CVD_TYPE_LAYOUTXY = 0,
     CVD_TYPE_GRADIENT = 1,
+    CVD_TYPE_LAYOUTX  = 2,
 };
 
 class ICustomConfigValueData {
@@ -25,22 +26,22 @@ class ICustomConfigValueData {
     virtual std::string           toString() = 0;
 };
 
-class CLayoutValueData : public ICustomConfigValueData {
+class CLayoutXYValueData : public ICustomConfigValueData {
   public:
-    CLayoutValueData() {};
-    virtual ~CLayoutValueData() {};
+    CLayoutXYValueData() {};
+    virtual ~CLayoutXYValueData() {};
 
     virtual eConfigValueDataTypes getDataType() {
-        return CVD_TYPE_LAYOUT;
+        return CVD_TYPE_LAYOUTXY;
     }
 
     virtual std::string toString() {
         return std::format("{}{},{}{}", m_vValues.x, (m_sIsRelative.x) ? "%" : "px", m_vValues.y, (m_sIsRelative.y) ? "%" : "px");
     }
 
-    static CLayoutValueData* fromAnyPv(const std::any& v) {
+    static CLayoutXYValueData* fromAnyPv(const std::any& v) {
         RASSERT(v.type() == typeid(void*), "Invalid config value type");
-        const auto P = (CLayoutValueData*)std::any_cast<void*>(v);
+        const auto P = (CLayoutXYValueData*)std::any_cast<void*>(v);
         RASSERT(P, "Empty config value");
         return P;
     }
@@ -57,6 +58,34 @@ class CLayoutValueData : public ICustomConfigValueData {
         bool x = false;
         bool y = false;
     } m_sIsRelative;
+};
+
+class CLayoutXValueData : public ICustomConfigValueData {
+  public:
+    CLayoutXValueData() {};
+    virtual ~CLayoutXValueData() {};
+
+    virtual eConfigValueDataTypes getDataType() {
+        return CVD_TYPE_LAYOUTXY;
+    }
+
+    virtual std::string toString() {
+        return std::format("{}{}", m_fValue, (m_sIsRelative) ? "%" : "px");
+    }
+
+    static CLayoutXValueData* fromAnyPv(const std::any& v) {
+        RASSERT(v.type() == typeid(void*), "Invalid config value type");
+        const auto P = (CLayoutXValueData*)std::any_cast<void*>(v);
+        RASSERT(P, "Empty config value");
+        return P;
+    }
+
+    double getAbsolute(const Hyprutils::Math::Vector2D& viewport) {
+        return (m_sIsRelative) ? (m_fValue / 100) * viewport.x : m_fValue;
+    }
+
+    double m_fValue      = 0;
+    bool   m_sIsRelative = false;
 };
 
 class CGradientValueData : public ICustomConfigValueData {

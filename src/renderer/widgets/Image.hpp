@@ -29,7 +29,7 @@ class CImage : public IWidget {
   private:
     CFramebuffer                            imageFB;
 
-    int                                     size;
+    double                                  sizex;
     int                                     rounding;
     double                                  border;
     double                                  angle;
