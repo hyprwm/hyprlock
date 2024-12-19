@@ -53,7 +53,7 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
     else if (valign != "none")
         Debug::log(ERR, "IWidget: invalid valign {}", valign);
 
-    return pos;
+    return pos.round();
 }
 
 static void replaceAllAttempts(std::string& str) {

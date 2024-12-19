@@ -5,6 +5,7 @@
 #include "../../helpers/Color.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include <hyprlang.hpp>
+#include <hyprutils/math/Vector2D.hpp>
 #include <stdexcept>
 
 CLabel::~CLabel() {
@@ -73,7 +74,8 @@ void CLabel::plantTimer() {
 CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
     outputStringPort(output), shadow(this, props, viewport_) {
     try {
-        pos            = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        pos            = CLayoutXYValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        sizex          = CLayoutXValueData::fromAnyPv(props.at("sizex"))->getAbsolute(viewport_);
         labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));
         halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
@@ -125,10 +127,18 @@ bool CLabel::draw(const SRenderData& data) {
 
     shadow.draw(data);
 
-    // calc pos
-    pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign, angle);
+    if (asset->texture.m_vSize.x == 0)
+        return false;
 
-    CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+    auto size = asset->texture.m_vSize;
+    if (sizex != 0) {
+        const auto XYRATIO = asset->texture.m_vSize.y / asset->texture.m_vSize.x;
+        size               = {sizex, sizex * XYRATIO};
+    }
+    // calc pos
+    pos = posFromHVAlign(viewport, size.round(), configPos, halign, valign, angle);
+
+    CBox box = {pos, size};
     box.rot  = angle;
     g_pRenderer->renderTexture(box, asset->texture, data.opacity);
 

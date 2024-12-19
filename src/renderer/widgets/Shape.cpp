@@ -7,12 +7,12 @@
 CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
 
     try {
-        size       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
+        size       = CLayoutXYValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
         rounding   = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         border     = std::any_cast<Hyprlang::INT>(props.at("border_size"));
         color      = std::any_cast<Hyprlang::INT>(props.at("color"));
         borderGrad = *CGradientValueData::fromAnyPv(props.at("border_color"));
-        pos        = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        pos        = CLayoutXYValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
         halign     = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign     = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle      = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
