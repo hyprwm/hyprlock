@@ -1,6 +1,7 @@
 {
   lib,
   inputs,
+  self,
 }: let
   mkDate = longDate: (lib.concatStringsSep "-" [
     (builtins.substring 0 4 longDate)
@@ -22,6 +23,7 @@ in {
         stdenv = prev.gcc14Stdenv;
         version = version + "+date=" + (mkDate (inputs.self.lastModifiedDate or "19700101")) + "_" + (inputs.self.shortRev or "dirty");
         inherit (final) hyprlang;
+        shortRev = self.sourceInfo.shortRev or "dirty";
       };
     })
   ];

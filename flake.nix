@@ -40,7 +40,7 @@
         overlays = with self.overlays; [default];
       });
   in {
-    overlays = import ./nix/overlays.nix {inherit inputs lib;};
+    overlays = import ./nix/overlays.nix {inherit inputs lib self;};
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hyprlock;

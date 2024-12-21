@@ -22,6 +22,7 @@
   wayland-protocols,
   wayland-scanner,
   version ? "git",
+  shortRev ? "",
 }:
 stdenv.mkDerivation {
   pname = "hyprlock";
@@ -54,6 +55,11 @@ stdenv.mkDerivation {
     wayland
     wayland-protocols
   ];
+
+  cmakeFlags = lib.mapAttrsToList lib.cmakeFeature {
+    HYPRLOCK_COMMIT = shortRev;
+    HYPRLOCK_VERSION_COMMIT = shortRev;
+  };
 
   meta = {
     homepage = "https://github.com/hyprwm/hyprlock";
