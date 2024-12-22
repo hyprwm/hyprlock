@@ -119,7 +119,10 @@ bool CLabel::draw(const SRenderData& data) {
 
         if (!asset)
             return true;
+    }
 
+    if (updateShadow) {
+        updateShadow = false;
         shadow.markShadowDirty();
     }
 
@@ -143,7 +146,7 @@ void CLabel::renderUpdate() {
         asset             = newAsset;
         resourceID        = pendingResourceID;
         pendingResourceID = "";
-        shadow.markShadowDirty();
+        updateShadow      = true;
     } else {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
 

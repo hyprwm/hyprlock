@@ -45,4 +45,5 @@ class CLabel : public IWidget {
     std::shared_ptr<CTimer>                 labelTimer = nullptr;
 
     CShadowable                             shadow;
+    bool                                    updateShadow = true;
 };
