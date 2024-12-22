@@ -78,7 +78,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
     const auto DATA = reinterpret_cast<CGradientValueData*>(*data);
 
-    CVarList   varlist(V, 0, ' ', true);
+    CVarList   varlist(V, 0, ' ');
     DATA->m_vColors.clear();
     DATA->m_bIsFallback = false;
 
@@ -102,6 +102,9 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             parseError = "Error parsing gradient " + V + ": max colors is 10.";
             break;
         }
+
+        if (var.empty())
+            continue;
 
         try {
             DATA->m_vColors.push_back(CColor(configStringToInt(var)));
