@@ -103,6 +103,9 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             break;
         }
 
+        if (var.empty())
+            continue;
+
         try {
             DATA->m_vColors.push_back(CColor(configStringToInt(var)));
         } catch (std::exception& e) {
