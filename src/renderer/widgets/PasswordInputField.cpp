@@ -56,9 +56,9 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.size                = std::clamp(dots.size, 0.2f, 0.8f);
     dots.spacing             = std::clamp(dots.spacing, -1.f, 1.f);
     colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
-    colorConfig.both         = colorConfig.both->m_bIsFallback ? colorConfig.outer : colorConfig.both;
-    colorConfig.caps         = colorConfig.caps->m_bIsFallback ? colorConfig.outer : colorConfig.caps;
-    colorConfig.num          = colorConfig.num->m_bIsFallback ? colorConfig.outer : colorConfig.num;
+    colorConfig.both         = colorConfig.both->m_bIsFallback ? colorConfig.fail : colorConfig.both;
+    colorConfig.caps         = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
+    colorConfig.num          = colorConfig.num->m_bIsFallback ? colorConfig.fail : colorConfig.num;
 
     colorState.inner       = colorConfig.inner;
     colorState.outer       = *colorConfig.outer;
@@ -489,17 +489,17 @@ void CPasswordInputField::updateColors() {
     //
     CGradientValueData* targetGrad = nullptr;
 
-    if (checkWaiting)
-        targetGrad = colorConfig.check;
-    else if (displayFail)
-        targetGrad = colorConfig.fail;
-
     if (g_pHyprlock->m_bCapsLock && NUMLOCK)
         targetGrad = colorConfig.both;
     else if (g_pHyprlock->m_bCapsLock)
         targetGrad = colorConfig.caps;
     else if (NUMLOCK)
         targetGrad = colorConfig.num;
+
+    if (checkWaiting)
+        targetGrad = colorConfig.check;
+    else if (displayFail)
+        targetGrad = colorConfig.fail;
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CColor              innerTarget = colorConfig.inner;
