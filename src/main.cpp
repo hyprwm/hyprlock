@@ -1,13 +1,12 @@
 
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
-#include "src/helpers/Log.hpp"
+#include "helpers/Log.hpp"
 #include <cstddef>
-#include <iostream>
 #include <string_view>
 
 void help() {
-    std::cout << "Usage: hyprlock [options]\n\n"
+    std::println("Usage: hyprlock [options]\n\n"
                  "Options:\n"
                  "  -v, --verbose            - Enable verbose logging\n"
                  "  -q, --quiet              - Disable logging\n"
@@ -17,14 +16,14 @@ void help() {
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
                  "  -V, --version            - Show version information\n"
-                 "  -h, --help               - Show this help message\n";
+                 "  -h, --help               - Show this help message");
 }
 
 std::optional<std::string> parseArg(const std::vector<std::string>& args, const std::string& flag, std::size_t& i) {
     if (i + 1 < args.size()) {
         return args[++i];
     } else {
-        std::cerr << "Error: Missing value for " << flag << " option.\n";
+        std::println(stderr, "Error: Missing value for {} option.", flag);
         return std::nullopt;
     }
 }
@@ -48,11 +47,11 @@ int main(int argc, char** argv, char** envp) {
 
         if (arg == "--version" || arg == "-V") {
             constexpr bool ISTAGGEDRELEASE = std::string_view(HYPRLOCK_COMMIT) == HYPRLOCK_VERSION_COMMIT;
+            if (ISTAGGEDRELEASE)
+                std::println("Hyprlock version v{}", HYPRLOCK_VERSION);
+            else
+                std::println("Hyprlock version v{} (commit {})", HYPRLOCK_VERSION, HYPRLOCK_VERSION_COMMIT);
 
-            std::cout << "Hyprlock version v" << HYPRLOCK_VERSION;
-            if (!ISTAGGEDRELEASE)
-                std::cout << " (commit " << HYPRLOCK_COMMIT << ")";
-            std::cout << std::endl;
             return 0;
         }
 
@@ -84,7 +83,7 @@ int main(int argc, char** argv, char** envp) {
             noFadeIn = true;
 
         else {
-            std::cerr << "Unknown option: " << arg << "\n";
+            std::println(stderr, "Unknown option: {}", arg);
             help();
             return 1;
         }

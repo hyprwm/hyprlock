@@ -1,7 +1,7 @@
 #pragma once
 #include <format>
-#include <iostream>
 #include <string>
+#include <print>
 
 enum eLogLevel {
     TRACE = 0,
@@ -24,6 +24,17 @@ enum eLogLevel {
 #define ASSERT(expr) RASSERT(expr, "?")
 
 namespace Debug {
+    constexpr const char* logLevelString(eLogLevel level) {
+        switch (level) {
+            case TRACE: return "TRACE"; break;
+            case INFO: return "INFO"; break;
+            case LOG: return "LOG"; break;
+            case WARN: return "WARN"; break;
+            case ERR: return "ERR"; break;
+            case CRIT: return "CRITICAL"; break;
+            default: return "??";
+        }
+    }
     inline bool quiet   = false;
     inline bool verbose = false;
 
@@ -37,21 +48,7 @@ namespace Debug {
             return;
 
         if (level != NONE) {
-            std::cout << '[';
-
-            switch (level) {
-                case TRACE: std::cout << "TRACE"; break;
-                case INFO: std::cout << "INFO"; break;
-                case LOG: std::cout << "LOG"; break;
-                case WARN: std::cout << "WARN"; break;
-                case ERR: std::cout << "ERR"; break;
-                case CRIT: std::cout << "CRITICAL"; break;
-                default: break;
-            }
-
-            std::cout << "] ";
+            std::println("[{}] {}", logLevelString(level), std::vformat(fmt, std::make_format_args(args...)));
         }
-
-        std::cout << std::vformat(fmt, std::make_format_args(args...)) << std::endl;
     }
 };
