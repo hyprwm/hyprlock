@@ -489,17 +489,17 @@ void CPasswordInputField::updateColors() {
     //
     CGradientValueData* targetGrad = nullptr;
 
-    if (checkWaiting)
-        targetGrad = colorConfig.check;
-    else if (displayFail)
-        targetGrad = colorConfig.fail;
-
     if (g_pHyprlock->m_bCapsLock && NUMLOCK)
         targetGrad = colorConfig.both;
     else if (g_pHyprlock->m_bCapsLock)
         targetGrad = colorConfig.caps;
     else if (NUMLOCK)
         targetGrad = colorConfig.num;
+
+    if (checkWaiting)
+        targetGrad = colorConfig.check;
+    else if (displayFail)
+        targetGrad = colorConfig.fail;
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CColor              innerTarget = colorConfig.inner;
