@@ -109,8 +109,9 @@ bool CPam::auth() {
     const pam_conv localConv   = {conv, (void*)&m_sConversationState};
     pam_handle_t*  handle      = NULL;
     auto           uidPassword = getpwuid(getuid());
+    RASSERT(uidPassword && uidPassword->pw_name, "Failed to get username (getpwuid)");
 
-    int            ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
+    int ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
         m_sConversationState.failText = "pam_start failed";
