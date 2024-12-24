@@ -347,12 +347,11 @@ void CPasswordInputField::updatePlaceholder() {
 
     if (displayFail) {
         g_pHyprlock->addTimer(std::chrono::milliseconds(configFailTimeoutMs), failTimeoutCallback, nullptr);
-        placeholder.currentText = configFailText;
-        replaceInString(placeholder.currentText, "$FAIL", AUTHFEEDBACK);
-        replaceInString(placeholder.currentText, "$ATTEMPTS", std::to_string(placeholder.failedAttempts));
+        const auto FORMATTEDFAIL = formatString(configFailText).formatted;
+        placeholder.currentText  = FORMATTEDFAIL;
     } else {
-        placeholder.currentText = configPlaceholderText;
-        replaceInString(placeholder.currentText, "$PROMPT", AUTHFEEDBACK);
+        const auto FORMATTEDPLACEHOLDER = formatString(configPlaceholderText).formatted;
+        placeholder.currentText         = FORMATTEDPLACEHOLDER;
     }
 
     placeholder.resourceID =
