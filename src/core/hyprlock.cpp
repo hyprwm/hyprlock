@@ -411,6 +411,7 @@ void CHyprlock::run() {
     }
 
     acquireSessionLock();
+    setupDBus();
 
     // Recieved finished
     if (m_bTerminate) {
@@ -598,6 +599,50 @@ void CHyprlock::run() {
     timersThr.join();
 
     Debug::log(LOG, "Reached the end, exiting");
+}
+
+void CHyprlock::setupDBus() {
+    try {
+        m_sDBUSState.connection = sdbus::createSystemBusConnection();
+
+        const sdbus::ServiceName destination{"org.freedesktop.login1"};
+        const sdbus::ObjectPath objectPath{"/org/freedesktop/login1/session/auto"};
+
+        m_sDBUSState.proxy = sdbus::createProxy(*m_sDBUSState.connection, destination, objectPath);
+
+        Debug::log(LOG, "[dbus] Initialized. Service: {}, Path: {}", std::string(destination), std::string(objectPath));
+    } catch (const sdbus::Error& e) {
+        Debug::log(ERR, "[dbus] Init failed: {}", std::string(e.what()));
+        return;
+    }
+
+    try {
+        const sdbus::ServiceName interface{"org.freedesktop.login1.Session"};
+
+        m_sDBUSState.proxy->callMethod("SetLockedHint").onInterface(interface).withArguments(true);
+
+        Debug::log(LOG, "[dbus] Sent 'SetLockedHint(true)' on {}", std::string(interface));
+    } catch (const sdbus::Error& e) {
+        Debug::log(WARN, "[dbus] Failed 'SetLockedHint(true)': {}", std::string(e.what()));
+    }
+}
+
+void CHyprlock::sendUnlockSignal() {
+    if (!m_sDBUSState.proxy) {
+        Debug::log(WARN, "[dbus] Unlock signal skipped: Proxy is not initialized. Call setupDBus() first.");
+        return;
+    }
+
+    try {
+        const sdbus::ServiceName interface{"org.freedesktop.login1.Session"};
+
+        m_sDBUSState.proxy->callMethod("Unlock").onInterface(interface);
+        m_sDBUSState.proxy->callMethod("SetLockedHint").onInterface(interface).withArguments(false);
+
+        Debug::log(LOG, "[dbus] Sent 'Unlock' and 'SetLockedHint(false)' on {}", std::string(interface));
+    } catch (const sdbus::Error& e) {
+        Debug::log(WARN, "[dbus] Unlock signal failed: {}", std::string(e.what()));
+    }
 }
 
 void CHyprlock::unlock() {
@@ -994,6 +1039,8 @@ void CHyprlock::releaseSessionLock() {
 
     ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
     m_sLockState.lock = nullptr;
+
+    sendUnlockSignal();
 
     Debug::log(LOG, "Unlocked, exiting!");
 

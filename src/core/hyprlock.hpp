@@ -12,6 +12,7 @@
 #include <vector>
 #include <condition_variable>
 #include <optional>
+#include <sdbus-c++/sdbus-c++.h>
 
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
@@ -33,6 +34,9 @@ class CHyprlock {
 
     void                            unlock();
     bool                            isUnlocked();
+
+    void                            setupDBus();
+    void                            sendUnlockSignal();
 
     void                            onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
     void                            onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
@@ -165,6 +169,11 @@ class CHyprlock {
         bool                    timerEvent = false;
     } m_sLoopState;
 
+    struct SDBUSState {
+        std::unique_ptr<sdbus::IConnection> connection;
+        std::unique_ptr<sdbus::IProxy>      proxy;
+    } m_sDBUSState;
+    
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
 
     std::vector<uint32_t>                m_vPressedKeys;
