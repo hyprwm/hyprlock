@@ -52,6 +52,9 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
     const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
     m_sCurrentDesktop         = SZCURRENTD;
+
+    // Initialize D-Bus for Unlock signal
+    initDBus();
 }
 
 CHyprlock::~CHyprlock() {
@@ -600,6 +603,38 @@ void CHyprlock::run() {
     Debug::log(LOG, "Reached the end, exiting");
 }
 
+void CHyprlock::initDBus() {
+    try {
+        m_sDBUSState.connection = sdbus::createSystemBusConnection();
+
+        const sdbus::ServiceName destination{"org.freedesktop.login1"};
+        const sdbus::ObjectPath objectPath{"/org/freedesktop/login1/session/auto"};
+
+        m_sDBUSState.proxy = sdbus::createProxy(*m_sDBUSState.connection, destination, objectPath);
+
+        Debug::log(LOG, "[dbus] Successfully initialized D-Bus for interface org.freedesktop.login1.Session.");
+    } catch (const sdbus::Error& e) {
+        Debug::log(ERR, "[dbus] Failed to initialize D-Bus: {}. Is the service running?", e.what());
+    }
+}
+
+void CHyprlock::sendUnlockSignal() {
+    if (!m_sDBUSState.proxy) {
+        Debug::log(WARN, "[dbus] Attempted to send Unlock signal, but D-Bus proxy is not initialized.");
+        return;
+    }
+
+    try {
+        const sdbus::ServiceName interface{"org.freedesktop.login1.Session"};
+
+        m_sDBUSState.proxy->callMethod("Unlock").onInterface(interface);
+
+        Debug::log(LOG, "[dbus] Unlock signal successfully sent via org.freedesktop.login1.Session.");
+    } catch (const sdbus::Error& e) {
+        Debug::log(WARN, "[dbus] Failed to send Unlock signal: {}. Check D-Bus connection and service availability.", e.what());
+    }
+}
+
 void CHyprlock::unlock() {
     static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
@@ -994,6 +1029,8 @@ void CHyprlock::releaseSessionLock() {
 
     ext_session_lock_v1_unlock_and_destroy(m_sLockState.lock);
     m_sLockState.lock = nullptr;
+
+    sendUnlockSignal();
 
     Debug::log(LOG, "Unlocked, exiting!");
 
