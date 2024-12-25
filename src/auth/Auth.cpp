@@ -1,6 +1,7 @@
 #include "Auth.hpp"
 #include "Pam.hpp"
 #include "Fingerprint.hpp"
+#include "SodiumPWHash.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../core/hyprlock.hpp"
 #include "src/helpers/Log.hpp"
@@ -15,7 +16,11 @@ CAuth::CAuth() {
     static auto* const PENABLEFINGERPRINT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("auth:fingerprint:enabled");
     if (**PENABLEFINGERPRINT)
         m_vImpls.push_back(std::make_shared<CFingerprint>());
+    static auto* const PENABLESODIUM = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("auth:sodium:enabled");
+    if (**PENABLESODIUM)
+        m_vImpls.push_back(std::make_shared<CSodiumPWHash>());
 
+    RASSERT(!(**PENABLEPAM && **PENABLESODIUM), "Pam and sodium hash authentication are mutually exclusive! Please enable one or the other.");
     RASSERT(!m_vImpls.empty(), "At least one authentication method must be enabled!");
 }
 

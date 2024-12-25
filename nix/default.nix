@@ -8,6 +8,7 @@
   libdrm,
   libGL,
   libjpeg,
+  libsodium,
   libwebp,
   libxkbcommon,
   mesa,
@@ -39,6 +40,7 @@ stdenv.mkDerivation {
   buildInputs = [
     cairo
     file
+    libsodium
     libdrm
     libGL
     libjpeg
