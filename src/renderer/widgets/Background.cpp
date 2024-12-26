@@ -1,7 +1,8 @@
 #include "Background.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
-#include "src/helpers/Log.hpp"
+#include "../../helpers/Log.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
@@ -39,7 +40,7 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
         path              = std::any_cast<Hyprlang::STRING>(props.at("path"));
         reloadCommand     = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
         reloadTime        = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
-        crossFadeTime    = std::any_cast<Hyprlang::FLOAT>(props.at("crossfade_time"));
+        crossFadeTime     = std::any_cast<Hyprlang::FLOAT>(props.at("crossfade_time"));
 
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CBackground: {}", e.what()); //
@@ -47,12 +48,13 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
         RASSERT(false, "Missing propperty for CBackground: {}", e.what()); //
     }
 
-    try {
-        modificationTime = std::filesystem::last_write_time(path);
-    } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
+    if (!isScreenshot && reloadTime > -1) {
+        try {
+            modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
+        } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
 
-    if (!isScreenshot)
         plantReloadTimer(); // No reloads for screenshots.
+    }
 }
 
 void CBackground::renderRect(CColor color) {
@@ -139,14 +141,13 @@ bool CBackground::draw(const SRenderData& data) {
 
         if (fade)
             g_pRenderer->renderTextureMix(texbox, asset->texture, pendingAsset->texture, 1.0,
-                                          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count() / (1000 * crossFadeTime),
-                                          0, HYPRUTILS_TRANSFORM_NORMAL);
+                                          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count() / (1000 * crossFadeTime), 0,
+                                          HYPRUTILS_TRANSFORM_NORMAL);
         else
             g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
                                        isScreenshot ?
                                            wlTransformToHyprutils(invertTransform(output->transform)) :
                                            HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
-
 
         if (blurPasses > 0)
             g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
@@ -222,7 +223,7 @@ void CBackground::onReloadTimerUpdate() {
     }
 
     try {
-        const auto MTIME = std::filesystem::last_write_time(path);
+        const auto MTIME = std::filesystem::last_write_time(absolutePath(path, ""));
         if (OLDPATH == path && MTIME == modificationTime)
             return;
 
