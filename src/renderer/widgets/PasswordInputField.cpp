@@ -213,8 +213,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     fontCol.a *= fade.a * data.opacity;
 
     if (outThick > 0) {
-        const auto OUTERROUND = rounding == -1 ? outerBox.h / 2.0 : rounding;
-        g_pRenderer->renderBorder(outerBox, outerGrad, outThick, OUTERROUND, fade.a * data.opacity);
+        const int BORDERROUND = roundingForBorderBox(outerBox, rounding, outThick);
+        g_pRenderer->renderBorder(outerBox, outerGrad, outThick, BORDERROUND, fade.a * data.opacity);
 
         if (passwordLength != 0 && hiddenInputState.enabled && !fade.animated && data.opacity == 1.0) {
             CBox     outerBoxScaled = outerBox;
@@ -226,13 +226,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 outerBoxScaled.x += outerBoxScaled.w;
             glEnable(GL_SCISSOR_TEST);
             glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-            g_pRenderer->renderBorder(outerBox, hiddenInputState.lastColor, outThick, OUTERROUND, fade.a * data.opacity);
+            g_pRenderer->renderBorder(outerBox, hiddenInputState.lastColor, outThick, BORDERROUND, fade.a * data.opacity);
             glScissor(0, 0, viewport.x, viewport.y);
             glDisable(GL_SCISSOR_TEST);
         }
     }
 
-    g_pRenderer->renderRect(inputFieldBox, innerCol, rounding == -1 ? inputFieldBox.h / 2.0 : rounding - outThick - 1);
+    const int ROUND = roundingForBox(inputFieldBox, rounding);
+    g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
     if (!hiddenInputState.enabled && !g_pHyprlock->m_bFadeStarted) {
         const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
