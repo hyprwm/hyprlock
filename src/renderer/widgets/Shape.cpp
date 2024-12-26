@@ -68,8 +68,9 @@ bool CShape::draw(const SRenderData& data) {
     }
 
     if (!shapeFB.isAllocated()) {
-        const auto MINHALFSHAPE = std::min(shapeBox.w, shapeBox.h) / 2.0;
-        const bool ALLOWROUND   = rounding > -1 && rounding < MINHALFSHAPE;
+        const int ROUND       = roundingForBox(shapeBox, rounding);
+        const int BORDERROUND = roundingForBorderBox(borderBox, rounding, border);
+        Debug::log(LOG, "round: {}, borderround: {}", ROUND, BORDERROUND);
 
         shapeFB.alloc(borderBox.width + borderBox.x * 2.0, borderBox.height + borderBox.y * 2.0, true);
         g_pRenderer->pushFb(shapeFB.m_iFb);
@@ -77,9 +78,9 @@ bool CShape::draw(const SRenderData& data) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderBorder(borderBox, borderGrad, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : MINHALFBORDER, 1.0);
+            g_pRenderer->renderBorder(borderBox, borderGrad, border, BORDERROUND, 1.0);
 
-        g_pRenderer->renderRect(shapeBox, color, ALLOWROUND ? rounding : MINHALFSHAPE);
+        g_pRenderer->renderRect(shapeBox, color, ROUND);
         g_pRenderer->popFb();
     }
 
