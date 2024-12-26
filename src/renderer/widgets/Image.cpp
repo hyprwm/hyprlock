@@ -141,14 +141,14 @@ bool CImage::draw(const SRenderData& data) {
         texbox.w *= std::max(SCALEX, SCALEY);
         texbox.h *= std::max(SCALEX, SCALEY);
 
-        const bool ALLOWROUND = rounding > -1 && rounding < std::min(texbox.w, texbox.h) / 2.0;
-
         // plus borders if any
         CBox borderBox = {angle == 0 ? BORDERPOS : BORDERPOS + Vector2D{1.0, 1.0}, texbox.size() + IMAGEPOS * 2.0};
 
         borderBox.round();
 
-        const Vector2D FBSIZE = angle == 0 ? borderBox.size() : borderBox.size() + Vector2D{2.0, 2.0};
+        const Vector2D FBSIZE      = angle == 0 ? borderBox.size() : borderBox.size() + Vector2D{2.0, 2.0};
+        const int      ROUND       = roundingForBox(texbox, rounding);
+        const int      BORDERROUND = roundingForBorderBox(borderBox, rounding, border);
 
         imageFB.alloc(FBSIZE.x, FBSIZE.y, true);
         g_pRenderer->pushFb(imageFB.m_iFb);
@@ -156,11 +156,10 @@ bool CImage::draw(const SRenderData& data) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (border > 0)
-            g_pRenderer->renderBorder(borderBox, color, border, ALLOWROUND ? (rounding == 0 ? 0 : rounding + std::round(border / M_PI)) : std::min(borderBox.w, borderBox.h) / 2.0,
-                                      1.0);
+            g_pRenderer->renderBorder(borderBox, color, border, BORDERROUND, 1.0);
 
         texbox.round();
-        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ALLOWROUND ? rounding : std::min(texbox.w, texbox.h) / 2.0, HYPRUTILS_TRANSFORM_NORMAL);
+        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ROUND, HYPRUTILS_TRANSFORM_NORMAL);
         g_pRenderer->popFb();
     }
 
