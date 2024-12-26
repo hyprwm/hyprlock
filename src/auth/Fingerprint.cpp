@@ -1,5 +1,6 @@
 #include "Fingerprint.hpp"
 #include "../core/hyprlock.hpp"
+#include "../core/DBusManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 
@@ -48,8 +49,10 @@ CFingerprint::~CFingerprint() {
 }
 
 void CFingerprint::init() {
-    m_sDBUSState.connection = sdbus::createSystemBusConnection();
-    m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
+    auto& dbusManager = DBusManager::getInstance();
+    m_sDBUSState.connection = dbusManager.getConnection();
+    m_sDBUSState.login = dbusManager.getLoginProxy();
+
     m_sDBUSState.login->getPropertyAsync("PreparingForSleep").onInterface(LOGIN_MANAGER).uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::Variant preparingForSleep) {
         if (e) {
             Debug::log(WARN, "fprint: Failed getting value for PreparingForSleep: {}", e->what());
@@ -62,6 +65,7 @@ void CFingerprint::init() {
         inhibitSleep();
         startVerify();
     });
+    
     m_sDBUSState.login->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
         Debug::log(LOG, "fprint: PrepareForSleep (start: {})", start);
         if (start) {
@@ -95,10 +99,6 @@ bool CFingerprint::checkWaiting() {
 void CFingerprint::terminate() {
     if (!m_sDBUSState.abort)
         releaseDevice();
-}
-
-std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
-    return m_sDBUSState.connection;
 }
 
 void CFingerprint::inhibitSleep() {
