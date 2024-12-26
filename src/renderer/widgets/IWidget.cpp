@@ -56,6 +56,25 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
     return pos;
 }
 
+int IWidget::roundingForBox(const CBox& box, int roundingConfig) {
+    const int MINHALFBOX = std::min(box.w, box.h) / 2.0;
+    if (roundingConfig == -1)
+        return MINHALFBOX;
+
+    return std::clamp(roundingConfig, 0, MINHALFBOX);
+}
+
+int IWidget::roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness) {
+    const int MINHALFBORDER = std::min(borderBox.w, borderBox.h) / 2.0;
+    if (roundingConfig == -1)
+        return MINHALFBORDER;
+
+    else if (roundingConfig == 0)
+        return 0;
+
+    return std::clamp(roundingConfig + thickness, 0, MINHALFBORDER);
+}
+
 static void replaceAllAttempts(std::string& str) {
 
     const size_t      ATTEMPTS = g_pAuth->m_iFailedAttempts;
