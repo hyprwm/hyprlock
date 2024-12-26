@@ -2,6 +2,7 @@
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Log.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
@@ -46,7 +47,7 @@ void CImage::onTimerUpdate() {
     }
 
     try {
-        const auto MTIME = std::filesystem::last_write_time(path);
+        const auto MTIME = std::filesystem::last_write_time(absolutePath(path, ""));
         if (OLDPATH == path && MTIME == modificationTime)
             return;
 
@@ -101,13 +102,15 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
         RASSERT(false, "Missing propperty for CImage: {}", e.what()); //
     }
 
-    try {
-        modificationTime = std::filesystem::last_write_time(path);
-    } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
-
     angle = angle * M_PI / 180.0;
 
-    plantTimer();
+    if (reloadTime > -1) {
+        try {
+            modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
+        } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
+
+        plantTimer();
+    }
 }
 
 bool CImage::draw(const SRenderData& data) {
