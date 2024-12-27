@@ -13,7 +13,6 @@ static const auto FPRINT        = sdbus::ServiceName{"net.reactivated.Fprint"};
 static const auto DEVICE        = sdbus::ServiceName{"net.reactivated.Fprint.Device"};
 static const auto MANAGER       = sdbus::ServiceName{"net.reactivated.Fprint.Manager"};
 static const auto LOGIN_MANAGER = sdbus::ServiceName{"org.freedesktop.login1.Manager"};
-static const auto RETRY_MESSAGE = "Could not match fingerprint. Try again.";
 
 enum MatchResult {
     MATCH_INVALID = 0,
@@ -81,10 +80,14 @@ void CFingerprint::handleInput(const std::string& input) {
 }
 
 std::optional<std::string> CFingerprint::getLastFailText() {
-    return m_sDBUSState.message.empty() ? std::nullopt : std::optional(m_sDBUSState.message);
+    if (!m_sFailureReason.empty())
+        return std::optional(m_sFailureReason);
+    return std::nullopt;
 }
 
 std::optional<std::string> CFingerprint::getLastPrompt() {
+    if (!m_sPrompt.empty())
+        return std::optional(m_sPrompt);
     return std::nullopt;
 }
 
@@ -140,7 +143,8 @@ bool CFingerprint::createDeviceProxy() {
                 bool       isPresent      = presentVariant.get<bool>();
                 if (!isPresent)
                     return;
-                m_sDBUSState.message = m_sFingerprintPresent;
+                m_sPrompt        = m_sFingerprintPresent;
+                m_sFailureReason = "";
                 g_pHyprlock->enqueueForceUpdateTimers();
             } catch (std::out_of_range& e) {}
         });
@@ -153,6 +157,7 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
     Debug::log(LOG, "fprint: handling status {}", result);
     auto matchResult   = s_mapStringToTestType[result];
     bool authenticated = false;
+    bool retry         = false;
     if (m_sDBUSState.sleeping && matchResult != MATCH_DISCONNECTED)
         return;
     switch (matchResult) {
@@ -160,34 +165,53 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_NO_MATCH:
             stopVerify();
             if (m_sDBUSState.retries >= 3) {
-                m_sDBUSState.message = "Fingerprint auth disabled (too many failed attempts)";
+                m_sPrompt        = "";
+                m_sFailureReason = "Fingerprint auth disabled (too many failed attempts)";
             } else {
                 done = false;
                 startVerify(true);
-                m_sDBUSState.message = "Fingerprint not matched";
             }
             break;
         case MATCH_UNKNOWN_ERROR:
             stopVerify();
-            m_sDBUSState.message = "Fingerprint auth disabled (unknown error)";
+            m_sPrompt        = "";
+            m_sFailureReason = "Fingerprint auth disabled (unknown error)";
             break;
         case MATCH_MATCHED:
             stopVerify();
-            m_sDBUSState.message = "";
-            authenticated        = true;
+            m_sPrompt        = "";
+            m_sFailureReason = "";
+            authenticated    = true;
             g_pAuth->enqueueUnlock();
             break;
-        case MATCH_RETRY: m_sDBUSState.message = "Please retry fingerprint scan"; break;
-        case MATCH_SWIPE_TOO_SHORT: m_sDBUSState.message = "Swipe too short - try again"; break;
-        case MATCH_FINGER_NOT_CENTERED: m_sDBUSState.message = "Finger not centered - try again"; break;
-        case MATCH_REMOVE_AND_RETRY: m_sDBUSState.message = "Remove your finger and try again"; break;
+        case MATCH_RETRY:
+            retry            = true;
+            m_sPrompt        = "Please retry fingerprint scan";
+            m_sFailureReason = "";
+            break;
+        case MATCH_SWIPE_TOO_SHORT:
+            retry            = true;
+            m_sPrompt        = "Swipe too short - try again";
+            m_sFailureReason = "";
+            break;
+        case MATCH_FINGER_NOT_CENTERED:
+            retry            = true;
+            m_sPrompt        = "Finger not centered - try again";
+            m_sFailureReason = "";
+            break;
+        case MATCH_REMOVE_AND_RETRY:
+            retry            = true;
+            m_sPrompt        = "Remove your finger and try again";
+            m_sFailureReason = "";
+            break;
         case MATCH_DISCONNECTED:
-            m_sDBUSState.message = "Fingerprint device disconnected";
-            m_sDBUSState.abort   = true;
+            m_sPrompt          = "";
+            m_sFailureReason   = "Fingerprint device disconnected";
+            m_sDBUSState.abort = true;
             break;
     }
 
-    if (!authenticated)
+    if (!authenticated && !retry)
         g_pAuth->enqueueFail();
 
     if (done || m_sDBUSState.abort)
@@ -218,15 +242,20 @@ void CFingerprint::startVerify(bool isRetry) {
     m_sDBUSState.device->callMethodAsync("VerifyStart").onInterface(DEVICE).withArguments(finger).uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
         if (e) {
             Debug::log(WARN, "fprint: could not start verifying, {}", e->what());
-            if (isRetry)
-                m_sDBUSState.message = "Fingerprint auth disabled (failed to restart)";
+            if (isRetry) {
+                m_sPrompt        = "";
+                m_sFailureReason = "Fingerprint auth disabled (failed to restart)";
+            }
         } else {
             Debug::log(LOG, "fprint: started verifying");
             if (isRetry) {
                 m_sDBUSState.retries++;
-                m_sDBUSState.message = RETRY_MESSAGE;
-            } else
-                m_sDBUSState.message = m_sFingerprintReady;
+                m_sPrompt        = "Could not match fingerprint. Try again.";
+                m_sFailureReason = "";
+            } else {
+                m_sPrompt        = m_sFingerprintReady;
+                m_sFailureReason = "";
+            }
         }
         g_pHyprlock->enqueueForceUpdateTimers();
     });

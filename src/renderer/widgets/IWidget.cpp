@@ -197,6 +197,12 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.allowForceUpdate = true;
     }
 
+    if (in.contains("$FPRINTPROMPT")) {
+        const auto FPRINTPROMPT = g_pAuth->getPrompt(AUTH_IMPL_FINGERPRINT);
+        replaceInString(in, "$FPRINTPROMPT", FPRINTPROMPT.value_or(""));
+        result.allowForceUpdate = true;
+    }
+
     if (in.starts_with("cmd[") && in.contains("]")) {
         // this is a command
         CVarList vars(in.substr(4, in.find_first_of(']') - 4), 0, ',', true);

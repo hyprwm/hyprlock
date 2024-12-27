@@ -26,8 +26,6 @@ class CFingerprint : public IAuthImplementation {
 
   private:
     struct SDBUSState {
-        std::string                         message = "";
-
         std::shared_ptr<sdbus::IConnection> connection;
         std::unique_ptr<sdbus::IProxy>      login;
         std::unique_ptr<sdbus::IProxy>      device;
@@ -41,6 +39,9 @@ class CFingerprint : public IAuthImplementation {
 
     std::string m_sFingerprintReady;
     std::string m_sFingerprintPresent;
+
+    std::string m_sPrompt{""};
+    std::string m_sFailureReason{""};
 
     void        handleVerifyStatus(const std::string& result, const bool done);
 
