@@ -186,6 +186,10 @@ CRenderer::CRenderer() {
     borderShader.gradient              = glGetUniformLocation(prog, "gradient");
     borderShader.gradientLength        = glGetUniformLocation(prog, "gradientLength");
     borderShader.angle                 = glGetUniformLocation(prog, "angle");
+    borderShader.gradient2             = glGetUniformLocation(prog, "gradient2");
+    borderShader.gradient2Length       = glGetUniformLocation(prog, "gradient2Length");
+    borderShader.angle2                = glGetUniformLocation(prog, "angle2");
+    borderShader.gradientLerp          = glGetUniformLocation(prog, "gradientLerp");
     borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
 
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
@@ -223,7 +227,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         // render status
         if (!**PDISABLEBAR) {
             CBox progress = {0, 0, asyncResourceGatherer->progress * surf.size.x, 2};
-            renderRect(progress, CColor{0.2f, 0.1f, 0.1f, 1.f}, 0);
+            renderRect(progress, CHyprColor{0.2f, 0.1f, 0.1f, 1.f}, 0);
         }
     } else {
 
@@ -260,7 +264,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     return feedback;
 }
 
-void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
+void CRenderer::renderRect(const CBox& box, const CHyprColor& col, int rounding) {
     const auto ROUNDEDBOX = box.copy().round();
     Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
     Mat3x3     glMatrix   = projection.copy().multiply(matrix);
@@ -298,12 +302,11 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
 
     glUniformMatrix3fv(borderShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
 
-    static_assert(sizeof(CColor) == 4 * sizeof(float)); // otherwise the line below this will fail
-
-    glUniform4fv(borderShader.gradient, gradient.m_vColors.size(), (float*)gradient.m_vColors.data());
-    glUniform1i(borderShader.gradientLength, gradient.m_vColors.size());
+    glUniform4fv(borderShader.gradient, gradient.m_vColorsOkLabA.size(), (float*)gradient.m_vColorsOkLabA.data());
+    glUniform1i(borderShader.gradientLength, gradient.m_vColorsOkLabA.size() / 4);
     glUniform1f(borderShader.angle, (int)(gradient.m_fAngle / (M_PI / 180.0)) % 360 * (M_PI / 180.0));
     glUniform1f(borderShader.alpha, alpha);
+    glUniform1i(borderShader.gradient2Length, 0);
 
     const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
     const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);

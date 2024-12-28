@@ -205,9 +205,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     for (auto& c : outerGrad.m_vColors)
         c.a *= fade.a * data.opacity;
 
-    CColor innerCol = colorState.inner;
+    CHyprColor innerCol = colorState.inner;
     innerCol.a *= fade.a * data.opacity;
-    CColor fontCol = colorState.font;
+    CHyprColor fontCol = colorState.font;
     fontCol.a *= fade.a * data.opacity;
 
     if (outThick > 0) {
@@ -433,7 +433,7 @@ void CPasswordInputField::updateHiddenInputState() {
     hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
 
-static void changeChannel(const float& source, const float& target, float& subject, const double& multi, bool& animated) {
+static void changeChannel(const double& source, const double& target, double& subject, const double& multi, bool& animated) {
 
     const float DELTA = target - source;
 
@@ -446,7 +446,7 @@ static void changeChannel(const float& source, const float& target, float& subje
     }
 }
 
-static void changeColor(const CColor& source, const CColor& target, CColor& subject, const double& multi, bool& animated) {
+static void changeColor(const CHyprColor& source, const CHyprColor& target, CHyprColor& subject, const double& multi, bool& animated) {
 
     changeChannel(source.r, target.r, subject.r, multi, animated);
     changeChannel(source.g, target.g, subject.g, multi, animated);
@@ -461,8 +461,8 @@ static void changeGrad(CGradientValueData* psource, CGradientValueData* ptarget,
     subject.m_vColors.resize(ptarget->m_vColors.size(), subject.m_vColors.back());
 
     for (size_t i = 0; i < subject.m_vColors.size(); ++i) {
-        const CColor& sourceCol = (i < psource->m_vColors.size()) ? psource->m_vColors[i] : psource->m_vColors.back();
-        const CColor& targetCol = (i < ptarget->m_vColors.size()) ? ptarget->m_vColors[i] : ptarget->m_vColors.back();
+        const CHyprColor& sourceCol = (i < psource->m_vColors.size()) ? psource->m_vColors[i] : psource->m_vColors.back();
+        const CHyprColor& targetCol = (i < ptarget->m_vColors.size()) ? ptarget->m_vColors[i] : ptarget->m_vColors.back();
         changeColor(sourceCol, targetCol, subject.m_vColors[i], multi, animated);
     }
 
@@ -500,8 +500,8 @@ void CPasswordInputField::updateColors() {
         targetGrad = colorConfig.fail;
 
     CGradientValueData* outerTarget = colorConfig.outer;
-    CColor              innerTarget = colorConfig.inner;
-    CColor              fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : colorConfig.font;
+    CHyprColor          innerTarget = colorConfig.inner;
+    CHyprColor          fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : colorConfig.font;
 
     if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || NUMLOCK) {
         if (BORDERLESS && colorConfig.swapFont) {

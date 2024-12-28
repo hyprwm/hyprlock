@@ -90,16 +90,16 @@ class CPasswordInputField : public IWidget {
     } placeholder;
 
     struct {
-        CColor lastColor;
-        int    lastQuadrant       = 0;
-        int    lastPasswordLength = 0;
-        bool   enabled            = false;
+        CHyprColor lastColor;
+        int        lastQuadrant       = 0;
+        int        lastPasswordLength = 0;
+        bool       enabled            = false;
     } hiddenInputState;
 
     struct {
         CGradientValueData* outer = nullptr;
-        CColor              inner;
-        CColor              font;
+        CHyprColor          inner;
+        CHyprColor          font;
         CGradientValueData* fail  = nullptr;
         CGradientValueData* check = nullptr;
         CGradientValueData* caps  = nullptr;
@@ -113,11 +113,11 @@ class CPasswordInputField : public IWidget {
 
     struct {
         CGradientValueData  outer;
-        CColor              inner;
-        CColor              font;
+        CHyprColor          inner;
+        CHyprColor          font;
 
         CGradientValueData* outerSource = nullptr;
-        CColor              innerSource;
+        CHyprColor          innerSource;
 
         CGradientValueData* currentTarget = nullptr;
 

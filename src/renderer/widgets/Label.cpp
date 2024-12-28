@@ -82,7 +82,7 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
         std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-        CColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
+        CHyprColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
         int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
 
         label = formatString(labelPreFormat);

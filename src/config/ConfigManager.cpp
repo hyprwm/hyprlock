@@ -107,7 +107,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             continue;
 
         try {
-            DATA->m_vColors.push_back(CColor(configStringToInt(var)));
+            DATA->m_vColors.push_back(CHyprColor(configStringToInt(var)));
         } catch (std::exception& e) {
             Debug::log(WARN, "Error parsing gradient {}", V);
             parseError = "Error parsing gradient " + V + ": " + e.what();
@@ -125,6 +125,8 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
         DATA->m_vColors.push_back(0); // transparent
     }
+
+    DATA->updateColorsOk();
 
     Hyprlang::CParseResult result;
     if (!parseError.empty())

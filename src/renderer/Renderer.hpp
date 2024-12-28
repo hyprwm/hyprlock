@@ -22,15 +22,15 @@ class CRenderer {
     };
 
     struct SBlurParams {
-        int                   size = 0, passes = 0;
-        float                 noise = 0, contrast = 0, brightness = 0, vibrancy = 0, vibrancy_darkness = 0;
-        std::optional<CColor> colorize;
-        float                 boostA = 1.0;
+        int                       size = 0, passes = 0;
+        float                     noise = 0, contrast = 0, brightness = 0, vibrancy = 0, vibrancy_darkness = 0;
+        std::optional<CHyprColor> colorize;
+        float                     boostA = 1.0;
     };
 
     SRenderFeedback renderLock(const CSessionLockSurface& surface);
 
-    void            renderRect(const CBox& box, const CColor& col, int rounding = 0);
+    void            renderRect(const CBox& box, const CHyprColor& col, int rounding = 0);
     void            renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding = 0, float alpha = 1.0);
     void            renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, std::optional<eTransform> tr = {});
     void renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
