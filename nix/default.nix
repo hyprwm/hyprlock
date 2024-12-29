@@ -14,6 +14,7 @@
   hyprgraphics,
   hyprlang,
   hyprutils,
+  hyprwayland-scanner,
   pam,
   pango,
   sdbus-cpp,
@@ -33,6 +34,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     cmake
     pkg-config
+    hyprwayland-scanner
     wayland-scanner
   ];
 
