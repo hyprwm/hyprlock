@@ -50,7 +50,7 @@ int main(int argc, char** argv, char** envp) {
             if (ISTAGGEDRELEASE)
                 std::println("Hyprlock version v{}", HYPRLOCK_VERSION);
             else
-                std::println("Hyprlock version v{} (commit {})", HYPRLOCK_VERSION, HYPRLOCK_VERSION_COMMIT);
+                std::println("Hyprlock version v{} (commit {})", HYPRLOCK_VERSION, HYPRLOCK_COMMIT);
 
             return 0;
         }
