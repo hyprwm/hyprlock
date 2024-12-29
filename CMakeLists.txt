@@ -57,7 +57,7 @@ message(STATUS "Checking deps...")
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(hyprwayland-scanner 0.4.0 REQUIRED)
+find_package(hyprwayland-scanner 0.4.4 REQUIRED)
 pkg_check_modules(
   deps
   REQUIRED
