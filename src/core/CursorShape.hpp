@@ -7,8 +7,10 @@ class CCursorShape {
   public:
     CCursorShape(wp_cursor_shape_manager_v1* mgr);
 
-    void setShape(const uint32_t serial, const wp_cursor_shape_device_v1_shape shape);
-    void hideCursor(const uint32_t serial);
+    void     setShape(const wp_cursor_shape_device_v1_shape shape);
+    void     hideCursor();
+
+    uint32_t lastCursorSerial = 0;
 
   private:
     wp_cursor_shape_manager_v1* mgr = nullptr;
