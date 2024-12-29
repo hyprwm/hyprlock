@@ -169,7 +169,13 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
                 m_sFailureReason = "Fingerprint auth disabled (too many failed attempts)";
             } else {
                 done = false;
-                startVerify(true);
+                static const auto RETRYDELAY = **(Hyprlang::INT* const*)(g_pConfigManager->getValuePtr("auth:fingerprint:retry_delay"));
+                g_pHyprlock->addTimer(
+                    std::chrono::milliseconds(RETRYDELAY),
+                    [](std::shared_ptr<CTimer> self, void* data) {
+                        ((CFingerprint*)data)->startVerify(true);
+                    },
+                    this);
             }
             break;
         case MATCH_UNKNOWN_ERROR:
