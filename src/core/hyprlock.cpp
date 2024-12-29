@@ -645,8 +645,6 @@ static void handlePointerAxis(void* data, wl_pointer* wl_pointer, uint32_t time,
 }
 
 static void handlePointerMotion(void* data, struct wl_pointer* wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
-    static auto* const PHIDE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:hide_cursor");
-
     if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
         return;
 
