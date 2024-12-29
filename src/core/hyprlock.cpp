@@ -58,7 +58,7 @@ static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0
     sa.sa_handler = handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = sa_flags;
-    sigaction(sig, &sa, NULL);
+    sigaction(sig, &sa, nullptr);
 }
 
 static void handleUnlockSignal(int sig) {
@@ -91,15 +91,15 @@ static void handleCriticalSignal(int sig) {
     sa.sa_handler = SIG_IGN;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGABRT, &sa, nullptr);
+    sigaction(SIGSEGV, &sa, nullptr);
 
     abort();
 }
 
 static char* gbm_find_render_node(drmDevice* device) {
     drmDevice* devices[64];
-    char*      render_node = NULL;
+    char*      render_node = nullptr;
 
     int        n = drmGetDevices2(0, devices, sizeof(devices) / sizeof(devices[0]));
     for (int i = 0; i < n; ++i) {
@@ -132,7 +132,7 @@ gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
     if (fd < 0) {
         Debug::log(ERR, "[core] couldn't open render node");
         free(renderNode);
-        return NULL;
+        return nullptr;
     }
 
     free(renderNode);
@@ -186,7 +186,7 @@ void CHyprlock::addDmabufListener() {
             return;
 
         if (dma.gbmDevice) {
-            drmDevice* drmDevRenderer = NULL;
+            drmDevice* drmDevRenderer = nullptr;
             drmGetDevice2(gbm_device_get_fd(dma.gbmDevice), /* flags */ 0, &drmDevRenderer);
             dma.deviceUsed = drmDevicesEqual(drmDevRenderer, drmDev);
         } else {
@@ -210,7 +210,7 @@ void CHyprlock::addDmabufListener() {
 
         dma.dmabufMods.clear();
 
-        dma.formatTable = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        dma.formatTable = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
         if (dma.formatTable == MAP_FAILED) {
             Debug::log(ERR, "[core] format table failed to mmap");
