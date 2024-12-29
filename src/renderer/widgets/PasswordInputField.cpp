@@ -56,7 +56,6 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     dots.size                = std::clamp(dots.size, 0.2f, 0.8f);
     dots.spacing             = std::clamp(dots.spacing, -1.f, 1.f);
     colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
-    colorConfig.both         = colorConfig.both->m_bIsFallback ? colorConfig.fail : colorConfig.both;
     colorConfig.caps         = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
 
     colorState.inner       = colorConfig.inner;
@@ -487,7 +486,7 @@ void CPasswordInputField::updateColors() {
     //
     CGradientValueData* targetGrad = nullptr;
 
-    if (g_pHyprlock->m_bCapsLock && NUMLOCK)
+    if (g_pHyprlock->m_bCapsLock && NUMLOCK && !colorConfig.both->m_bIsFallback)
         targetGrad = colorConfig.both;
     else if (g_pHyprlock->m_bCapsLock)
         targetGrad = colorConfig.caps;
