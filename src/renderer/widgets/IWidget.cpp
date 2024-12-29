@@ -2,7 +2,6 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
-#include "../../auth/Fingerprint.hpp"
 #include <chrono>
 #include <unistd.h>
 #include <pwd.h>
@@ -120,43 +119,49 @@ static void replaceAllLayout(std::string& str) {
 }
 
 static bool        logMissingTzOnce = true;
-static std::string getTime() {
-    const auto PCURRENTTZ = std::chrono::current_zone();
-    const auto TPNOW      = std::chrono::system_clock::now();
+static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
+    const std::chrono::time_zone* pCurrentTz = nullptr;
+    try {
+        auto name = std::getenv("TZ");
+        if (name) {
+            pCurrentTz = std::chrono::locate_zone(name);
+        }
+    } catch (std::runtime_error&) {
+        Debug::log(WARN, "Invalid TZ value. Falling back to current timezone!");
+    }
+
+    if (!pCurrentTz) {
+        pCurrentTz = std::chrono::current_zone();
+    }
+
+    const auto TPNOW = std::chrono::system_clock::now();
 
     //
     std::chrono::hh_mm_ss<std::chrono::system_clock::duration> hhmmss;
-    if (!PCURRENTTZ) {
+    if (!pCurrentTz) {
         if (logMissingTzOnce) {
-            Debug::log(WARN, "Current timezone unknown for $TIME. Falling back to UTC!");
+            Debug::log(WARN, "Current timezone unknown. Falling back to UTC!");
             logMissingTzOnce = false;
         }
         hhmmss = std::chrono::hh_mm_ss{TPNOW - std::chrono::floor<std::chrono::days>(TPNOW)};
-    } else
-        hhmmss = std::chrono::hh_mm_ss{PCURRENTTZ->to_local(TPNOW) - std::chrono::floor<std::chrono::days>(PCURRENTTZ->to_local(TPNOW))};
+    } else {
+        hhmmss = std::chrono::hh_mm_ss{pCurrentTz->to_local(TPNOW) - std::chrono::floor<std::chrono::days>(pCurrentTz->to_local(TPNOW))};
+    }
 
-    const auto HRS  = hhmmss.hours().count();
-    const auto MINS = hhmmss.minutes().count();
+    return hhmmss;
+}
+
+static std::string getTime24h() {
+    const auto HHMMSS = getTime();
+    const auto HRS  = HHMMSS.hours().count();
+    const auto MINS = HHMMSS.minutes().count();
     return (HRS < 10 ? "0" : "") + std::to_string(HRS) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS);
 }
 
 static std::string getTime12h() {
-    const auto PCURRENTTZ = std::chrono::current_zone();
-    const auto TPNOW      = std::chrono::system_clock::now();
-
-    //
-    std::chrono::hh_mm_ss<std::chrono::system_clock::duration> hhmmss;
-    if (!PCURRENTTZ) {
-        if (logMissingTzOnce) {
-            Debug::log(WARN, "Current timezone unknown for $TIME12. Falling back to UTC!");
-            logMissingTzOnce = false;
-        }
-        hhmmss = std::chrono::hh_mm_ss{TPNOW - std::chrono::floor<std::chrono::days>(TPNOW)};
-    } else
-        hhmmss = std::chrono::hh_mm_ss{PCURRENTTZ->to_local(TPNOW) - std::chrono::floor<std::chrono::days>(PCURRENTTZ->to_local(TPNOW))};
-
-    const auto HRS  = hhmmss.hours().count();
-    const auto MINS = hhmmss.minutes().count();
+    const auto HHMMSS = getTime();
+    const auto HRS  = HHMMSS.hours().count();
+    const auto MINS = HHMMSS.minutes().count();
     return (HRS == 12 || HRS == 0 ? "12" : (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12)) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) +
         (HRS < 12 ? " AM" : " PM");
 }
@@ -184,7 +189,7 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$TIME")) {
-        replaceInString(in, "$TIME", getTime());
+        replaceInString(in, "$TIME", getTime24h());
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
