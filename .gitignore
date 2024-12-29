@@ -8,6 +8,6 @@ Makefile
 cmake_install.cmake
 build/
 compile_commands.json
-protocols/*.c
-protocols/*.h
+protocols/*.cpp
+protocols/*.hpp
 *.kdev4

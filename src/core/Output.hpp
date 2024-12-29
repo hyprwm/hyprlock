@@ -1,13 +1,14 @@
 #pragma once
 
-#include <wayland-client.h>
+#include "../defines.hpp"
+#include "wayland.hpp"
 #include "../helpers/Math.hpp"
 #include "LockSurface.hpp"
 #include <memory>
 
 class COutput {
   public:
-    COutput(wl_output* output, uint32_t name);
+    COutput(SP<CCWlOutput> output, uint32_t name);
 
     uint32_t                             name      = 0;
     bool                                 focused   = false;
@@ -20,7 +21,7 @@ class COutput {
 
     std::unique_ptr<CSessionLockSurface> sessionLockSurface;
 
-    wl_output*                           output = nullptr;
+    SP<CCWlOutput>                       output = nullptr;
 
   private:
 };

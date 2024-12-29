@@ -1,11 +1,14 @@
 #pragma once
 
-#include <wayland-client.h>
-#include "ext-session-lock-v1-protocol.h"
-#include "fractional-scale-v1-protocol.h"
-#include "wlr-screencopy-unstable-v1-protocol.h"
-#include "viewporter-protocol.h"
+#include "../defines.hpp"
+#include "wayland.hpp"
+#include "ext-session-lock-v1.hpp"
+#include "fractional-scale-v1.hpp"
+#include "wlr-screencopy-unstable-v1.hpp"
+#include "linux-dmabuf-v1.hpp"
+#include "viewporter.hpp"
 #include "Output.hpp"
+#include "Seat.hpp"
 #include "CursorShape.hpp"
 #include "Timer.hpp"
 #include <memory>
@@ -29,82 +32,73 @@ class CHyprlock {
     CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn);
     ~CHyprlock();
 
-    void                            run();
+    void                             run();
 
-    void                            unlock();
-    bool                            isUnlocked();
+    void                             unlock();
+    bool                             isUnlocked();
 
-    void                            onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
-    void                            onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
+    void                             onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
+    void                             onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
 
-    std::shared_ptr<CTimer>         addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
-                                             bool force = false);
+    std::shared_ptr<CTimer>          addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
+                                              bool force = false);
 
-    void                            enqueueForceUpdateTimers();
+    void                             enqueueForceUpdateTimers();
 
-    void                            onLockLocked();
-    void                            onLockFinished();
+    void                             onLockLocked();
+    void                             onLockFinished();
 
-    void                            acquireSessionLock();
-    void                            releaseSessionLock();
+    void                             acquireSessionLock();
+    void                             releaseSessionLock();
 
-    void                            createSessionLockSurfaces();
+    void                             createSessionLockSurfaces();
 
-    void                            attemptRestoreOnDeath();
+    void                             attemptRestoreOnDeath();
 
-    std::string                     spawnSync(const std::string& cmd);
+    std::string                      spawnSync(const std::string& cmd);
 
-    void                            onKey(uint32_t key, bool down);
-    void                            startKeyRepeat(xkb_keysym_t sym);
-    void                            repeatKey(xkb_keysym_t sym);
-    void                            handleKeySym(xkb_keysym_t sym, bool compose);
-    void                            onPasswordCheckTimer();
-    void                            clearPasswordBuffer();
-    bool                            passwordCheckWaiting();
-    std::optional<std::string>      passwordLastFailReason();
+    void                             onKey(uint32_t key, bool down);
+    void                             startKeyRepeat(xkb_keysym_t sym);
+    void                             repeatKey(xkb_keysym_t sym);
+    void                             handleKeySym(xkb_keysym_t sym, bool compose);
+    void                             onPasswordCheckTimer();
+    void                             clearPasswordBuffer();
+    bool                             passwordCheckWaiting();
+    std::optional<std::string>       passwordLastFailReason();
 
-    void                            renderOutput(const std::string& stringPort);
-    void                            renderAllOutputs();
+    void                             renderOutput(const std::string& stringPort);
+    void                             renderAllOutputs();
 
-    size_t                          getPasswordBufferLen();
-    size_t                          getPasswordBufferDisplayLen();
+    size_t                           getPasswordBufferLen();
+    size_t                           getPasswordBufferDisplayLen();
 
-    ext_session_lock_manager_v1*    getSessionLockMgr();
-    ext_session_lock_v1*            getSessionLock();
-    wl_compositor*                  getCompositor();
-    wl_display*                     getDisplay();
-    wp_fractional_scale_manager_v1* getFractionalMgr();
-    wp_viewporter*                  getViewporter();
-    zwlr_screencopy_manager_v1*     getScreencopy();
+    SP<CCExtSessionLockManagerV1>    getSessionLockMgr();
+    SP<CCExtSessionLockV1>           getSessionLock();
+    SP<CCWlCompositor>               getCompositor();
+    wl_display*                      getDisplay();
+    SP<CCWpFractionalScaleManagerV1> getFractionalMgr();
+    SP<CCWpViewporter>               getViewporter();
+    SP<CCZwlrScreencopyManagerV1>    getScreencopy();
 
-    wl_pointer*                     m_pPointer = nullptr;
-    std::unique_ptr<CCursorShape>   m_pCursorShape;
+    int32_t                          m_iKeebRepeatRate  = 25;
+    int32_t                          m_iKeebRepeatDelay = 600;
 
-    wl_keyboard*                    m_pKeeb            = nullptr;
-    xkb_context*                    m_pXKBContext      = nullptr;
-    xkb_keymap*                     m_pXKBKeymap       = nullptr;
-    xkb_state*                      m_pXKBState        = nullptr;
-    xkb_compose_state*              m_pXKBComposeState = nullptr;
+    xkb_layout_index_t               m_uiActiveLayout = 0;
 
-    int32_t                         m_iKeebRepeatRate  = 25;
-    int32_t                         m_iKeebRepeatDelay = 600;
+    bool                             m_bTerminate = false;
 
-    xkb_layout_index_t              m_uiActiveLayout = 0;
+    bool                             m_bLocked = false;
 
-    bool                            m_bTerminate = false;
+    bool                             m_bCapsLock    = false;
+    bool                             m_bNumLock     = false;
+    bool                             m_bCtrl        = false;
+    bool                             m_bFadeStarted = false;
 
-    bool                            m_bLocked = false;
+    bool                             m_bImmediateRender = false;
 
-    bool                            m_bCapsLock    = false;
-    bool                            m_bNumLock     = false;
-    bool                            m_bCtrl        = false;
-    bool                            m_bFadeStarted = false;
+    bool                             m_bNoFadeIn = false;
 
-    bool                            m_bImmediateRender = false;
-
-    bool                            m_bNoFadeIn = false;
-
-    std::string                     m_sCurrentDesktop = "";
+    std::string                      m_sCurrentDesktop = "";
 
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
@@ -117,34 +111,35 @@ class CHyprlock {
     std::vector<std::shared_ptr<CTimer>>  getTimers();
 
     struct {
-        void*                        linuxDmabuf         = nullptr;
-        void*                        linuxDmabufFeedback = nullptr;
+        SP<CCZwpLinuxDmabufV1>         linuxDmabuf         = nullptr;
+        SP<CCZwpLinuxDmabufFeedbackV1> linuxDmabufFeedback = nullptr;
 
-        gbm_bo*                      gbm       = nullptr;
-        gbm_device*                  gbmDevice = nullptr;
+        gbm_bo*                        gbm       = nullptr;
+        gbm_device*                    gbmDevice = nullptr;
 
-        void*                        formatTable     = nullptr;
-        size_t                       formatTableSize = 0;
-        bool                         deviceUsed      = false;
+        void*                          formatTable     = nullptr;
+        size_t                         formatTableSize = 0;
+        bool                           deviceUsed      = false;
 
-        std::vector<SDMABUFModifier> dmabufMods;
+        std::vector<SDMABUFModifier>   dmabufMods;
     } dma;
     gbm_device* createGBMDevice(drmDevice* dev);
 
   private:
     struct {
-        wl_display*                     display     = nullptr;
-        wl_registry*                    registry    = nullptr;
-        wl_seat*                        seat        = nullptr;
-        ext_session_lock_manager_v1*    sessionLock = nullptr;
-        wl_compositor*                  compositor  = nullptr;
-        wp_fractional_scale_manager_v1* fractional  = nullptr;
-        wp_viewporter*                  viewporter  = nullptr;
-        zwlr_screencopy_manager_v1*     screencopy  = nullptr;
+        wl_display*                      display     = nullptr;
+        SP<CCWlRegistry>                 registry    = nullptr;
+        SP<CCExtSessionLockManagerV1>    sessionLock = nullptr;
+        SP<CCWlCompositor>               compositor  = nullptr;
+        SP<CCWpFractionalScaleManagerV1> fractional  = nullptr;
+        SP<CCWpViewporter>               viewporter  = nullptr;
+        SP<CCZwlrScreencopyManagerV1>    screencopy  = nullptr;
     } m_sWaylandState;
 
+    void addDmabufListener();
+
     struct {
-        ext_session_lock_v1* lock = nullptr;
+        SP<CCExtSessionLockV1> lock = nullptr;
     } m_sLockState;
 
     struct {

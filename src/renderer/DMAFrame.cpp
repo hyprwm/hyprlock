@@ -1,6 +1,4 @@
 #include "DMAFrame.hpp"
-#include "linux-dmabuf-unstable-v1-protocol.h"
-#include "wlr-screencopy-unstable-v1-protocol.h"
 #include "../helpers/Log.hpp"
 #include "../core/hyprlock.hpp"
 #include "../core/Egl.hpp"
@@ -15,77 +13,6 @@ static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullpt
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
 
 //
-static void wlrOnBuffer(void* data, zwlr_screencopy_frame_v1* frame, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
-    const auto PDATA = (SScreencopyData*)data;
-
-    Debug::log(TRACE, "[sc] wlrOnBuffer for {}", (void*)PDATA);
-
-    PDATA->size   = stride * height;
-    PDATA->stride = stride;
-}
-
-static void wlrOnFlags(void* data, zwlr_screencopy_frame_v1* frame, uint32_t flags) {
-    ;
-}
-
-static void wlrOnReady(void* data, zwlr_screencopy_frame_v1* frame, uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_nsec) {
-    const auto PDATA = (SScreencopyData*)data;
-
-    Debug::log(TRACE, "[sc] wlrOnReady for {}", (void*)PDATA);
-
-    if (!PDATA->frame->onBufferReady()) {
-        Debug::log(ERR, "onBufferReady failed");
-        return;
-    }
-
-    zwlr_screencopy_frame_v1_destroy(frame);
-}
-
-static void wlrOnFailed(void* data, zwlr_screencopy_frame_v1* frame) {
-    ;
-}
-
-static void wlrOnDamage(void* data, zwlr_screencopy_frame_v1* frame, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-    ;
-}
-
-static void wlrOnDmabuf(void* data, zwlr_screencopy_frame_v1* frame, uint32_t format, uint32_t width, uint32_t height) {
-    const auto PDATA = (SScreencopyData*)data;
-
-    Debug::log(TRACE, "[sc] wlrOnDmabuf for {}", (void*)PDATA);
-
-    PDATA->w   = width;
-    PDATA->h   = height;
-    PDATA->fmt = format;
-
-    Debug::log(TRACE, "[sc] DMABUF format reported: {:x}", format);
-}
-
-static void wlrOnBufferDone(void* data, zwlr_screencopy_frame_v1* frame) {
-    const auto PDATA = (SScreencopyData*)data;
-
-    Debug::log(TRACE, "[sc] wlrOnBufferDone for {}", (void*)PDATA);
-
-    if (!PDATA->frame->onBufferDone()) {
-        Debug::log(ERR, "onBufferDone failed");
-        return;
-    }
-
-    zwlr_screencopy_frame_v1_copy(frame, PDATA->frame->wlBuffer);
-
-    Debug::log(TRACE, "[sc] wlr frame copied");
-}
-
-static const zwlr_screencopy_frame_v1_listener wlrFrameListener = {
-    .buffer       = wlrOnBuffer,
-    .flags        = wlrOnFlags,
-    .ready        = wlrOnReady,
-    .failed       = wlrOnFailed,
-    .damage       = wlrOnDamage,
-    .linux_dmabuf = wlrOnDmabuf,
-    .buffer_done  = wlrOnBufferDone,
-};
-
 std::string CDMAFrame::getResourceId(COutput* output) {
     return std::format("dma:{}-{}x{}", output->stringPort, output->size.x, output->size.y);
 }
@@ -105,11 +32,48 @@ CDMAFrame::CDMAFrame(COutput* output_) {
         eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
 
     // firstly, plant a listener for the frame
-    frameCb = zwlr_screencopy_manager_v1_capture_output(g_pHyprlock->getScreencopy(), false, output_->output);
+    frameCb = makeShared<CCZwlrScreencopyFrameV1>(g_pHyprlock->getScreencopy()->sendCaptureOutput(false, output_->output->resource()));
 
-    scdata.frame = this;
+    frameCb->setBufferDone([this](CCZwlrScreencopyFrameV1* r) {
+        Debug::log(TRACE, "[sc] wlrOnBufferDone for {}", (void*)this);
 
-    zwlr_screencopy_frame_v1_add_listener(frameCb, &wlrFrameListener, &scdata);
+        if (!onBufferDone()) {
+            Debug::log(ERR, "onBufferDone failed");
+            return;
+        }
+
+        frameCb->sendCopy(wlBuffer->resource());
+
+        Debug::log(TRACE, "[sc] wlr frame copied");
+    });
+
+    frameCb->setLinuxDmabuf([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height) {
+        Debug::log(TRACE, "[sc] wlrOnDmabuf for {}", (void*)this);
+
+        w   = width;
+        h   = height;
+        fmt = format;
+
+        Debug::log(TRACE, "[sc] DMABUF format reported: {:x}", format);
+    });
+
+    frameCb->setReady([this](CCZwlrScreencopyFrameV1* r, uint32_t, uint32_t, uint32_t) {
+        Debug::log(TRACE, "[sc] wlrOnReady for {}", (void*)this);
+
+        if (!onBufferReady()) {
+            Debug::log(ERR, "onBufferReady failed");
+            return;
+        }
+
+        frameCb.reset();
+    });
+
+    frameCb->setBuffer([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
+        Debug::log(TRACE, "[sc] wlrOnBuffer for {}", (void*)this);
+
+        frameSize   = stride * height;
+        frameStride = stride;
+    });
 }
 
 CDMAFrame::~CDMAFrame() {
@@ -124,16 +88,16 @@ bool CDMAFrame::onBufferDone() {
 
     if (!eglQueryDmaBufModifiersEXT) {
         Debug::log(WARN, "Querying modifiers without eglQueryDmaBufModifiersEXT support");
-        bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, flags);
+        bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, w, h, fmt, flags);
     } else {
         std::vector<uint64_t> mods;
         mods.resize(64);
         std::vector<EGLBoolean> externalOnly;
         externalOnly.resize(64);
         int num = 0;
-        if (!eglQueryDmaBufModifiersEXT(g_pEGL->eglDisplay, scdata.fmt, 64, mods.data(), externalOnly.data(), &num) || num == 0) {
+        if (!eglQueryDmaBufModifiersEXT(g_pEGL->eglDisplay, fmt, 64, mods.data(), externalOnly.data(), &num) || num == 0) {
             Debug::log(WARN, "eglQueryDmaBufModifiersEXT failed, falling back to regular bo");
-            bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, flags);
+            bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, w, h, fmt, flags);
         } else {
             Debug::log(LOG, "eglQueryDmaBufModifiersEXT found {} mods", num);
             std::vector<uint64_t> goodMods;
@@ -150,8 +114,7 @@ bool CDMAFrame::onBufferDone() {
             uint64_t zero      = 0;
             bool     hasLinear = std::find(goodMods.begin(), goodMods.end(), 0) != goodMods.end();
 
-            bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, scdata.w, scdata.h, scdata.fmt, hasLinear ? &zero : goodMods.data(), hasLinear ? 1 : goodMods.size(),
-                                               flags);
+            bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, w, h, fmt, hasLinear ? &zero : goodMods.data(), hasLinear ? 1 : goodMods.size(), flags);
         }
     }
 
@@ -165,7 +128,7 @@ bool CDMAFrame::onBufferDone() {
     uint64_t mod = gbm_bo_get_modifier(bo);
     Debug::log(LOG, "bo chose modifier {:x}", mod);
 
-    zwp_linux_buffer_params_v1* params = zwp_linux_dmabuf_v1_create_params((zwp_linux_dmabuf_v1*)g_pHyprlock->dma.linuxDmabuf);
+    auto params = makeShared<CCZwpLinuxBufferParamsV1>(g_pHyprlock->dma.linuxDmabuf->sendCreateParams());
     if (!params) {
         Debug::log(ERR, "zwp_linux_dmabuf_v1_create_params failed");
         gbm_bo_destroy(bo);
@@ -180,7 +143,7 @@ bool CDMAFrame::onBufferDone() {
 
         if (fd[plane] < 0) {
             Debug::log(ERR, "gbm_bo_get_fd_for_plane failed");
-            zwp_linux_buffer_params_v1_destroy(params);
+            params.reset();
             gbm_bo_destroy(bo);
             for (size_t plane_tmp = 0; plane_tmp < plane; plane_tmp++) {
                 close(fd[plane_tmp]);
@@ -188,11 +151,11 @@ bool CDMAFrame::onBufferDone() {
             return false;
         }
 
-        zwp_linux_buffer_params_v1_add(params, fd[plane], plane, offset[plane], stride[plane], mod >> 32, mod & 0xffffffff);
+        params->sendAdd(fd[plane], plane, offset[plane], stride[plane], mod >> 32, mod & 0xffffffff);
     }
 
-    wlBuffer = zwp_linux_buffer_params_v1_create_immed(params, scdata.w, scdata.h, scdata.fmt, 0);
-    zwp_linux_buffer_params_v1_destroy(params);
+    wlBuffer = makeShared<CCWlBuffer>(params->sendCreateImmed(w, h, fmt, (zwpLinuxBufferParamsV1Flags)0));
+    params.reset();
 
     if (!wlBuffer) {
         Debug::log(ERR, "[pw] zwp_linux_buffer_params_v1_create_immed failed");
@@ -212,14 +175,14 @@ bool CDMAFrame::onBufferReady() {
     static const int entries_per_attrib = 2;
     EGLAttrib        attribs[(general_attribs + plane_attribs * 4) * entries_per_attrib + 1];
     int              attr = 0;
-    Vector2D         size{scdata.w, scdata.h};
+    Vector2D         size{w, h};
 
     attribs[attr++] = EGL_WIDTH;
     attribs[attr++] = size.x;
     attribs[attr++] = EGL_HEIGHT;
     attribs[attr++] = size.y;
     attribs[attr++] = EGL_LINUX_DRM_FOURCC_EXT;
-    attribs[attr++] = scdata.fmt;
+    attribs[attr++] = fmt;
     attribs[attr++] = EGL_DMA_BUF_PLANE0_FD_EXT;
     attribs[attr++] = fd[0];
     attribs[attr++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
