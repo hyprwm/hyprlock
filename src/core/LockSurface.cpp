@@ -5,51 +5,13 @@
 #include "../renderer/Renderer.hpp"
 #include "src/config/ConfigManager.hpp"
 
-static void handleConfigure(void* data, ext_session_lock_surface_v1* surf, uint32_t serial, uint32_t width, uint32_t height) {
-    const auto PSURF = (CSessionLockSurface*)data;
-    PSURF->configure({(double)width, (double)height}, serial);
-}
-
-static const ext_session_lock_surface_v1_listener lockListener = {
-    .configure = handleConfigure,
-};
-
-static void handlePreferredScale(void* data, wp_fractional_scale_v1* wp_fractional_scale_v1, uint32_t scale) {
-    const auto PSURF       = (CSessionLockSurface*)data;
-    const bool SAMESCALE   = PSURF->fractionalScale == scale / 120.0;
-    PSURF->fractionalScale = scale / 120.0;
-
-    Debug::log(LOG, "Got fractional scale: {}", PSURF->fractionalScale);
-
-    if (!SAMESCALE && PSURF->readyForFrame)
-        PSURF->onScaleUpdate();
-}
-
-static const wp_fractional_scale_v1_listener fsListener = {
-    .preferred_scale = handlePreferredScale,
-};
-
 CSessionLockSurface::~CSessionLockSurface() {
-    if (fractional) {
-        wp_viewport_destroy(viewport);
-        wp_fractional_scale_v1_destroy(fractional);
-    }
-
     if (eglWindow)
         wl_egl_window_destroy(eglWindow);
-
-    if (lockSurface)
-        ext_session_lock_surface_v1_destroy(lockSurface);
-
-    if (surface)
-        wl_surface_destroy(surface);
-
-    if (frameCallback)
-        wl_callback_destroy(frameCallback);
 }
 
 CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
-    surface = wl_compositor_create_surface(g_pHyprlock->getCompositor());
+    surface = makeShared<CCWlSurface>(g_pHyprlock->getCompositor()->sendCreateSurface());
 
     if (!surface) {
         Debug::log(CRIT, "Couldn't create wl_surface");
@@ -62,11 +24,19 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
     const auto PVIEWPORTER        = g_pHyprlock->getViewporter();
 
     if (ENABLE_FSV1 && PFRACTIONALMGR && PVIEWPORTER) {
-        fractional = wp_fractional_scale_manager_v1_get_fractional_scale(PFRACTIONALMGR, surface);
-        if (fractional) {
-            wp_fractional_scale_v1_add_listener(fractional, &fsListener, this);
-            viewport = wp_viewporter_get_viewport(PVIEWPORTER, surface);
-        }
+        fractional = makeShared<CCWpFractionalScaleV1>(PFRACTIONALMGR->sendGetFractionalScale(surface->resource()));
+
+        fractional->setPreferredScale([this](CCWpFractionalScaleV1*, uint32_t scale) {
+            const bool SAMESCALE = fractionalScale == scale / 120.0;
+            fractionalScale      = scale / 120.0;
+
+            Debug::log(LOG, "Got fractional scale: {:.1f}%", fractionalScale * 100.F);
+
+            if (!SAMESCALE && readyForFrame)
+                onScaleUpdate();
+        });
+
+        viewport = makeShared<CCWpViewport>(PVIEWPORTER->sendGetViewport(surface->resource()));
     }
 
     if (!PFRACTIONALMGR)
@@ -74,14 +44,14 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
     if (!PVIEWPORTER)
         Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
 
-    lockSurface = ext_session_lock_v1_get_lock_surface(g_pHyprlock->getSessionLock(), surface, output->output);
+    lockSurface = makeShared<CCExtSessionLockSurfaceV1>(g_pHyprlock->getSessionLock()->sendGetLockSurface(surface->resource(), output->output->resource()));
 
     if (!lockSurface) {
         Debug::log(CRIT, "Couldn't create ext_session_lock_surface_v1");
         exit(1);
     }
 
-    ext_session_lock_surface_v1_add_listener(lockSurface, &lockListener, this);
+    lockSurface->setConfigure([this](CCExtSessionLockSurfaceV1* r, uint32_t serial, uint32_t width, uint32_t height) { configure({(double)width, (double)height}, serial); });
 }
 
 void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
@@ -97,22 +67,22 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 
     if (fractional) {
         size = (size_ * fractionalScale).floor();
-        wp_viewport_set_destination(viewport, logicalSize.x, logicalSize.y);
-        wl_surface_set_buffer_scale(surface, 1);
+        viewport->sendSetDestination(logicalSize.x, logicalSize.y);
+        surface->sendSetBufferScale(1);
     } else {
         size = size_ * output->scale;
-        wl_surface_set_buffer_scale(surface, output->scale);
+        surface->sendSetBufferScale(output->scale);
     }
 
     if (!SAMESERIAL)
-        ext_session_lock_surface_v1_ack_configure(lockSurface, serial);
+        lockSurface->sendAckConfigure(serial);
 
     Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
-    wl_surface_damage_buffer(surface, 0, 0, 0xFFFF, 0xFFFF);
+    surface->sendDamageBuffer(0, 0, 0xFFFF, 0xFFFF);
 
     if (!eglWindow) {
-        eglWindow = wl_egl_window_create(surface, size.x, size.y);
+        eglWindow = wl_egl_window_create((wl_surface*)surface->resource(), size.x, size.y);
         if (!eglWindow) {
             Debug::log(CRIT, "Couldn't create eglWindow");
             exit(1);
@@ -145,19 +115,6 @@ void CSessionLockSurface::onScaleUpdate() {
     configure(logicalSize, serial);
 }
 
-static void handleDone(void* data, wl_callback* wl_callback, uint32_t callback_data) {
-    const auto PSURF = (CSessionLockSurface*)data;
-
-    if (g_pHyprlock->m_bTerminate)
-        return;
-
-    PSURF->onCallback();
-}
-
-static const wl_callback_listener callbackListener = {
-    .done = handleDone,
-};
-
 void CSessionLockSurface::render() {
     Debug::log(TRACE, "render lock");
 
@@ -167,8 +124,13 @@ void CSessionLockSurface::render() {
     }
 
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
-    frameCallback       = wl_surface_frame(surface);
-    wl_callback_add_listener(frameCallback, &callbackListener, this);
+    frameCallback       = makeShared<CCWlCallback>(surface->sendFrame());
+    frameCallback->setDone([this](CCWlCallback* r, uint32_t data) {
+        if (g_pHyprlock->m_bTerminate)
+            return;
+
+        onCallback();
+    });
 
     eglSwapBuffers(g_pEGL->eglDisplay, eglSurface);
 
@@ -176,8 +138,7 @@ void CSessionLockSurface::render() {
 }
 
 void CSessionLockSurface::onCallback() {
-    wl_callback_destroy(frameCallback);
-    frameCallback = nullptr;
+    frameCallback.reset();
 
     if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL) {
         needsFrame = false;

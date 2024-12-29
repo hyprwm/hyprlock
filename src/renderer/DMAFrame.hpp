@@ -1,20 +1,13 @@
 #pragma once
 
+#include "../defines.hpp"
 #include "../core/Output.hpp"
 #include <gbm.h>
 #include "Shared.hpp"
-
-struct zwlr_screencopy_frame_v1;
+#include "linux-dmabuf-v1.hpp"
+#include "wlr-screencopy-unstable-v1.hpp"
 
 class CDMAFrame;
-
-struct SScreencopyData {
-    int        w = 0, h = 0;
-    uint32_t   fmt;
-    size_t     size;
-    size_t     stride;
-    CDMAFrame* frame = nullptr;
-};
 
 class CDMAFrame {
   public:
@@ -26,22 +19,25 @@ class CDMAFrame {
     bool            onBufferDone();
     bool            onBufferReady();
 
-    wl_buffer*      wlBuffer = nullptr;
+    SP<CCWlBuffer>  wlBuffer = nullptr;
 
     std::string     resourceID;
 
     SPreloadedAsset asset;
 
   private:
-    gbm_bo*                   bo = nullptr;
+    gbm_bo*                     bo = nullptr;
 
-    int                       planes = 0;
+    int                         planes = 0;
 
-    int                       fd[4];
-    uint32_t                  size[4], stride[4], offset[4];
+    int                         fd[4];
+    uint32_t                    size[4], stride[4], offset[4];
 
-    zwlr_screencopy_frame_v1* frameCb = nullptr;
-    SScreencopyData           scdata;
+    SP<CCZwlrScreencopyFrameV1> frameCb = nullptr;
+    int                         w = 0, h = 0;
+    uint32_t                    fmt         = 0;
+    size_t                      frameSize   = 0;
+    size_t                      frameStride = 0;
 
-    EGLImage                  image = nullptr;
+    EGLImage                    image = nullptr;
 };

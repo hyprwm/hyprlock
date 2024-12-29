@@ -28,6 +28,7 @@ You need the following dependencies
 - wayland-client
 - wayland-protocols
 - mesa
+- hyprwayland-scanner
 
 And the development libraries for the following
 - cairo

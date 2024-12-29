@@ -101,7 +101,7 @@ static void replaceAllAttempts(std::string& str) {
 static void replaceAllLayout(std::string& str) {
 
     const auto        LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
-    const auto        LAYOUTNAME = xkb_keymap_layout_get_name(g_pHyprlock->m_pXKBKeymap, LAYOUTIDX);
+    const auto        LAYOUTNAME = xkb_keymap_layout_get_name(g_pSeatManager->m_pXKBKeymap, LAYOUTIDX);
     const std::string STR        = LAYOUTNAME ? LAYOUTNAME : "error";
     size_t            pos        = 0;
 

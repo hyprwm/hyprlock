@@ -1,20 +1,20 @@
 #include "CursorShape.hpp"
-#include "hyprlock.hpp"
+#include "Seat.hpp"
 
-CCursorShape::CCursorShape(wp_cursor_shape_manager_v1* mgr) : mgr(mgr) {
-    if (!g_pHyprlock->m_pPointer)
+CCursorShape::CCursorShape(SP<CCWpCursorShapeManagerV1> mgr) : mgr(mgr) {
+    if (!g_pSeatManager->m_pPointer)
         return;
 
-    dev = wp_cursor_shape_manager_v1_get_pointer(mgr, g_pHyprlock->m_pPointer);
+    dev = makeShared<CCWpCursorShapeDeviceV1>(mgr->sendGetPointer(g_pSeatManager->m_pPointer->resource()));
 }
 
-void CCursorShape::setShape(const wp_cursor_shape_device_v1_shape shape) {
+void CCursorShape::setShape(const wpCursorShapeDeviceV1Shape shape) {
     if (!dev)
         return;
 
-    wp_cursor_shape_device_v1_set_shape(dev, lastCursorSerial, shape);
+    dev->sendSetShape(lastCursorSerial, shape);
 }
 
 void CCursorShape::hideCursor() {
-    wl_pointer_set_cursor(g_pHyprlock->m_pPointer, lastCursorSerial, nullptr, 0, 0);
+    g_pSeatManager->m_pPointer->sendSetCursor(lastCursorSerial, nullptr, 0, 0);
 }

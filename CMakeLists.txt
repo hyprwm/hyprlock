@@ -57,6 +57,7 @@ message(STATUS "Checking deps...")
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(hyprwayland-scanner 0.4.4 REQUIRED)
 pkg_check_modules(
   deps
   REQUIRED
@@ -85,54 +86,49 @@ target_link_libraries(hyprlock PRIVATE pam rt Threads::Threads PkgConfig::deps
                                        OpenGL::EGL OpenGL::GL)
 
 # protocols
-find_program(WaylandScanner NAMES wayland-scanner)
-message(STATUS "Found WaylandScanner at ${WaylandScanner}")
-execute_process(
-  COMMAND pkg-config --variable=pkgdatadir wayland-protocols
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE WAYLAND_PROTOCOLS_DIR
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
+pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
 message(STATUS "Found wayland-protocols at ${WAYLAND_PROTOCOLS_DIR}")
+pkg_get_variable(WAYLAND_SCANNER_PKGDATA_DIR wayland-scanner pkgdatadir)
+message(
+  STATUS "Found wayland-scanner pkgdatadir at ${WAYLAND_SCANNER_PKGDATA_DIR}")
 
-function(protocol protoPath protoName external)
+function(protocolnew protoPath protoName external)
   if(external)
-    execute_process(
-      COMMAND ${WaylandScanner} client-header ${protoPath}
-              protocols/${protoName}-protocol.h
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    execute_process(
-      COMMAND ${WaylandScanner} private-code ${protoPath}
-              protocols/${protoName}-protocol.c
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    target_sources(hyprlock PRIVATE protocols/${protoName}-protocol.c)
+    set(path ${CMAKE_SOURCE_DIR}/${protoPath})
   else()
-    execute_process(
-      COMMAND
-        ${WaylandScanner} client-header ${WAYLAND_PROTOCOLS_DIR}/${protoPath}
-        protocols/${protoName}-protocol.h
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    execute_process(
-      COMMAND
-        ${WaylandScanner} private-code ${WAYLAND_PROTOCOLS_DIR}/${protoPath}
-        protocols/${protoName}-protocol.c
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    target_sources(hyprlock PRIVATE protocols/${protoName}-protocol.c)
+    set(path ${WAYLAND_PROTOCOLS_DIR}/${protoPath})
   endif()
+  add_custom_command(
+    OUTPUT ${CMAKE_SOURCE_DIR}/protocols/${protoName}.cpp
+           ${CMAKE_SOURCE_DIR}/protocols/${protoName}.hpp
+    COMMAND hyprwayland-scanner --client ${path}/${protoName}.xml
+            ${CMAKE_SOURCE_DIR}/protocols/
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  target_sources(hyprlock PRIVATE protocols/${protoName}.cpp
+                                   protocols/${protoName}.hpp)
+endfunction()
+function(protocolWayland)
+  add_custom_command(
+    OUTPUT ${CMAKE_SOURCE_DIR}/protocols/wayland.cpp
+           ${CMAKE_SOURCE_DIR}/protocols/wayland.hpp
+    COMMAND hyprwayland-scanner --wayland-enums --client
+            ${WAYLAND_SCANNER_PKGDATA_DIR}/wayland.xml ${CMAKE_SOURCE_DIR}/protocols/
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  target_sources(hyprlock PRIVATE protocols/wayland.cpp protocols/wayland.hpp)
 endfunction()
 
 make_directory(${CMAKE_SOURCE_DIR}/protocols) # we don't ship any custom ones so
                                               # the dir won't be there
-protocol("staging/ext-session-lock/ext-session-lock-v1.xml"
-         "ext-session-lock-v1" false)
-protocol("staging/cursor-shape/cursor-shape-v1.xml" "cursor-shape-v1" false)
-protocol("unstable/tablet/tablet-unstable-v2.xml" "tablet-unstable-v2" false)
-protocol("staging/fractional-scale/fractional-scale-v1.xml"
-         "fractional-scale-v1" false)
-protocol("stable/viewporter/viewporter.xml" "viewporter" false)
-protocol("protocols/wlr-screencopy-unstable-v1.xml"
-         "wlr-screencopy-unstable-v1" true)
-protocol("unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml"
-         "linux-dmabuf-unstable-v1" false)
+
+protocolwayland()
+
+protocolnew("protocols" "wlr-screencopy-unstable-v1" true)
+protocolnew("staging/ext-session-lock" "ext-session-lock-v1" false)
+protocolnew("stable/linux-dmabuf" "linux-dmabuf-v1" false)
+protocolnew("staging/fractional-scale" "fractional-scale-v1" false)
+protocolnew("stable/viewporter" "viewporter" false)
+protocolnew("staging/cursor-shape" "cursor-shape-v1" false)
+protocolnew("stable/tablet" "tablet-v2" false)
 
 # Installation
 install(TARGETS hyprlock)

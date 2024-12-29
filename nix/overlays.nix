@@ -17,6 +17,7 @@ in {
     inputs.hyprgraphics.overlays.default
     inputs.hyprlang.overlays.default
     inputs.hyprutils.overlays.default
+    inputs.hyprwayland-scanner.overlays.default
     inputs.self.overlays.sdbuscpp
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
