@@ -4,6 +4,7 @@
 #include "../config/ConfigManager.hpp"
 #include <chrono>
 #include <sys/mman.h>
+#include <unistd.h>
 
 CSeatManager::~CSeatManager() {
     if (m_pXKBState)
