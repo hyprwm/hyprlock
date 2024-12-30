@@ -4,6 +4,7 @@
 #include "../config/ConfigDataValues.hpp"
 #include <hyprlang.hpp>
 #include <hyprutils/path/Path.hpp>
+#include <hyprutils/string/String.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
@@ -78,7 +79,10 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
     const auto DATA = reinterpret_cast<CGradientValueData*>(*data);
 
-    CVarList   varlist(V, 0, ' ');
+    // convert rgb[a](rr, gg, bb[, aa]) to rgb[a](rr,gg,bb[,aa])
+    Hyprutils::String::replaceInString(V, ", ", ",");
+
+    CVarList varlist(V, 0, ' ');
     DATA->m_vColors.clear();
     DATA->m_bIsFallback = false;
 
