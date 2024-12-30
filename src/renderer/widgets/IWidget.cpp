@@ -123,16 +123,14 @@ static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
     const std::chrono::time_zone* pCurrentTz = nullptr;
     try {
         auto name = std::getenv("TZ");
-        if (name) {
+        if (name)
             pCurrentTz = std::chrono::locate_zone(name);
-        }
     } catch (std::runtime_error&) {
         Debug::log(WARN, "Invalid TZ value. Falling back to current timezone!");
     }
 
-    if (!pCurrentTz) {
+    if (!pCurrentTz)
         pCurrentTz = std::chrono::current_zone();
-    }
 
     const auto TPNOW = std::chrono::system_clock::now();
 
@@ -144,9 +142,8 @@ static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
             logMissingTzOnce = false;
         }
         hhmmss = std::chrono::hh_mm_ss{TPNOW - std::chrono::floor<std::chrono::days>(TPNOW)};
-    } else {
+    } else
         hhmmss = std::chrono::hh_mm_ss{pCurrentTz->to_local(TPNOW) - std::chrono::floor<std::chrono::days>(pCurrentTz->to_local(TPNOW))};
-    }
 
     return hhmmss;
 }
