@@ -1,13 +1,18 @@
 #include "ConfigManager.hpp"
+#include "ConfigDataValues.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
-#include "../config/ConfigDataValues.hpp"
+#include "../core/AnimationManager.hpp"
 #include <hyprlang.hpp>
+#include <hyprutils/animation/AnimatedVariable.hpp>
+#include <hyprutils/animation/AnimationManager.hpp>
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
 #include <mutex>
+
+using namespace Hyprutils::Animation;
 
 ICustomConfigValueData::~ICustomConfigValueData() {
     ; // empty
@@ -289,6 +294,24 @@ void CConfigManager::init() {
     if (result.error)
         Debug::log(ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
 
+    m_mAnimationConfig["fade_in"]  = makeShared<SAnimationPropertyConfig>();
+    m_mAnimationConfig["fade_out"] = makeShared<SAnimationPropertyConfig>();
+    m_mAnimationConfig["dots"]     = makeShared<SAnimationPropertyConfig>();
+    m_mAnimationConfig["default"]  = makeShared<SAnimationPropertyConfig>();
+
+    *m_mAnimationConfig["fade_in"] = {
+        false, "default", "fade_in", 2.f, true, m_mAnimationConfig["default"], m_mAnimationConfig["default"],
+    };
+    *m_mAnimationConfig["fade_out"] = {
+        false, "default", "fade_out", 4.f, true, m_mAnimationConfig["fade_out"], m_mAnimationConfig["default"],
+    };
+    *m_mAnimationConfig["dots"] = {
+        false, "default", "dots", 2.0f, true, m_mAnimationConfig["dots"], m_mAnimationConfig["default"],
+    };
+    *m_mAnimationConfig["default"] = {
+        false, "default", "default", 2.f, true, m_mAnimationConfig["default"], m_mAnimationConfig["default"],
+    };
+
 #undef SHADOWABLE
 }
 
@@ -453,6 +476,10 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     }
 
     return result;
+}
+
+SP<SAnimationPropertyConfig> CConfigManager::getAnimationConfig(const std::string& name) {
+    return m_mAnimationConfig[name];
 }
 
 std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {

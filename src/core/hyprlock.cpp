@@ -1,4 +1,5 @@
 #include "hyprlock.hpp"
+#include "AnimationManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
@@ -314,6 +315,9 @@ void CHyprlock::run() {
 
     g_pRenderer = std::make_unique<CRenderer>();
     g_pAuth     = std::make_unique<CAuth>();
+    g_pAnimationManager = std::make_unique<CHyprlockAnimationManager>();
+    g_pRenderer         = std::make_unique<CRenderer>();
+    g_pAuth             = std::make_unique<CAuth>();
     g_pAuth->start();
 
     static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
