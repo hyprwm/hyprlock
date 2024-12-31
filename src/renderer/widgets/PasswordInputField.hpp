@@ -5,7 +5,8 @@
 #include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
-#include "src/config/ConfigDataValues.hpp"
+#include "../../config/ConfigDataValues.hpp"
+#include "../../helpers/AnimatedVariable.hpp"
 #include <chrono>
 #include <vector>
 #include <any>
@@ -21,58 +22,49 @@ class CPasswordInputField : public IWidget {
     void         onFadeOutTimer();
 
   private:
-    void        updateDots();
-    void        updateFade();
-    void        updatePlaceholder();
-    void        updateWidth();
-    void        updateHiddenInputState();
-    void        updateInputState();
-    void        updateColors();
+    void                 updateDots();
+    void                 updateFade();
+    void                 updatePlaceholder();
+    void                 updateWidth();
+    void                 updateHiddenInputState();
+    void                 updateInputState();
+    void                 updateColors();
 
-    bool        firstRender  = true;
-    bool        redrawShadow = false;
-    bool        checkWaiting = false;
-    bool        displayFail  = false;
+    bool                 firstRender  = true;
+    bool                 redrawShadow = false;
+    bool                 checkWaiting = false;
+    bool                 displayFail  = false;
 
-    size_t      passwordLength = 0;
+    size_t               passwordLength = 0;
 
-    Vector2D    size;
-    Vector2D    pos;
-    Vector2D    viewport;
-    Vector2D    configPos;
-    Vector2D    configSize;
+    PHLANIMVAR<Vector2D> size;
+    Vector2D             pos;
+    Vector2D             viewport;
+    Vector2D             configPos;
+    Vector2D             configSize;
 
-    std::string halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
-    uint64_t    configFailTimeoutMs = 2000;
+    std::string          halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
+    uint64_t             configFailTimeoutMs = 2000;
 
-    int         outThick, rounding;
-
-    struct {
-        std::chrono::system_clock::time_point start;
-        bool                                  animated = false;
-        double                                source   = 0;
-    } dynamicWidth;
+    int                  outThick, rounding;
 
     struct {
-        float                                 currentAmount = 0;
-        int                                   fadeMs        = 0;
-        std::chrono::system_clock::time_point lastFrame;
-        bool                                  center     = false;
-        float                                 size       = 0;
-        float                                 spacing    = 0;
-        int                                   rounding   = 0;
-        std::string                           textFormat = "";
-        SPreloadedAsset*                      textAsset  = nullptr;
-        std::string                           textResourceID;
+        PHLANIMVAR<float> currentAmount;
+        int               fadeMs     = 0;
+        bool              center     = false;
+        float             size       = 0;
+        float             spacing    = 0;
+        int               rounding   = 0;
+        std::string       textFormat = "";
+        std::string       textResourceID;
+        SPreloadedAsset*  textAsset = nullptr;
     } dots;
 
     struct {
-        std::chrono::system_clock::time_point start;
-        float                                 a            = 0;
-        bool                                  appearing    = true;
-        bool                                  animated     = false;
-        std::shared_ptr<CTimer>               fadeOutTimer = nullptr;
-        bool                                  allowFadeOut = false;
+        PHLANIMVAR<float>       a;
+        bool                    appearing    = true;
+        std::shared_ptr<CTimer> fadeOutTimer = nullptr;
+        bool                    allowFadeOut = false;
     } fade;
 
     struct {
@@ -112,19 +104,11 @@ class CPasswordInputField : public IWidget {
     } colorConfig;
 
     struct {
-        CGradientValueData  outer;
-        CHyprColor          inner;
-        CHyprColor          font;
-
-        CGradientValueData* outerSource = nullptr;
-        CHyprColor          innerSource;
-
-        CGradientValueData* currentTarget = nullptr;
-
-        bool                animated = false;
-
-        //
-        std::chrono::system_clock::time_point lastFrame;
+        PHLANIMVAR<CGradientValueData> outer;
+        PHLANIMVAR<CHyprColor>         inner;
+        // Font color is only chaned, when `swap_font_color` is set to true and no border is present.
+        // It is not animated, because that does not look good and we would need to rerender the text for each frame.
+        CHyprColor font;
     } colorState;
 
     bool        fadeOnEmpty;

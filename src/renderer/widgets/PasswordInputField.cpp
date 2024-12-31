@@ -3,7 +3,10 @@
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
 #include "../../config/ConfigDataValues.hpp"
+#include "../../config/ConfigManager.hpp"
 #include "../../helpers/Log.hpp"
+#include "../../core/AnimationManager.hpp"
+#include <hyprutils/math/Vector2D.hpp>
 #include <hyprutils/string/String.hpp>
 #include <algorithm>
 #include <hyprlang.hpp>
@@ -14,7 +17,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
     viewport(viewport_), outputStringPort(output), shadow(this, props, viewport_) {
     try {
         pos                      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
-        size                     = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
+        configSize               = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
         halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
@@ -49,19 +52,13 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         RASSERT(false, "Missing property for CPasswordInputField: {}", e.what()); //
     }
 
-    configPos  = pos;
-    configSize = size;
+    configPos = pos;
 
-    pos                      = posFromHVAlign(viewport, size, pos, halign, valign);
+    pos                      = posFromHVAlign(viewport, configSize, pos, halign, valign);
     dots.size                = std::clamp(dots.size, 0.2f, 0.8f);
     dots.spacing             = std::clamp(dots.spacing, -1.f, 1.f);
     colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
     colorConfig.caps         = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
-
-    colorState.inner       = colorConfig.inner;
-    colorState.outer       = *colorConfig.outer;
-    colorState.font        = colorConfig.font;
-    colorState.outerSource = colorConfig.outer;
 
     if (!dots.textFormat.empty()) {
         dots.textResourceID = std::format("input:{}-{}", (uintptr_t)this, dots.textFormat);
@@ -71,10 +68,17 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = fontFamily;
         request.props["color"]       = colorState.font;
-        request.props["font_size"]   = (int)(std::nearbyint(size.y * dots.size * 0.5f) * 2.f);
+        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
 
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
+
+    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->getAnimationConfig("fade_in"));
+    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->getAnimationConfig("dots"));
+    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->getAnimationConfig("fade_in"));
+
+    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->getAnimationConfig("fade_in"));
+    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->getAnimationConfig("fade_in"));
 
     // request the inital placeholder asset
     updatePlaceholder();
@@ -95,7 +99,7 @@ void CPasswordInputField::onFadeOutTimer() {
 
 void CPasswordInputField::updateFade() {
     if (!fadeOnEmpty) {
-        fade.a = 1.0;
+        fade.a->setValueAndWarp(1.0);
         return;
     }
 
@@ -109,73 +113,28 @@ void CPasswordInputField::updateFade() {
         fade.fadeOutTimer.reset();
     }
 
-    if (!INPUTUSED && fade.a != 0.0 && (!fade.animated || fade.appearing)) {
+    if (!INPUTUSED && fade.a->goal() != 0.0) {
         if (fade.allowFadeOut || fadeTimeoutMs == 0) {
-            fade.a            = 1.0;
-            fade.animated     = true;
-            fade.appearing    = false;
-            fade.start        = std::chrono::system_clock::now();
+            *fade.a           = 0.0;
             fade.allowFadeOut = false;
         } else if (!fade.fadeOutTimer.get())
             fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), fadeOutCallback, this);
-    }
+    } else if (INPUTUSED && fade.a->goal() != 1.0)
+        *fade.a = 1.0;
 
-    if (INPUTUSED && fade.a != 1.0 && (!fade.animated || !fade.appearing)) {
-        fade.a         = 0.0;
-        fade.animated  = true;
-        fade.appearing = true;
-        fade.start     = std::chrono::system_clock::now();
-    }
-
-    if (fade.animated) {
-        if (fade.appearing)
-            fade.a = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
-        else
-            fade.a = std::clamp(1.0 - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - fade.start).count() / 100000.0, 0.0, 1.0);
-
-        if ((fade.appearing && fade.a == 1.0) || (!fade.appearing && fade.a == 0.0))
-            fade.animated = false;
-
+    if (fade.a->isBeingAnimated())
         redrawShadow = true;
-    }
 }
 
 void CPasswordInputField::updateDots() {
-    if (passwordLength == dots.currentAmount)
+    if (dots.currentAmount->goal() == passwordLength)
         return;
 
-    // Fully fading the dots to 0 currently does not look good
-    if (passwordLength == 0 && dots.currentAmount > 2) {
-        dots.currentAmount = 0;
-        return;
-    }
-
-    if (std::abs(passwordLength - dots.currentAmount) > 1) {
-        dots.currentAmount = std::clamp(dots.currentAmount, passwordLength - 1.f, passwordLength + 1.f);
-        dots.lastFrame     = std::chrono::system_clock::now();
-    }
-
-    const auto  DELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - dots.lastFrame).count(), 0, 20000);
-
-    const float TOADD = dots.fadeMs > 0 ? ((double)DELTA / 1000000.0) * (1000.0 / (double)dots.fadeMs) : 1;
-
-    if (passwordLength > dots.currentAmount) {
-        dots.currentAmount += TOADD;
-        if (dots.currentAmount > passwordLength)
-            dots.currentAmount = passwordLength;
-    } else if (passwordLength < dots.currentAmount) {
-        dots.currentAmount -= TOADD;
-        if (dots.currentAmount < passwordLength)
-            dots.currentAmount = passwordLength;
-    }
-
-    dots.lastFrame = std::chrono::system_clock::now();
+    dots.currentAmount->setValue(std::clamp(dots.currentAmount->goal(), passwordLength - 1.f, passwordLength + 1.f));
+    *dots.currentAmount = passwordLength;
 }
 
 bool CPasswordInputField::draw(const SRenderData& data) {
-    CBox inputFieldBox = {pos, size};
-    CBox outerBox      = {pos - Vector2D{outThick, outThick}, size + Vector2D{outThick * 2, outThick * 2}};
-
     if (firstRender || redrawShadow) {
         firstRender  = false;
         redrawShadow = false;
@@ -195,26 +154,29 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updateWidth();
     updateHiddenInputState();
 
-    SRenderData shadowData = data;
-    shadowData.opacity *= fade.a;
+    CBox        inputFieldBox = {pos, size->value()};
+    CBox        outerBox      = {pos - Vector2D{outThick, outThick}, size->value() + Vector2D{outThick * 2, outThick * 2}};
 
-    if (!dynamicWidth.animated || size.x > dynamicWidth.source)
+    SRenderData shadowData = data;
+    shadowData.opacity *= fade.a->value();
+
+    if (!size->isBeingAnimated())
         shadow.draw(shadowData);
 
-    CGradientValueData outerGrad = colorState.outer;
-    for (auto& c : outerGrad.m_vColors)
-        c.a *= fade.a * data.opacity;
+    //CGradientValueData outerGrad = colorState.outer->value();
+    //for (auto& c : outerGrad.m_vColors)
+    //    c.a *= fade.a->value() * data.opacity;
 
-    CHyprColor innerCol = colorState.inner;
-    innerCol.a *= fade.a * data.opacity;
+    CHyprColor innerCol = colorState.inner->value();
+    innerCol.a *= fade.a->value() * data.opacity;
     CHyprColor fontCol = colorState.font;
-    fontCol.a *= fade.a * data.opacity;
+    fontCol.a *= fade.a->value() * data.opacity;
 
     if (outThick > 0) {
-        const int BORDERROUND = roundingForBorderBox(outerBox, rounding, outThick);
-        g_pRenderer->renderBorder(outerBox, outerGrad, outThick, BORDERROUND, fade.a * data.opacity);
+        const auto OUTERROUND = rounding == -1 ? outerBox.h / 2.0 : rounding;
+        g_pRenderer->renderBorder(outerBox, colorState.outer->value(), outThick, OUTERROUND, fade.a->value() * data.opacity);
 
-        if (passwordLength != 0 && hiddenInputState.enabled && !fade.animated && data.opacity == 1.0) {
+        if (passwordLength != 0 && hiddenInputState.enabled && !fade.a->isBeingAnimated() && data.opacity == 1.0) {
             CBox     outerBoxScaled = outerBox;
             Vector2D p              = outerBox.pos();
             outerBoxScaled.translate(-p).scale(0.5).translate(p);
@@ -224,7 +186,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 outerBoxScaled.x += outerBoxScaled.w;
             glEnable(GL_SCISSOR_TEST);
             glScissor(outerBoxScaled.x, outerBoxScaled.y, outerBoxScaled.w, outerBoxScaled.h);
-            g_pRenderer->renderBorder(outerBox, hiddenInputState.lastColor, outThick, BORDERROUND, fade.a * data.opacity);
+            g_pRenderer->renderBorder(outerBox, hiddenInputState.lastColor, outThick, OUTERROUND, fade.a->value() * data.opacity);
             glScissor(0, 0, viewport.x, viewport.y);
             glDisable(GL_SCISSOR_TEST);
         }
@@ -233,7 +195,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     const int ROUND = roundingForBox(inputFieldBox, rounding);
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
-    if (!hiddenInputState.enabled && !g_pHyprlock->m_bFadeStarted) {
+    if (!hiddenInputState.enabled) {
         const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
         Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
         int       passSpacing = std::floor(passSize.x * dots.spacing);
@@ -250,39 +212,40 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             }
         }
 
-        const int   DOT_PAD        = (inputFieldBox.h - passSize.y) / 2;
-        const int   DOT_AREA_WIDTH = inputFieldBox.w - DOT_PAD * 2;                                 // avail width for dots
-        const int   MAX_DOTS       = std::round(DOT_AREA_WIDTH * 1.0 / (passSize.x + passSpacing)); // max amount of dots that can fit in the area
-        const int   DOT_FLOORED    = std::floor(dots.currentAmount);
-        const float DOT_ALPHA      = fontCol.a;
+        const auto CURRDOTS     = dots.currentAmount->value();
+        const int  DOTPAD       = (inputFieldBox.h - passSize.y) / 2;
+        const int  DOTAREAWIDTH = inputFieldBox.w - DOTPAD * 2;
+        const int  MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
+        const int  DOTFLOORED   = std::floor(CURRDOTS);
+        const auto DOTALPHA     = fontCol.a;
 
         // Calculate the total width required for all dots including spaces between them
-        const int TOTAL_DOTS_WIDTH = (passSize.x + passSpacing) * dots.currentAmount - passSpacing;
+        const int CURRWIDTH = (passSize.x + passSpacing) * CURRDOTS - passSpacing;
 
         // Calculate starting x-position to ensure dots stay centered within the input field
-        int xstart = dots.center ? (DOT_AREA_WIDTH - TOTAL_DOTS_WIDTH) / 2 + DOT_PAD : DOT_PAD;
+        int xstart = dots.center ? (DOTAREAWIDTH - CURRWIDTH) / 2 + DOTPAD : DOTPAD;
 
-        if (dots.currentAmount > MAX_DOTS)
-            xstart = (inputFieldBox.w + MAX_DOTS * (passSize.x + passSpacing) - passSpacing - 2 * TOTAL_DOTS_WIDTH) / 2;
+        if (CURRDOTS > MAXDOTS)
+            xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2;
 
         if (dots.rounding == -1)
             dots.rounding = passSize.x / 2.0;
         else if (dots.rounding == -2)
             dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * dots.size;
 
-        for (int i = 0; i < dots.currentAmount; ++i) {
-            if (i < DOT_FLOORED - MAX_DOTS)
+        for (int i = 0; i < CURRDOTS; ++i) {
+            if (i < DOTFLOORED - MAXDOTS)
                 continue;
 
-            if (dots.currentAmount != DOT_FLOORED) {
-                if (i == DOT_FLOORED)
-                    fontCol.a *= (dots.currentAmount - DOT_FLOORED) * data.opacity;
-                else if (i == DOT_FLOORED - MAX_DOTS)
-                    fontCol.a *= (1 - dots.currentAmount + DOT_FLOORED) * data.opacity;
+            if (CURRDOTS != DOTFLOORED) {
+                if (i == DOTFLOORED)
+                    fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
+                else if (i == DOTFLOORED - MAXDOTS)
+                    fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
             }
 
             Vector2D dotPosition =
-                inputFieldBox.pos() + Vector2D{xstart + (int)inputFieldBox.w % 2 / 2.f + i * (passSize.x + passSpacing), inputFieldBox.h / 2.f - passSize.y / 2.f};
+                inputFieldBox.pos() + Vector2D{xstart + (int)inputFieldBox.w % 2 / 2.0 + i * (passSize.x + passSpacing), inputFieldBox.h / 2.0 - passSize.y / 2.0};
             CBox box{dotPosition, passSize};
             if (!dots.textFormat.empty()) {
                 if (!dots.textAsset)
@@ -292,7 +255,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             } else {
                 g_pRenderer->renderRect(box, fontCol, dots.rounding);
             }
-            fontCol.a = DOT_ALPHA;
+            fontCol.a = DOTALPHA;
         }
     }
 
@@ -304,16 +267,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         currAsset = placeholder.asset;
 
-        if (currAsset && currAsset->texture.m_vSize.x + size.y <= size.x) {
+        if (currAsset && currAsset->texture.m_vSize.x + size->value().y <= size->value().x) {
             Vector2D pos = outerBox.pos() + outerBox.size() / 2.f;
             pos          = pos - currAsset->texture.m_vSize / 2.f;
             CBox textbox{pos, currAsset->texture.m_vSize};
-            g_pRenderer->renderTexture(textbox, currAsset->texture, data.opacity * fade.a, 0);
+            g_pRenderer->renderTexture(textbox, currAsset->texture, data.opacity * fade.a->value(), 0);
         } else
             forceReload = true;
     }
 
-    return dots.currentAmount != passwordLength || fade.animated || colorState.animated || redrawShadow || data.opacity < 1.0 || dynamicWidth.animated || forceReload;
+    return redrawShadow || forceReload;
 }
 
 static void failTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
@@ -368,42 +331,26 @@ void CPasswordInputField::updatePlaceholder() {
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorState.font;
-    request.props["font_size"]   = (int)size.y / 4;
+    request.props["font_size"]   = (int)size->value().y / 4;
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CPasswordInputField::updateWidth() {
-    const auto NOW         = std::chrono::system_clock::now();
-    double     targetSizeX = configSize.x;
+    double targetSizeX = configSize.x;
 
     if (placeholder.asset)
-        targetSizeX = placeholder.asset->texture.m_vSize.x + size.y;
+        targetSizeX = placeholder.asset->texture.m_vSize.x + size->goal().y;
 
     if (targetSizeX < configSize.x)
         targetSizeX = configSize.x;
 
-    if (size.x != targetSizeX) {
-        if (!dynamicWidth.animated) {
-            dynamicWidth.source   = size.x;
-            dynamicWidth.start    = NOW;
-            dynamicWidth.animated = true;
-        }
+    if (size->goal().x != targetSizeX)
+        *size = Vector2D{targetSizeX, configSize.y};
 
-        const auto TIMEDELTA = std::clamp((int)std::chrono::duration_cast<std::chrono::microseconds>(NOW - dynamicWidth.start).count(), 1000, 100000);
-        const auto INCR      = std::clamp(std::abs(targetSizeX - dynamicWidth.source) * TIMEDELTA / 1000000.0, 1.0, 1000.0);
-        if (size.x > targetSizeX)
-            size.x -= INCR;
-        else
-            size.x += INCR;
+    if (size->isBeingAnimated())
+        redrawShadow = true;
 
-        if ((dynamicWidth.source < targetSizeX && size.x > targetSizeX) || (dynamicWidth.source > targetSizeX && size.x < targetSizeX)) {
-            size.x                = targetSizeX;
-            redrawShadow          = true;
-            dynamicWidth.animated = false;
-        }
-    }
-
-    pos = posFromHVAlign(viewport, size, configPos, halign, valign);
+    pos = posFromHVAlign(viewport, size->value(), configPos, halign, valign);
 }
 
 void CPasswordInputField::updateHiddenInputState() {
@@ -433,58 +380,10 @@ void CPasswordInputField::updateHiddenInputState() {
     hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
 
-static void changeChannel(const double& source, const double& target, double& subject, const double& multi, bool& animated) {
-
-    const float DELTA = target - source;
-
-    if (subject != target) {
-        subject += DELTA * multi;
-        animated = true;
-
-        if ((source < target && subject > target) || (source > target && subject < target))
-            subject = target;
-    }
-}
-
-static void changeColor(const CHyprColor& source, const CHyprColor& target, CHyprColor& subject, const double& multi, bool& animated) {
-
-    changeChannel(source.r, target.r, subject.r, multi, animated);
-    changeChannel(source.g, target.g, subject.g, multi, animated);
-    changeChannel(source.b, target.b, subject.b, multi, animated);
-    changeChannel(source.a, target.a, subject.a, multi, animated);
-}
-
-static void changeGrad(CGradientValueData* psource, CGradientValueData* ptarget, CGradientValueData& subject, const double& multi, bool& animated) {
-    if (!psource || !ptarget)
-        return;
-
-    subject.m_vColors.resize(ptarget->m_vColors.size(), subject.m_vColors.back());
-
-    for (size_t i = 0; i < subject.m_vColors.size(); ++i) {
-        const CHyprColor& sourceCol = (i < psource->m_vColors.size()) ? psource->m_vColors[i] : psource->m_vColors.back();
-        const CHyprColor& targetCol = (i < ptarget->m_vColors.size()) ? ptarget->m_vColors[i] : ptarget->m_vColors.back();
-        changeColor(sourceCol, targetCol, subject.m_vColors[i], multi, animated);
-    }
-
-    if (psource->m_fAngle != ptarget->m_fAngle) {
-        const float DELTA = ptarget->m_fAngle - psource->m_fAngle;
-        subject.m_fAngle += DELTA * multi;
-        animated = true;
-
-        if ((psource->m_fAngle < ptarget->m_fAngle && subject.m_fAngle > ptarget->m_fAngle) || (psource->m_fAngle > ptarget->m_fAngle && subject.m_fAngle < ptarget->m_fAngle))
-            subject.m_fAngle = ptarget->m_fAngle;
-    }
-}
-
 void CPasswordInputField::updateColors() {
-    const bool BORDERLESS = outThick == 0;
-    const bool NUMLOCK    = (colorConfig.invertNum) ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
-    const auto MULTI      = colorConfig.transitionMs == 0 ?
-             1.0 :
-             std::clamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - colorState.lastFrame).count() / (double)colorConfig.transitionMs,
-                        0.0016, 0.5);
+    const bool          BORDERLESS = outThick == 0;
+    const bool          NUMLOCK    = (colorConfig.invertNum) ? !g_pHyprlock->m_bNumLock : g_pHyprlock->m_bNumLock;
 
-    //
     CGradientValueData* targetGrad = nullptr;
 
     if (g_pHyprlock->m_bCapsLock && NUMLOCK && !colorConfig.both->m_bIsFallback)
@@ -508,29 +407,18 @@ void CPasswordInputField::updateColors() {
             fontTarget = colorConfig.fail->m_vColors.front();
         } else if (BORDERLESS && !colorConfig.swapFont) {
             innerTarget = colorConfig.fail->m_vColors.front();
-            // When changing the inner color the font cannot be fail_color
+            // When changing the inner color, the font cannot be fail_color
             fontTarget = colorConfig.font;
-        } else {
+        } else if (targetGrad) {
             outerTarget = targetGrad;
         }
     }
 
-    if (targetGrad != colorState.currentTarget) {
-        colorState.outerSource = &colorState.outer;
-        colorState.innerSource = colorState.inner;
+    if (!BORDERLESS && *outerTarget != colorState.outer->goal())
+        *colorState.outer = *outerTarget;
 
-        colorState.currentTarget = targetGrad;
-    }
+    if (innerTarget != colorState.inner->goal())
+        *colorState.inner = innerTarget;
 
-    colorState.animated = false;
-
-    if (!BORDERLESS)
-        changeGrad(colorState.outerSource, outerTarget, colorState.outer, MULTI, colorState.animated);
-    changeColor(colorState.innerSource, innerTarget, colorState.inner, MULTI, colorState.animated);
-
-    // Font color is only chaned, when `swap_font_color` is set to true and no border is present.
-    // It is not animated, because that does not look good and we would need to rerender the text for each frame.
     colorState.font = fontTarget;
-
-    colorState.lastFrame = std::chrono::system_clock::now();
 }
