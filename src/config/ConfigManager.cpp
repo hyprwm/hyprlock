@@ -72,25 +72,33 @@ static void configHandleLayoutOptionDestroy(void** data) {
 }
 
 static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** data) {
-    std::string V = VALUE;
+    const std::string V = VALUE;
 
     if (!*data)
         *data = new CGradientValueData();
 
     const auto DATA = reinterpret_cast<CGradientValueData*>(*data);
 
-    // convert rgb[a](rr, gg, bb[, aa]) to rgb[a](rr,gg,bb[,aa])
-    Hyprutils::String::replaceInString(V, ", ", ",");
-
-    CVarList varlist(V, 0, ' ');
     DATA->m_vColors.clear();
     DATA->m_bIsFallback = false;
 
     std::string parseError = "";
+    std::string rolling    = V;
 
-    for (auto const& var : varlist) {
-        if (var.find("deg") != std::string::npos) {
-            // last arg
+    while (!rolling.empty()) {
+        const auto  SPACEPOS = rolling.find(' ');
+        const bool  LAST     = SPACEPOS == std::string::npos;
+        std::string var      = rolling.substr(0, SPACEPOS);
+        if (var.find("rgb") != std::string::npos) { // rgb(a)
+            const auto CLOSEPARENPOS = rolling.find(')');
+            if (CLOSEPARENPOS == std::string::npos || CLOSEPARENPOS + 1 >= rolling.length()) {
+                var = trim(rolling);
+                rolling.clear();
+            } else {
+                var     = rolling.substr(0, CLOSEPARENPOS + 1);
+                rolling = trim(rolling.substr(CLOSEPARENPOS + 2));
+            }
+        } else if (var.find("deg") != std::string::npos) { // last arg
             try {
                 DATA->m_fAngle = std::stoi(var.substr(0, var.find("deg"))) * (M_PI / 180.0); // radians
             } catch (...) {
@@ -99,7 +107,8 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             }
 
             break;
-        }
+        } else // hex
+            rolling = trim(rolling.substr(LAST ? rolling.length() : SPACEPOS + 1));
 
         if (DATA->m_vColors.size() >= 10) {
             Debug::log(WARN, "Error parsing gradient {}: max colors is 10.", V);
