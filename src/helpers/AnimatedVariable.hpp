@@ -5,12 +5,14 @@
 #include "Color.hpp"
 #include "Math.hpp"
 #include "../defines.hpp"
+#include "../config/ConfigDataValues.hpp"
 
 enum eAnimatedVarType {
     AVARTYPE_INVALID = -1,
     AVARTYPE_FLOAT,
     AVARTYPE_VECTOR,
-    AVARTYPE_COLOR
+    AVARTYPE_COLOR,
+    AVARTYPE_GRADIENT
 };
 
 // Utility to bind a type with its corresponding eAnimatedVarType
@@ -35,6 +37,11 @@ struct STypeToAnimatedVarType_t<CHyprColor> {
     static constexpr eAnimatedVarType value = AVARTYPE_COLOR;
 };
 
+template <>
+struct STypeToAnimatedVarType_t<CGradientValueData> {
+    static constexpr eAnimatedVarType value = AVARTYPE_GRADIENT;
+};
+
 template <class T>
 inline constexpr eAnimatedVarType typeToeAnimatedVarType = STypeToAnimatedVarType_t<T>::value;
 
@@ -46,7 +53,7 @@ concept OneOf = (... or std::same_as<T, U>);
 // This is mainly to get better errors if we put a type that's not supported
 // Otherwise template errors are ugly
 template <class T>
-concept Animable = OneOf<T, Vector2D, float, CHyprColor>;
+concept Animable = OneOf<T, Vector2D, float, CHyprColor, CGradientValueData>;
 
 struct SAnimationContext {};
 

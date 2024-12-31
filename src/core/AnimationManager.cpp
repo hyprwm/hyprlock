@@ -1,5 +1,7 @@
 #include "AnimationManager.hpp"
 #include "../helpers/AnimatedVariable.hpp"
+#include "../config/ConfigDataValues.hpp"
+#include "../config/ConfigManager.hpp"
 
 #include <utility>
 
@@ -42,6 +44,39 @@ void updateColorVariable(CAnimatedVariable<CHyprColor>& av, const float POINTY, 
     av.value() = {lerped, lerp(av.begun().a, av.goal().a, POINTY)};
 }
 
+void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const float POINTY, bool warp = false) {
+    if (POINTY >= 1.f || warp || av.value() == av.goal()) {
+        av.warp();
+        return;
+    }
+
+    av.value().m_vColors.resize(av.goal().m_vColors.size(), av.goal().m_vColors.back());
+
+    for (size_t i = 0; i < av.value().m_vColors.size(); ++i) {
+        const CHyprColor&          sourceCol = (i < av.begun().m_vColors.size()) ? av.begun().m_vColors[i] : av.begun().m_vColors.back();
+        const CHyprColor&          targetCol = (i < av.goal().m_vColors.size()) ? av.goal().m_vColors[i] : av.goal().m_vColors.back();
+
+        const auto&                L1 = sourceCol.asOkLab();
+        const auto&                L2 = targetCol.asOkLab();
+
+        static const auto          lerp = [](const float one, const float two, const float progress) -> float { return one + (two - one) * progress; };
+
+        const Hyprgraphics::CColor lerped = Hyprgraphics::CColor::SOkLab{
+            .l = lerp(L1.l, L2.l, POINTY),
+            .a = lerp(L1.a, L2.a, POINTY),
+            .b = lerp(L1.b, L2.b, POINTY),
+        };
+
+        av.value().m_vColors[i] = {lerped, lerp(sourceCol.a, targetCol.a, POINTY)};
+        av.value().updateColorsOk();
+    }
+
+    if (av.begun().m_fAngle != av.goal().m_fAngle) {
+        const float DELTA   = av.goal().m_fAngle - av.begun().m_fAngle;
+        av.value().m_fAngle = av.begun().m_fAngle + DELTA * POINTY;
+    }
+}
+
 void CHyprlockAnimationManager::tick() {
     for (auto const& av : m_vActiveAnimatedVariables) {
         const auto PAV = av.lock();
@@ -67,6 +102,11 @@ void CHyprlockAnimationManager::tick() {
                 auto pTypedAV = dynamic_cast<CAnimatedVariable<CHyprColor>*>(PAV.get());
                 RASSERT(pTypedAV, "Failed to upcast animated CHyprColor");
                 updateColorVariable(*pTypedAV, POINTY);
+            } break;
+            case AVARTYPE_GRADIENT: {
+                auto pTypedAV = dynamic_cast<CAnimatedVariable<CGradientValueData>*>(PAV.get());
+                RASSERT(pTypedAV, "Failed to upcast animated CGradientValueData");
+                updateGradientVariable(*pTypedAV, POINTY);
             } break;
             default: continue;
         }
