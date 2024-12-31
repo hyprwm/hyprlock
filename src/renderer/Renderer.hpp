@@ -5,6 +5,7 @@
 #include <optional>
 #include "Shader.hpp"
 #include "../core/LockSurface.hpp"
+#include "../helpers/AnimatedVariable.hpp"
 #include "../helpers/Color.hpp"
 #include "AsyncResourceGatherer.hpp"
 #include "../config/ConfigDataValues.hpp"
@@ -44,6 +45,9 @@ class CRenderer {
 
     void                                    removeWidgetsFor(const CSessionLockSurface* surf);
 
+    void                                    startFadeIn();
+    void                                    startFadeOut(bool unlock = false, bool immediate = true);
+
   private:
     widgetMap_t                            widgets;
 
@@ -60,6 +64,8 @@ class CRenderer {
 
     Mat3x3                                 projMatrix = Mat3x3::identity();
     Mat3x3                                 projection;
+
+    PHLANIMVAR<float>                      opacity;
 
     std::vector<GLint>                     boundFBs;
 };

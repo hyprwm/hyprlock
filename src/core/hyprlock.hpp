@@ -89,10 +89,9 @@ class CHyprlock {
 
     bool                             m_bLocked = false;
 
-    bool                             m_bCapsLock    = false;
-    bool                             m_bNumLock     = false;
-    bool                             m_bCtrl        = false;
-    bool                             m_bFadeStarted = false;
+    bool                             m_bCapsLock = false;
+    bool                             m_bNumLock  = false;
+    bool                             m_bCtrl     = false;
 
     bool                             m_bImmediateRender = false;
 
@@ -102,7 +101,6 @@ class CHyprlock {
 
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
-    std::chrono::system_clock::time_point m_tFadeEnds;
     Vector2D                              m_vLastEnterCoords = {};
 
     std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
@@ -159,6 +157,8 @@ class CHyprlock {
         std::mutex              timerRequestMutex;
         bool                    timerEvent = false;
     } m_sLoopState;
+
+    bool                                 m_bUnlockedCalled = false;
 
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
 

@@ -1,15 +1,16 @@
 #include "Renderer.hpp"
-#include "../core/Egl.hpp"
+#include "Shaders.hpp"
 #include "../config/ConfigManager.hpp"
-#include "../helpers/Color.hpp"
+#include "../core/AnimationManager.hpp"
+#include "../core/Egl.hpp"
 #include "../core/Output.hpp"
 #include "../core/hyprlock.hpp"
+#include "../helpers/Color.hpp"
+#include "../helpers/Log.hpp"
 #include "../renderer/DMAFrame.hpp"
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
 #include <algorithm>
-#include "Shaders.hpp"
-#include "src/helpers/Log.hpp"
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
 #include "widgets/Label.hpp"
@@ -193,15 +194,15 @@ CRenderer::CRenderer() {
     borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
 
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
+
+    g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->getAnimationConfig("fade_in"));
 }
 
-static int  frames         = 0;
-static bool firstFullFrame = false;
+static int frames = 0;
 
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
-    static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
     projection = Mat3x3::outputProjection(surf.size, HYPRUTILS_TRANSFORM_NORMAL);
 
@@ -219,7 +220,6 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
-    float           bga           = 0.0;
     const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !asyncResourceGatherer->gathered;
 
     if (WAITFORASSETS) {
@@ -231,25 +231,10 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         }
     } else {
 
-        if (!firstFullFrame) {
-            firstFullFrameTime = std::chrono::system_clock::now();
-            firstFullFrame     = true;
-        }
-
-        bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - firstFullFrameTime).count() / 500000.0, 0.0, 1.0);
-
-        if (g_pHyprlock->m_bNoFadeIn)
-            bga = 1.0;
-
-        if (g_pHyprlock->m_bFadeStarted && !**PNOFADEOUT) {
-            bga =
-                std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(g_pHyprlock->m_tFadeEnds - std::chrono::system_clock::now()).count() / 500000.0 - 0.02, 0.0, 1.0);
-            // - 0.02 so that the fade ends a little earlier than the final second
-        }
         // render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(&surf);
         for (auto& w : *WIDGETS) {
-            feedback.needsFrame = w->draw({bga}) || feedback.needsFrame;
+            feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
         }
     }
 
@@ -257,7 +242,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     Debug::log(TRACE, "frame {}", frames);
 
-    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered || bga < 1.0;
+    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered;
 
     glDisable(GL_BLEND);
 
@@ -640,4 +625,21 @@ void CRenderer::popFb() {
 
 void CRenderer::removeWidgetsFor(const CSessionLockSurface* surf) {
     widgets.erase(surf);
+}
+
+void CRenderer::startFadeIn() {
+    Debug::log(LOG, "Starting fade in");
+    *opacity = 1.f;
+
+    opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->getAnimationConfig("fade_out")); }, true);
+}
+
+void CRenderer::startFadeOut(bool unlock, bool immediate) {
+    if (immediate)
+        opacity->setValueAndWarp(0.f);
+    else
+        *opacity = 0.f;
+
+    if (unlock)
+        opacity->setCallbackOnEnd([](auto) { g_pHyprlock->releaseSessionLock(); }, true);
 }
