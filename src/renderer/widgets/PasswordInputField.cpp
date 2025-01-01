@@ -6,6 +6,8 @@
 #include "../../config/ConfigManager.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/AnimationManager.hpp"
+#include "../../helpers/Color.hpp"
+#include <cmath>
 #include <hyprutils/math/Vector2D.hpp>
 #include <hyprutils/string/String.hpp>
 #include <algorithm>
@@ -79,6 +81,8 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
 
     g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->getAnimationConfig("fade_in"));
     g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->getAnimationConfig("fade_in"));
+
+    srand(std::chrono::system_clock::now().time_since_epoch().count());
 
     // request the inital placeholder asset
     updatePlaceholder();
@@ -176,7 +180,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         const auto OUTERROUND = rounding == -1 ? outerBox.h / 2.0 : rounding;
         g_pRenderer->renderBorder(outerBox, colorState.outer->value(), outThick, OUTERROUND, fade.a->value() * data.opacity);
 
-        if (passwordLength != 0 && hiddenInputState.enabled && !fade.a->isBeingAnimated() && data.opacity == 1.0) {
+        if (passwordLength != 0 && !checkWaiting && hiddenInputState.enabled) {
             CBox     outerBoxScaled = outerBox;
             Vector2D p              = outerBox.pos();
             outerBoxScaled.translate(-p).scale(0.5).translate(p);
@@ -360,23 +364,22 @@ void CPasswordInputField::updateHiddenInputState() {
     // randomize new thang
     hiddenInputState.lastPasswordLength = passwordLength;
 
-    srand(std::chrono::system_clock::now().time_since_epoch().count());
-    float r1 = (rand() % 100) / 255.0;
-    float r2 = (rand() % 100) / 255.0;
-    int   r3 = rand() % 3;
-    int   r4 = rand() % 2;
-    int   r5 = rand() % 2;
+    const auto BASEOK = colorConfig.outer->m_vColors.front().asOkLab();
 
-    ((float*)&hiddenInputState.lastColor.r)[r3]            = r1 + 155 / 255.0;
-    ((float*)&hiddenInputState.lastColor.r)[(r3 + r4) % 3] = r2 + 155 / 255.0;
+    // convert to polar coordinates
+    const auto OKICHCHROMA = std::sqrt(std::pow(BASEOK.a, 2) + std::pow(BASEOK.b, 2));
 
-    for (int i = 0; i < 3; ++i) {
-        if (i != r3 && i != ((r3 + r4) % 3)) {
-            ((float*)&hiddenInputState.lastColor.r)[i] = 1.0 - ((float*)&hiddenInputState.lastColor.r)[r5 ? r3 : ((r3 + r4) % 3)];
-        }
-    }
+    // now randomly rotate the hue
+    const double OKICHHUE = (rand() % 10000000 / 10000000.0) * M_PI * 4;
 
-    hiddenInputState.lastColor.a  = 1.0;
+    // convert back to OkLab
+    const Hyprgraphics::CColor newColor = Hyprgraphics::CColor::SOkLab{
+        .l = BASEOK.l,
+        .a = OKICHCHROMA * std::cos(OKICHHUE),
+        .b = OKICHCHROMA * std::sin(OKICHHUE),
+    };
+
+    hiddenInputState.lastColor    = {newColor, 1.0};
     hiddenInputState.lastQuadrant = (hiddenInputState.lastQuadrant + rand() % 3 + 1) % 4;
 }
 
