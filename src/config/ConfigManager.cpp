@@ -194,6 +194,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("auth:fingerprint:enabled", Hyprlang::INT{0});
     m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
     m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
+    m_config.addConfigValue("auth:fingerprint:retry_delay", Hyprlang::INT{250});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
