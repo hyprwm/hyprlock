@@ -1,4 +1,5 @@
 #include "hyprlock.hpp"
+#include "DBusManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
@@ -17,7 +18,6 @@
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
-#include <sdbus-c++/sdbus-c++.h>
 #include <hyprutils/os/Process.hpp>
 
 using namespace Hyprutils::OS;
@@ -347,8 +347,14 @@ void CHyprlock::run() {
         exit(1);
     }
 
+    auto& dbusManager   = DBusManager::getInstance();
+    const auto dbusConn = dbusManager.getConnection();
+    dbusManager.setLockedHint(true);
+
     const auto fingerprintAuth = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
-    const auto dbusConn        = (fingerprintAuth) ? ((CFingerprint*)fingerprintAuth.get())->getConnection() : nullptr;
+    if (fingerprintAuth){
+        fingerprintAuth->init();
+    }
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
@@ -733,6 +739,11 @@ void CHyprlock::releaseSessionLock() {
 
     m_sLockState.lock->sendUnlockAndDestroy();
     m_sLockState.lock = nullptr;
+
+    // Notify unlock via D-Bus.
+    auto& dbusManager = DBusManager::getInstance();
+    dbusManager.sendUnlockSignal();
+    dbusManager.setLockedHint(false);
 
     Debug::log(LOG, "Unlocked, exiting!");
 

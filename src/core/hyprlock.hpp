@@ -15,6 +15,7 @@
 #include <vector>
 #include <condition_variable>
 #include <optional>
+#include <sdbus-c++/sdbus-c++.h>
 
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
@@ -159,7 +160,7 @@ class CHyprlock {
         std::mutex              timerRequestMutex;
         bool                    timerEvent = false;
     } m_sLoopState;
-
+    
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
 
     std::vector<uint32_t>                m_vPressedKeys;
