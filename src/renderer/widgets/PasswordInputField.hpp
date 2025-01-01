@@ -50,7 +50,6 @@ class CPasswordInputField : public IWidget {
 
     struct {
         PHLANIMVAR<float> currentAmount;
-        int               fadeMs     = 0;
         bool              center     = false;
         float             size       = 0;
         float             spacing    = 0;

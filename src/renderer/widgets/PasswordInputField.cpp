@@ -27,7 +27,6 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         dots.spacing             = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
         dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
         dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
-        dots.fadeMs              = std::any_cast<Hyprlang::INT>(props.at("dots_fade_time"));
         dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
@@ -37,7 +36,6 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
         configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-        colorConfig.transitionMs = std::any_cast<Hyprlang::INT>(props.at("fail_transition"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
         colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
@@ -56,11 +54,10 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
 
     configPos = pos;
 
-    pos                      = posFromHVAlign(viewport, configSize, pos, halign, valign);
-    dots.size                = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing             = std::clamp(dots.spacing, -1.f, 1.f);
-    colorConfig.transitionMs = std::clamp(colorConfig.transitionMs, 0, 1000);
-    colorConfig.caps         = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
+    pos              = posFromHVAlign(viewport, configSize, pos, halign, valign);
+    dots.size        = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.spacing     = std::clamp(dots.spacing, -1.f, 1.f);
+    colorConfig.caps = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
 
     if (!dots.textFormat.empty()) {
         dots.textResourceID = std::format("input:{}-{}", (uintptr_t)this, dots.textFormat);
@@ -75,12 +72,12 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
 
-    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->getAnimationConfig("fade_in"));
-    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->getAnimationConfig("dots"));
-    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->getAnimationConfig("fade_in"));
+    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->getAnimationConfig("inputFieldFade"));
+    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->getAnimationConfig("inputFieldDots"));
+    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->getAnimationConfig("inputFieldWidth"));
 
-    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->getAnimationConfig("fade_in"));
-    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->getAnimationConfig("fade_in"));
+    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->getAnimationConfig("inputFieldColors"));
+    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->getAnimationConfig("inputFieldColors"));
 
     srand(std::chrono::system_clock::now().time_since_epoch().count());
 

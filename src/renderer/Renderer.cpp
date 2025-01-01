@@ -195,7 +195,7 @@ CRenderer::CRenderer() {
 
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
 
-    g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->getAnimationConfig("fade_in"));
+    g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->getAnimationConfig("fadeIn"));
 }
 
 static int frames = 0;
@@ -631,7 +631,7 @@ void CRenderer::startFadeIn() {
     Debug::log(LOG, "Starting fade in");
     *opacity = 1.f;
 
-    opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->getAnimationConfig("fade_out")); }, true);
+    opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->getAnimationConfig("fadeOut")); }, true);
 }
 
 void CRenderer::startFadeOut(bool unlock, bool immediate) {

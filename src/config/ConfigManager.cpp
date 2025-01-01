@@ -6,12 +6,14 @@
 #include <hyprlang.hpp>
 #include <hyprutils/animation/AnimatedVariable.hpp>
 #include <hyprutils/animation/AnimationManager.hpp>
+#include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
 #include <mutex>
 
+using namespace Hyprutils::String;
 using namespace Hyprutils::Animation;
 
 ICustomConfigValueData::~ICustomConfigValueData() {
@@ -23,6 +25,30 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     const std::string      COMMAND = c;
 
     const auto             RESULT = g_pConfigManager->handleSource(COMMAND, VALUE);
+
+    Hyprlang::CParseResult result;
+    if (RESULT.has_value())
+        result.setError(RESULT.value().c_str());
+    return result;
+}
+
+static Hyprlang::CParseResult handleBezier(const char* c, const char* v) {
+    const std::string      VALUE   = v;
+    const std::string      COMMAND = c;
+
+    const auto             RESULT = g_pConfigManager->handleBezier(COMMAND, VALUE);
+
+    Hyprlang::CParseResult result;
+    if (RESULT.has_value())
+        result.setError(RESULT.value().c_str());
+    return result;
+}
+
+static Hyprlang::CParseResult handleAnimation(const char* c, const char* v) {
+    const std::string      VALUE   = v;
+    const std::string      COMMAND = c;
+
+    const auto             RESULT = g_pConfigManager->handleAnimation(COMMAND, VALUE);
 
     Hyprlang::CParseResult result;
     if (RESULT.has_value())
@@ -177,8 +203,6 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
-    m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});
-    m_config.addConfigValue("general:no_fade_out", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
@@ -188,6 +212,8 @@ void CConfigManager::init() {
     m_config.addConfigValue("auth:fingerprint:enabled", Hyprlang::INT{0});
     m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
     m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
+
+    m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
@@ -246,7 +272,6 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "dots_center", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "dots_spacing", Hyprlang::FLOAT{0.2});
     m_config.addSpecialConfigValue("input-field", "dots_rounding", Hyprlang::INT{-1});
-    m_config.addSpecialConfigValue("input-field", "dots_fade_time", Hyprlang::INT{200});
     m_config.addSpecialConfigValue("input-field", "dots_text_format", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "fade_timeout", Hyprlang::INT{2000});
@@ -262,7 +287,6 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "fail_color", GRADIENTCONFIG("0xFFCC2222"));
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_timeout", Hyprlang::INT{2000});
-    m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
     m_config.addSpecialConfigValue("input-field", "capslock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "numlock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "bothlock_color", GRADIENTCONFIG(""));
@@ -286,6 +310,43 @@ void CConfigManager::init() {
     SHADOWABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {false});
+    m_config.registerHandler(&::handleBezier, "bezier", {false});
+    m_config.registerHandler(&::handleAnimation, "animation", {false});
+
+    //
+    // Init Animations
+    //
+    INITANIMCFG("global");
+
+    // toplevel
+    INITANIMCFG("fade");
+    INITANIMCFG("inputField");
+
+    // inputField
+    INITANIMCFG("inputFieldColors");
+    INITANIMCFG("inputFieldFade");
+    INITANIMCFG("inputFieldWidth");
+    INITANIMCFG("inputFieldDots");
+
+    // fade
+    INITANIMCFG("fadeIn");
+    INITANIMCFG("fadeOut");
+
+    *m_mAnimationConfig["global"] = {false, "default", "", 8.f, 1, m_mAnimationConfig["global"], WP<SAnimationPropertyConfig>()};
+
+    // toplevel
+    CREATEANIMCFG("fade", "global");
+    CREATEANIMCFG("inputField", "global");
+
+    // inputField
+    CREATEANIMCFG("inputFieldColors", "inputField");
+    CREATEANIMCFG("inputFieldFade", "inputField");
+    CREATEANIMCFG("inputFieldWidth", "inputField");
+    CREATEANIMCFG("inputFieldDots", "inputField");
+
+    // fade
+    CREATEANIMCFG("fadeIn", "fade");
+    CREATEANIMCFG("fadeOut", "fade");
 
     m_config.commence();
 
@@ -293,24 +354,6 @@ void CConfigManager::init() {
 
     if (result.error)
         Debug::log(ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
-
-    m_mAnimationConfig["fade_in"]  = makeShared<SAnimationPropertyConfig>();
-    m_mAnimationConfig["fade_out"] = makeShared<SAnimationPropertyConfig>();
-    m_mAnimationConfig["dots"]     = makeShared<SAnimationPropertyConfig>();
-    m_mAnimationConfig["default"]  = makeShared<SAnimationPropertyConfig>();
-
-    *m_mAnimationConfig["fade_in"] = {
-        false, "default", "fade_in", 2.f, true, m_mAnimationConfig["default"], m_mAnimationConfig["default"],
-    };
-    *m_mAnimationConfig["fade_out"] = {
-        false, "default", "fade_out", 4.f, true, m_mAnimationConfig["fade_out"], m_mAnimationConfig["default"],
-    };
-    *m_mAnimationConfig["dots"] = {
-        false, "default", "dots", 2.0f, true, m_mAnimationConfig["dots"], m_mAnimationConfig["default"],
-    };
-    *m_mAnimationConfig["default"] = {
-        false, "default", "default", 2.f, true, m_mAnimationConfig["default"], m_mAnimationConfig["default"],
-    };
 
 #undef SHADOWABLE
 }
@@ -423,7 +466,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
                 {"dots_center", m_config.getSpecialConfigValue("input-field", "dots_center", k.c_str())},
                 {"dots_rounding", m_config.getSpecialConfigValue("input-field", "dots_rounding", k.c_str())},
-                {"dots_fade_time", m_config.getSpecialConfigValue("input-field", "dots_fade_time", k.c_str())},
                 {"dots_text_format", m_config.getSpecialConfigValue("input-field", "dots_text_format", k.c_str())},
                 {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
                 {"fade_timeout", m_config.getSpecialConfigValue("input-field", "fade_timeout", k.c_str())},
@@ -439,7 +481,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
                 {"fail_timeout", m_config.getSpecialConfigValue("input-field", "fail_timeout", k.c_str())},
-                {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},
                 {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
                 {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
                 {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
@@ -527,3 +568,100 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
 
     return {};
 }
+
+std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
+    const auto  ARGS = CVarList(args);
+
+    std::string bezierName = ARGS[0];
+
+    if (ARGS[1] == "")
+        return "too few arguments";
+    float p1x = std::stof(ARGS[1]);
+
+    if (ARGS[2] == "")
+        return "too few arguments";
+    float p1y = std::stof(ARGS[2]);
+
+    if (ARGS[3] == "")
+        return "too few arguments";
+    float p2x = std::stof(ARGS[3]);
+
+    if (ARGS[4] == "")
+        return "too few arguments";
+    float p2y = std::stof(ARGS[4]);
+
+    if (ARGS[5] != "")
+        return "too many arguments";
+
+    g_pAnimationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
+
+    return {};
+}
+
+std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
+    const auto ARGS = CVarList(args);
+
+    // Master on/off
+
+    // anim name
+    const auto ANIMNAME = ARGS[0];
+
+    const auto PANIM = m_mAnimationConfig.find(ANIMNAME);
+
+    if (PANIM == m_mAnimationConfig.end())
+        return "no such animation";
+
+    PANIM->second->overridden = true;
+    PANIM->second->pValues    = PANIM->second;
+
+    // This helper casts strings like "1", "true", "off", "yes"... to int.
+    int64_t enabledInt = configStringToInt(ARGS[1]) == 1;
+
+    // Checking that the int is 1 or 0 because the helper can return integers out of range.
+    if (enabledInt != 0 && enabledInt != 1)
+        return "invalid animation on/off state";
+
+    PANIM->second->internalEnabled = enabledInt;
+
+    if (enabledInt) {
+        // speed
+        if (isNumber(ARGS[2], true)) {
+            PANIM->second->internalSpeed = std::stof(ARGS[2]);
+
+            if (PANIM->second->internalSpeed <= 0) {
+                PANIM->second->internalSpeed = 1.f;
+                return "invalid speed";
+            }
+        } else {
+            PANIM->second->internalSpeed = 10.f;
+            return "invalid speed";
+        }
+
+        // curve
+        PANIM->second->internalBezier = ARGS[3];
+
+        if (!g_pAnimationManager->bezierExists(ARGS[3])) {
+            PANIM->second->internalBezier = "default";
+            return "no such bezier";
+        }
+
+        // style currently unused
+        //PANIM->second->internalStyle = ARGS[4];
+    }
+
+    // now, check for children, recursively
+    setAnimForChildren(PANIM->second);
+
+    return {};
+}
+
+void CConfigManager::setAnimForChildren(SP<SAnimationPropertyConfig> PANIM) {
+    for (auto& [name, anim] : m_mAnimationConfig) {
+        if (anim->pParentAnimation == PANIM && !anim->overridden) {
+            // if a child isnt overridden, set the values of the parent
+            anim->pValues = PANIM->pValues;
+
+            setAnimForChildren(anim);
+        }
+    }
+};

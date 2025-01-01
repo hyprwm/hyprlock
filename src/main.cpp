@@ -2,6 +2,7 @@
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
 #include "helpers/Log.hpp"
+#include "core/AnimationManager.hpp"
 #include <cstddef>
 #include <string_view>
 
@@ -90,7 +91,8 @@ int main(int argc, char** argv, char** envp) {
     }
 
     try {
-        g_pConfigManager = std::make_unique<CConfigManager>(configPath);
+        g_pAnimationManager = std::make_unique<CHyprlockAnimationManager>();
+        g_pConfigManager    = std::make_unique<CConfigManager>(configPath);
         g_pConfigManager->init();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "ConfigManager threw: {}", ex.what());

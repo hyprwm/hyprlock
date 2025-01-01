@@ -10,6 +10,11 @@
 
 #include "../defines.hpp"
 
+#define INITANIMCFG(name) m_mAnimationConfig[name] = makeShared<SAnimationPropertyConfig>();
+#define CREATEANIMCFG(name, parent)                                                                                                                                                \
+    RASSERT(m_mAnimationConfig[name], "Animation config \"{}\" has not been initialized", name);                                                                                   \
+    *m_mAnimationConfig[name] = {false, "", "", 0.f, -1, m_mAnimationConfig["global"], m_mAnimationConfig[parent]};
+
 class CConfigManager {
   public:
     CConfigManager(std::string configPath);
@@ -27,6 +32,9 @@ class CConfigManager {
     SP<Hyprutils::Animation::SAnimationPropertyConfig> getAnimationConfig(const std::string& name);
 
     std::optional<std::string>                         handleSource(const std::string&, const std::string&);
+    std::optional<std::string>                         handleBezier(const std::string&, const std::string&);
+    std::optional<std::string>                         handleAnimation(const std::string&, const std::string&);
+    void                                               setAnimForChildren(SP<Hyprutils::Animation::SAnimationPropertyConfig> PANIM);
 
     std::string                                        configCurrentPath;
 

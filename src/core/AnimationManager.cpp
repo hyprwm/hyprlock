@@ -11,7 +11,7 @@ CHyprlockAnimationManager::CHyprlockAnimationManager() {
 
 template <Animable VarType>
 void updateVariable(CAnimatedVariable<VarType>& av, const float POINTY, bool warp = false) {
-    if (POINTY >= 1.f || warp || av.value() == av.goal()) {
+    if (POINTY >= 1.f || warp || !av.enabled() || av.value() == av.goal()) {
         av.warp();
         return;
     }
@@ -21,7 +21,7 @@ void updateVariable(CAnimatedVariable<VarType>& av, const float POINTY, bool war
 }
 
 void updateColorVariable(CAnimatedVariable<CHyprColor>& av, const float POINTY, bool warp = false) {
-    if (POINTY >= 1.f || warp || av.value() == av.goal()) {
+    if (POINTY >= 1.f || warp || !av.enabled() || av.value() == av.goal()) {
         av.warp();
         return;
     }
@@ -78,6 +78,7 @@ void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const flo
 }
 
 void CHyprlockAnimationManager::tick() {
+    static auto* const PANIMATIONSENABLED = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("animations:enabled");
     for (auto const& av : m_vActiveAnimatedVariables) {
         const auto PAV = av.lock();
         if (!PAV || !PAV->ok())
@@ -91,22 +92,22 @@ void CHyprlockAnimationManager::tick() {
             case AVARTYPE_FLOAT: {
                 auto pTypedAV = dynamic_cast<CAnimatedVariable<float>*>(PAV.get());
                 RASSERT(pTypedAV, "Failed to upcast animated float");
-                updateVariable(*pTypedAV, POINTY);
+                updateVariable(*pTypedAV, POINTY, !**PANIMATIONSENABLED);
             } break;
             case AVARTYPE_VECTOR: {
                 auto pTypedAV = dynamic_cast<CAnimatedVariable<Vector2D>*>(PAV.get());
                 RASSERT(pTypedAV, "Failed to upcast animated Vector2D");
-                updateVariable(*pTypedAV, POINTY);
+                updateVariable(*pTypedAV, POINTY, !**PANIMATIONSENABLED);
             } break;
             case AVARTYPE_COLOR: {
                 auto pTypedAV = dynamic_cast<CAnimatedVariable<CHyprColor>*>(PAV.get());
                 RASSERT(pTypedAV, "Failed to upcast animated CHyprColor");
-                updateColorVariable(*pTypedAV, POINTY);
+                updateColorVariable(*pTypedAV, POINTY, !**PANIMATIONSENABLED);
             } break;
             case AVARTYPE_GRADIENT: {
                 auto pTypedAV = dynamic_cast<CAnimatedVariable<CGradientValueData>*>(PAV.get());
                 RASSERT(pTypedAV, "Failed to upcast animated CGradientValueData");
-                updateGradientVariable(*pTypedAV, POINTY);
+                updateGradientVariable(*pTypedAV, POINTY, !**PANIMATIONSENABLED);
             } break;
             default: continue;
         }

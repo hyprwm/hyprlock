@@ -310,13 +310,9 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pAnimationManager = std::make_unique<CHyprlockAnimationManager>();
-    g_pRenderer         = std::make_unique<CRenderer>();
-    g_pAuth             = std::make_unique<CAuth>();
+    g_pRenderer = std::make_unique<CRenderer>();
+    g_pAuth     = std::make_unique<CAuth>();
     g_pAuth->start();
-
-    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const bool         NOFADEOUT  = **PNOFADEOUT;
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
@@ -489,11 +485,6 @@ void CHyprlock::run() {
         m_sLoopState.timersMutex.unlock();
 
         passed.clear();
-
-        if (g_pAnimationManager->m_bTickScheduled) {
-            g_pAnimationManager->tick();
-            g_pAnimationManager->onTicked();
-        }
     }
 
     const auto DPY = m_sWaylandState.display;
@@ -524,8 +515,7 @@ void CHyprlock::run() {
 }
 
 void CHyprlock::unlock() {
-    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const bool         IMMEDIATE  = **PNOFADEOUT || m_sCurrentDesktop != "Hyprland";
+    const bool IMMEDIATE = m_sCurrentDesktop != "Hyprland";
 
     g_pRenderer->startFadeOut(true, IMMEDIATE);
     m_bUnlockedCalled = true;
