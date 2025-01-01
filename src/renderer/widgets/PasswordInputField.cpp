@@ -52,11 +52,13 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         RASSERT(false, "Missing property for CPasswordInputField: {}", e.what()); //
     }
 
-    configPos = pos;
+    configPos       = pos;
+    colorState.font = colorConfig.font;
 
-    pos              = posFromHVAlign(viewport, configSize, pos, halign, valign);
-    dots.size        = std::clamp(dots.size, 0.2f, 0.8f);
-    dots.spacing     = std::clamp(dots.spacing, -1.f, 1.f);
+    pos          = posFromHVAlign(viewport, configSize, pos, halign, valign);
+    dots.size    = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.spacing = std::clamp(dots.spacing, -1.f, 1.f);
+
     colorConfig.caps = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
 
     if (!dots.textFormat.empty()) {
@@ -66,7 +68,7 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         request.asset                = dots.textFormat;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = fontFamily;
-        request.props["color"]       = colorState.font;
+        request.props["color"]       = colorConfig.font;
         request.props["font_size"]   = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
 
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
@@ -131,8 +133,10 @@ void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
-    dots.currentAmount->setValue(std::clamp(dots.currentAmount->goal(), passwordLength - 1.f, passwordLength + 1.f));
-    *dots.currentAmount = passwordLength;
+    if (passwordLength == 0)
+        dots.currentAmount->setValueAndWarp(passwordLength);
+    else
+        *dots.currentAmount = passwordLength;
 }
 
 bool CPasswordInputField::draw(const SRenderData& data) {
@@ -174,7 +178,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     fontCol.a *= fade.a->value() * data.opacity;
 
     if (outThick > 0) {
-        const auto OUTERROUND = rounding == -1 ? outerBox.h / 2.0 : rounding;
+        const auto OUTERROUND = roundingForBorderBox(outerBox, rounding, outThick);
         g_pRenderer->renderBorder(outerBox, colorState.outer->value(), outThick, OUTERROUND, fade.a->value() * data.opacity);
 
         if (passwordLength != 0 && !checkWaiting && hiddenInputState.enabled) {
@@ -249,8 +253,11 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 inputFieldBox.pos() + Vector2D{xstart + (int)inputFieldBox.w % 2 / 2.0 + i * (passSize.x + passSpacing), inputFieldBox.h / 2.0 - passSize.y / 2.0};
             CBox box{dotPosition, passSize};
             if (!dots.textFormat.empty()) {
-                if (!dots.textAsset)
+                if (!dots.textAsset) {
+                    forceReload = true;
+                    fontCol.a   = DOTALPHA;
                     break;
+                }
 
                 g_pRenderer->renderTexture(box, dots.textAsset->texture, fontCol.a, dots.rounding);
             } else {
