@@ -4,8 +4,6 @@
 #include "../helpers/Log.hpp"
 #include "../core/AnimationManager.hpp"
 #include <hyprlang.hpp>
-#include <hyprutils/animation/AnimatedVariable.hpp>
-#include <hyprutils/animation/AnimationManager.hpp>
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
@@ -316,37 +314,24 @@ void CConfigManager::init() {
     //
     // Init Animations
     //
-    INITANIMCFG("global");
+    m_AnimationTree.createNode("global");
 
     // toplevel
-    INITANIMCFG("fade");
-    INITANIMCFG("inputField");
+    m_AnimationTree.createNode("fade", "global");
+    m_AnimationTree.createNode("inputField", "global");
 
     // inputField
-    INITANIMCFG("inputFieldColors");
-    INITANIMCFG("inputFieldFade");
-    INITANIMCFG("inputFieldWidth");
-    INITANIMCFG("inputFieldDots");
+    m_AnimationTree.createNode("inputFieldColors", "inputField");
+    m_AnimationTree.createNode("inputFieldFade", "inputField");
+    m_AnimationTree.createNode("inputFieldWidth", "inputField");
+    m_AnimationTree.createNode("inputFieldDots", "inputField");
 
     // fade
-    INITANIMCFG("fadeIn");
-    INITANIMCFG("fadeOut");
+    m_AnimationTree.createNode("fadeIn", "fade");
+    m_AnimationTree.createNode("fadeOut", "fade");
 
-    *m_mAnimationConfig["global"] = {false, "default", "", 8.f, 1, m_mAnimationConfig["global"], WP<SAnimationPropertyConfig>()};
-
-    // toplevel
-    CREATEANIMCFG("fade", "global");
-    CREATEANIMCFG("inputField", "global");
-
-    // inputField
-    CREATEANIMCFG("inputFieldColors", "inputField");
-    CREATEANIMCFG("inputFieldFade", "inputField");
-    CREATEANIMCFG("inputFieldWidth", "inputField");
-    CREATEANIMCFG("inputFieldDots", "inputField");
-
-    // fade
-    CREATEANIMCFG("fadeIn", "fade");
-    CREATEANIMCFG("fadeOut", "fade");
+    // set config for root node
+    m_AnimationTree.setConfigForNode("global", 1, 8.f, "default");
 
     m_config.commence();
 
@@ -519,10 +504,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     return result;
 }
 
-SP<SAnimationPropertyConfig> CConfigManager::getAnimationConfig(const std::string& name) {
-    return m_mAnimationConfig[name];
-}
-
 std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
     if (rawpath.length() < 2) {
         Debug::log(ERR, "source= path garbage");
@@ -601,18 +582,10 @@ std::optional<std::string> CConfigManager::handleBezier(const std::string& comma
 std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
     const auto ARGS = CVarList(args);
 
-    // Master on/off
-
-    // anim name
     const auto ANIMNAME = ARGS[0];
 
-    const auto PANIM = m_mAnimationConfig.find(ANIMNAME);
-
-    if (PANIM == m_mAnimationConfig.end())
+    if (!m_AnimationTree.nodeExists(ANIMNAME))
         return "no such animation";
-
-    PANIM->second->overridden = true;
-    PANIM->second->pValues    = PANIM->second;
 
     // This helper casts strings like "1", "true", "off", "yes"... to int.
     int64_t enabledInt = configStringToInt(ARGS[1]);
@@ -621,47 +594,32 @@ std::optional<std::string> CConfigManager::handleAnimation(const std::string& co
     if (enabledInt != 0 && enabledInt != 1)
         return "invalid animation on/off state";
 
-    PANIM->second->internalEnabled = enabledInt;
-
     if (enabledInt) {
+        int64_t speed = -1;
+
         // speed
         if (isNumber(ARGS[2], true)) {
-            PANIM->second->internalSpeed = std::stof(ARGS[2]);
+            speed = std::stof(ARGS[2]);
 
-            if (PANIM->second->internalSpeed <= 0) {
-                PANIM->second->internalSpeed = 1.f;
+            if (speed <= 0) {
+                speed = 1.f;
                 return "invalid speed";
             }
         } else {
-            PANIM->second->internalSpeed = 10.f;
+            speed = 10.f;
             return "invalid speed";
         }
 
-        // curve
-        PANIM->second->internalBezier = ARGS[3];
+        std::string bezierName = ARGS[3];
+        // ARGS[4] (style) currently usused by hyprlock
+        m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, ARGS[3], "");
 
-        if (!g_pAnimationManager->bezierExists(ARGS[3])) {
-            PANIM->second->internalBezier = "default";
+        if (!g_pAnimationManager->bezierExists(bezierName)) {
+            const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
+            PANIMNODE->internalBezier = "default";
             return "no such bezier";
         }
-
-        // style currently unused
-        //PANIM->second->internalStyle = ARGS[4];
     }
-
-    // now, check for children, recursively
-    setAnimForChildren(PANIM->second);
 
     return {};
 }
-
-void CConfigManager::setAnimForChildren(SP<SAnimationPropertyConfig> PANIM) {
-    for (auto& [name, anim] : m_mAnimationConfig) {
-        if (anim->pParentAnimation == PANIM && !anim->overridden) {
-            // if a child isnt overridden, set the values of the parent
-            anim->pValues = PANIM->pValues;
-
-            setAnimForChildren(anim);
-        }
-    }
-};

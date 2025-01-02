@@ -74,12 +74,12 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
 
-    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->getAnimationConfig("inputFieldFade"));
-    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->getAnimationConfig("inputFieldDots"));
-    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->getAnimationConfig("inputFieldWidth"));
+    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->m_AnimationTree.getConfig("inputFieldFade"));
+    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->m_AnimationTree.getConfig("inputFieldDots"));
+    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->m_AnimationTree.getConfig("inputFieldWidth"));
 
-    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->getAnimationConfig("inputFieldColors"));
-    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->getAnimationConfig("inputFieldColors"));
+    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->m_AnimationTree.getConfig("inputFieldColors"));
+    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->m_AnimationTree.getConfig("inputFieldColors"));
 
     srand(std::chrono::system_clock::now().time_since_epoch().count());
 

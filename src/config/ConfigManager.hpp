@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hyprutils/animation/AnimatedVariable.hpp>
+#include <hyprutils/animation/AnimationConfig.hpp>
 
 #include <hyprlang.hpp>
 #include <optional>
@@ -9,11 +9,6 @@
 #include <unordered_map>
 
 #include "../defines.hpp"
-
-#define INITANIMCFG(name) m_mAnimationConfig[name] = makeShared<SAnimationPropertyConfig>();
-#define CREATEANIMCFG(name, parent)                                                                                                                                                \
-    RASSERT(m_mAnimationConfig[name], "Animation config \"{}\" has not been initialized", name);                                                                                   \
-    *m_mAnimationConfig[name] = {false, "", "", 0.f, -1, m_mAnimationConfig["global"], m_mAnimationConfig[parent]};
 
 class CConfigManager {
   public:
@@ -28,20 +23,18 @@ class CConfigManager {
         std::unordered_map<std::string, std::any> values;
     };
 
-    std::vector<SWidgetConfig>                         getWidgetConfigs();
-    SP<Hyprutils::Animation::SAnimationPropertyConfig> getAnimationConfig(const std::string& name);
+    std::vector<SWidgetConfig>                 getWidgetConfigs();
 
-    std::optional<std::string>                         handleSource(const std::string&, const std::string&);
-    std::optional<std::string>                         handleBezier(const std::string&, const std::string&);
-    std::optional<std::string>                         handleAnimation(const std::string&, const std::string&);
-    void                                               setAnimForChildren(SP<Hyprutils::Animation::SAnimationPropertyConfig> PANIM);
+    std::optional<std::string>                 handleSource(const std::string&, const std::string&);
+    std::optional<std::string>                 handleBezier(const std::string&, const std::string&);
+    std::optional<std::string>                 handleAnimation(const std::string&, const std::string&);
 
-    std::string                                        configCurrentPath;
+    std::string                                configCurrentPath;
+
+    Hyprutils::Animation::CAnimationConfigTree m_AnimationTree;
 
   private:
-    Hyprlang::CConfig                                                                   m_config;
-
-    std::unordered_map<std::string, SP<Hyprutils::Animation::SAnimationPropertyConfig>> m_mAnimationConfig;
+    Hyprlang::CConfig m_config;
 };
 
 inline std::unique_ptr<CConfigManager> g_pConfigManager;
