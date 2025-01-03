@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 #include <assert.h>
 #include <string.h>
 #include <xf86drm.h>
@@ -22,7 +23,9 @@
 
 using namespace Hyprutils::OS;
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn, const int notifyFd) {
+    m_iNotifyFd = notifyFd;
+
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -752,6 +755,16 @@ void CHyprlock::onLockLocked() {
     Debug::log(LOG, "onLockLocked called");
 
     m_bLocked = true;
+
+    if (m_iNotifyFd >= 0) {
+        const char ready = '\n';
+        while (true) {
+            if (write(m_iNotifyFd, &ready, 1) == 1 || errno != EINTR)
+                break;
+        }
+        close(m_iNotifyFd);
+        m_iNotifyFd = -1;
+    }
 }
 
 void CHyprlock::onLockFinished() {
