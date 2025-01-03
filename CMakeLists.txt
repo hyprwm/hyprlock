@@ -151,3 +151,15 @@ install(
   FILES ${CMAKE_SOURCE_DIR}/assets/example.conf
   DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/hypr
   RENAME hyprlock.conf)
+
+# Tests
+#
+include(CTest)
+add_custom_target(tests)
+
+add_executable(test_notjson "tests/notjson.cpp")
+target_link_libraries(test_notjson PRIVATE PkgConfig::deps)
+add_test(
+  NAME "notjson"
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
+  COMMAND test_notjson "notjson")

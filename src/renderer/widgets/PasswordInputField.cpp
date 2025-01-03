@@ -375,7 +375,7 @@ void CPasswordInputField::updatePlaceholder() {
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorState.font;
     request.props["font_size"]   = (int)size->value().y / 4;
-    request.callback             = [REF = m_self] {
+    request.callback             = [REF = m_self]() {
         if (const auto SELF = REF.lock(); SELF)
             g_pHyprlock->renderOutput(SELF->outputStringPort);
     };

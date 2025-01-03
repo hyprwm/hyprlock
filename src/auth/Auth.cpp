@@ -1,20 +1,26 @@
 #include "Auth.hpp"
-#include "Pam.hpp"
-#include "Fingerprint.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../core/hyprlock.hpp"
+#include "Fingerprint.hpp"
+#include "GreetdLogin.hpp"
+#include "Pam.hpp"
 #include "src/helpers/Log.hpp"
 
 #include <hyprlang.hpp>
 #include <memory>
 
-CAuth::CAuth() {
-    static const auto ENABLEPAM = g_pConfigManager->getValue<Hyprlang::INT>("auth:pam:enabled");
-    if (*ENABLEPAM)
-        m_vImpls.emplace_back(makeShared<CPam>());
+CAuth::CAuth(bool sessionLogin) {
+    static const auto ENABLEPAM         = g_pConfigManager->getValue<Hyprlang::INT>("auth:pam:enabled");
     static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
-    if (*ENABLEFINGERPRINT)
-        m_vImpls.emplace_back(makeShared<CFingerprint>());
+
+    if (sessionLogin)
+        m_vImpls.emplace_back(makeShared<CGreetdLogin>());
+    else {
+        if (*ENABLEPAM)
+            m_vImpls.emplace_back(makeShared<CPam>());
+        if (*ENABLEFINGERPRINT)
+            m_vImpls.emplace_back(makeShared<CFingerprint>());
+    }
 
     RASSERT(!m_vImpls.empty(), "At least one authentication method must be enabled!");
 }

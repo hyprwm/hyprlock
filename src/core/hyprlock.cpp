@@ -5,6 +5,7 @@
 #include "../renderer/Renderer.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
+#include "../auth/GreetdLogin.hpp"
 #include "Egl.hpp"
 #include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
@@ -36,7 +37,8 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds, const bool greetdLogin,
+                     const std::vector<SLoginSessionConfig>& loginSessions) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -55,6 +57,9 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, c
     const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
     m_sCurrentDesktop         = SZCURRENTD;
+
+    if (greetdLogin)
+        m_sGreetdLoginSessionState.vLoginSessions = loginSessions;
 }
 
 CHyprlock::~CHyprlock() {
@@ -132,6 +137,12 @@ gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
 
     free(renderNode);
     return gbm_create_device(fd);
+}
+
+SLoginSessionConfig CHyprlock::getSelectedGreetdLoginSession() {
+    RASSERT(m_sGreetdLoginSessionState.iSelectedLoginSession < m_sGreetdLoginSessionState.vLoginSessions.size(), "Invalid selected login session");
+
+    return m_sGreetdLoginSessionState.vLoginSessions[m_sGreetdLoginSessionState.iSelectedLoginSession];
 }
 
 void CHyprlock::addDmabufListener() {
@@ -308,7 +319,7 @@ void CHyprlock::run() {
     wl_display_roundtrip(m_sWaylandState.display);
 
     g_pRenderer = makeUnique<CRenderer>();
-    g_pAuth     = makeUnique<CAuth>();
+    g_pAuth     = makeUnique<CAuth>(m_bGreetdLogin);
     g_pAuth->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
@@ -686,10 +697,20 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
                 m_sPasswordState.passBuffer.pop_back();
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
-    } else if (SYM == XKB_KEY_Caps_Lock) {
+    } else if (SYM == XKB_KEY_Caps_Lock)
         m_bCapsLock = !m_bCapsLock;
-    } else if (SYM == XKB_KEY_Num_Lock) {
+    else if (SYM == XKB_KEY_Num_Lock)
         m_bNumLock = !m_bNumLock;
+    else if (SYM == XKB_KEY_Up) {
+        if (m_sGreetdLoginSessionState.iSelectedLoginSession > 0)
+            m_sGreetdLoginSessionState.iSelectedLoginSession--;
+        else
+            m_sGreetdLoginSessionState.iSelectedLoginSession = m_sGreetdLoginSessionState.vLoginSessions.size() - 1;
+    } else if (SYM == XKB_KEY_Down) {
+        if (m_sGreetdLoginSessionState.iSelectedLoginSession < m_sGreetdLoginSessionState.vLoginSessions.size() - 1)
+            m_sGreetdLoginSessionState.iSelectedLoginSession++;
+        else
+            m_sGreetdLoginSessionState.iSelectedLoginSession = 0;
     } else {
         char buf[16] = {0};
         int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
