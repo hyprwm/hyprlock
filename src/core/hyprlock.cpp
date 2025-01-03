@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 #include <assert.h>
 #include <string.h>
 #include <xf86drm.h>

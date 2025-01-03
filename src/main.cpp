@@ -20,7 +20,7 @@ void help() {
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
-                 "  -R, --ready-fd FD        - Write a single newline character to this file descriptor after locking the screen\n"
+                 "  -R FD, --ready-fd FD     - Write a single newline character to this file descriptor after locking the screen\n"
                  "  -D, --daemonize          - Run hyprlock in the background. This command will return after the screen has been locked\n"
                  "  -V, --version            - Show version information\n"
                  "  -h, --help               - Show this help message\n";
