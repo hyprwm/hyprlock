@@ -90,9 +90,10 @@ int main(int argc, char** argv, char** envp) {
         }
     }
 
+    g_pAnimationManager = std::make_unique<CHyprlockAnimationManager>();
+
     try {
-        g_pAnimationManager = std::make_unique<CHyprlockAnimationManager>();
-        g_pConfigManager    = std::make_unique<CConfigManager>(configPath);
+        g_pConfigManager = std::make_unique<CConfigManager>(configPath);
         g_pConfigManager->init();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
@@ -102,8 +103,11 @@ int main(int argc, char** argv, char** envp) {
         return 1;
     }
 
+    if (noFadeIn)
+        g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
+
     try {
-        g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate, immediateRender, noFadeIn);
+        g_pHyprlock = std::make_unique<CHyprlock>(wlDisplay, immediate, immediateRender);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());

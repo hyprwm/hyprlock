@@ -29,7 +29,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn);
+    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender);
     ~CHyprlock();
 
     void                             run();
@@ -94,8 +94,6 @@ class CHyprlock {
     bool                             m_bCtrl     = false;
 
     bool                             m_bImmediateRender = false;
-
-    bool                             m_bNoFadeIn = false;
 
     std::string                      m_sCurrentDesktop = "";
 
