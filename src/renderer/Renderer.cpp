@@ -1,15 +1,16 @@
 #include "Renderer.hpp"
-#include "../core/Egl.hpp"
+#include "Shaders.hpp"
 #include "../config/ConfigManager.hpp"
-#include "../helpers/Color.hpp"
+#include "../core/AnimationManager.hpp"
+#include "../core/Egl.hpp"
 #include "../core/Output.hpp"
 #include "../core/hyprlock.hpp"
+#include "../helpers/Color.hpp"
+#include "../helpers/Log.hpp"
 #include "../renderer/DMAFrame.hpp"
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
 #include <algorithm>
-#include "Shaders.hpp"
-#include "src/helpers/Log.hpp"
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
 #include "widgets/Label.hpp"
@@ -186,18 +187,22 @@ CRenderer::CRenderer() {
     borderShader.gradient              = glGetUniformLocation(prog, "gradient");
     borderShader.gradientLength        = glGetUniformLocation(prog, "gradientLength");
     borderShader.angle                 = glGetUniformLocation(prog, "angle");
+    borderShader.gradient2             = glGetUniformLocation(prog, "gradient2");
+    borderShader.gradient2Length       = glGetUniformLocation(prog, "gradient2Length");
+    borderShader.angle2                = glGetUniformLocation(prog, "angle2");
+    borderShader.gradientLerp          = glGetUniformLocation(prog, "gradientLerp");
     borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
 
     asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
+
+    g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 }
 
-static int  frames         = 0;
-static bool firstFullFrame = false;
+static int frames = 0;
 
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
-    static auto* const PNOFADEOUT  = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
 
     projection = Mat3x3::outputProjection(surf.size, HYPRUTILS_TRANSFORM_NORMAL);
 
@@ -215,7 +220,6 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
-    float           bga           = 0.0;
     const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !asyncResourceGatherer->gathered;
 
     if (WAITFORASSETS) {
@@ -223,29 +227,14 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         // render status
         if (!**PDISABLEBAR) {
             CBox progress = {0, 0, asyncResourceGatherer->progress * surf.size.x, 2};
-            renderRect(progress, CColor{0.2f, 0.1f, 0.1f, 1.f}, 0);
+            renderRect(progress, CHyprColor{0.2f, 0.1f, 0.1f, 1.f}, 0);
         }
     } else {
 
-        if (!firstFullFrame) {
-            firstFullFrameTime = std::chrono::system_clock::now();
-            firstFullFrame     = true;
-        }
-
-        bga = std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - firstFullFrameTime).count() / 500000.0, 0.0, 1.0);
-
-        if (g_pHyprlock->m_bNoFadeIn)
-            bga = 1.0;
-
-        if (g_pHyprlock->m_bFadeStarted && !**PNOFADEOUT) {
-            bga =
-                std::clamp(std::chrono::duration_cast<std::chrono::microseconds>(g_pHyprlock->m_tFadeEnds - std::chrono::system_clock::now()).count() / 500000.0 - 0.02, 0.0, 1.0);
-            // - 0.02 so that the fade ends a little earlier than the final second
-        }
         // render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(&surf);
         for (auto& w : *WIDGETS) {
-            feedback.needsFrame = w->draw({bga}) || feedback.needsFrame;
+            feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
         }
     }
 
@@ -253,14 +242,14 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     Debug::log(TRACE, "frame {}", frames);
 
-    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered || bga < 1.0;
+    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered;
 
     glDisable(GL_BLEND);
 
     return feedback;
 }
 
-void CRenderer::renderRect(const CBox& box, const CColor& col, int rounding) {
+void CRenderer::renderRect(const CBox& box, const CHyprColor& col, int rounding) {
     const auto ROUNDEDBOX = box.copy().round();
     Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
     Mat3x3     glMatrix   = projection.copy().multiply(matrix);
@@ -298,12 +287,11 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
 
     glUniformMatrix3fv(borderShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
 
-    static_assert(sizeof(CColor) == 4 * sizeof(float)); // otherwise the line below this will fail
-
-    glUniform4fv(borderShader.gradient, gradient.m_vColors.size(), (float*)gradient.m_vColors.data());
-    glUniform1i(borderShader.gradientLength, gradient.m_vColors.size());
+    glUniform4fv(borderShader.gradient, gradient.m_vColorsOkLabA.size(), (float*)gradient.m_vColorsOkLabA.data());
+    glUniform1i(borderShader.gradientLength, gradient.m_vColorsOkLabA.size() / 4);
     glUniform1f(borderShader.angle, (int)(gradient.m_fAngle / (M_PI / 180.0)) % 360 * (M_PI / 180.0));
     glUniform1f(borderShader.alpha, alpha);
+    glUniform1i(borderShader.gradient2Length, 0);
 
     const auto TOPLEFT  = Vector2D(ROUNDEDBOX.x, ROUNDEDBOX.y);
     const auto FULLSIZE = Vector2D(ROUNDEDBOX.width, ROUNDEDBOX.height);
@@ -637,4 +625,21 @@ void CRenderer::popFb() {
 
 void CRenderer::removeWidgetsFor(const CSessionLockSurface* surf) {
     widgets.erase(surf);
+}
+
+void CRenderer::startFadeIn() {
+    Debug::log(LOG, "Starting fade in");
+    *opacity = 1.f;
+
+    opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->m_AnimationTree.getConfig("fadeOut")); }, true);
+}
+
+void CRenderer::startFadeOut(bool unlock, bool immediate) {
+    if (immediate)
+        opacity->setValueAndWarp(0.f);
+    else
+        *opacity = 0.f;
+
+    if (unlock)
+        opacity->setCallbackOnEnd([](auto) { g_pHyprlock->releaseSessionLock(); }, true);
 }

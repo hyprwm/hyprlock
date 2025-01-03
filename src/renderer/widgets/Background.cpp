@@ -57,7 +57,7 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
     }
 }
 
-void CBackground::renderRect(CColor color) {
+void CBackground::renderRect(CHyprColor color) {
     CBox monbox = {0, 0, viewport.x, viewport.y};
     g_pRenderer->renderRect(monbox, color, 0);
 }
@@ -86,7 +86,7 @@ static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
 bool CBackground::draw(const SRenderData& data) {
 
     if (resourceID.empty()) {
-        CColor col = color;
+        CHyprColor col = color;
         col.a *= data.opacity;
         renderRect(col);
         return data.opacity < 1.0;
@@ -96,7 +96,7 @@ bool CBackground::draw(const SRenderData& data) {
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
     if (!asset) {
-        CColor col = color;
+        CHyprColor col = color;
         col.a *= data.opacity;
         renderRect(col);
         return true;

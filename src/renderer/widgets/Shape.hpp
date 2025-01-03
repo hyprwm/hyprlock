@@ -21,7 +21,7 @@ class CShape : public IWidget {
     int                rounding;
     double             border;
     double             angle;
-    CColor             color;
+    CHyprColor         color;
     CGradientValueData borderGrad;
     Vector2D           size;
     Vector2D           pos;

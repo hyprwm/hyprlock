@@ -27,7 +27,7 @@ class CBackground : public IWidget {
     ~CBackground();
 
     virtual bool draw(const SRenderData& data);
-    void         renderRect(CColor color);
+    void         renderRect(CHyprColor color);
 
     void         onReloadTimerUpdate();
     void         onCrossFadeTimerUpdate();
@@ -53,7 +53,7 @@ class CBackground : public IWidget {
 
     float                                   crossFadeTime = -1.0;
 
-    CColor                                  color;
+    CHyprColor                              color;
     SPreloadedAsset*                        asset        = nullptr;
     COutput*                                output       = nullptr;
     bool                                    isScreenshot = false;

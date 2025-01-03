@@ -1,14 +1,19 @@
 #include "ConfigManager.hpp"
+#include "ConfigDataValues.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
-#include "../config/ConfigDataValues.hpp"
+#include "../core/AnimationManager.hpp"
 #include <hyprlang.hpp>
+#include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
 #include <hyprutils/string/String.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
 #include <mutex>
+
+using namespace Hyprutils::String;
+using namespace Hyprutils::Animation;
 
 ICustomConfigValueData::~ICustomConfigValueData() {
     ; // empty
@@ -19,6 +24,30 @@ static Hyprlang::CParseResult handleSource(const char* c, const char* v) {
     const std::string      COMMAND = c;
 
     const auto             RESULT = g_pConfigManager->handleSource(COMMAND, VALUE);
+
+    Hyprlang::CParseResult result;
+    if (RESULT.has_value())
+        result.setError(RESULT.value().c_str());
+    return result;
+}
+
+static Hyprlang::CParseResult handleBezier(const char* c, const char* v) {
+    const std::string      VALUE   = v;
+    const std::string      COMMAND = c;
+
+    const auto             RESULT = g_pConfigManager->handleBezier(COMMAND, VALUE);
+
+    Hyprlang::CParseResult result;
+    if (RESULT.has_value())
+        result.setError(RESULT.value().c_str());
+    return result;
+}
+
+static Hyprlang::CParseResult handleAnimation(const char* c, const char* v) {
+    const std::string      VALUE   = v;
+    const std::string      COMMAND = c;
+
+    const auto             RESULT = g_pConfigManager->handleAnimation(COMMAND, VALUE);
 
     Hyprlang::CParseResult result;
     if (RESULT.has_value())
@@ -120,7 +149,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             continue;
 
         try {
-            DATA->m_vColors.push_back(CColor(configStringToInt(var)));
+            DATA->m_vColors.push_back(CHyprColor(configStringToInt(var)));
         } catch (std::exception& e) {
             Debug::log(WARN, "Error parsing gradient {}", V);
             parseError = "Error parsing gradient " + V + ": " + e.what();
@@ -138,6 +167,8 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
         DATA->m_vColors.push_back(0); // transparent
     }
+
+    DATA->updateColorsOk();
 
     Hyprlang::CParseResult result;
     if (!parseError.empty())
@@ -183,8 +214,6 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
-    m_config.addConfigValue("general:no_fade_in", Hyprlang::INT{0});
-    m_config.addConfigValue("general:no_fade_out", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
@@ -195,6 +224,8 @@ void CConfigManager::init() {
     m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
     m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
     m_config.addConfigValue("auth:fingerprint:retry_delay", Hyprlang::INT{250});
+
+    m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});
 
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
@@ -253,7 +284,6 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "dots_center", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "dots_spacing", Hyprlang::FLOAT{0.2});
     m_config.addSpecialConfigValue("input-field", "dots_rounding", Hyprlang::INT{-1});
-    m_config.addSpecialConfigValue("input-field", "dots_fade_time", Hyprlang::INT{200});
     m_config.addSpecialConfigValue("input-field", "dots_text_format", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "fade_timeout", Hyprlang::INT{2000});
@@ -269,7 +299,6 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "fail_color", GRADIENTCONFIG("0xFFCC2222"));
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "fail_timeout", Hyprlang::INT{2000});
-    m_config.addSpecialConfigValue("input-field", "fail_transition", Hyprlang::INT{300});
     m_config.addSpecialConfigValue("input-field", "capslock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "numlock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "bothlock_color", GRADIENTCONFIG(""));
@@ -293,6 +322,30 @@ void CConfigManager::init() {
     SHADOWABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {false});
+    m_config.registerHandler(&::handleBezier, "bezier", {false});
+    m_config.registerHandler(&::handleAnimation, "animation", {false});
+
+    //
+    // Init Animations
+    //
+    m_AnimationTree.createNode("global");
+
+    // toplevel
+    m_AnimationTree.createNode("fade", "global");
+    m_AnimationTree.createNode("inputField", "global");
+
+    // inputField
+    m_AnimationTree.createNode("inputFieldColors", "inputField");
+    m_AnimationTree.createNode("inputFieldFade", "inputField");
+    m_AnimationTree.createNode("inputFieldWidth", "inputField");
+    m_AnimationTree.createNode("inputFieldDots", "inputField");
+
+    // fade
+    m_AnimationTree.createNode("fadeIn", "fade");
+    m_AnimationTree.createNode("fadeOut", "fade");
+
+    // set config for root node
+    m_AnimationTree.setConfigForNode("global", 1, 8.f, "default");
 
     m_config.commence();
 
@@ -412,7 +465,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
                 {"dots_center", m_config.getSpecialConfigValue("input-field", "dots_center", k.c_str())},
                 {"dots_rounding", m_config.getSpecialConfigValue("input-field", "dots_rounding", k.c_str())},
-                {"dots_fade_time", m_config.getSpecialConfigValue("input-field", "dots_fade_time", k.c_str())},
                 {"dots_text_format", m_config.getSpecialConfigValue("input-field", "dots_text_format", k.c_str())},
                 {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
                 {"fade_timeout", m_config.getSpecialConfigValue("input-field", "fade_timeout", k.c_str())},
@@ -428,7 +480,6 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
                 {"fail_timeout", m_config.getSpecialConfigValue("input-field", "fail_timeout", k.c_str())},
-                {"fail_transition", m_config.getSpecialConfigValue("input-field", "fail_transition", k.c_str())},
                 {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
                 {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
                 {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
@@ -508,6 +559,80 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
         m_config.parseFile(PATH.c_str());
 
         configCurrentPath = backupConfigPath;
+    }
+
+    return {};
+}
+
+std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
+    const auto  ARGS = CVarList(args);
+
+    std::string bezierName = ARGS[0];
+
+    if (ARGS[1] == "")
+        return "too few arguments";
+    float p1x = std::stof(ARGS[1]);
+
+    if (ARGS[2] == "")
+        return "too few arguments";
+    float p1y = std::stof(ARGS[2]);
+
+    if (ARGS[3] == "")
+        return "too few arguments";
+    float p2x = std::stof(ARGS[3]);
+
+    if (ARGS[4] == "")
+        return "too few arguments";
+    float p2y = std::stof(ARGS[4]);
+
+    if (ARGS[5] != "")
+        return "too many arguments";
+
+    g_pAnimationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
+
+    return {};
+}
+
+std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
+    const auto ARGS = CVarList(args);
+
+    const auto ANIMNAME = ARGS[0];
+
+    if (!m_AnimationTree.nodeExists(ANIMNAME))
+        return "no such animation";
+
+    // This helper casts strings like "1", "true", "off", "yes"... to int.
+    int64_t enabledInt = configStringToInt(ARGS[1]);
+
+    // Checking that the int is 1 or 0 because the helper can return integers out of range.
+    if (enabledInt != 0 && enabledInt != 1)
+        return "invalid animation on/off state";
+
+    if (enabledInt) {
+        int64_t speed = -1;
+
+        // speed
+        if (isNumber(ARGS[2], true)) {
+            speed = std::stof(ARGS[2]);
+
+            if (speed <= 0) {
+                speed = 1.f;
+                return "invalid speed";
+            }
+        } else {
+            speed = 10.f;
+            return "invalid speed";
+        }
+
+        std::string bezierName = ARGS[3];
+        // ARGS[4] (style) currently usused by hyprlock
+        m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, ARGS[3], "");
+
+        if (!g_pAnimationManager->bezierExists(bezierName)) {
+            const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
+            PANIMNODE->internalBezier = "default";
+            return "no such bezier";
+        }
     }
 
     return {};

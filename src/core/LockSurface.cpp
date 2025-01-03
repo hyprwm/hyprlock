@@ -1,9 +1,10 @@
 #include "LockSurface.hpp"
 #include "hyprlock.hpp"
-#include "../helpers/Log.hpp"
 #include "Egl.hpp"
+#include "../config/ConfigManager.hpp"
+#include "../core/AnimationManager.hpp"
+#include "../helpers/Log.hpp"
 #include "../renderer/Renderer.hpp"
-#include "src/config/ConfigManager.hpp"
 
 CSessionLockSurface::~CSessionLockSurface() {
     if (eglWindow)
@@ -123,6 +124,7 @@ void CSessionLockSurface::render() {
         return;
     }
 
+    g_pAnimationManager->tick();
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
     frameCallback       = makeShared<CCWlCallback>(surface->sendFrame());
     frameCallback->setDone([this](CCWlCallback* r, uint32_t data) {
@@ -134,7 +136,7 @@ void CSessionLockSurface::render() {
 
     eglSwapBuffers(g_pEGL->eglDisplay, eglSurface);
 
-    needsFrame = FEEDBACK.needsFrame;
+    needsFrame = FEEDBACK.needsFrame || g_pAnimationManager->shouldTickForNext();
 }
 
 void CSessionLockSurface::onCallback() {
