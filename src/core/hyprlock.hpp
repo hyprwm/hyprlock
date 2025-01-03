@@ -26,7 +26,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn);
+    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn, const int notifyFd);
     ~CHyprlock();
 
     void                            run();
@@ -168,6 +168,8 @@ class CHyprlock {
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
 
     std::vector<uint32_t>                m_vPressedKeys;
+
+    int                                  m_iNotifyFd;
 };
 
 inline std::unique_ptr<CHyprlock> g_pHyprlock;
