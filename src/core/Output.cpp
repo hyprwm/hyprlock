@@ -35,8 +35,8 @@ COutput::COutput(SP<CCWlOutput> output_, uint32_t name_) : name(name_), output(o
     });
 
     output->setGeometry(
-        [this](CCWlOutput* r, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform) {
-            transform = (wl_output_transform)transform;
+        [this](CCWlOutput* r, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform_) {
+            transform = (wl_output_transform)transform_;
 
             Debug::log(LOG, "output {} make {} model {}", name, make ? make : "", model ? model : "");
         });
