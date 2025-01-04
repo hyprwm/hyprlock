@@ -12,7 +12,6 @@
 #include <vector>
 #include <condition_variable>
 #include <optional>
-#include <sdbus-c++/sdbus-c++.h>
 
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
