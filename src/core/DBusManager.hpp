@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <string>
-#include <mutex>
 #include <sdbus-c++/sdbus-c++.h>
 
 class DBusManager {
@@ -25,6 +24,4 @@ private:
     std::shared_ptr<sdbus::IConnection> m_pConnection;
     std::shared_ptr<sdbus::IProxy>      m_pLoginProxy;
     std::shared_ptr<sdbus::IProxy>      m_pSessionProxy;
-
-    std::mutex                          m_mutex;
 };

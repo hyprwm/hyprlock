@@ -33,12 +33,10 @@ void DBusManager::initializeConnection() {
 }
 
 std::shared_ptr<sdbus::IConnection> DBusManager::getConnection() {
-    std::lock_guard<std::mutex> lock(m_mutex);
     return m_pConnection;
 }
 
 std::shared_ptr<sdbus::IProxy> DBusManager::getLoginProxy() {
-    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_pLoginProxy)
         initializeConnection();
 
@@ -46,7 +44,6 @@ std::shared_ptr<sdbus::IProxy> DBusManager::getLoginProxy() {
 }
 
 std::shared_ptr<sdbus::IProxy> DBusManager::getSessionProxy() {
-    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_pSessionProxy)
         initializeConnection();
 
@@ -54,7 +51,6 @@ std::shared_ptr<sdbus::IProxy> DBusManager::getSessionProxy() {
 }
 
 void DBusManager::setLockedHint(bool locked) {
-    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_pSessionProxy) {
         Debug::log(WARN, "[DBusManager] Cannot set locked hint: Proxy is not initialized.");
         return;
@@ -71,7 +67,6 @@ void DBusManager::setLockedHint(bool locked) {
 }
 
 void DBusManager::sendUnlockSignal() {
-    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_pSessionProxy) {
         Debug::log(WARN, "[DBusManager] Unlock signal skipped: Proxy is not initialized.");
         return;
