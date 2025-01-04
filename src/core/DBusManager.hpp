@@ -22,9 +22,9 @@ private:
 
     void initializeConnection();
 
-    std::shared_ptr<sdbus::IConnection> m_connection;
-    std::shared_ptr<sdbus::IProxy>      m_loginProxy;
-    std::shared_ptr<sdbus::IProxy>      m_sessionProxy;
+    std::shared_ptr<sdbus::IConnection> m_pConnection;
+    std::shared_ptr<sdbus::IProxy>      m_pLoginProxy;
+    std::shared_ptr<sdbus::IProxy>      m_pSessionProxy;
 
     std::mutex                          m_mutex;
 };
