@@ -22,12 +22,10 @@ class CFingerprint : public IAuthImplementation {
     virtual std::optional<std::string>  getLastPrompt();
     virtual void                        terminate();
 
-    std::shared_ptr<sdbus::IConnection> getConnection();
-
   private:
     struct SDBUSState {
         std::shared_ptr<sdbus::IConnection> connection;
-        std::unique_ptr<sdbus::IProxy>      login;
+        std::shared_ptr<sdbus::IProxy>      login;
         std::unique_ptr<sdbus::IProxy>      device;
         sdbus::UnixFd                       inhibitLock;
 

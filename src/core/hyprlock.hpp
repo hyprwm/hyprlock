@@ -159,7 +159,7 @@ class CHyprlock {
         std::mutex              timerRequestMutex;
         bool                    timerEvent = false;
     } m_sLoopState;
-
+    
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
 
     std::vector<uint32_t>                m_vPressedKeys;
