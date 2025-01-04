@@ -268,7 +268,7 @@ void CHyprlock::run() {
                 return;
             }
 
-            g_pSeatManager->registerSeat(makeShared<CCWlSeat>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_seat_interface, 9)));
+            g_pSeatManager->registerSeat(makeShared<CCWlSeat>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_seat_interface, 8)));
         } else if (IFACE == ext_session_lock_manager_v1_interface.name)
             m_sWaylandState.sessionLock =
                 makeShared<CCExtSessionLockManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &ext_session_lock_manager_v1_interface, 1));
