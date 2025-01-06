@@ -76,7 +76,7 @@ pkg_check_modules(
   pangocairo
   libdrm
   gbm
-  hyprutils>=0.3.2
+  hyprutils>=0.3.1
   sdbus-c++>=2.0.0
   hyprgraphics)
 
@@ -118,7 +118,7 @@ function(protocolWayland)
 endfunction()
 
 make_directory(${CMAKE_SOURCE_DIR}/protocols) # we don't ship any custom ones so
-# the dir won't be there
+                                              # the dir won't be there
 
 protocolwayland()
 
