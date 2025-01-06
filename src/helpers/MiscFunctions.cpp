@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cmath>
 #include "MiscFunctions.hpp"
-#include "../helpers/Log.hpp"
 #include <hyprutils/string/String.hpp>
 
 using namespace Hyprutils::String;
@@ -13,10 +12,11 @@ std::string absolutePath(const std::string& rawpath, const std::string& currentD
     // Handling where rawpath starts with '~'
     if (!rawpath.empty() && rawpath[0] == '~') {
         static const char* const ENVHOME = getenv("HOME");
-        return std::filesystem::path(ENVHOME) / path.relative_path().string().substr(2);
+        path = std::filesystem::path(ENVHOME) / path.relative_path().string().substr(2);
     }
+
     // Handling e.g. ./, ../
-    else if (path.is_relative()) {
+    if (path.is_relative()) {
         return std::filesystem::weakly_canonical(std::filesystem::path(currentDir) / path);
     } else {
         return std::filesystem::weakly_canonical(path);
