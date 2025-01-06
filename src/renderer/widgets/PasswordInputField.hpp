@@ -72,9 +72,6 @@ class CPasswordInputField : public IWidget {
 
         std::string              currentText    = "";
         size_t                   failedAttempts = 0;
-        bool                     canGetNewText  = true;
-
-        std::string              lastAuthFeedback;
 
         std::vector<std::string> registeredResourceIDs;
 
