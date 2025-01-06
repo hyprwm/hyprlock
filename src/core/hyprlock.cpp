@@ -1,4 +1,5 @@
 #include "hyprlock.hpp"
+#include "AnimationManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
@@ -22,7 +23,7 @@
 
 using namespace Hyprutils::OS;
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool noFadeIn) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
@@ -39,9 +40,6 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
 
     const auto PIMMEDIATERENDER = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:immediate_render");
     m_bImmediateRender          = immediateRender || **PIMMEDIATERENDER;
-
-    const auto* const PNOFADEIN = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_in");
-    m_bNoFadeIn                 = noFadeIn || **PNOFADEIN;
 
     const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
@@ -316,9 +314,6 @@ void CHyprlock::run() {
     g_pAuth     = std::make_unique<CAuth>();
     g_pAuth->start();
 
-    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
-    const bool         NOFADEOUT  = **PNOFADEOUT;
-
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
     // Hyprland violates the protocol a bit to allow for this.
@@ -430,16 +425,12 @@ void CHyprlock::run() {
     });
 
     m_sLoopState.event = true; // let it process once
+    g_pRenderer->startFadeIn();
 
     while (!m_bTerminate) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
         if (m_sLoopState.event == false)
             m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
-
-        if (!NOFADEOUT && m_bFadeStarted && std::chrono::system_clock::now() > m_tFadeEnds) {
-            releaseSessionLock();
-            break;
-        }
 
         if (m_bTerminate)
             break;
@@ -494,11 +485,6 @@ void CHyprlock::run() {
         m_sLoopState.timersMutex.unlock();
 
         passed.clear();
-
-        if (!NOFADEOUT && m_bFadeStarted && std::chrono::system_clock::now() > m_tFadeEnds) {
-            releaseSessionLock();
-            break;
-        }
     }
 
     const auto DPY = m_sWaylandState.display;
@@ -529,21 +515,16 @@ void CHyprlock::run() {
 }
 
 void CHyprlock::unlock() {
-    static auto* const PNOFADEOUT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:no_fade_out");
+    const bool IMMEDIATE = m_sCurrentDesktop != "Hyprland";
 
-    if (**PNOFADEOUT || m_sCurrentDesktop != "Hyprland") {
-        releaseSessionLock();
-        return;
-    }
-
-    m_tFadeEnds    = std::chrono::system_clock::now() + std::chrono::milliseconds(500);
-    m_bFadeStarted = true;
+    g_pRenderer->startFadeOut(true, IMMEDIATE);
+    m_bUnlockedCalled = true;
 
     renderAllOutputs();
 }
 
 bool CHyprlock::isUnlocked() {
-    return m_bFadeStarted || m_bTerminate;
+    return m_bUnlockedCalled || m_bTerminate;
 }
 
 void CHyprlock::clearPasswordBuffer() {
@@ -607,7 +588,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    if (m_bFadeStarted || m_bTerminate)
+    if (isUnlocked())
         return;
 
     if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
@@ -715,6 +696,7 @@ void CHyprlock::acquireSessionLock() {
 
 void CHyprlock::releaseSessionLock() {
     Debug::log(LOG, "Unlocking session");
+
     if (m_bTerminate) {
         Debug::log(ERR, "Unlock already happend?");
         return;

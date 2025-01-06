@@ -18,12 +18,12 @@ class CShadowable {
     virtual bool draw(const IWidget::SRenderData& data);
 
   private:
-    IWidget* widget = nullptr;
-    int      size   = 10;
-    int      passes = 4;
-    float    boostA = 1.0;
-    CColor   color{0, 0, 0, 1.0};
-    Vector2D viewport;
+    IWidget*   widget = nullptr;
+    int        size   = 10;
+    int        passes = 4;
+    float      boostA = 1.0;
+    CHyprColor color{0, 0, 0, 1.0};
+    Vector2D   viewport;
 
     // to avoid recursive shadows
     bool         ignoreDraw = false;
