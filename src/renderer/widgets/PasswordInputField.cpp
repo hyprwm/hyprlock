@@ -217,21 +217,21 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             }
         }
 
-        const auto CURRDOTS     = dots.currentAmount->value();
-        const int  DOTPAD       = (inputFieldBox.h - passSize.y) / 2;
-        const int  DOTAREAWIDTH = inputFieldBox.w - DOTPAD * 2;
-        const int  MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
-        const int  DOTFLOORED   = std::floor(CURRDOTS);
-        const auto DOTALPHA     = fontCol.a;
+        const auto   CURRDOTS     = dots.currentAmount->value();
+        const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
+        const double DOTAREAWIDTH = inputFieldBox.w - DOTPAD * 2;
+        const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
+        const int    DOTFLOORED   = std::floor(CURRDOTS);
+        const auto   DOTALPHA     = fontCol.a;
 
         // Calculate the total width required for all dots including spaces between them
-        const int CURRWIDTH = (passSize.x + passSpacing) * CURRDOTS - passSpacing;
+        const double CURRWIDTH = (passSize.x + passSpacing) * CURRDOTS - passSpacing;
 
         // Calculate starting x-position to ensure dots stay centered within the input field
-        int xstart = dots.center ? (DOTAREAWIDTH - CURRWIDTH) / 2 + DOTPAD : DOTPAD;
+        double xstart = dots.center ? (DOTAREAWIDTH - CURRWIDTH) / 2.0 + DOTPAD : DOTPAD;
 
         if (CURRDOTS > MAXDOTS)
-            xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2;
+            xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2.0;
 
         if (dots.rounding == -1)
             dots.rounding = passSize.x / 2.0;
@@ -249,9 +249,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                     fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
             }
 
-            Vector2D dotPosition =
-                inputFieldBox.pos() + Vector2D{xstart + (int)inputFieldBox.w % 2 / 2.0 + i * (passSize.x + passSpacing), inputFieldBox.h / 2.0 - passSize.y / 2.0};
-            CBox box{dotPosition, passSize};
+            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + i * (passSize.x + passSpacing), inputFieldBox.h / 2.0 - passSize.y / 2.0};
+            CBox     box{dotPosition, passSize};
             if (!dots.textFormat.empty()) {
                 if (!dots.textAsset) {
                     forceReload = true;
@@ -260,9 +259,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 }
 
                 g_pRenderer->renderTexture(box, dots.textAsset->texture, fontCol.a, dots.rounding);
-            } else {
+            } else
                 g_pRenderer->renderRect(box, fontCol, dots.rounding);
-            }
+
             fontCol.a = DOTALPHA;
         }
     }
@@ -364,13 +363,17 @@ void CPasswordInputField::updateWidth() {
     if (targetSizeX < configSize.x)
         targetSizeX = configSize.x;
 
-    if (size->goal().x != targetSizeX)
+    if (size->goal().x != targetSizeX) {
         *size = Vector2D{targetSizeX, configSize.y};
+        size->setCallbackOnEnd([this](auto) {
+            redrawShadow = true;
+            pos          = posFromHVAlign(viewport, size->value(), configPos, halign, valign);
+        });
+    }
 
     if (size->isBeingAnimated()) {
         redrawShadow = true;
-
-        pos = posFromHVAlign(viewport, size->value(), configPos, halign, valign);
+        pos          = posFromHVAlign(viewport, size->value(), configPos, halign, valign);
     }
 }
 
