@@ -275,11 +275,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         currAsset = placeholder.asset;
 
-        if (currAsset && currAsset->texture.m_vSize.x + size->value().y <= size->value().x) {
-            Vector2D pos = outerBox.pos() + outerBox.size() / 2.f;
-            pos          = pos - currAsset->texture.m_vSize / 2.f;
-            CBox textbox{pos, currAsset->texture.m_vSize};
-            g_pRenderer->renderTexture(textbox, currAsset->texture, data.opacity * fade.a->value(), 0);
+        if (currAsset) {
+            const Vector2D ASSETPOS = inputFieldBox.pos() + inputFieldBox.size() / 2.0 - currAsset->texture.m_vSize / 2.0;
+            const CBox     ASSETBOX{ASSETPOS, currAsset->texture.m_vSize};
+
+            // Cut the texture to the width of the input field
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(inputFieldBox.x, inputFieldBox.y, inputFieldBox.w, inputFieldBox.h);
+            g_pRenderer->renderTexture(ASSETBOX, currAsset->texture, data.opacity * fade.a->value(), 0);
+            glScissor(0, 0, viewport.x, viewport.y);
+            glDisable(GL_SCISSOR_TEST);
         } else
             forceReload = true;
     }
@@ -353,7 +358,7 @@ void CPasswordInputField::updatePlaceholder() {
 void CPasswordInputField::updateWidth() {
     double targetSizeX = configSize.x;
 
-    if (placeholder.asset)
+    if (passwordLength == 0 && placeholder.asset)
         targetSizeX = placeholder.asset->texture.m_vSize.x + size->goal().y;
 
     if (targetSizeX < configSize.x)
@@ -362,10 +367,11 @@ void CPasswordInputField::updateWidth() {
     if (size->goal().x != targetSizeX)
         *size = Vector2D{targetSizeX, configSize.y};
 
-    if (size->isBeingAnimated())
+    if (size->isBeingAnimated()) {
         redrawShadow = true;
 
-    pos = posFromHVAlign(viewport, size->value(), configPos, halign, valign);
+        pos = posFromHVAlign(viewport, size->value(), configPos, halign, valign);
+    }
 }
 
 void CPasswordInputField::updateHiddenInputState() {
