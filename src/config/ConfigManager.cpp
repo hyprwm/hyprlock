@@ -605,34 +605,32 @@ std::optional<std::string> CConfigManager::handleAnimation(const std::string& co
     int64_t enabledInt = configStringToInt(ARGS[1]);
 
     // Checking that the int is 1 or 0 because the helper can return integers out of range.
-    if (enabledInt != 0 && enabledInt != 1)
+    if (enabledInt > 1 || enabledInt < 0)
         return "invalid animation on/off state";
 
-    if (enabledInt) {
-        int64_t speed = -1;
+    int64_t speed = -1;
 
-        // speed
-        if (isNumber(ARGS[2], true)) {
-            speed = std::stof(ARGS[2]);
+    // speed
+    if (isNumber(ARGS[2], true)) {
+        speed = std::stof(ARGS[2]);
 
-            if (speed <= 0) {
-                speed = 1.f;
-                return "invalid speed";
-            }
-        } else {
-            speed = 10.f;
+        if (speed <= 0) {
+            speed = 1.f;
             return "invalid speed";
         }
+    } else {
+        speed = 10.f;
+        return "invalid speed";
+    }
 
-        std::string bezierName = ARGS[3];
-        // ARGS[4] (style) currently usused by hyprlock
-        m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, ARGS[3], "");
+    std::string bezierName = ARGS[3];
+    // ARGS[4] (style) currently usused by hyprlock
+    m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, bezierName, "");
 
-        if (!g_pAnimationManager->bezierExists(bezierName)) {
-            const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
-            PANIMNODE->internalBezier = "default";
-            return "no such bezier";
-        }
+    if (!g_pAnimationManager->bezierExists(bezierName)) {
+        const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
+        PANIMNODE->internalBezier = "default";
+        return "no such bezier";
     }
 
     return {};
