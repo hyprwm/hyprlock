@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.27)
 
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" VER_RAW)
 string(STRIP ${VER_RAW} VERSION)
@@ -56,7 +56,7 @@ message(STATUS "Checking deps...")
 
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(OpenGL REQUIRED)
+find_package(OpenGL REQUIRED COMPONENTS EGL GLES3)
 find_package(hyprwayland-scanner 0.4.4 REQUIRED)
 pkg_check_modules(
   deps
@@ -67,7 +67,6 @@ pkg_check_modules(
   wayland-egl
   hyprlang>=0.4.0
   egl
-  opengl
   xkbcommon
   libjpeg
   libwebp
@@ -83,7 +82,7 @@ pkg_check_modules(
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
 target_link_libraries(hyprlock PRIVATE pam rt Threads::Threads PkgConfig::deps
-                                       OpenGL::EGL OpenGL::GL)
+                                       OpenGL::EGL OpenGL::GLES3)
 
 # protocols
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
