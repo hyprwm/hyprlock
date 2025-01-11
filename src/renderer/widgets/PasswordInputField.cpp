@@ -304,32 +304,39 @@ void CPasswordInputField::updatePlaceholder() {
         return;
     }
 
-    const auto AUTHFEEDBACK   = g_pAuth->getInlineFeedback();
-    const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
-
-    if (!ALLOWCOLORSWAP && placeholder.lastAuthFeedback == AUTHFEEDBACK && g_pAuth->m_iFailedAttempts == placeholder.failedAttempts)
+    // already requested a placeholder for the current fail
+    if (displayFail && placeholder.failedAttempts == g_pAuth->getFailedAttempts())
         return;
 
-    placeholder.failedAttempts   = g_pAuth->m_iFailedAttempts;
-    placeholder.lastAuthFeedback = AUTHFEEDBACK;
+    placeholder.failedAttempts = g_pAuth->getFailedAttempts();
 
-    placeholder.asset = nullptr;
-
+    std::string newText;
     if (displayFail) {
         g_pHyprlock->addTimer(std::chrono::milliseconds(configFailTimeoutMs), failTimeoutCallback, nullptr);
-        const auto FORMATTEDFAIL = formatString(configFailText).formatted;
-        placeholder.currentText  = FORMATTEDFAIL;
-    } else {
-        const auto FORMATTEDPLACEHOLDER = formatString(configPlaceholderText).formatted;
-        placeholder.currentText         = FORMATTEDPLACEHOLDER;
-    }
+        newText = formatString(configFailText).formatted;
+    } else
+        newText = formatString(configPlaceholderText).formatted;
 
-    placeholder.resourceID =
+    // if the text is unchanged we don't need to do anything, unless we are swapping font color
+    const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
+    if (!ALLOWCOLORSWAP && newText == placeholder.currentText)
+        return;
+
+    const auto NEWRESOURCEID =
         std::format("placeholder:{}{}{}{}{}{}", placeholder.currentText, (uintptr_t)this, colorState.font.r, colorState.font.g, colorState.font.b, colorState.font.a);
+
+    if (placeholder.resourceID == NEWRESOURCEID)
+        return;
+
+    Debug::log(TRACE, "Updating placeholder text: {}", newText);
+    placeholder.currentText = newText;
+    placeholder.asset       = nullptr;
+    placeholder.resourceID  = NEWRESOURCEID;
 
     if (std::find(placeholder.registeredResourceIDs.begin(), placeholder.registeredResourceIDs.end(), placeholder.resourceID) != placeholder.registeredResourceIDs.end())
         return;
 
+    Debug::log(TRACE, "Requesting new placeholder asset: {}", placeholder.resourceID);
     placeholder.registeredResourceIDs.push_back(placeholder.resourceID);
 
     // query

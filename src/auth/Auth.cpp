@@ -40,21 +40,8 @@ bool CAuth::checkWaiting() {
     return false;
 }
 
-std::string CAuth::getInlineFeedback() {
-    std::optional<std::string> firstFeedback = std::nullopt;
-    for (const auto& i : m_vImpls) {
-        const auto FEEDBACK = (m_bDisplayFailText) ? i->getLastFailText() : i->getLastPrompt();
-        if (!FEEDBACK.has_value())
-            continue;
-
-        if (!firstFeedback.has_value())
-            firstFeedback = FEEDBACK;
-
-        if (i->getImplType() == m_eLastActiveImpl)
-            return FEEDBACK.value();
-    }
-
-    return firstFeedback.value_or("Ups, no authentication feedack");
+const std::string& CAuth::getCurrentFailText() {
+    return m_sCurrentFail.failText;
 }
 
 std::optional<std::string> CAuth::getFailText(eAuthImplementations implType) {
@@ -73,6 +60,10 @@ std::optional<std::string> CAuth::getPrompt(eAuthImplementations implType) {
     return std::nullopt;
 }
 
+size_t CAuth::getFailedAttempts() {
+    return m_sCurrentFail.failedAttempts;
+}
+
 std::shared_ptr<IAuthImplementation> CAuth::getImpl(eAuthImplementations implType) {
     for (const auto& i : m_vImpls) {
         if (i->getImplType() == implType)
@@ -89,11 +80,10 @@ void CAuth::terminate() {
 }
 
 static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pHyprlock->clearPasswordBuffer();
-    g_pAuth->m_iFailedAttempts++;
-    Debug::log(LOG, "Failed attempts: {}", g_pAuth->m_iFailedAttempts);
-
     g_pAuth->m_bDisplayFailText = true;
+
+    g_pHyprlock->clearPasswordBuffer();
+
     g_pHyprlock->enqueueForceUpdateTimers();
 
     g_pHyprlock->renderAllOutputs();
@@ -103,14 +93,16 @@ static void passwordUnlockCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->unlock();
 }
 
-void CAuth::enqueueFail() {
+void CAuth::enqueueFail(const std::string& failText, eAuthImplementations implType) {
+    m_sCurrentFail.failText   = failText;
+    m_sCurrentFail.failSource = implType;
+    m_sCurrentFail.failedAttempts++;
+
+    Debug::log(LOG, "Failed attempts: {}", m_sCurrentFail.failedAttempts);
+
     g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordFailCallback, nullptr);
 }
 
 void CAuth::enqueueUnlock() {
     g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordUnlockCallback, nullptr);
-}
-
-void CAuth::postActivity(eAuthImplementations implType) {
-    m_eLastActiveImpl = implType;
 }

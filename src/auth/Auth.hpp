@@ -28,34 +28,35 @@ class CAuth {
   public:
     CAuth();
 
-    void start();
+    void                                 start();
 
-    void submitInput(const std::string& input);
-    bool checkWaiting();
+    void                                 submitInput(const std::string& input);
+    bool                                 checkWaiting();
 
-    // Used by the PasswordInput field. We are constraint to a single line for the authentication feedback there.
-    // Based on m_bDisplayFailText, this will return either the fail text or the prompt.
-    // Based on m_eLastActiveImpl, it will select the implementation.
-    std::string                          getInlineFeedback();
+    const std::string&                   getCurrentFailText();
 
     std::optional<std::string>           getFailText(eAuthImplementations implType);
     std::optional<std::string>           getPrompt(eAuthImplementations implType);
+    size_t                               getFailedAttempts();
 
     std::shared_ptr<IAuthImplementation> getImpl(eAuthImplementations implType);
 
     void                                 terminate();
 
-    // Should only be set via the main thread
-    bool   m_bDisplayFailText = false;
-    size_t m_iFailedAttempts  = 0;
+    void                                 enqueueUnlock();
+    void                                 enqueueFail(const std::string& failText, eAuthImplementations implType);
 
-    void   enqueueUnlock();
-    void   enqueueFail();
-    void   postActivity(eAuthImplementations implType);
+    // Should only be set via the main thread
+    bool m_bDisplayFailText = false;
 
   private:
+    struct {
+        std::string          failText       = "";
+        eAuthImplementations failSource     = AUTH_IMPL_PAM;
+        size_t               failedAttempts = 0;
+    } m_sCurrentFail;
+
     std::vector<std::shared_ptr<IAuthImplementation>> m_vImpls;
-    std::optional<eAuthImplementations>               m_eLastActiveImpl = std::nullopt;
 };
 
 inline std::unique_ptr<CAuth> g_pAuth;

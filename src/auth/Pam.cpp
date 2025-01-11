@@ -96,7 +96,7 @@ void CPam::init() {
                 return;
 
             if (!AUTHENTICATED)
-                g_pAuth->enqueueFail();
+                g_pAuth->enqueueFail(m_sConversationState.failText, AUTH_IMPL_PAM);
             else {
                 g_pAuth->enqueueUnlock();
                 return;
@@ -124,7 +124,6 @@ bool CPam::auth() {
     handle = nullptr;
 
     m_sConversationState.waitingForPamAuth = false;
-    g_pAuth->postActivity(AUTH_IMPL_PAM);
 
     if (ret != PAM_SUCCESS) {
         if (!m_sConversationState.failTextFromPam)
@@ -156,7 +155,6 @@ void CPam::waitForInput() {
 }
 
 void CPam::handleInput(const std::string& input) {
-    g_pAuth->postActivity(AUTH_IMPL_PAM);
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
 
     if (!m_sConversationState.inputRequested)
