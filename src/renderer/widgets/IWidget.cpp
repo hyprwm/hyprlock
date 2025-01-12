@@ -76,7 +76,7 @@ int IWidget::roundingForBorderBox(const CBox& borderBox, int roundingConfig, int
 
 static void replaceAllAttempts(std::string& str) {
 
-    const size_t      ATTEMPTS = g_pAuth->m_iFailedAttempts;
+    const size_t      ATTEMPTS = g_pAuth->getFailedAttempts();
     const std::string STR      = std::to_string(ATTEMPTS);
     size_t            pos      = 0;
 
@@ -118,16 +118,14 @@ static void replaceAllLayout(std::string& str) {
     }
 }
 
-static bool        logMissingTzOnce = true;
+static bool                                                       logMissingTzOnce = true;
 static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
     const std::chrono::time_zone* pCurrentTz = nullptr;
     try {
         auto name = std::getenv("TZ");
         if (name)
             pCurrentTz = std::chrono::locate_zone(name);
-    } catch (std::runtime_error&) {
-        Debug::log(WARN, "Invalid TZ value. Falling back to current timezone!");
-    }
+    } catch (std::runtime_error&) { Debug::log(WARN, "Invalid TZ value. Falling back to current timezone!"); }
 
     if (!pCurrentTz)
         pCurrentTz = std::chrono::current_zone();
@@ -150,15 +148,15 @@ static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
 
 static std::string getTime24h() {
     const auto HHMMSS = getTime();
-    const auto HRS  = HHMMSS.hours().count();
-    const auto MINS = HHMMSS.minutes().count();
+    const auto HRS    = HHMMSS.hours().count();
+    const auto MINS   = HHMMSS.minutes().count();
     return (HRS < 10 ? "0" : "") + std::to_string(HRS) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS);
 }
 
 static std::string getTime12h() {
     const auto HHMMSS = getTime();
-    const auto HRS  = HHMMSS.hours().count();
-    const auto MINS = HHMMSS.minutes().count();
+    const auto HRS    = HHMMSS.hours().count();
+    const auto MINS   = HHMMSS.minutes().count();
     return (HRS == 12 || HRS == 0 ? "12" : (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12)) + ":" + (MINS < 10 ? "0" : "") + std::to_string(MINS) +
         (HRS < 12 ? " AM" : " PM");
 }
@@ -190,18 +188,6 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
-    if (in.contains("$FAIL")) {
-        const auto FAIL = g_pAuth->getFailText(AUTH_IMPL_PAM);
-        replaceInString(in, "$FAIL", FAIL.value_or(""));
-        result.allowForceUpdate = true;
-    }
-
-    if (in.contains("$PROMPT")) {
-        const auto PROMPT = g_pAuth->getPrompt(AUTH_IMPL_PAM);
-        replaceInString(in, "$PROMPT", PROMPT.value_or(""));
-        result.allowForceUpdate = true;
-    }
-
     if (in.contains("$ATTEMPTS")) {
         replaceAllAttempts(in);
         result.allowForceUpdate = true;
@@ -212,9 +198,27 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
         result.allowForceUpdate = true;
     }
 
-    if (in.contains("$FPRINTMESSAGE")) {
-        const auto FPRINTMESSAGE = g_pAuth->getFailText(AUTH_IMPL_FINGERPRINT);
-        replaceInString(in, "$FPRINTMESSAGE", FPRINTMESSAGE.value_or(""));
+    if (in.contains("$FAIL")) {
+        const auto FAIL = g_pAuth->getCurrentFailText();
+        replaceInString(in, "$FAIL", FAIL);
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$PAMFAIL")) {
+        const auto FAIL = g_pAuth->getFailText(AUTH_IMPL_PAM);
+        replaceInString(in, "$PAMFAIL", FAIL.value_or(""));
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$PAMPROMPT")) {
+        const auto PROMPT = g_pAuth->getPrompt(AUTH_IMPL_PAM);
+        replaceInString(in, "$PAMPROMPT", PROMPT.value_or(""));
+        result.allowForceUpdate = true;
+    }
+
+    if (in.contains("$FPRINTFAIL")) {
+        const auto FPRINTFAIL = g_pAuth->getFailText(AUTH_IMPL_FINGERPRINT);
+        replaceInString(in, "$FPRINTFAIL", FPRINTFAIL.value_or(""));
         result.allowForceUpdate = true;
     }
 
