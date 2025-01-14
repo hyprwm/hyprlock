@@ -288,8 +288,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 }
 
 static void failTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pAuth->m_bDisplayFailText = false;
-    g_pHyprlock->renderAllOutputs();
+    if (g_pAuth->m_bDisplayFailText) {
+        g_pAuth->m_bDisplayFailText = false;
+        g_pHyprlock->renderAllOutputs();
+    }
 }
 
 void CPasswordInputField::updatePlaceholder() {
