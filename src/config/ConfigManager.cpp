@@ -63,7 +63,36 @@ static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** dat
     if (!*data)
         *data = new CLayoutValueData();
 
-    const auto DATA  = (CLayoutValueData*)(*data);
+    const auto DATA = (CLayoutValueData*)(*data);
+    
+    if (VALUE.starts_with("cmd[") && VALUE.contains("]")) {
+        DATA->m_bIsCommand = true;
+        
+        std::string options = VALUE.substr(4, VALUE.find_first_of(']') - 4);
+        CVarList vars(options, 0, ',', true);
+
+        for (const auto& var : vars) {
+            if (var.starts_with("update:")) {
+                try {
+                    DATA->m_iUpdateMs = std::stoull(var.substr(7));
+                } catch (std::exception& e) {
+                    Debug::log(ERR, "Error parsing {} in cmd[]", var);
+                }
+            } else {
+                Debug::log(ERR, "Unknown prop in layout format {}", var);
+            }
+        }
+
+        DATA->m_sCommand = VALUE.substr(VALUE.find_first_of(']') + 1);
+        
+        auto cmdResult = DATA->executeCommand();
+        DATA->m_vValues = cmdResult.values;
+        DATA->m_sIsRelative.x = cmdResult.isRelative.x;
+        DATA->m_sIsRelative.y = cmdResult.isRelative.y;
+
+        return result;
+    }
+
     const auto SPLIT = VALUE.find(',');
     if (SPLIT == std::string::npos) {
         result.setError(std::format("expected two comma seperated values, got {}", VALUE).c_str());
