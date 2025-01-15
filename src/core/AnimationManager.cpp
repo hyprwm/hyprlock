@@ -66,13 +66,14 @@ void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const flo
         };
 
         av.value().m_vColors[i] = {lerped, lerp(sourceCol.a, targetCol.a, POINTY)};
-        av.value().updateColorsOk();
     }
 
     if (av.begun().m_fAngle != av.goal().m_fAngle) {
         const float DELTA   = av.goal().m_fAngle - av.begun().m_fAngle;
         av.value().m_fAngle = av.begun().m_fAngle + DELTA * POINTY;
     }
+
+    av.value().updateColorsOk();
 }
 
 void CHyprlockAnimationManager::tick() {
