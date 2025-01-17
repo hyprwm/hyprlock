@@ -79,10 +79,11 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle          = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
         angle          = angle * M_PI / 180.0;
+        onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
         std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-        CHyprColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
+        CHyprColor  labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
         int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
 
         label = formatString(labelPreFormat);
@@ -155,4 +156,26 @@ void CLabel::renderUpdate() {
     }
 
     g_pHyprlock->renderOutput(outputStringPort);
+}
+
+bool CLabel::containsPoint(const Vector2D& pos) const {
+    if (!asset)
+        return false;
+
+    Vector2D mPos = {pos.x, abs(pos.y - viewport.y)};
+
+    CBox     box = {this->pos.x, this->pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+    box.rot      = angle;
+
+    bool isInside = box.containsPoint(mPos);
+
+    return isInside;
+}
+
+void CLabel::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (down) {
+        if (!onclickCommand.empty()) {
+            g_pHyprlock->spawnSync(onclickCommand);
+        }
+    }
 }
