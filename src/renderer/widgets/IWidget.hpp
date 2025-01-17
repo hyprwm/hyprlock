@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../helpers/Math.hpp"
+#include "../../helpers/Log.hpp"
 #include <string>
 
 class IWidget {
@@ -16,6 +17,11 @@ class IWidget {
                                    const double& ang = 0);
     static int      roundingForBox(const CBox& box, int roundingConfig);
     static int      roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness);
+
+    virtual void    onClick(uint32_t button, bool down, const Vector2D& pos) {}
+    virtual bool    containsPoint(const Vector2D& pos) const {
+        return false;
+    }
 
     struct SFormatResult {
         std::string formatted;
