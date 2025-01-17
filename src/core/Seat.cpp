@@ -27,6 +27,8 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
             m_pPointer = makeShared<CCWlPointer>(r->sendGetPointer());
 
             m_pPointer->setMotion([](CCWlPointer* r, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
+                g_pHyprlock->m_vMouseLocation = {wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)};
+
                 if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
                     return;
 
@@ -50,6 +52,10 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
                     m_pCursorShape->setShape(wpCursorShapeDeviceV1Shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
 
                 g_pHyprlock->m_vLastEnterCoords = {wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)};
+            });
+
+            m_pPointer->setButton([](CCWlPointer* r, uint32_t serial, uint32_t time, uint32_t button, wl_pointer_button_state state) {
+                g_pHyprlock->onClick(button, state == WL_POINTER_BUTTON_STATE_PRESSED, g_pHyprlock->m_vMouseLocation);
             });
         }
 
