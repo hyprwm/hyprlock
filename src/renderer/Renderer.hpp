@@ -47,11 +47,11 @@ class CRenderer {
 
     void                                    startFadeIn();
     void                                    startFadeOut(bool unlock = false, bool immediate = true);
+    std::vector<std::unique_ptr<IWidget>>*  getOrCreateWidgetsFor(const CSessionLockSurface* surf);
 
   private:
     widgetMap_t                            widgets;
 
-    std::vector<std::unique_ptr<IWidget>>* getOrCreateWidgetsFor(const CSessionLockSurface* surf);
 
     CShader                                rectShader;
     CShader                                texShader;

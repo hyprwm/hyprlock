@@ -682,6 +682,20 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     }
 }
 
+void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    for (auto& o : m_vOutputs) {
+        if (!o->sessionLockSurface)
+            continue;
+
+        const auto widgets = g_pRenderer->getOrCreateWidgetsFor(o->sessionLockSurface.get());
+        for (const auto& widget : *widgets) {
+            if (widget->containsPoint(pos)) {
+                widget->onClick(button, down, pos);
+            }
+        }
+    }
+}
+
 void CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = makeShared<CCExtSessionLockV1>(m_sWaylandState.sessionLock->sendLock());
