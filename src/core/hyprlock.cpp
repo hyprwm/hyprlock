@@ -368,9 +368,19 @@ void CHyprlock::run() {
 
     std::thread pollThr([this, &pollfds, fdcount]() {
         while (!m_bTerminate) {
-            int ret = poll(pollfds, fdcount, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
+            // if we are not "prepared to read", it means that there are pending events to be dispatched
+            // in the event loop thread. In that case we set the timeout to 0 and don't read any new wayland events.
+            // TODO: Let the event loop thread signal back to this thread
+            // to avoid busy cycles.
+            bool preparedToRead = wl_display_prepare_read(m_sWaylandState.display) == 0;
+
+            auto timeout = (preparedToRead) ? 5000 : 0;
+            int  ret     = poll(pollfds, fdcount, timeout);
 
             if (ret < 0) {
+                if (preparedToRead)
+                    wl_display_cancel_read(m_sWaylandState.display);
+
                 if (errno == EINTR)
                     continue;
 
@@ -388,6 +398,9 @@ void CHyprlock::run() {
                     exit(1);
                 }
             }
+
+            if (preparedToRead)
+                wl_display_read_events(m_sWaylandState.display);
 
             if (ret != 0) {
                 Debug::log(TRACE, "[core] got poll event");
@@ -442,17 +455,6 @@ void CHyprlock::run() {
         if (pollfds[1].revents & POLLIN /* dbus */) {
             while (dbusConn && dbusConn->processPendingEvent()) {
                 ;
-            }
-        }
-
-        if (pollfds[0].revents & POLLIN /* wl */) {
-            Debug::log(TRACE, "got wl event");
-            wl_display_flush(m_sWaylandState.display);
-            if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
-                wl_display_read_events(m_sWaylandState.display);
-                wl_display_dispatch_pending(m_sWaylandState.display);
-            } else {
-                wl_display_dispatch(m_sWaylandState.display);
             }
         }
 
