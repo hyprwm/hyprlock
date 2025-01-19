@@ -1,5 +1,6 @@
 #include "Renderer.hpp"
 #include "Shaders.hpp"
+#include "Screencopy.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../core/AnimationManager.hpp"
 #include "../core/Egl.hpp"
@@ -7,9 +8,9 @@
 #include "../core/hyprlock.hpp"
 #include "../helpers/Color.hpp"
 #include "../helpers/Log.hpp"
-#include "../renderer/DMAFrame.hpp"
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
+#include <GLES2/gl2ext.h>
 #include <algorithm>
 #include "widgets/PasswordInputField.hpp"
 #include "widgets/Background.hpp"
@@ -416,7 +417,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
 
                 std::string       resourceID = "";
                 if (PATH == "screenshot") {
-                    resourceID = CDMAFrame::getResourceId(surf->output);
+                    resourceID = CScreencopyFrame::getResourceId(surf->output);
                     // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
                     // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
                     if (asyncResourceGatherer->gathered) {

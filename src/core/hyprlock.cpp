@@ -286,6 +286,8 @@ void CHyprlock::run() {
         else if (IFACE == zwlr_screencopy_manager_v1_interface.name)
             m_sWaylandState.screencopy =
                 makeShared<CCZwlrScreencopyManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &zwlr_screencopy_manager_v1_interface, 3));
+        else if (IFACE == wl_shm_interface.name)
+            m_sWaylandState.shm = makeShared<CCWlShm>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_shm_interface, 1));
         else
             return;
 
@@ -832,6 +834,10 @@ std::string CHyprlock::spawnSync(const std::string& cmd) {
 
 SP<CCZwlrScreencopyManagerV1> CHyprlock::getScreencopy() {
     return m_sWaylandState.screencopy;
+}
+
+SP<CCWlShm> CHyprlock::getShm() {
+    return m_sWaylandState.shm;
 }
 
 void CHyprlock::attemptRestoreOnDeath() {
