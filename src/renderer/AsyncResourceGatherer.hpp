@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DMAFrame.hpp"
+#include "Screencopy.hpp"
 #include <thread>
 #include <atomic>
 #include <vector>
@@ -75,7 +75,7 @@ class CAsyncResourceGatherer {
         Vector2D                        size;
     };
 
-    std::vector<std::unique_ptr<CDMAFrame>>          dmas;
+    std::vector<std::unique_ptr<CDesktopFrame>>      scframes;
 
     std::vector<SPreloadTarget>                      preloadTargets;
     std::mutex                                       preloadTargetsMutex;
@@ -83,5 +83,5 @@ class CAsyncResourceGatherer {
     std::unordered_map<std::string, SPreloadedAsset> assets;
 
     void                                             gather();
-    void                                             enqueueDMAFrames();
+    void                                             enqueueDesktopFrames();
 };

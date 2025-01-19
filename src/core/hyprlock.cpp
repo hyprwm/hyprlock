@@ -287,6 +287,8 @@ void CHyprlock::run() {
         else if (IFACE == zwlr_screencopy_manager_v1_interface.name)
             m_sWaylandState.screencopy =
                 makeShared<CCZwlrScreencopyManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &zwlr_screencopy_manager_v1_interface, 3));
+        else if (IFACE == wl_shm_interface.name)
+            m_sWaylandState.shm = makeShared<CCWlShm>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_shm_interface, 1));
         else
             return;
 
@@ -398,7 +400,7 @@ void CHyprlock::run() {
                 }
 
                 wl_display_read_events(m_sWaylandState.display);
-                m_sLoopState.wlQueueFlushed = false;
+                m_sLoopState.wlDispatched = false;
             }
 
             if (events > 0 || !preparedToRead) {
@@ -407,7 +409,7 @@ void CHyprlock::run() {
                 m_sLoopState.event = true;
                 m_sLoopState.loopCV.notify_all();
 
-                m_sLoopState.wlQueueEmptyCV.wait_for(lk, std::chrono::milliseconds(100), [this] { return m_sLoopState.wlQueueFlushed; });
+                m_sLoopState.wlDispatchCV.wait_for(lk, std::chrono::milliseconds(100), [this] { return m_sLoopState.wlDispatched; });
             }
         }
     });
@@ -456,8 +458,8 @@ void CHyprlock::run() {
         wl_display_dispatch_pending(m_sWaylandState.display);
         wl_display_flush(m_sWaylandState.display);
 
-        m_sLoopState.wlQueueFlushed = true;
-        m_sLoopState.wlQueueEmptyCV.notify_all();
+        m_sLoopState.wlDispatched = true;
+        m_sLoopState.wlDispatchCV.notify_all();
 
         if (pollfds[1].revents & POLLIN /* dbus */) {
             while (dbusConn && dbusConn->processPendingEvent()) {
@@ -833,6 +835,10 @@ std::string CHyprlock::spawnSync(const std::string& cmd) {
 
 SP<CCZwlrScreencopyManagerV1> CHyprlock::getScreencopy() {
     return m_sWaylandState.screencopy;
+}
+
+SP<CCWlShm> CHyprlock::getShm() {
+    return m_sWaylandState.shm;
 }
 
 void CHyprlock::attemptRestoreOnDeath() {

@@ -79,6 +79,7 @@ class CHyprlock {
     SP<CCWpFractionalScaleManagerV1> getFractionalMgr();
     SP<CCWpViewporter>               getViewporter();
     SP<CCZwlrScreencopyManagerV1>    getScreencopy();
+    SP<CCWlShm>                      getShm();
 
     int32_t                          m_iKeebRepeatRate  = 25;
     int32_t                          m_iKeebRepeatDelay = 600;
@@ -130,6 +131,7 @@ class CHyprlock {
         SP<CCWpFractionalScaleManagerV1> fractional  = nullptr;
         SP<CCWpViewporter>               viewporter  = nullptr;
         SP<CCZwlrScreencopyManagerV1>    screencopy  = nullptr;
+        SP<CCWlShm>                      shm         = nullptr;
     } m_sWaylandState;
 
     void addDmabufListener();
@@ -151,8 +153,8 @@ class CHyprlock {
         std::condition_variable loopCV;
         bool                    event = false;
 
-        std::condition_variable wlQueueEmptyCV;
-        bool                    wlQueueFlushed = false;
+        std::condition_variable wlDispatchCV;
+        bool                    wlDispatched = false;
 
         std::condition_variable timerCV;
         std::mutex              timerRequestMutex;
