@@ -42,6 +42,9 @@ class CSessionLockSurface {
 
     bool                          needsFrame = false;
 
+    uint32_t                      m_lastFrameTime = 0;
+    uint32_t                      m_frames        = 0;
+
     // wayland callbacks
     SP<CCWlCallback> frameCallback = nullptr;
 

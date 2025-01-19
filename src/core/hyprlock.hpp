@@ -151,6 +151,9 @@ class CHyprlock {
         std::condition_variable loopCV;
         bool                    event = false;
 
+        std::condition_variable wlDispatchCV;
+        bool                    wlDispatched = false;
+
         std::condition_variable timerCV;
         std::mutex              timerRequestMutex;
         bool                    timerEvent = false;

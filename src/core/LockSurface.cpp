@@ -117,8 +117,6 @@ void CSessionLockSurface::onScaleUpdate() {
 }
 
 void CSessionLockSurface::render() {
-    Debug::log(TRACE, "render lock");
-
     if (frameCallback || !readyForFrame) {
         needsFrame = true;
         return;
@@ -127,9 +125,15 @@ void CSessionLockSurface::render() {
     g_pAnimationManager->tick();
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
     frameCallback       = makeShared<CCWlCallback>(surface->sendFrame());
-    frameCallback->setDone([this](CCWlCallback* r, uint32_t data) {
+    frameCallback->setDone([this](CCWlCallback* r, uint32_t frameTime) {
         if (g_pHyprlock->m_bTerminate)
             return;
+
+        Debug::log(TRACE, "[{}] frame {}, Current fps: {:.2f}", output->stringPort, m_frames, 1000.f / (frameTime - m_lastFrameTime));
+
+        m_lastFrameTime = frameTime;
+
+        m_frames++;
 
         onCallback();
     });
