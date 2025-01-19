@@ -198,8 +198,6 @@ CRenderer::CRenderer() {
     g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 }
 
-static int frames = 0;
-
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
     static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
@@ -237,10 +235,6 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
             feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
         }
     }
-
-    frames++;
-
-    Debug::log(TRACE, "frame {}", frames);
 
     feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered;
 

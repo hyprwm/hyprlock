@@ -6,6 +6,7 @@
 #include "viewporter.hpp"
 #include "fractional-scale-v1.hpp"
 #include "../helpers/Math.hpp"
+#include <cstdint>
 #include <wayland-egl.h>
 #include <EGL/egl.h>
 
@@ -41,6 +42,9 @@ class CSessionLockSurface {
     SP<CCWpViewport>              viewport   = nullptr;
 
     bool                          needsFrame = false;
+
+    uint32_t                      m_lastFrameTime = 0;
+    uint32_t                      m_frames        = 0;
 
     // wayland callbacks
     SP<CCWlCallback> frameCallback = nullptr;

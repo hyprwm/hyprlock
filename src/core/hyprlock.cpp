@@ -6,6 +6,7 @@
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
+#include <mutex>
 #include <sys/wait.h>
 #include <sys/poll.h>
 #include <sys/mman.h>
@@ -368,45 +369,45 @@ void CHyprlock::run() {
 
     std::thread pollThr([this, &pollfds, fdcount]() {
         while (!m_bTerminate) {
-            // if we are not "prepared to read", it means that there are pending events to be dispatched
-            // in the event loop thread. In that case we set the timeout to 0 and don't read any new wayland events.
-            // TODO: Let the event loop thread signal back to this thread
-            // to avoid busy cycles.
             bool preparedToRead = wl_display_prepare_read(m_sWaylandState.display) == 0;
 
-            auto timeout = (preparedToRead) ? 5000 : 0;
-            int  ret     = poll(pollfds, fdcount, timeout);
+            int  events = 0;
+            if (preparedToRead) {
+                events = poll(pollfds, fdcount, 5000);
 
-            if (ret < 0) {
-                if (preparedToRead)
-                    wl_display_cancel_read(m_sWaylandState.display);
+                if (events < 0) {
+                    if (preparedToRead)
+                        wl_display_cancel_read(m_sWaylandState.display);
 
-                if (errno == EINTR)
-                    continue;
+                    if (errno == EINTR)
+                        continue;
 
-                Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
-                attemptRestoreOnDeath();
-                m_bTerminate = true;
-                exit(1);
-            }
-
-            for (size_t i = 0; i < fdcount; ++i) {
-                if (pollfds[i].revents & POLLHUP) {
-                    Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                    Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
                     attemptRestoreOnDeath();
                     m_bTerminate = true;
                     exit(1);
                 }
+
+                for (size_t i = 0; i < fdcount; ++i) {
+                    if (pollfds[i].revents & POLLHUP) {
+                        Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                        attemptRestoreOnDeath();
+                        m_bTerminate = true;
+                        exit(1);
+                    }
+                }
+
+                wl_display_read_events(m_sWaylandState.display);
+                m_sLoopState.wlQueueFlushed = false;
             }
 
-            if (preparedToRead)
-                wl_display_read_events(m_sWaylandState.display);
-
-            if (ret != 0) {
+            if (events > 0 || !preparedToRead) {
                 Debug::log(TRACE, "[core] got poll event");
-                std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
+                std::unique_lock lk(m_sLoopState.eventLoopMutex);
                 m_sLoopState.event = true;
                 m_sLoopState.loopCV.notify_all();
+
+                m_sLoopState.wlQueueEmptyCV.wait_for(lk, std::chrono::milliseconds(100), [this] { return m_sLoopState.wlQueueFlushed; });
             }
         }
     });
@@ -452,18 +453,17 @@ void CHyprlock::run() {
 
         m_sLoopState.event = false;
 
+        wl_display_dispatch_pending(m_sWaylandState.display);
+        wl_display_flush(m_sWaylandState.display);
+
+        m_sLoopState.wlQueueFlushed = true;
+        m_sLoopState.wlQueueEmptyCV.notify_all();
+
         if (pollfds[1].revents & POLLIN /* dbus */) {
             while (dbusConn && dbusConn->processPendingEvent()) {
                 ;
             }
         }
-
-        // finalize wayland dispatching. Dispatch pending on the queue
-        int ret = 0;
-        do {
-            ret = wl_display_dispatch_pending(m_sWaylandState.display);
-            wl_display_flush(m_sWaylandState.display);
-        } while (ret > 0 && !m_bTerminate);
 
         // do timers
         m_sLoopState.timersMutex.lock();
