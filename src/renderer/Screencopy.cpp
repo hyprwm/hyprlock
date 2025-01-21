@@ -224,28 +224,23 @@ bool CSCDMAFrame::onBufferDone() {
 }
 
 bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
-    static const int general_attribs    = 3;
-    static const int plane_attribs      = 5;
-    static const int entries_per_attrib = 2;
-    EGLAttrib        attribs[(general_attribs + plane_attribs * 4) * entries_per_attrib + 1];
-    int              attr = 0;
-    Vector2D         size{m_w, m_h};
+    std::vector<EGLAttrib> attribs = {
+        EGL_WIDTH,
+        m_w,
+        EGL_HEIGHT,
+        m_h,
+        EGL_LINUX_DRM_FOURCC_EXT,
+        m_fmt,
+        EGL_DMA_BUF_PLANE0_FD_EXT,
+        m_fd[0],
+        EGL_DMA_BUF_PLANE0_OFFSET_EXT,
+        m_offset[0],
+        EGL_DMA_BUF_PLANE0_PITCH_EXT,
+        m_stride[0],
+        EGL_NONE,
+    };
 
-    attribs[attr++] = EGL_WIDTH;
-    attribs[attr++] = size.x;
-    attribs[attr++] = EGL_HEIGHT;
-    attribs[attr++] = size.y;
-    attribs[attr++] = EGL_LINUX_DRM_FOURCC_EXT;
-    attribs[attr++] = m_fmt;
-    attribs[attr++] = EGL_DMA_BUF_PLANE0_FD_EXT;
-    attribs[attr++] = m_fd[0];
-    attribs[attr++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
-    attribs[attr++] = m_offset[0];
-    attribs[attr++] = EGL_DMA_BUF_PLANE0_PITCH_EXT;
-    attribs[attr++] = m_stride[0];
-    attribs[attr]   = EGL_NONE;
-
-    m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
+    m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs.data());
 
     if (m_image == EGL_NO_IMAGE) {
         Debug::log(ERR, "failed creating an egl image");
@@ -253,7 +248,7 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
     }
 
     asset.texture.allocate();
-    asset.texture.m_vSize = size;
+    asset.texture.m_vSize = {m_w, m_h};
     glBindTexture(GL_TEXTURE_2D, asset.texture.m_iTexID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -262,7 +257,7 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "Got dma frame with size {}", size);
+    Debug::log(LOG, "Got dma frame with size {}", asset.texture.m_vSize);
 
     asset.ready = true;
 
@@ -273,7 +268,7 @@ CSCSHMFrame::CSCSHMFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
     Debug::log(TRACE, "[sc] [shm] Creating a SHM frame");
 
     m_sc->setBuffer([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
-        Debug::log(TRACE, "[sc] [shm]  wlrOnBuffer for {}", (void*)this);
+        Debug::log(TRACE, "[sc] [shm] wlrOnBuffer for {}", (void*)this);
 
         const auto SIZE = stride * height;
         m_shmFmt        = format;
@@ -286,7 +281,7 @@ CSCSHMFrame::CSCSHMFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
         const auto  FD = createPoolFile(SIZE, shmPoolFile);
 
         if (FD < 0) {
-            Debug::log(ERR, "[sc] [shm]  failed to create a pool file");
+            Debug::log(ERR, "[sc] [shm] failed to create a pool file");
             return;
         }
 
@@ -447,12 +442,12 @@ void CSCSHMFrame::convertBuffer() {
                 }
             } break;
             default: {
-                Debug::log(CRIT, "[sc] [shm] Unsupported format for 24bit buffer {}", m_shmFmt);
+                Debug::log(ERR, "[sc] [shm] Unsupported format for 24bit buffer {}", m_shmFmt);
             }
         }
 
     } else {
-        Debug::log(CRIT, "[sc] [shm] Unsupported bytes per pixel {}", BYTESPERPX);
+        Debug::log(ERR, "[sc] [shm] Unsupported bytes per pixel {}", BYTESPERPX);
     }
 }
 

@@ -42,7 +42,7 @@ class CScreencopyFrame {
     bool                      m_dmaFailed = false;
 };
 
-// Uses a gpu buffer created via gbm_bo - broken on proprietary nvidia cards
+// Uses a gpu buffer created via gbm_bo - broken on proprietary nvidia drivers
 class CSCDMAFrame : public ISCFrame {
   public:
     CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc);
