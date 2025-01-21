@@ -368,32 +368,45 @@ void CHyprlock::run() {
 
     std::thread pollThr([this, &pollfds, fdcount]() {
         while (!m_bTerminate) {
-            int ret = poll(pollfds, fdcount, 5000 /* 5 seconds, reasonable. Just in case we need to terminate and the signal fails */);
+            bool preparedToRead = wl_display_prepare_read(m_sWaylandState.display) == 0;
 
-            if (ret < 0) {
-                if (errno == EINTR)
-                    continue;
+            int  events = 0;
+            if (preparedToRead) {
+                events = poll(pollfds, fdcount, 5000);
 
-                Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
-                attemptRestoreOnDeath();
-                m_bTerminate = true;
-                exit(1);
-            }
+                if (events < 0) {
+                    if (preparedToRead)
+                        wl_display_cancel_read(m_sWaylandState.display);
 
-            for (size_t i = 0; i < fdcount; ++i) {
-                if (pollfds[i].revents & POLLHUP) {
-                    Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                    if (errno == EINTR)
+                        continue;
+
+                    Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
                     attemptRestoreOnDeath();
                     m_bTerminate = true;
                     exit(1);
                 }
+
+                for (size_t i = 0; i < fdcount; ++i) {
+                    if (pollfds[i].revents & POLLHUP) {
+                        Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                        attemptRestoreOnDeath();
+                        m_bTerminate = true;
+                        exit(1);
+                    }
+                }
+
+                wl_display_read_events(m_sWaylandState.display);
+                m_sLoopState.wlDispatched = false;
             }
 
-            if (ret != 0) {
+            if (events > 0 || !preparedToRead) {
                 Debug::log(TRACE, "[core] got poll event");
-                std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
+                std::unique_lock lk(m_sLoopState.eventLoopMutex);
                 m_sLoopState.event = true;
                 m_sLoopState.loopCV.notify_all();
+
+                m_sLoopState.wlDispatchCV.wait_for(lk, std::chrono::milliseconds(100), [this] { return m_sLoopState.wlDispatched; });
             }
         }
     });
@@ -439,29 +452,17 @@ void CHyprlock::run() {
 
         m_sLoopState.event = false;
 
+        wl_display_dispatch_pending(m_sWaylandState.display);
+        wl_display_flush(m_sWaylandState.display);
+
+        m_sLoopState.wlDispatched = true;
+        m_sLoopState.wlDispatchCV.notify_all();
+
         if (pollfds[1].revents & POLLIN /* dbus */) {
             while (dbusConn && dbusConn->processPendingEvent()) {
                 ;
             }
         }
-
-        if (pollfds[0].revents & POLLIN /* wl */) {
-            Debug::log(TRACE, "got wl event");
-            wl_display_flush(m_sWaylandState.display);
-            if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
-                wl_display_read_events(m_sWaylandState.display);
-                wl_display_dispatch_pending(m_sWaylandState.display);
-            } else {
-                wl_display_dispatch(m_sWaylandState.display);
-            }
-        }
-
-        // finalize wayland dispatching. Dispatch pending on the queue
-        int ret = 0;
-        do {
-            ret = wl_display_dispatch_pending(m_sWaylandState.display);
-            wl_display_flush(m_sWaylandState.display);
-        } while (ret > 0 && !m_bTerminate);
 
         // do timers
         m_sLoopState.timersMutex.lock();
