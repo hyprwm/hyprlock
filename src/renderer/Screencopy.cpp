@@ -5,12 +5,12 @@
 #include "../core/Egl.hpp"
 #include "../config/ConfigManager.hpp"
 #include "wlr-screencopy-unstable-v1.hpp"
-#include <EGL/eglext.h>
+#include <cstring>
+#include <array>
 #include <cstdint>
 #include <gbm.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <cstring>
 #include <libdrm/drm_fourcc.h>
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
@@ -47,7 +47,7 @@ void CScreencopyFrame::captureOutput() {
         }
 
         if (!m_frame->onBufferDone() || !m_frame->m_wlBuffer) {
-            Debug::log(ERR, "onBufferDone failed");
+            Debug::log(ERR, "[sc] onBufferDone failed");
             onFailed();
             return;
         }
@@ -142,18 +142,16 @@ bool CSCDMAFrame::onBufferDone() {
         Debug::log(WARN, "Querying modifiers without eglQueryDmaBufModifiersEXT support");
         m_bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, m_w, m_h, m_fmt, flags);
     } else {
-        std::vector<uint64_t> mods;
-        mods.resize(64);
-        std::vector<EGLBoolean> externalOnly;
-        externalOnly.resize(64);
-        int num = 0;
+        std::array<uint64_t, 64>   mods;
+        std::array<EGLBoolean, 64> externalOnly;
+        int                        num = 0;
         if (!eglQueryDmaBufModifiersEXT(g_pEGL->eglDisplay, m_fmt, 64, mods.data(), externalOnly.data(), &num) || num == 0) {
             Debug::log(WARN, "eglQueryDmaBufModifiersEXT failed, falling back to regular bo");
             m_bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, m_w, m_h, m_fmt, flags);
         } else {
             Debug::log(LOG, "eglQueryDmaBufModifiersEXT found {} mods", num);
             std::vector<uint64_t> goodMods;
-            for (int i = 0; i < num; ++i) {
+            for (int i = 0; i < num - 3; ++i) {
                 if (externalOnly[i]) {
                     Debug::log(TRACE, "Modifier {:x} failed test", mods[i]);
                     continue;
@@ -162,10 +160,6 @@ bool CSCDMAFrame::onBufferDone() {
                 Debug::log(TRACE, "Modifier {:x} passed test", mods[i]);
                 goodMods.push_back(mods[i]);
             }
-
-            bool hasLinear = std::find(goodMods.begin(), goodMods.end(), 0) != goodMods.end();
-            if (!hasLinear)
-                return false;
 
             m_bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, m_w, m_h, m_fmt, goodMods.data(), goodMods.size(), flags);
         }
@@ -177,6 +171,7 @@ bool CSCDMAFrame::onBufferDone() {
     }
 
     m_planes = gbm_bo_get_plane_count(m_bo);
+    Debug::log(LOG, "[bo] has {} planes", m_planes);
 
     uint64_t mod = gbm_bo_get_modifier(m_bo);
     Debug::log(LOG, "[bo] chose modifier {:x}", mod);
@@ -189,7 +184,6 @@ bool CSCDMAFrame::onBufferDone() {
     }
 
     for (size_t plane = 0; plane < (size_t)m_planes; plane++) {
-        m_size[plane]   = 0;
         m_stride[plane] = gbm_bo_get_stride_for_plane(m_bo, plane);
         m_offset[plane] = gbm_bo_get_offset(m_bo, plane);
         m_fd[plane]     = gbm_bo_get_fd_for_plane(m_bo, plane);
@@ -204,7 +198,6 @@ bool CSCDMAFrame::onBufferDone() {
             return false;
         }
 
-        Debug::log(LOG, "mod upper: {:x}, mod lower: {:x}", mod >> 32, mod & 0xffffffff);
         params->sendAdd(m_fd[plane], plane, m_offset[plane], m_stride[plane], mod >> 32, mod & 0xffffffff);
     }
 
@@ -225,22 +218,25 @@ bool CSCDMAFrame::onBufferDone() {
 
 bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
     std::vector<EGLAttrib> attribs = {
-        EGL_WIDTH,
-        m_w,
-        EGL_HEIGHT,
-        m_h,
-        EGL_LINUX_DRM_FOURCC_EXT,
-        m_fmt,
-        EGL_DMA_BUF_PLANE0_FD_EXT,
-        m_fd[0],
-        EGL_DMA_BUF_PLANE0_OFFSET_EXT,
-        m_offset[0],
-        EGL_DMA_BUF_PLANE0_PITCH_EXT,
-        m_stride[0],
-        EGL_NONE,
+        EGL_WIDTH, m_w, EGL_HEIGHT, m_h, EGL_LINUX_DRM_FOURCC_EXT, m_fmt,
     };
 
-    m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs.data());
+    for (size_t plane = 0; plane < (size_t)m_planes; plane++) {
+        attribs.insert(attribs.end(),
+                       {
+                           EGL_DMA_BUF_PLANE0_FD_EXT,
+                           m_fd[plane],
+                           EGL_DMA_BUF_PLANE0_OFFSET_EXT,
+                           m_offset[plane],
+                           EGL_DMA_BUF_PLANE0_PITCH_EXT,
+                           m_stride[plane],
+                       });
+    }
+
+    attribs.emplace_back(EGL_NONE);
+    attribs.emplace_back(EGL_NONE);
+
+    m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attribs.data());
 
     if (m_image == EGL_NO_IMAGE) {
         Debug::log(ERR, "failed creating an egl image");
@@ -248,14 +244,15 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
     }
 
     asset.texture.allocate();
-    asset.texture.m_vSize = {m_w, m_h};
-    glBindTexture(GL_TEXTURE_2D, asset.texture.m_iTexID);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_image);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    asset.texture.m_vSize   = {m_w, m_h};
+    asset.texture.m_iTarget = GL_TEXTURE_EXTERNAL_OES;
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, asset.texture.m_iTexID);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, m_image);
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
     Debug::log(LOG, "Got dma frame with size {}", asset.texture.m_vSize);
 
