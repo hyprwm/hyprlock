@@ -689,11 +689,38 @@ void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
 
         const auto widgets = g_pRenderer->getOrCreateWidgetsFor(o->sessionLockSurface.get());
         for (const auto& widget : *widgets) {
-            if (widget->containsPoint(pos)) {
+            if (widget->containsPoint(pos))
                 widget->onClick(button, down, pos);
+        }
+    }
+}
+
+void CHyprlock::onHover(const Vector2D& pos) {
+    bool cursorChanged = false;
+
+    for (auto& o : m_vOutputs) {
+        if (!o->sessionLockSurface)
+            continue;
+        const auto widgets = g_pRenderer->getOrCreateWidgetsFor(o->sessionLockSurface.get());
+        for (const auto& widget : *widgets) {
+            if (widget->containsPoint(pos)) {
+                widget->setHover(true);
+                widget->onHover(pos);
+                if (!cursorChanged) {
+                    cursorChanged = true;
+                }
+            } else {
+                widget->setHover(false);
             }
         }
     }
+
+    if (!cursorChanged) {
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+    }
+
+    // request the redrawing of all outputs after updating the state of guidance
+    renderAllOutputs();
 }
 
 void CHyprlock::acquireSessionLock() {

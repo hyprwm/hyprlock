@@ -59,6 +59,7 @@ class CHyprlock {
 
     void                             onKey(uint32_t key, bool down);
     void                             onClick(uint32_t button, bool down, const Vector2D& pos);
+    void                             onHover(const Vector2D& pos);
     void                             startKeyRepeat(xkb_keysym_t sym);
     void                             repeatKey(xkb_keysym_t sym);
     void                             handleKeySym(xkb_keysym_t sym, bool compose);
