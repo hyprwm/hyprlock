@@ -438,3 +438,11 @@ void CPasswordInputField::updateColors() {
 
     colorState.font = fontTarget;
 }
+
+CBox CPasswordInputField::getBoundingBox() const {
+    return {pos.x, abs(pos.y - viewport.y + size->value().y), size->value().x, size->value().y};
+}
+
+void CPasswordInputField::onHover(const Vector2D& pos) {
+    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+}

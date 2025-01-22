@@ -29,6 +29,8 @@ class CPasswordInputField : public IWidget {
     void                 updateHiddenInputState();
     void                 updateInputState();
     void                 updateColors();
+    void                 onHover(const Vector2D& pos) override;
+    CBox                 getBoundingBox() const override;
 
     bool                 firstRender  = true;
     bool                 redrawShadow = false;
