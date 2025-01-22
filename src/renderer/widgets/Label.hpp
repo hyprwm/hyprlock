@@ -22,8 +22,9 @@ class CLabel : public IWidget {
     void         renderUpdate();
     void         onTimerUpdate();
     void         plantTimer();
-    bool         containsPoint(const Vector2D& pos) const override;
+    CBox         getBoundingBox() const override;
     void         onClick(uint32_t button, bool down, const Vector2D& pos) override;
+    void         onHover(const Vector2D& pos) override;
 
   private:
     std::string                             getUniqueResourceId();

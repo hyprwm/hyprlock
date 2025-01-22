@@ -18,10 +18,12 @@ class IWidget {
     static int      roundingForBox(const CBox& box, int roundingConfig);
     static int      roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness);
 
+    virtual CBox    getBoundingBox() const {
+        return CBox();
+    };
     virtual void    onClick(uint32_t button, bool down, const Vector2D& pos) {}
-    virtual bool    containsPoint(const Vector2D& pos) const {
-        return false;
-    }
+    virtual void    onHover(const Vector2D& pos) {}
+    bool            containsPoint(const Vector2D& pos) const;
 
     struct SFormatResult {
         std::string formatted;
@@ -32,4 +34,10 @@ class IWidget {
     };
 
     static SFormatResult formatString(std::string in);
+
+    void setHover(bool hover);
+    bool isHovered() const;
+
+  private:
+    bool hovered = false;
 };
