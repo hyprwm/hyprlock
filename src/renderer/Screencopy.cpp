@@ -5,6 +5,8 @@
 #include "../core/Egl.hpp"
 #include "../config/ConfigManager.hpp"
 #include "wlr-screencopy-unstable-v1.hpp"
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <cstring>
 #include <array>
 #include <cstdint>
@@ -18,6 +20,7 @@
 
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
+static PFNEGLCREATEDRMIMAGEMESAPROC        eglCreateDRMImageMESA        = nullptr;
 
 //
 std::string CScreencopyFrame::getResourceId(COutput* output) {
@@ -30,10 +33,10 @@ CScreencopyFrame::CScreencopyFrame(COutput* output) : m_output(output) {
     captureOutput();
 
     static auto* const PSCMODE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:screencopy_mode");
-    if (**PSCMODE == 2 || **PSCMODE == 0)
-        m_frame = std::make_unique<CSCDMAFrame>(m_sc);
-    else
+    if (**PSCMODE == 1)
         m_frame = std::make_unique<CSCSHMFrame>(m_sc);
+    else
+        m_frame = std::make_unique<CSCDMAFrame>(m_sc);
 }
 
 void CScreencopyFrame::captureOutput() {
@@ -41,14 +44,9 @@ void CScreencopyFrame::captureOutput() {
 
     m_sc->setBufferDone([this](CCZwlrScreencopyFrameV1* r) {
         Debug::log(TRACE, "[sc] wlrOnBufferDone for {}", (void*)this);
-        if (!m_frame) {
-            onFailed();
-            return;
-        }
 
-        if (!m_frame->onBufferDone() || !m_frame->m_wlBuffer) {
-            Debug::log(ERR, "[sc] onBufferDone failed");
-            onFailed();
+        if (!m_frame || !m_frame->onBufferDone() || !m_frame->m_wlBuffer) {
+            Debug::log(ERR, "[sc] Failed to create a wayland buffer for the screencopy frame");
             return;
         }
 
@@ -61,44 +59,18 @@ void CScreencopyFrame::captureOutput() {
         Debug::log(ERR, "[sc] wlrOnFailed for {}", (void*)r);
 
         m_frame.reset();
-
-        onFailed();
     });
 
     m_sc->setReady([this](CCZwlrScreencopyFrameV1* r, uint32_t, uint32_t, uint32_t) {
         Debug::log(TRACE, "[sc] wlrOnReady for {}", (void*)this);
 
         if (!m_frame || !m_frame->onBufferReady(m_asset)) {
-            Debug::log(ERR, "onBufferReady failed");
-            onFailed();
+            Debug::log(ERR, "[sc] Failed to bind the screencopy buffer to a texture");
             return;
         }
 
         m_sc.reset();
     });
-}
-
-void CScreencopyFrame::onFailed() {
-    static auto* const PSCMODE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:screencopy_mode");
-    if (**PSCMODE != 2) {
-        Debug::log(CRIT, "Failed to do screencopy.");
-        return;
-    }
-
-    if (m_dmaFailed) {
-        Debug::log(CRIT, "Failed to do screencopy. Didn't work via DMA or SHM");
-        return;
-    }
-
-    Debug::log(WARN, "Failed to do screencopy via DMA, trying SHM");
-
-    m_dmaFailed = true;
-    m_frame.reset();
-    m_sc->sendDestroy();
-    m_sc.reset();
-
-    captureOutput();
-    m_frame = std::make_unique<CSCSHMFrame>(m_sc);
 }
 
 CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
@@ -112,6 +84,9 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
 
     if (!eglQueryDmaBufModifiersEXT)
         eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
+
+    if (!eglCreateDRMImageMESA)
+        eglCreateDRMImageMESA = (PFNEGLCREATEDRMIMAGEMESAPROC)eglGetProcAddress("eglCreateDRMImageMESA");
 
     m_sc->setLinuxDmabuf([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height) {
         Debug::log(TRACE, "[sc] wlrOnDmabuf for {}", (void*)this);
@@ -151,14 +126,14 @@ bool CSCDMAFrame::onBufferDone() {
         } else {
             Debug::log(LOG, "eglQueryDmaBufModifiersEXT found {} mods", num);
             std::vector<uint64_t> goodMods;
-            for (int i = 0; i < num - 3; ++i) {
+            for (int i = 0; i < num; ++i) {
                 if (externalOnly[i]) {
                     Debug::log(TRACE, "Modifier {:x} failed test", mods[i]);
                     continue;
                 }
 
                 Debug::log(TRACE, "Modifier {:x} passed test", mods[i]);
-                goodMods.push_back(mods[i]);
+                goodMods.emplace_back(mods[i]);
             }
 
             m_bo = gbm_bo_create_with_modifiers2(g_pHyprlock->dma.gbmDevice, m_w, m_h, m_fmt, goodMods.data(), goodMods.size(), flags);
@@ -171,7 +146,7 @@ bool CSCDMAFrame::onBufferDone() {
     }
 
     m_planes = gbm_bo_get_plane_count(m_bo);
-    Debug::log(LOG, "[bo] has {} planes", m_planes);
+    Debug::log(LOG, "[bo] has {} plane(s)", m_planes);
 
     uint64_t mod = gbm_bo_get_modifier(m_bo);
     Debug::log(LOG, "[bo] chose modifier {:x}", mod);
@@ -217,26 +192,66 @@ bool CSCDMAFrame::onBufferDone() {
 }
 
 bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
-    std::vector<EGLAttrib> attribs = {
-        EGL_WIDTH, m_w, EGL_HEIGHT, m_h, EGL_LINUX_DRM_FOURCC_EXT, m_fmt,
+    std::vector<EGLint> attribs = {
+        EGL_WIDTH,
+        m_w,
+        EGL_HEIGHT,
+        m_h,
+        EGL_LINUX_DRM_FOURCC_EXT,
+        m_fmt,
+        EGL_DMA_BUF_PLANE0_FD_EXT,
+        m_fd[0],
+        EGL_DMA_BUF_PLANE0_OFFSET_EXT,
+        m_offset[0],
+        EGL_DMA_BUF_PLANE0_PITCH_EXT,
+        m_stride[0],
     };
 
-    for (size_t plane = 0; plane < (size_t)m_planes; plane++) {
+    if (m_planes > 1) {
         attribs.insert(attribs.end(),
                        {
-                           EGL_DMA_BUF_PLANE0_FD_EXT,
-                           m_fd[plane],
-                           EGL_DMA_BUF_PLANE0_OFFSET_EXT,
-                           m_offset[plane],
-                           EGL_DMA_BUF_PLANE0_PITCH_EXT,
-                           m_stride[plane],
+                           EGL_DMA_BUF_PLANE1_FD_EXT,
+                           m_fd[1],
+                           EGL_DMA_BUF_PLANE1_OFFSET_EXT,
+                           m_offset[1],
+                           EGL_DMA_BUF_PLANE1_PITCH_EXT,
+                           m_stride[1],
+                       });
+    }
+
+    if (m_planes > 2) {
+        attribs.insert(attribs.end(),
+                       {
+                           EGL_DMA_BUF_PLANE2_FD_EXT,
+                           m_fd[2],
+                           EGL_DMA_BUF_PLANE2_OFFSET_EXT,
+                           m_offset[2],
+                           EGL_DMA_BUF_PLANE2_PITCH_EXT,
+                           m_stride[2],
+                       });
+    }
+
+    if (m_planes > 3) {
+        attribs.insert(attribs.end(),
+                       {
+                           EGL_DMA_BUF_PLANE3_FD_EXT,
+                           m_fd[3],
+                           EGL_DMA_BUF_PLANE3_OFFSET_EXT,
+                           m_offset[3],
+                           EGL_DMA_BUF_PLANE3_PITCH_EXT,
+                           m_stride[3],
                        });
     }
 
     attribs.emplace_back(EGL_NONE);
-    attribs.emplace_back(EGL_NONE);
 
-    m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attribs.data());
+    if (eglCreateDRMImageMESA)
+        m_image = eglCreateDRMImageMESA(g_pEGL->eglDisplay, attribs.data());
+    else {
+        Debug::log(WARN, "No eglCreateDRMImageMESA, falling back to eglCreateImage");
+        std::vector<EGLAttrib> longAtrribs{attribs.begin(), attribs.end()};
+        m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, longAtrribs.data());
+    }
 
     if (m_image == EGL_NO_IMAGE) {
         Debug::log(ERR, "failed creating an egl image");
@@ -244,15 +259,14 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
     }
 
     asset.texture.allocate();
-    asset.texture.m_vSize   = {m_w, m_h};
-    asset.texture.m_iTarget = GL_TEXTURE_EXTERNAL_OES;
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, asset.texture.m_iTexID);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, m_image);
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+    asset.texture.m_vSize = {m_w, m_h};
+    glBindTexture(GL_TEXTURE_2D, asset.texture.m_iTexID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_image);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     Debug::log(LOG, "Got dma frame with size {}", asset.texture.m_vSize);
 

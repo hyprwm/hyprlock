@@ -28,7 +28,6 @@ class CScreencopyFrame {
     ~CScreencopyFrame() = default;
 
     void                        captureOutput();
-    void                        onFailed();
 
     SP<CCZwlrScreencopyFrameV1> m_sc = nullptr;
 
@@ -42,7 +41,7 @@ class CScreencopyFrame {
     bool                      m_dmaFailed = false;
 };
 
-// Uses a gpu buffer created via gbm_bo - broken on proprietary nvidia drivers
+// Uses a gpu buffer created via gbm_bo
 class CSCDMAFrame : public ISCFrame {
   public:
     CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc);
@@ -57,7 +56,7 @@ class CSCDMAFrame : public ISCFrame {
     int                         m_planes = 0;
 
     int                         m_fd[4];
-    uint32_t                    m_size[4], m_stride[4], m_offset[4];
+    uint32_t                    m_stride[4], m_offset[4];
 
     int                         m_w = 0, m_h = 0;
     uint32_t                    m_fmt = 0;
@@ -68,6 +67,7 @@ class CSCDMAFrame : public ISCFrame {
 };
 
 // Uses a shm buffer - is slow and needs ugly format conversion
+// Used as a fallback just in case.
 class CSCSHMFrame : public ISCFrame {
   public:
     CSCSHMFrame(SP<CCZwlrScreencopyFrameV1> sc);
