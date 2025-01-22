@@ -28,6 +28,7 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
 
             m_pPointer->setMotion([](CCWlPointer* r, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
                 g_pHyprlock->m_vMouseLocation = {wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)};
+                g_pHyprlock->onHover(g_pHyprlock->m_vMouseLocation);
 
                 if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
                     return;
