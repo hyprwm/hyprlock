@@ -9,8 +9,13 @@ CCursorShape::CCursorShape(SP<CCWpCursorShapeManagerV1> mgr) : mgr(mgr) {
 }
 
 void CCursorShape::setShape(const wpCursorShapeDeviceV1Shape shape) {
-    if (!dev)
+    if (!g_pSeatManager->m_pPointer) {
         return;
+    }
+
+    if (!dev) {
+        dev = makeShared<CCWpCursorShapeDeviceV1>(mgr->sendGetPointer(g_pSeatManager->m_pPointer->resource()));
+    }
 
     dev->sendSetShape(lastCursorSerial, shape);
 }
