@@ -247,8 +247,9 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
 
     if (eglCreateDRMImageMESA)
         m_image = eglCreateDRMImageMESA(g_pEGL->eglDisplay, attribs.data());
-    else {
-        Debug::log(WARN, "No eglCreateDRMImageMESA, falling back to eglCreateImage");
+
+    if (!m_image) {
+        Debug::log(WARN, "eglCreateDRMImageMESA not found or failed - trying eglCreateImage");
         std::vector<EGLAttrib> longAtrribs{attribs.begin(), attribs.end()};
         m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, longAtrribs.data());
     }
