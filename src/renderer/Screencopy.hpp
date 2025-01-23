@@ -54,6 +54,7 @@ class CSCDMAFrame : public ISCFrame {
     gbm_bo*                     m_bo = nullptr;
 
     int                         m_planes = 0;
+    uint64_t                    m_mod    = 0;
 
     int                         m_fd[4];
     uint32_t                    m_stride[4], m_offset[4];

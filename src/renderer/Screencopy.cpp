@@ -20,7 +20,6 @@
 
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
-static PFNEGLCREATEDRMIMAGEMESAPROC        eglCreateDRMImageMESA        = nullptr;
 
 //
 std::string CScreencopyFrame::getResourceId(COutput* output) {
@@ -85,9 +84,6 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
     if (!eglQueryDmaBufModifiersEXT)
         eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
 
-    if (!eglCreateDRMImageMESA)
-        eglCreateDRMImageMESA = (PFNEGLCREATEDRMIMAGEMESAPROC)eglGetProcAddress("eglCreateDRMImageMESA");
-
     m_sc->setLinuxDmabuf([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height) {
         Debug::log(TRACE, "[sc] wlrOnDmabuf for {}", (void*)this);
 
@@ -148,8 +144,8 @@ bool CSCDMAFrame::onBufferDone() {
     m_planes = gbm_bo_get_plane_count(m_bo);
     Debug::log(LOG, "[bo] has {} plane(s)", m_planes);
 
-    uint64_t mod = gbm_bo_get_modifier(m_bo);
-    Debug::log(LOG, "[bo] chose modifier {:x}", mod);
+    m_mod = gbm_bo_get_modifier(m_bo);
+    Debug::log(LOG, "[bo] chose modifier {:x}", m_mod);
 
     auto params = makeShared<CCZwpLinuxBufferParamsV1>(g_pHyprlock->dma.linuxDmabuf->sendCreateParams());
     if (!params) {
@@ -173,7 +169,7 @@ bool CSCDMAFrame::onBufferDone() {
             return false;
         }
 
-        params->sendAdd(m_fd[plane], plane, m_offset[plane], m_stride[plane], mod >> 32, mod & 0xffffffff);
+        params->sendAdd(m_fd[plane], plane, m_offset[plane], m_stride[plane], m_mod >> 32, m_mod & 0xffffffff);
     }
 
     m_wlBuffer = makeShared<CCWlBuffer>(params->sendCreateImmed(m_w, m_h, m_fmt, (zwpLinuxBufferParamsV1Flags)0));
@@ -192,70 +188,41 @@ bool CSCDMAFrame::onBufferDone() {
 }
 
 bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
-    std::vector<EGLint> attribs = {
-        EGL_WIDTH,
-        m_w,
-        EGL_HEIGHT,
-        m_h,
-        EGL_LINUX_DRM_FOURCC_EXT,
-        m_fmt,
-        EGL_DMA_BUF_PLANE0_FD_EXT,
-        m_fd[0],
-        EGL_DMA_BUF_PLANE0_OFFSET_EXT,
-        m_offset[0],
-        EGL_DMA_BUF_PLANE0_PITCH_EXT,
-        m_stride[0],
+    static constexpr struct {
+        EGLAttrib fd;
+        EGLAttrib offset;
+        EGLAttrib pitch;
+        EGLAttrib modlo;
+        EGLAttrib modhi;
+    } attrNames[4] = {
+        {EGL_DMA_BUF_PLANE0_FD_EXT, EGL_DMA_BUF_PLANE0_OFFSET_EXT, EGL_DMA_BUF_PLANE0_PITCH_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT},
+        {EGL_DMA_BUF_PLANE1_FD_EXT, EGL_DMA_BUF_PLANE1_OFFSET_EXT, EGL_DMA_BUF_PLANE1_PITCH_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT},
+        {EGL_DMA_BUF_PLANE2_FD_EXT, EGL_DMA_BUF_PLANE2_OFFSET_EXT, EGL_DMA_BUF_PLANE2_PITCH_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT},
+        {EGL_DMA_BUF_PLANE3_FD_EXT, EGL_DMA_BUF_PLANE3_OFFSET_EXT, EGL_DMA_BUF_PLANE3_PITCH_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT}};
+
+    std::vector<EGLAttrib> attribs = {
+        EGL_WIDTH, m_w, EGL_HEIGHT, m_h, EGL_LINUX_DRM_FOURCC_EXT, m_fmt,
     };
-
-    if (m_planes > 1) {
-        attribs.insert(attribs.end(),
-                       {
-                           EGL_DMA_BUF_PLANE1_FD_EXT,
-                           m_fd[1],
-                           EGL_DMA_BUF_PLANE1_OFFSET_EXT,
-                           m_offset[1],
-                           EGL_DMA_BUF_PLANE1_PITCH_EXT,
-                           m_stride[1],
-                       });
+    for (int i = 0; i < m_planes; i++) {
+        attribs.emplace_back(attrNames[i].fd);
+        attribs.emplace_back(m_fd[i]);
+        attribs.emplace_back(attrNames[i].offset);
+        attribs.emplace_back(m_offset[i]);
+        attribs.emplace_back(attrNames[i].pitch);
+        attribs.emplace_back(m_stride[i]);
+        if (m_mod != DRM_FORMAT_MOD_INVALID) {
+            attribs.emplace_back(attrNames[i].modlo);
+            attribs.emplace_back(m_mod & 0xFFFFFFFF);
+            attribs.emplace_back(attrNames[i].modhi);
+            attribs.emplace_back(m_mod >> 32);
+        }
     }
-
-    if (m_planes > 2) {
-        attribs.insert(attribs.end(),
-                       {
-                           EGL_DMA_BUF_PLANE2_FD_EXT,
-                           m_fd[2],
-                           EGL_DMA_BUF_PLANE2_OFFSET_EXT,
-                           m_offset[2],
-                           EGL_DMA_BUF_PLANE2_PITCH_EXT,
-                           m_stride[2],
-                       });
-    }
-
-    if (m_planes > 3) {
-        attribs.insert(attribs.end(),
-                       {
-                           EGL_DMA_BUF_PLANE3_FD_EXT,
-                           m_fd[3],
-                           EGL_DMA_BUF_PLANE3_OFFSET_EXT,
-                           m_offset[3],
-                           EGL_DMA_BUF_PLANE3_PITCH_EXT,
-                           m_stride[3],
-                       });
-    }
-
     attribs.emplace_back(EGL_NONE);
 
-    if (eglCreateDRMImageMESA)
-        m_image = eglCreateDRMImageMESA(g_pEGL->eglDisplay, attribs.data());
-
-    if (!m_image) {
-        Debug::log(WARN, "eglCreateDRMImageMESA not found or failed - trying eglCreateImage");
-        std::vector<EGLAttrib> longAtrribs{attribs.begin(), attribs.end()};
-        m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, longAtrribs.data());
-    }
+    m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attribs.data());
 
     if (m_image == EGL_NO_IMAGE) {
-        Debug::log(ERR, "failed creating an egl image");
+        Debug::log(ERR, "Failed creating an egl image");
         return false;
     }
 
