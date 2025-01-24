@@ -9,10 +9,10 @@
 #include <unordered_map>
 #include <any>
 
-class CScale : public IWidget {
+class CProgressBar : public IWidget {
   public:
-    CScale(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
-    ~CScale();
+    CProgressBar(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
+    ~CProgressBar();
 
     virtual bool draw(const SRenderData& data);
 

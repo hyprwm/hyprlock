@@ -1,4 +1,4 @@
-#include "Scale.hpp"
+#include "ProgressBar.hpp"
 #include "../Renderer.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../helpers/Log.hpp"
@@ -7,7 +7,7 @@
 #include "../../core/hyprlock.hpp"
 #include <hyprlang.hpp>
 
-CScale::~CScale() {
+CProgressBar::~CProgressBar() {
     if (valueTimer) {
         valueTimer->cancel();
         valueTimer.reset();
@@ -18,25 +18,25 @@ static void onTimer(std::shared_ptr<CTimer> self, void* data) {
     if (data == nullptr)
         return;
 
-    const auto PSCALE = (CScale*)data;
+    const auto PSCALE = (CProgressBar*)data;
 
     PSCALE->onTimerUpdate();
     PSCALE->plantTimer();
 }
 
-void CScale::onTimerUpdate() {
+void CProgressBar::onTimerUpdate() {
     updateValue();
     g_pHyprlock->renderOutput(outputStringPort);
 }
 
-void CScale::plantTimer() {
+void CProgressBar::plantTimer() {
     if (value.updateEveryMs != 0)
         valueTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)value.updateEveryMs), onTimer, this, value.allowForceUpdate);
     else if (value.updateEveryMs == 0 && value.allowForceUpdate)
         valueTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onTimer, this, true);
 }
 
-CScale::CScale(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) : viewport(viewport_), outputStringPort(output) {
+CProgressBar::CProgressBar(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) : viewport(viewport_), outputStringPort(output) {
     try {
         min            = std::any_cast<Hyprlang::INT>(props.at("min"));
         max            = std::any_cast<Hyprlang::INT>(props.at("max"));
@@ -55,8 +55,8 @@ CScale::CScale(const Vector2D& viewport_, const std::unordered_map<std::string, 
 
         backgroundColor = std::any_cast<Hyprlang::INT>(props.at("background_color"));
 
-    } catch (const std::bad_any_cast& e) { RASSERT(false, "Failed to construct CScale: {}", e.what()); } catch (const std::out_of_range& e) {
-        RASSERT(false, "Missing property for CScale: {}", e.what());
+    } catch (const std::bad_any_cast& e) { RASSERT(false, "Failed to construct CProgressBar: {}", e.what()); } catch (const std::out_of_range& e) {
+        RASSERT(false, "Missing property for CProgressBar: {}", e.what());
     }
 
     pos  = posFromHVAlign(viewport, size, configPos, halign, valign);
@@ -69,7 +69,7 @@ CScale::CScale(const Vector2D& viewport_, const std::unordered_map<std::string, 
     plantTimer();
 }
 
-void CScale::updateValue() {
+void CProgressBar::updateValue() {
     int value = getValue();
     if (value < min)
         value = min;
@@ -79,7 +79,7 @@ void CScale::updateValue() {
     *animatedValue = static_cast<float>(value - min) / (max - min);
 }
 
-bool CScale::draw(const SRenderData& data) {
+bool CProgressBar::draw(const SRenderData& data) {
     CBox box = {pos.x, pos.y, size.x, size.y};
     g_pRenderer->renderRect(box, backgroundColor, rounding);
 
@@ -92,7 +92,7 @@ bool CScale::draw(const SRenderData& data) {
     return false;
 }
 
-int CScale::getValue() {
+int CProgressBar::getValue() {
     if (value.cmd) {
         const auto _value = g_pHyprlock->spawnSync(value.formatted);
         if (_value.empty())

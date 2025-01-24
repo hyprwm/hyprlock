@@ -16,7 +16,7 @@
 #include "widgets/Label.hpp"
 #include "widgets/Image.hpp"
 #include "widgets/Shape.hpp"
-#include "widgets/Scale.hpp"
+#include "widgets/ProgressBar.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -449,7 +449,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
 
                 widgets[surf].emplace_back(std::make_unique<CImage>(surf->size, surf->output, resourceID, c.values));
             } else if (c.type == "scale") {
-                widgets[surf].emplace_back(std::make_unique<CScale>(surf->size, c.values, surf->output->stringPort));
+                widgets[surf].emplace_back(std::make_unique<CProgressBar>(surf->size, c.values, surf->output->stringPort));
             }
         }
     }
