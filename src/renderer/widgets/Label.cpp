@@ -170,5 +170,6 @@ void CLabel::onClick(uint32_t button, bool down, const Vector2D& pos) {
 }
 
 void CLabel::onHover(const Vector2D& pos) {
-    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
+    if (!onclickCommand.empty())
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
 }
