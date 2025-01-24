@@ -16,6 +16,8 @@ using namespace Hyprutils::String;
 namespace std {
     namespace chrono {
         using date::current_zone;
+        using date::locate_zone;
+        using date::time_zone;
     }
 }
 #endif
