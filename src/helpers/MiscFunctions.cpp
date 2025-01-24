@@ -1,8 +1,11 @@
 #include <filesystem>
 #include <algorithm>
 #include <cmath>
+#include <fcntl.h>
 #include "MiscFunctions.hpp"
+#include "Log.hpp"
 #include <hyprutils/string/String.hpp>
+#include <unistd.h>
 
 using namespace Hyprutils::String;
 
@@ -12,7 +15,7 @@ std::string absolutePath(const std::string& rawpath, const std::string& currentD
     // Handling where rawpath starts with '~'
     if (!rawpath.empty() && rawpath[0] == '~') {
         static const char* const ENVHOME = getenv("HOME");
-        path = std::filesystem::path(ENVHOME) / path.relative_path().string().substr(2);
+        path                             = std::filesystem::path(ENVHOME) / path.relative_path().string().substr(2);
     }
 
     // Handling e.g. ./, ../
@@ -97,4 +100,40 @@ int64_t configStringToInt(const std::string& VALUE) {
     } catch (std::exception& e) { throw std::invalid_argument(std::string{"stoll threw: "} + e.what()); }
 
     return 0;
+}
+
+int createPoolFile(size_t size, std::string& name) {
+    const auto XDGRUNTIMEDIR = getenv("XDG_RUNTIME_DIR");
+    if (!XDGRUNTIMEDIR) {
+        Debug::log(CRIT, "XDG_RUNTIME_DIR not set!");
+        return -1;
+    }
+
+    name = std::string(XDGRUNTIMEDIR) + "/.hyprlock_sc_XXXXXX";
+
+    const auto FD = mkstemp((char*)name.c_str());
+    if (FD < 0) {
+        Debug::log(CRIT, "createPoolFile: fd < 0");
+        return -1;
+    }
+    // set cloexec
+    long flags = fcntl(FD, F_GETFD);
+    if (flags == -1) {
+        close(FD);
+        return -1;
+    }
+
+    if (fcntl(FD, F_SETFD, flags | FD_CLOEXEC) == -1) {
+        close(FD);
+        Debug::log(CRIT, "createPoolFile: fcntl < 0");
+        return -1;
+    }
+
+    if (ftruncate(FD, size) < 0) {
+        close(FD);
+        Debug::log(CRIT, "createPoolFile: ftruncate < 0");
+        return -1;
+    }
+
+    return FD;
 }

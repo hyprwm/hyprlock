@@ -15,13 +15,13 @@ using namespace Hyprgraphics;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     if (g_pHyprlock->getScreencopy())
-        enqueueDMAFrames();
+        enqueueScreencopyFrames();
 
     initialGatherThread = std::thread([this]() { this->gather(); });
     asyncLoopThread     = std::thread([this]() { this->asyncAssetSpinLock(); });
 }
 
-void CAsyncResourceGatherer::enqueueDMAFrames() {
+void CAsyncResourceGatherer::enqueueScreencopyFrames() {
     // some things can't be done async :(
     // gather background textures when needed
 
@@ -56,7 +56,7 @@ void CAsyncResourceGatherer::enqueueDMAFrames() {
 
         const auto PMONITOR = MON->get();
 
-        dmas.emplace_back(std::make_unique<CDMAFrame>(PMONITOR));
+        scframes.emplace_back(std::make_unique<CScreencopyFrame>(PMONITOR));
     }
 }
 
@@ -73,9 +73,9 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
         }
     };
 
-    for (auto& dma : dmas) {
-        if (id == dma->resourceID)
-            return dma->asset.ready ? &dma->asset : nullptr;
+    for (auto& frame : scframes) {
+        if (id == frame->m_resourceID)
+            return frame->m_asset.ready ? &frame->m_asset : nullptr;
     }
 
     return nullptr;
@@ -130,7 +130,7 @@ void CAsyncResourceGatherer::gather() {
         }
     }
 
-    while (!g_pHyprlock->m_bTerminate && std::any_of(dmas.begin(), dmas.end(), [](const auto& d) { return !d->asset.ready; })) {
+    while (!g_pHyprlock->m_bTerminate && std::any_of(scframes.begin(), scframes.end(), [](const auto& d) { return !d->m_asset.ready; })) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -216,7 +216,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     target.id   = rq.id;
 
     const int          FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
-    const CHyprColor       FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
+    const CHyprColor   FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
     const std::string  FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
     const bool         ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
 
