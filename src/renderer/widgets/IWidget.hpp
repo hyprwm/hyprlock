@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../helpers/Math.hpp"
+#include "../../helpers/Log.hpp"
 #include <string>
 
 class IWidget {
@@ -17,6 +18,13 @@ class IWidget {
     static int      roundingForBox(const CBox& box, int roundingConfig);
     static int      roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness);
 
+    virtual CBox    getBoundingBox() const {
+        return CBox();
+    };
+    virtual void    onClick(uint32_t button, bool down, const Vector2D& pos) {}
+    virtual void    onHover(const Vector2D& pos) {}
+    bool            containsPoint(const Vector2D& pos) const;
+
     struct SFormatResult {
         std::string formatted;
         float       updateEveryMs    = 0; // 0 means don't (static)
@@ -26,4 +34,10 @@ class IWidget {
     };
 
     static SFormatResult formatString(std::string in);
+
+    void setHover(bool hover);
+    bool isHovered() const;
+
+  private:
+    bool hovered = false;
 };

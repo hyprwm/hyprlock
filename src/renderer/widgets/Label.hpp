@@ -22,6 +22,9 @@ class CLabel : public IWidget {
     void         renderUpdate();
     void         onTimerUpdate();
     void         plantTimer();
+    CBox         getBoundingBox() const override;
+    void         onClick(uint32_t button, bool down, const Vector2D& pos) override;
+    void         onHover(const Vector2D& pos) override;
 
   private:
     std::string                             getUniqueResourceId();
@@ -36,6 +39,7 @@ class CLabel : public IWidget {
     std::string                             resourceID;
     std::string                             pendingResourceID; // if dynamic label
     std::string                             halign, valign;
+    std::string                             onclickCommand;
     SPreloadedAsset*                        asset = nullptr;
 
     std::string                             outputStringPort;
