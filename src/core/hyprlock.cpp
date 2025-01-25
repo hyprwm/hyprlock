@@ -518,6 +518,11 @@ void CHyprlock::run() {
 }
 
 void CHyprlock::unlock() {
+    if (!m_bLocked) {
+        Debug::log(WARN, "Unlock called, but not locked yet. This can happen when dpms is off during the grace period.");
+        return;
+    }
+
     const bool IMMEDIATE = m_sCurrentDesktop != "Hyprland";
 
     g_pRenderer->startFadeOut(true, IMMEDIATE);
