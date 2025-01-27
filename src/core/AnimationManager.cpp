@@ -77,7 +77,7 @@ void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const flo
 }
 
 void CHyprlockAnimationManager::tick() {
-    static auto* const PANIMATIONSENABLED = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("animations:enabled");
+    static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
     for (size_t i = 0; i < m_vActiveAnimatedVariables.size(); i++) {
         const auto PAV = m_vActiveAnimatedVariables[i].lock();
         if (!PAV || !PAV->ok())
@@ -86,7 +86,7 @@ void CHyprlockAnimationManager::tick() {
         const auto SPENT   = PAV->getPercent();
         const auto PBEZIER = getBezier(PAV->getBezierName());
         const auto POINTY  = PBEZIER->getYForPoint(SPENT);
-        const bool WARP    = !**PANIMATIONSENABLED || SPENT >= 1.f;
+        const bool WARP    = !*ANIMATIONSENABLED || SPENT >= 1.f;
 
         switch (PAV->m_Type) {
             case AVARTYPE_FLOAT: {

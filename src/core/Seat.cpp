@@ -40,11 +40,11 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
                 if (!m_pCursorShape)
                     return;
 
-                static auto* const PHIDE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:hide_cursor");
+                static const auto HIDE = g_pConfigManager->getValue<Hyprlang::INT>("general:hide_cursor");
 
                 m_pCursorShape->lastCursorSerial = serial;
 
-                if (**PHIDE)
+                if (*HIDE)
                     m_pCursorShape->hideCursor();
                 else
                     m_pCursorShape->setShape(wpCursorShapeDeviceV1Shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);

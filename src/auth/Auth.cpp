@@ -9,11 +9,11 @@
 #include <memory>
 
 CAuth::CAuth() {
-    static auto* const PENABLEPAM = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("auth:pam:enabled");
-    if (**PENABLEPAM)
+    static const auto ENABLEPAM = g_pConfigManager->getValue<Hyprlang::INT>("auth:pam:enabled");
+    if (*ENABLEPAM)
         m_vImpls.push_back(std::make_shared<CPam>());
-    static auto* const PENABLEFINGERPRINT = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("auth:fingerprint:enabled");
-    if (**PENABLEFINGERPRINT)
+    static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
+    if (*ENABLEFINGERPRINT)
         m_vImpls.push_back(std::make_shared<CFingerprint>());
 
     RASSERT(!m_vImpls.empty(), "At least one authentication method must be enabled!");

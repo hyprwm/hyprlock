@@ -31,8 +31,8 @@ CScreencopyFrame::CScreencopyFrame(COutput* output) : m_output(output) {
 
     captureOutput();
 
-    static auto* const PSCMODE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:screencopy_mode");
-    if (**PSCMODE == 1)
+    static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
+    if (*SCMODE == 1)
         m_frame = std::make_unique<CSCSHMFrame>(m_sc);
     else
         m_frame = std::make_unique<CSCDMAFrame>(m_sc);

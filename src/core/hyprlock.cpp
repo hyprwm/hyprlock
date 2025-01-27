@@ -33,13 +33,13 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
     g_pEGL = std::make_unique<CEGL>(m_sWaylandState.display);
 
     if (!immediate) {
-        const auto PGRACE = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:grace");
-        m_tGraceEnds      = **PGRACE ? std::chrono::system_clock::now() + std::chrono::seconds(**PGRACE) : std::chrono::system_clock::from_time_t(0);
+        static const auto GRACE = g_pConfigManager->getValue<Hyprlang::INT>("general:grace");
+        m_tGraceEnds            = *GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(*GRACE) : std::chrono::system_clock::from_time_t(0);
     } else
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
 
-    const auto PIMMEDIATERENDER = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:immediate_render");
-    m_bImmediateRender          = immediateRender || **PIMMEDIATERENDER;
+    static const auto IMMEDIATERENDER = g_pConfigManager->getValue<Hyprlang::INT>("general:immediate_render");
+    m_bImmediateRender                = immediateRender || *IMMEDIATERENDER;
 
     const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
@@ -661,9 +661,9 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
         Debug::log(LOG, "Authenticating");
 
-        static auto* const PIGNOREEMPTY = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:ignore_empty_input");
+        static const auto IGNOREEMPTY = g_pConfigManager->getValue<Hyprlang::INT>("general:ignore_empty_input");
 
-        if (m_sPasswordState.passBuffer.empty() && **PIGNOREEMPTY) {
+        if (m_sPasswordState.passBuffer.empty() && *IGNOREEMPTY) {
             Debug::log(LOG, "Ignoring empty input");
             return;
         }

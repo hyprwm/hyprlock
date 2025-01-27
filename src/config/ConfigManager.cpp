@@ -358,13 +358,6 @@ void CConfigManager::init() {
 #undef SHADOWABLE
 }
 
-std::mutex   configMtx;
-
-void* const* CConfigManager::getValuePtr(const std::string& name) {
-    std::lock_guard<std::mutex> lg(configMtx);
-    return m_config.getConfigValuePtr(name.c_str())->getDataStaticPtr();
-}
-
 std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     std::vector<CConfigManager::SWidgetConfig> result;
 

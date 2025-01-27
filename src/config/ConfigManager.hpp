@@ -13,8 +13,12 @@
 class CConfigManager {
   public:
     CConfigManager(std::string configPath);
-    void         init();
-    void* const* getValuePtr(const std::string& name);
+    void init();
+
+    template <typename T>
+    Hyprlang::CSimpleConfigValue<T> getValue(const std::string& name) {
+        return Hyprlang::CSimpleConfigValue<T>(&m_config, name.c_str());
+    }
 
     struct SWidgetConfig {
         std::string                               type;
