@@ -420,9 +420,9 @@ void CPasswordInputField::updateColors() {
 
     if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || NUMLOCK) {
         if (BORDERLESS && colorConfig.swapFont) {
-            fontTarget = colorConfig.fail->m_vColors.front();
+            fontTarget = targetGrad->m_vColors.front();
         } else if (BORDERLESS && !colorConfig.swapFont) {
-            innerTarget = colorConfig.fail->m_vColors.front();
+            innerTarget = targetGrad->m_vColors.front();
             // When changing the inner color, the font cannot be fail_color
             fontTarget = colorConfig.font;
         } else if (targetGrad) {
