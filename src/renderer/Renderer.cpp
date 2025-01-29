@@ -201,7 +201,7 @@ CRenderer::CRenderer() {
 
 //
 CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf) {
-    static auto* const PDISABLEBAR = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:disable_loading_bar");
+    static const auto DISABLEBAR = g_pConfigManager->getValue<Hyprlang::INT>("general:disable_loading_bar");
 
     projection = Mat3x3::outputProjection(surf.size, HYPRUTILS_TRANSFORM_NORMAL);
 
@@ -224,7 +224,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     if (WAITFORASSETS) {
 
         // render status
-        if (!**PDISABLEBAR) {
+        if (!*DISABLEBAR) {
             CBox progress = {0, 0, asyncResourceGatherer->progress * surf.size.x, 2};
             renderRect(progress, CHyprColor{0.2f, 0.1f, 0.1f, 1.f}, 0);
         }

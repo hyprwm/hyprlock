@@ -65,7 +65,7 @@ pkg_check_modules(
   wayland-client
   wayland-protocols
   wayland-egl
-  hyprlang>=0.4.0
+  hyprlang>=0.6.0
   egl
   xkbcommon
   libjpeg

@@ -19,10 +19,10 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
         exit(1);
     }
 
-    const auto PFRACTIONALSCALING = (Hyprlang::INT* const*)g_pConfigManager->getValuePtr("general:fractional_scaling");
-    const auto ENABLE_FSV1        = **PFRACTIONALSCALING == 1 || /* auto enable */ (**PFRACTIONALSCALING == 2);
-    const auto PFRACTIONALMGR     = g_pHyprlock->getFractionalMgr();
-    const auto PVIEWPORTER        = g_pHyprlock->getViewporter();
+    static const auto FRACTIONALSCALING = g_pConfigManager->getValue<Hyprlang::INT>("general:fractional_scaling");
+    const auto        ENABLE_FSV1       = *FRACTIONALSCALING == 1 || /* auto enable */ (*FRACTIONALSCALING == 2);
+    const auto        PFRACTIONALMGR    = g_pHyprlock->getFractionalMgr();
+    const auto        PVIEWPORTER       = g_pHyprlock->getViewporter();
 
     if (ENABLE_FSV1 && PFRACTIONALMGR && PVIEWPORTER) {
         fractional = makeShared<CCWpFractionalScaleV1>(PFRACTIONALMGR->sendGetFractionalScale(surface->resource()));
