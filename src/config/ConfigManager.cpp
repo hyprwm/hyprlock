@@ -95,9 +95,39 @@ static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** dat
     return result;
 }
 
+static Hyprlang::CParseResult configHandleFontSizeOption(const char* v, void** data) {
+    const std::string      VALUE = v;
+    Hyprlang::CParseResult result;
+    
+    if (!*data)
+        *data = new CFontSizeValueData();
+
+    const auto DATA  = (CFontSizeValueData*)(*data);
+
+    std::string stripped;
+    if (VALUE.ends_with("vw")) {
+        DATA->m_relativeTo = FR_TYPE_VIEW_WIDTH;
+        stripped = VALUE.substr(0, VALUE.size() - 3);
+    } else if (VALUE.ends_with("vh")) {
+        DATA->m_relativeTo = FR_TYPE_VIEW_HEIGHT;
+        stripped = VALUE.substr(0, VALUE.size() - 3);
+    } else {
+        stripped = VALUE;
+    }
+
+    DATA->m_size = std::stof(VALUE);
+
+    return result;
+}
+
 static void configHandleLayoutOptionDestroy(void** data) {
     if (*data)
         delete reinterpret_cast<CLayoutValueData*>(*data);
+}
+
+static void configHandleFontSizeOptionDestroy(void** data) {
+    if (*data)
+        delete reinterpret_cast<CFontSizeValueData*>(*data);
 }
 
 static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** data) {
@@ -201,6 +231,10 @@ inline static constexpr auto GRADIENTCONFIG = [](const char* default_value) -> H
 
 inline static constexpr auto LAYOUTCONFIG = [](const char* default_value) -> Hyprlang::CUSTOMTYPE {
     return Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, default_value};
+};
+
+inline static constexpr auto FONTSIZECONFIG = [](const char* default_value) -> Hyprlang::CUSTOMTYPE {
+    return Hyprlang::CUSTOMTYPE{&configHandleFontSizeOption, configHandleFontSizeOptionDestroy, default_value};
 };
 
 void CConfigManager::init() {
@@ -312,7 +346,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("label", "position", LAYOUTCONFIG("0,0"));
     m_config.addSpecialConfigValue("label", "color", Hyprlang::INT{0xFFFFFFFF});
-    m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
+    m_config.addSpecialConfigValue("label", "font_size", FONTSIZECONFIG("16"));
     m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
