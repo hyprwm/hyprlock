@@ -1,8 +1,8 @@
 #include "Timer.hpp"
 
-CTimer::CTimer(std::chrono::system_clock::duration timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data_, bool force) : cb(cb_), data(data_) {
-    expires          = std::chrono::system_clock::now() + timeout;
-    allowForceUpdate = force;
+CTimer::CTimer(std::chrono::system_clock::duration timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data_, bool force) :
+    cb(cb_), data(data_), allowForceUpdate(force) {
+    expires = std::chrono::system_clock::now() + timeout;
 }
 
 bool CTimer::passed() {

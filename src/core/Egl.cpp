@@ -31,21 +31,21 @@ CEGL::CEGL(wl_display* display) {
         throw std::runtime_error("EGL_EXT_platform_wayland not supported");
 
     eglGetPlatformDisplayEXT = (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
-    if (eglGetPlatformDisplayEXT == NULL)
+    if (eglGetPlatformDisplayEXT == nullptr)
         throw std::runtime_error("Failed to get eglGetPlatformDisplayEXT");
 
     eglCreatePlatformWindowSurfaceEXT = (PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)eglGetProcAddress("eglCreatePlatformWindowSurfaceEXT");
-    if (eglCreatePlatformWindowSurfaceEXT == NULL)
+    if (eglCreatePlatformWindowSurfaceEXT == nullptr)
         throw std::runtime_error("Failed to get eglCreatePlatformWindowSurfaceEXT");
 
-    eglDisplay     = eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, NULL);
+    eglDisplay     = eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
     EGLint matched = 0;
     if (eglDisplay == EGL_NO_DISPLAY) {
         Debug::log(CRIT, "Failed to create EGL display");
         goto error;
     }
 
-    if (eglInitialize(eglDisplay, NULL, NULL) == EGL_FALSE) {
+    if (eglInitialize(eglDisplay, nullptr, nullptr) == EGL_FALSE) {
         Debug::log(CRIT, "Failed to initialize EGL");
         goto error;
     }

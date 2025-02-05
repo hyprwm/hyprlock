@@ -94,7 +94,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     if (!eglSurface) {
         eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
         if (!eglSurface) {
-            Debug::log(CRIT, "Couldn't create eglSurface: {}", (int)eglGetError());
+            Debug::log(CRIT, "Couldn't create eglSurface: {}", eglGetError());
             // Clean up resources to prevent leaks
             wl_egl_window_destroy(eglWindow);
             eglWindow = nullptr;

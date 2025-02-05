@@ -10,10 +10,10 @@
 #include <sys/poll.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include <signal.h>
+#include <csignal>
 #include <unistd.h>
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 #include <xf86drm.h>
 #include <filesystem>
 #include <fstream>
@@ -156,7 +156,7 @@ void CHyprlock::addDmabufListener() {
             uint64_t modifier;
         };
         // An entry in the table has to be 16 bytes long
-        assert(sizeof(fm_entry) == 16);
+        static_assert(sizeof(fm_entry) == 16);
 
         uint32_t  n_modifiers = dma.formatTableSize / sizeof(fm_entry);
         fm_entry* fm_entry    = (struct fm_entry*)dma.formatTable;
@@ -295,7 +295,7 @@ void CHyprlock::run() {
     });
     m_sWaylandState.registry->setGlobalRemove([this](CCWlRegistry* r, uint32_t name) {
         Debug::log(LOG, "  | removed iface {}", name);
-        auto outputIt = std::find_if(m_vOutputs.begin(), m_vOutputs.end(), [name](const auto& other) { return other->name == name; });
+        auto outputIt = std::ranges::find_if(m_vOutputs, [name](const auto& other) { return other->name == name; });
         if (outputIt != m_vOutputs.end()) {
             g_pRenderer->removeWidgetsFor(outputIt->get()->sessionLockSurface.get());
             m_vOutputs.erase(outputIt);
@@ -377,8 +377,7 @@ void CHyprlock::run() {
                 events = poll(pollfds, fdcount, 5000);
 
                 if (events < 0) {
-                    if (preparedToRead)
-                        wl_display_cancel_read(m_sWaylandState.display);
+                    wl_display_cancel_read(m_sWaylandState.display);
 
                     if (errno == EINTR)
                         continue;
@@ -421,8 +420,7 @@ void CHyprlock::run() {
             float least = 10000;
             for (auto& t : m_vTimers) {
                 const auto TIME = std::clamp(t->leftMs(), 1.f, INFINITY);
-                if (TIME < least)
-                    least = TIME;
+                least = std::min(TIME, least);
             }
 
             m_sLoopState.timersMutex.unlock();
@@ -444,7 +442,7 @@ void CHyprlock::run() {
 
     while (!m_bTerminate) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
-        if (m_sLoopState.event == false)
+        if (!m_sLoopState.event)
             m_sLoopState.loopCV.wait_for(lk, std::chrono::milliseconds(5000), [this] { return m_sLoopState.event; });
 
         if (m_bTerminate)
@@ -545,7 +543,7 @@ void CHyprlock::clearPasswordBuffer() {
 }
 
 void CHyprlock::renderOutput(const std::string& stringPort) {
-    const auto MON = std::find_if(m_vOutputs.begin(), m_vOutputs.end(), [stringPort](const auto& other) { return other->stringPort == stringPort; });
+    const auto MON = std::ranges::find_if(m_vOutputs, [stringPort](const auto& other) { return other->stringPort == stringPort; });
 
     if (MON == m_vOutputs.end() || !MON->get())
         return;
@@ -604,10 +602,10 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
-    if (down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) != m_vPressedKeys.end()) {
+    if (down && std::ranges::find(m_vPressedKeys, key) != m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (key already pressed?)");
         return;
-    } else if (!down && std::find(m_vPressedKeys.begin(), m_vPressedKeys.end(), key) == m_vPressedKeys.end()) {
+    } else if (!down && std::ranges::find(m_vPressedKeys, key) == m_vPressedKeys.end()) {
         Debug::log(ERR, "Invalid key down event (stray release event?)");
         return;
     }

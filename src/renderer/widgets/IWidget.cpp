@@ -25,7 +25,7 @@ namespace std {
 Vector2D rotateVector(const Vector2D& vec, const double& ang) {
     const double COS = std::abs(std::cos(ang));
     const double SIN = std::abs(std::sin(ang));
-    return Vector2D(vec.x * COS + vec.y * SIN, vec.x * SIN + vec.y * COS);
+    return Vector2D((vec.x * COS) + (vec.y * SIN), (vec.x * SIN) + (vec.y * COS));
 }
 
 Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign, const double& ang) {

@@ -72,7 +72,7 @@ bool CShape::draw(const SRenderData& data) {
         const int BORDERROUND = roundingForBorderBox(borderBox, rounding, border);
         Debug::log(LOG, "round: {}, borderround: {}", ROUND, BORDERROUND);
 
-        shapeFB.alloc(borderBox.width + borderBox.x * 2.0, borderBox.height + borderBox.y * 2.0, true);
+        shapeFB.alloc(borderBox.width + (borderBox.x * 2.0), borderBox.height + (borderBox.y * 2.0), true);
         g_pRenderer->pushFb(shapeFB.m_iFb);
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(GL_COLOR_BUFFER_BIT);

@@ -30,7 +30,7 @@ GLuint compileShader(const GLuint& type, std::string src) {
 
     auto shaderSource = src.c_str();
 
-    glShaderSource(shader, 1, (const GLchar**)&shaderSource, nullptr);
+    glShaderSource(shader, 1, &shaderSource, nullptr);
     glCompileShader(shader);
 
     GLint ok;
@@ -44,11 +44,11 @@ GLuint compileShader(const GLuint& type, std::string src) {
 GLuint createProgram(const std::string& vert, const std::string& frag) {
     auto vertCompiled = compileShader(GL_VERTEX_SHADER, vert);
 
-    RASSERT(vertCompiled, "Compiling shader failed. VERTEX NULL! Shader source:\n\n{}", vert.c_str());
+    RASSERT(vertCompiled, "Compiling shader failed. VERTEX NULL! Shader source:\n\n{}", vert);
 
     auto fragCompiled = compileShader(GL_FRAGMENT_SHADER, frag);
 
-    RASSERT(fragCompiled, "Compiling shader failed. FRAGMENT NULL! Shader source:\n\n{}", frag.c_str());
+    RASSERT(fragCompiled, "Compiling shader failed. FRAGMENT NULL! Shader source:\n\n{}", frag);
 
     auto prog = glCreateProgram();
     glAttachShader(prog, vertCompiled);
@@ -78,7 +78,7 @@ CRenderer::CRenderer() {
     g_pEGL->makeCurrent(nullptr);
 
     glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(glMessageCallbackA, 0);
+    glDebugMessageCallback(glMessageCallbackA, nullptr);
 
     GLuint prog          = createProgram(QUADVERTSRC, QUADFRAGSRC);
     rectShader.program   = prog;
@@ -402,7 +402,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
 
         auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
-        std::sort(CWIDGETS.begin(), CWIDGETS.end(), [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
+        std::ranges::sort(CWIDGETS, [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
             return std::any_cast<Hyprlang::INT>(a.values.at("zindex")) < std::any_cast<Hyprlang::INT>(b.values.at("zindex"));
         });
 

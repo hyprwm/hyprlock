@@ -194,11 +194,26 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
         EGLAttrib pitch;
         EGLAttrib modlo;
         EGLAttrib modhi;
-    } attrNames[4] = {
-        {EGL_DMA_BUF_PLANE0_FD_EXT, EGL_DMA_BUF_PLANE0_OFFSET_EXT, EGL_DMA_BUF_PLANE0_PITCH_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT},
-        {EGL_DMA_BUF_PLANE1_FD_EXT, EGL_DMA_BUF_PLANE1_OFFSET_EXT, EGL_DMA_BUF_PLANE1_PITCH_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT},
-        {EGL_DMA_BUF_PLANE2_FD_EXT, EGL_DMA_BUF_PLANE2_OFFSET_EXT, EGL_DMA_BUF_PLANE2_PITCH_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT},
-        {EGL_DMA_BUF_PLANE3_FD_EXT, EGL_DMA_BUF_PLANE3_OFFSET_EXT, EGL_DMA_BUF_PLANE3_PITCH_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT}};
+    } attrNames[4] = {{.fd     = EGL_DMA_BUF_PLANE0_FD_EXT,
+                       .offset = EGL_DMA_BUF_PLANE0_OFFSET_EXT,
+                       .pitch  = EGL_DMA_BUF_PLANE0_PITCH_EXT,
+                       .modlo  = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
+                       .modhi  = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT},
+                      {.fd     = EGL_DMA_BUF_PLANE1_FD_EXT,
+                       .offset = EGL_DMA_BUF_PLANE1_OFFSET_EXT,
+                       .pitch  = EGL_DMA_BUF_PLANE1_PITCH_EXT,
+                       .modlo  = EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT,
+                       .modhi  = EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT},
+                      {.fd     = EGL_DMA_BUF_PLANE2_FD_EXT,
+                       .offset = EGL_DMA_BUF_PLANE2_OFFSET_EXT,
+                       .pitch  = EGL_DMA_BUF_PLANE2_PITCH_EXT,
+                       .modlo  = EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT,
+                       .modhi  = EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT},
+                      {.fd     = EGL_DMA_BUF_PLANE3_FD_EXT,
+                       .offset = EGL_DMA_BUF_PLANE3_OFFSET_EXT,
+                       .pitch  = EGL_DMA_BUF_PLANE3_PITCH_EXT,
+                       .modlo  = EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT,
+                       .modhi  = EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT}};
 
     std::vector<EGLAttrib> attribs = {
         EGL_WIDTH, m_w, EGL_HEIGHT, m_h, EGL_LINUX_DRM_FOURCC_EXT, m_fmt,
@@ -316,10 +331,10 @@ void CSCSHMFrame::convertBuffer() {
                             unsigned char green;
                             unsigned char red;
                             unsigned char alpha;
-                        }* px = (struct pixel*)(data + y * m_w * 4 + x * 4);
+                        }* px = (struct pixel*)(data + (y * m_w * 4) + (x * 4));
 
                         // RGBA
-                        *px = {px->red, px->green, px->blue, px->alpha};
+                        *px = {.blue = px->red, .green = px->green, .red = px->blue, .alpha = px->alpha};
                     }
                 }
             } break;
@@ -336,10 +351,10 @@ void CSCSHMFrame::convertBuffer() {
                             unsigned char green;
                             unsigned char red;
                             unsigned char alpha;
-                        }* px = (struct pixel*)(data + y * m_w * 4 + x * 4);
+                        }* px = (struct pixel*)(data + (y * m_w * 4) + (x * 4));
 
-                        // RGBA
-                        *px = {px->blue, px->green, px->red, px->alpha};
+                        // BGRA
+                        *px = {.blue=px->blue, .green=px->green, .red=px->red, .alpha=px->alpha};
                     }
                 }
             } break;
@@ -354,7 +369,7 @@ void CSCSHMFrame::convertBuffer() {
 
                 for (uint32_t y = 0; y < m_h; ++y) {
                     for (uint32_t x = 0; x < m_w; ++x) {
-                        uint32_t* px = (uint32_t*)(data + y * m_w * 4 + x * 4);
+                        uint32_t* px = (uint32_t*)(data + (y * m_w * 4) + (x * 4));
 
                         // conv to 8 bit
                         uint8_t R = (uint8_t)std::round((255.0 * (((*px) & 0b00000000000000000000001111111111) >> 0) / 1023.0));
@@ -387,15 +402,15 @@ void CSCSHMFrame::convertBuffer() {
                             unsigned char blue;
                             unsigned char green;
                             unsigned char red;
-                        }* srcPx = (struct pixel3*)((char*)m_shmData + y * m_stride + x * 3);
+                        }* srcPx = (struct pixel3*)((char*)m_shmData + (y * m_stride) + (x * 3));
                         struct pixel4 {
                             // little-endian ARGB
                             unsigned char blue;
                             unsigned char green;
                             unsigned char red;
                             unsigned char alpha;
-                        }* dstPx = (struct pixel4*)((char*)m_convBuffer + y * NEWSTRIDE + x * 4);
-                        *dstPx   = {srcPx->blue, srcPx->green, srcPx->red, 0xFF};
+                        }* dstPx = (struct pixel4*)((char*)m_convBuffer + (y * NEWSTRIDE) + (x * 4));
+                        *dstPx   = {.blue = srcPx->blue, .green = srcPx->green, .red = srcPx->red, .alpha = 0xFF};
                     }
                 }
             } break;
@@ -408,15 +423,15 @@ void CSCSHMFrame::convertBuffer() {
                             unsigned char red;
                             unsigned char green;
                             unsigned char blue;
-                        }* srcPx = (struct pixel3*)((char*)m_shmData + y * m_stride + x * 3);
+                        }* srcPx = (struct pixel3*)((char*)m_shmData + (y * m_stride) + (x * 3));
                         struct pixel4 {
                             // big-endian ARGB
                             unsigned char alpha;
                             unsigned char red;
                             unsigned char green;
                             unsigned char blue;
-                        }* dstPx = (struct pixel4*)((char*)m_convBuffer + y * NEWSTRIDE + x * 4);
-                        *dstPx   = {srcPx->red, srcPx->green, srcPx->blue, 0xFF};
+                        }* dstPx = (struct pixel4*)((char*)m_convBuffer + (y * NEWSTRIDE) + (x * 4));
+                        *dstPx   = {.alpha=srcPx->red, .red=srcPx->green, .green=srcPx->blue, .blue=0xFF};
                     }
                 }
             } break;

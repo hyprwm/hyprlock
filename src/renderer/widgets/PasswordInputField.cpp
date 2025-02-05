@@ -219,16 +219,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         const auto   CURRDOTS     = dots.currentAmount->value();
         const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
-        const double DOTAREAWIDTH = inputFieldBox.w - DOTPAD * 2;
+        const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2);
         const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
         const int    DOTFLOORED   = std::floor(CURRDOTS);
         const auto   DOTALPHA     = fontCol.a;
 
         // Calculate the total width required for all dots including spaces between them
-        const double CURRWIDTH = (passSize.x + passSpacing) * CURRDOTS - passSpacing;
+        const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
 
         // Calculate starting x-position to ensure dots stay centered within the input field
-        double xstart = dots.center ? (DOTAREAWIDTH - CURRWIDTH) / 2.0 + DOTPAD : DOTPAD;
+        double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
 
         if (CURRDOTS > MAXDOTS)
             xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2.0;
@@ -249,7 +249,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                     fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
             }
 
-            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + i * (passSize.x + passSpacing), inputFieldBox.h / 2.0 - passSize.y / 2.0};
+            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
             CBox     box{dotPosition, passSize};
             if (!dots.textFormat.empty()) {
                 if (!dots.textAsset) {
@@ -339,7 +339,7 @@ void CPasswordInputField::updatePlaceholder() {
     placeholder.asset       = nullptr;
     placeholder.resourceID  = NEWRESOURCEID;
 
-    if (std::find(placeholder.registeredResourceIDs.begin(), placeholder.registeredResourceIDs.end(), placeholder.resourceID) != placeholder.registeredResourceIDs.end())
+    if (std::ranges::find(placeholder.registeredResourceIDs, placeholder.resourceID) != placeholder.registeredResourceIDs.end())
         return;
 
     Debug::log(TRACE, "Requesting new placeholder asset: {}", placeholder.resourceID);
@@ -362,8 +362,7 @@ void CPasswordInputField::updateWidth() {
     if (passwordLength == 0 && placeholder.asset)
         targetSizeX = placeholder.asset->texture.m_vSize.x + size->goal().y;
 
-    if (targetSizeX < configSize.x)
-        targetSizeX = configSize.x;
+    targetSizeX = std::max(targetSizeX, configSize.x);
 
     if (size->goal().x != targetSizeX) {
         *size = Vector2D{targetSizeX, configSize.y};

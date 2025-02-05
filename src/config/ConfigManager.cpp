@@ -6,7 +6,6 @@
 #include <hyprlang.hpp>
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
-#include <hyprutils/string/String.hpp>
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
@@ -149,7 +148,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             continue;
 
         try {
-            DATA->m_vColors.push_back(CHyprColor(configStringToInt(var)));
+            DATA->m_vColors.emplace_back(configStringToInt(var));
         } catch (std::exception& e) {
             Debug::log(WARN, "Error parsing gradient {}", V);
             parseError = "Error parsing gradient " + V + ": " + e.what();
@@ -158,14 +157,14 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
 
     if (V.empty()) {
         DATA->m_bIsFallback = true;
-        DATA->m_vColors.push_back(0); // transparent
+        DATA->m_vColors.emplace_back(0); // transparent
     }
 
     if (DATA->m_vColors.size() == 0) {
         Debug::log(WARN, "Error parsing gradient {}", V);
         parseError = "Error parsing gradient " + V + ": No colors?";
 
-        DATA->m_vColors.push_back(0); // transparent
+        DATA->m_vColors.emplace_back(0); // transparent
     }
 
     DATA->updateColorsOk();
@@ -322,9 +321,9 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "zindex", Hyprlang::INT{0});
     SHADOWABLE("label");
 
-    m_config.registerHandler(&::handleSource, "source", {false});
-    m_config.registerHandler(&::handleBezier, "bezier", {false});
-    m_config.registerHandler(&::handleAnimation, "animation", {false});
+    m_config.registerHandler(&::handleSource, "source", {.allowFlags = false});
+    m_config.registerHandler(&::handleBezier, "bezier", {.allowFlags = false});
+    m_config.registerHandler(&::handleAnimation, "animation", {.allowFlags = false});
 
     //
     // Init Animations
@@ -369,12 +368,13 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
 
     //
     auto keys = m_config.listKeysForSpecialCategory("background");
+    result.reserve(keys.size());
     for (auto& k : keys) {
         // clang-format off
         result.push_back(CConfigManager::SWidgetConfig{
-            "background",
-            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("background", "monitor", k.c_str())),
-            {
+            .type = "background",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("background", "monitor", k.c_str())),
+            .values = {
                 {"path", m_config.getSpecialConfigValue("background", "path", k.c_str())},
                 {"color", m_config.getSpecialConfigValue("background", "color", k.c_str())},
                 {"blur_size", m_config.getSpecialConfigValue("background", "blur_size", k.c_str())},
@@ -398,9 +398,9 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     for (auto& k : keys) {
         // clang-format off
         result.push_back(CConfigManager::SWidgetConfig{
-            "shape",
-            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("shape", "monitor", k.c_str())),
-            {
+            .type = "shape",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("shape", "monitor", k.c_str())),
+            .values = {
                 {"size", m_config.getSpecialConfigValue("shape", "size", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("shape", "rounding", k.c_str())},
                 {"border_size", m_config.getSpecialConfigValue("shape", "border_size", k.c_str())},
@@ -423,9 +423,9 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     for (auto& k : keys) {
         // clang-format off
         result.push_back(CConfigManager::SWidgetConfig{
-            "image",
-            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("image", "monitor", k.c_str())),
-            {
+            .type = "image",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("image", "monitor", k.c_str())),
+            .values = {
                 {"path", m_config.getSpecialConfigValue("image", "path", k.c_str())},
                 {"size", m_config.getSpecialConfigValue("image", "size", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("image", "rounding", k.c_str())},
@@ -448,9 +448,9 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     for (auto& k : keys) {
         // clang-format off
         result.push_back(CConfigManager::SWidgetConfig{
-            "input-field",
-            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("input-field", "monitor", k.c_str())),
-            {
+            .type = "input-field",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("input-field", "monitor", k.c_str())),
+            .values = {
                 {"size", m_config.getSpecialConfigValue("input-field", "size", k.c_str())},
                 {"inner_color", m_config.getSpecialConfigValue("input-field", "inner_color", k.c_str())},
                 {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
@@ -490,9 +490,9 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     for (auto& k : keys) {
         // clang-format off
         result.push_back(CConfigManager::SWidgetConfig{
-            "label",
-            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("label", "monitor", k.c_str())),
-            {
+            .type = "label",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("label", "monitor", k.c_str())),
+            .values = {
                 {"position", m_config.getSpecialConfigValue("label", "position", k.c_str())},
                 {"color", m_config.getSpecialConfigValue("label", "color", k.c_str())},
                 {"font_size", m_config.getSpecialConfigValue("label", "font_size", k.c_str())},

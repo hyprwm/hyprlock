@@ -49,7 +49,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 Debug::log(LOG, "PAM: {}", msg[i]->msg);
                 // Targets this log from pam_faillock: https://github.com/linux-pam/linux-pam/blob/fa3295e079dbbc241906f29bde5fb71bc4172771/modules/pam_faillock/pam_faillock.c#L417
                 if (const auto MSG = std::string(msg[i]->msg); MSG.contains("left to unlock")) {
-                    CONVERSATIONSTATE->failText        = std::move(MSG);
+                    CONVERSATIONSTATE->failText        = MSG;
                     CONVERSATIONSTATE->failTextFromPam = true;
                 }
                 break;
@@ -65,7 +65,7 @@ CPam::CPam() {
     m_sPamModule                = *PAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
-        Debug::log(ERR, "Pam module \"/etc/pam.d/{}\" does not exist! Falling back to \"/etc/pam.d/su\"", m_sPamModule);
+        Debug::log(ERR, R"(Pam module "/etc/pam.d/{}" does not exist! Falling back to "/etc/pam.d/su")", m_sPamModule);
         m_sPamModule = "su";
     }
 
@@ -106,8 +106,8 @@ void CPam::init() {
 }
 
 bool CPam::auth() {
-    const pam_conv localConv   = {conv, (void*)&m_sConversationState};
-    pam_handle_t*  handle      = NULL;
+    const pam_conv localConv   = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
+    pam_handle_t*  handle      = nullptr;
     auto           uidPassword = getpwuid(getuid());
     RASSERT(uidPassword && uidPassword->pw_name, "Failed to get username (getpwuid)");
 

@@ -57,11 +57,11 @@ int64_t configStringToInt(const std::string& VALUE) {
                 a = std::round(std::stof(trim(rolling.substr(0, rolling.find(',')))) * 255.f);
             } catch (std::exception& e) { throw std::invalid_argument("failed parsing " + VALUEWITHOUTFUNC); }
 
-            return a * (Hyprlang::INT)0x1000000 + r * (Hyprlang::INT)0x10000 + g * (Hyprlang::INT)0x100 + b;
+            return (a * (Hyprlang::INT)0x1000000) + (r * (Hyprlang::INT)0x10000) + (g * (Hyprlang::INT)0x100) + b;
         } else if (VALUEWITHOUTFUNC.length() == 8) {
             const auto RGBA = parseHex(VALUEWITHOUTFUNC);
             // now we need to RGBA -> ARGB. The config holds ARGB only.
-            return (RGBA >> 8) + 0x1000000 * (RGBA & 0xFF);
+            return (RGBA >> 8) + (0x1000000 * (RGBA & 0xFF));
         }
 
         throw std::invalid_argument("rgba() expects length of 8 characters (4 bytes) or 4 comma separated values");
@@ -79,7 +79,7 @@ int64_t configStringToInt(const std::string& VALUE) {
             rolling             = rolling.substr(rolling.find(',') + 1);
             auto b              = configStringToInt(trim(rolling.substr(0, rolling.find(','))));
 
-            return (Hyprlang::INT)0xFF000000 + r * (Hyprlang::INT)0x10000 + g * (Hyprlang::INT)0x100 + b;
+            return (Hyprlang::INT)0xFF000000 + (r * (Hyprlang::INT)0x10000) + (g * (Hyprlang::INT)0x100) + b;
         } else if (VALUEWITHOUTFUNC.length() == 6) {
             return parseHex(VALUEWITHOUTFUNC) + 0xFF000000;
         }
