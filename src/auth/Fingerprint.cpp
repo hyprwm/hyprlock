@@ -47,8 +47,15 @@ CFingerprint::~CFingerprint() {
 }
 
 void CFingerprint::init() {
-    m_sDBUSState.connection = sdbus::createSystemBusConnection();
-    m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
+    try {
+        m_sDBUSState.connection = sdbus::createSystemBusConnection();
+        m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
+    } catch (sdbus::Error& e) {
+        Debug::log(ERR, "fprint: Failed to setup dbus ({})", e.what());
+        m_sDBUSState.connection.reset();
+        return;
+    }
+
     m_sDBUSState.login->getPropertyAsync("PreparingForSleep").onInterface(LOGIN_MANAGER).uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::Variant preparingForSleep) {
         if (e) {
             Debug::log(WARN, "fprint: Failed getting value for PreparingForSleep: {}", e->what());
