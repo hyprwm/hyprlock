@@ -10,7 +10,7 @@ CHyprColor::CHyprColor() {
 }
 
 CHyprColor::CHyprColor(float r_, float g_, float b_, float a_) : r(r_), g(g_), b(b_), a(a_) {
-    okLab = Hyprgraphics::CColor(Hyprgraphics::CColor::SSRGB{.r=r, .g=g, .b=b}).asOkLab();
+    okLab = Hyprgraphics::CColor(Hyprgraphics::CColor::SSRGB{.r = r, .g = g, .b = b}).asOkLab();
 }
 
 CHyprColor::CHyprColor(uint64_t hex) : r(RED(hex)), g(GREEN(hex)), b(BLUE(hex)), a(ALPHA(hex)) {

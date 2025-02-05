@@ -354,7 +354,7 @@ void CSCSHMFrame::convertBuffer() {
                         }* px = (struct pixel*)(data + (y * m_w * 4) + (x * 4));
 
                         // BGRA
-                        *px = {.blue=px->blue, .green=px->green, .red=px->red, .alpha=px->alpha};
+                        *px = {.blue = px->blue, .green = px->green, .red = px->red, .alpha = px->alpha};
                     }
                 }
             } break;
@@ -431,7 +431,7 @@ void CSCSHMFrame::convertBuffer() {
                             unsigned char green;
                             unsigned char blue;
                         }* dstPx = (struct pixel4*)((char*)m_convBuffer + (y * NEWSTRIDE) + (x * 4));
-                        *dstPx   = {.alpha=srcPx->red, .red=srcPx->green, .green=srcPx->blue, .blue=0xFF};
+                        *dstPx   = {.alpha = srcPx->red, .red = srcPx->green, .green = srcPx->blue, .blue = 0xFF};
                     }
                 }
             } break;
