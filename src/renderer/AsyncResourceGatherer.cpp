@@ -48,15 +48,12 @@ void CAsyncResourceGatherer::enqueueScreencopyFrames() {
     }
 
     for (auto& mon : mons) {
-        const auto MON = std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(),
-                                      [mon](const auto& other) { return other->stringPort == mon || other->stringDesc.starts_with(mon); });
+        const auto MON = std::ranges::find_if(g_pHyprlock->m_vOutputs, [mon](const auto& other) { return other->stringPort == mon || other->stringDesc.starts_with(mon); });
 
         if (MON == g_pHyprlock->m_vOutputs.end())
             continue;
 
-        const auto PMONITOR = MON->get();
-
-        scframes.emplace_back(std::make_unique<CScreencopyFrame>(PMONITOR));
+        scframes.emplace_back(makeUnique<CScreencopyFrame>(*MON));
     }
 }
 

@@ -14,7 +14,7 @@ class CRenderer;
 
 class CSessionLockSurface {
   public:
-    CSessionLockSurface(COutput* output);
+    CSessionLockSurface(const SP<COutput>& pOutput);
     ~CSessionLockSurface();
 
     void  configure(const Vector2D& size, uint32_t serial);
@@ -28,7 +28,8 @@ class CSessionLockSurface {
     void  onScaleUpdate();
 
   private:
-    COutput*                      output      = nullptr;
+    WP<COutput>                   m_outputRef;
+
     SP<CCWlSurface>               surface     = nullptr;
     SP<CCExtSessionLockSurfaceV1> lockSurface = nullptr;
     uint32_t                      serial      = 0;

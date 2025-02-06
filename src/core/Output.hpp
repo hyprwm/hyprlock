@@ -2,26 +2,31 @@
 
 #include "../defines.hpp"
 #include "wayland.hpp"
-#include "../helpers/Math.hpp"
 #include "LockSurface.hpp"
-#include <memory>
 
 class COutput {
   public:
-    COutput(SP<CCWlOutput> output, uint32_t name);
+    COutput()  = default;
+    ~COutput() = default;
 
-    uint32_t                             name      = 0;
-    bool                                 focused   = false;
-    wl_output_transform                  transform = WL_OUTPUT_TRANSFORM_NORMAL;
-    Vector2D                             size;
-    int                                  scale      = 1;
-    std::string                          stringName = "";
-    std::string                          stringPort = "";
-    std::string                          stringDesc = "";
+    void                    create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t name);
 
-    std::unique_ptr<CSessionLockSurface> sessionLockSurface;
+    uint32_t                name      = 0;
+    bool                    focused   = false;
+    wl_output_transform     transform = WL_OUTPUT_TRANSFORM_NORMAL;
+    Vector2D                size;
+    int                     scale      = 1;
+    std::string             stringName = "";
+    std::string             stringPort = "";
+    std::string             stringDesc = "";
 
-    SP<CCWlOutput>                       output = nullptr;
+    UP<CSessionLockSurface> m_sessionLockSurface;
+
+    SP<CCWlOutput>          m_wlOutput = nullptr;
+
+    WP<COutput>             m_self;
+
+    void                    createSessionLockSurface();
 
   private:
 };

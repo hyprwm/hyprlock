@@ -11,6 +11,7 @@
 #include <array>
 #include <cstdint>
 #include <gbm.h>
+#include <hyprutils/memory/UniquePtr.hpp>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <libdrm/drm_fourcc.h>
@@ -22,24 +23,27 @@ static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullpt
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
 
 //
-std::string CScreencopyFrame::getResourceId(COutput* output) {
-    return std::format("screencopy:{}-{}x{}", output->stringPort, output->size.x, output->size.y);
+std::string CScreencopyFrame::getResourceId(SP<COutput> pOutput) {
+    return std::format("screencopy:{}-{}x{}", pOutput->stringPort, pOutput->size.x, pOutput->size.y);
 }
 
-CScreencopyFrame::CScreencopyFrame(COutput* output) : m_output(output) {
-    m_resourceID = getResourceId(m_output);
-
+CScreencopyFrame::CScreencopyFrame(SP<COutput> pOutput) : m_outputRef(pOutput) {
     captureOutput();
 
     static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
     if (*SCMODE == 1)
-        m_frame = std::make_unique<CSCSHMFrame>(m_sc);
+        m_frame = makeUnique<CSCSHMFrame>(m_sc);
     else
-        m_frame = std::make_unique<CSCDMAFrame>(m_sc);
+        m_frame = makeUnique<CSCDMAFrame>(m_sc);
 }
 
 void CScreencopyFrame::captureOutput() {
-    m_sc = makeShared<CCZwlrScreencopyFrameV1>(g_pHyprlock->getScreencopy()->sendCaptureOutput(false, m_output->output->resource()));
+    const auto POUTPUT = m_outputRef.lock();
+    RASSERT(POUTPUT, "Screencopy, but no valid output");
+
+    m_resourceID = getResourceId(POUTPUT);
+
+    m_sc = makeShared<CCZwlrScreencopyFrameV1>(g_pHyprlock->getScreencopy()->sendCaptureOutput(false, POUTPUT->m_wlOutput->resource()));
 
     m_sc->setBufferDone([this](CCZwlrScreencopyFrameV1* r) {
         Debug::log(TRACE, "[sc] wlrOnBufferDone for {}", (void*)this);

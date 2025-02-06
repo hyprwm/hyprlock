@@ -1,8 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <optional>
 #include <vector>
+
+#include "../defines.hpp"
 
 enum eAuthImplementations {
     AUTH_IMPL_PAM         = 0,
@@ -28,23 +29,23 @@ class CAuth {
   public:
     CAuth();
 
-    void                                 start();
+    void                       start();
 
-    void                                 submitInput(const std::string& input);
-    bool                                 checkWaiting();
+    void                       submitInput(const std::string& input);
+    bool                       checkWaiting();
 
-    const std::string&                   getCurrentFailText();
+    const std::string&         getCurrentFailText();
 
-    std::optional<std::string>           getFailText(eAuthImplementations implType);
-    std::optional<std::string>           getPrompt(eAuthImplementations implType);
-    size_t                               getFailedAttempts();
+    std::optional<std::string> getFailText(eAuthImplementations implType);
+    std::optional<std::string> getPrompt(eAuthImplementations implType);
+    size_t                     getFailedAttempts();
 
-    std::shared_ptr<IAuthImplementation> getImpl(eAuthImplementations implType);
+    SP<IAuthImplementation>    getImpl(eAuthImplementations implType);
 
-    void                                 terminate();
+    void                       terminate();
 
-    void                                 enqueueUnlock();
-    void                                 enqueueFail(const std::string& failText, eAuthImplementations implType);
+    void                       enqueueUnlock();
+    void                       enqueueFail(const std::string& failText, eAuthImplementations implType);
 
     // Should only be set via the main thread
     bool m_bDisplayFailText = false;
@@ -56,7 +57,7 @@ class CAuth {
         size_t               failedAttempts = 0;
     } m_sCurrentFail;
 
-    std::vector<std::shared_ptr<IAuthImplementation>> m_vImpls;
+    std::vector<SP<IAuthImplementation>> m_vImpls;
 };
 
-inline std::unique_ptr<CAuth> g_pAuth;
+inline UP<CAuth> g_pAuth;

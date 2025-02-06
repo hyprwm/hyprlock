@@ -1,9 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <chrono>
 #include <optional>
 #include "Shader.hpp"
+#include "../defines.hpp"
 #include "../core/LockSurface.hpp"
 #include "../helpers/AnimatedVariable.hpp"
 #include "../helpers/Color.hpp"
@@ -12,7 +12,7 @@
 #include "widgets/IWidget.hpp"
 #include "Framebuffer.hpp"
 
-typedef std::unordered_map<const CSessionLockSurface*, std::vector<std::unique_ptr<IWidget>>> widgetMap_t;
+typedef std::unordered_map<const CSessionLockSurface*, std::vector<SP<IWidget>>> widgetMap_t;
 
 class CRenderer {
   public:
@@ -29,7 +29,7 @@ class CRenderer {
         float                     boostA = 1.0;
     };
 
-    SRenderFeedback renderLock(const CSessionLockSurface& surface);
+    SRenderFeedback renderLock(const CSessionLockSurface& surf);
 
     void            renderRect(const CBox& box, const CHyprColor& col, int rounding = 0);
     void            renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding = 0, float alpha = 1.0);
@@ -37,37 +37,37 @@ class CRenderer {
     void renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
     void blurFB(const CFramebuffer& outfb, SBlurParams params);
 
-    std::unique_ptr<CAsyncResourceGatherer> asyncResourceGatherer;
-    std::chrono::system_clock::time_point   firstFullFrameTime;
+    UP<CAsyncResourceGatherer>            asyncResourceGatherer;
+    std::chrono::system_clock::time_point firstFullFrameTime;
 
-    void                                    pushFb(GLint fb);
-    void                                    popFb();
+    void                                  pushFb(GLint fb);
+    void                                  popFb();
 
-    void                                    removeWidgetsFor(const CSessionLockSurface* surf);
+    void                                  removeWidgetsFor(const CSessionLockSurface* surf);
 
-    void                                    startFadeIn();
-    void                                    startFadeOut(bool unlock = false, bool immediate = true);
+    void                                  startFadeIn();
+    void                                  startFadeOut(bool unlock = false, bool immediate = true);
 
   private:
-    widgetMap_t                            widgets;
+    widgetMap_t               widgets;
 
-    std::vector<std::unique_ptr<IWidget>>* getOrCreateWidgetsFor(const CSessionLockSurface* surf);
+    std::vector<SP<IWidget>>* getOrCreateWidgetsFor(const CSessionLockSurface* surf);
 
-    CShader                                rectShader;
-    CShader                                texShader;
-    CShader                                texMixShader;
-    CShader                                blurShader1;
-    CShader                                blurShader2;
-    CShader                                blurPrepareShader;
-    CShader                                blurFinishShader;
-    CShader                                borderShader;
+    CShader                   rectShader;
+    CShader                   texShader;
+    CShader                   texMixShader;
+    CShader                   blurShader1;
+    CShader                   blurShader2;
+    CShader                   blurPrepareShader;
+    CShader                   blurFinishShader;
+    CShader                   borderShader;
 
-    Mat3x3                                 projMatrix = Mat3x3::identity();
-    Mat3x3                                 projection;
+    Mat3x3                    projMatrix = Mat3x3::identity();
+    Mat3x3                    projection;
 
-    PHLANIMVAR<float>                      opacity;
+    PHLANIMVAR<float>         opacity;
 
-    std::vector<GLint>                     boundFBs;
+    std::vector<GLint>        boundFBs;
 };
 
-inline std::unique_ptr<CRenderer> g_pRenderer;
+inline UP<CRenderer> g_pRenderer;

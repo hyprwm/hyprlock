@@ -60,7 +60,7 @@ class CBackground : public IWidget {
     SPreloadedAsset*                        pendingAsset = nullptr;
     bool                                    firstRender  = true;
 
-    std::unique_ptr<SFade>                  fade;
+    UP<SFade>                               fade;
 
     int                                     reloadTime = -1;
     std::string                             reloadCommand;

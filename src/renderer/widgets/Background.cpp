@@ -150,8 +150,14 @@ bool CBackground::draw(const SRenderData& data) {
                                            HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
 
         if (blurPasses > 0)
-            g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{
-                .size = blurSize, .passes = blurPasses, .noise = noise, .contrast = contrast, .brightness = brightness, .vibrancy = vibrancy, .vibrancy_darkness = vibrancy_darkness});
+            g_pRenderer->blurFB(blurredFB,
+                                CRenderer::SBlurParams{.size              = blurSize,
+                                                       .passes            = blurPasses,
+                                                       .noise             = noise,
+                                                       .contrast          = contrast,
+                                                       .brightness        = brightness,
+                                                       .vibrancy          = vibrancy,
+                                                       .vibrancy_darkness = vibrancy_darkness});
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     }
 
@@ -190,7 +196,7 @@ void CBackground::onCrossFadeTimerUpdate() {
 
     if (fade) {
         fade->crossFadeTimer.reset();
-        fade.reset(nullptr);
+        fade.reset();
     }
 
     if (blurPasses <= 0 && !isScreenshot)
@@ -262,7 +268,7 @@ void CBackground::startCrossFadeOrUpdateRender() {
             if (crossFadeTime > 0) {
                 // Start a fade
                 if (!fade)
-                    fade = std::make_unique<SFade>(std::chrono::system_clock::now(), 0, nullptr);
+                    fade = makeUnique<SFade>(std::chrono::system_clock::now(), 0, nullptr);
                 else {
                     // Maybe we where already fading so reset it just in case, but should'nt be happening.
                     if (fade->crossFadeTimer) {
