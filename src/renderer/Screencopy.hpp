@@ -22,9 +22,9 @@ class ISCFrame {
 
 class CScreencopyFrame {
   public:
-    static std::string getResourceId(COutput* output);
+    static std::string getResourceId(SP<COutput> pOutput);
 
-    CScreencopyFrame(COutput* mon);
+    CScreencopyFrame(SP<COutput> pOutput);
     ~CScreencopyFrame() = default;
 
     void                        captureOutput();
@@ -35,10 +35,10 @@ class CScreencopyFrame {
     SPreloadedAsset             m_asset;
 
   private:
-    COutput*                  m_output = nullptr;
-    std::unique_ptr<ISCFrame> m_frame  = nullptr;
+    WP<COutput>  m_outputRef;
+    UP<ISCFrame> m_frame = nullptr;
 
-    bool                      m_dmaFailed = false;
+    bool         m_dmaFailed = false;
 };
 
 // Uses a gpu buffer created via gbm_bo

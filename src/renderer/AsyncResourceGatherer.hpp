@@ -75,7 +75,7 @@ class CAsyncResourceGatherer {
         Vector2D                        size;
     };
 
-    std::vector<std::unique_ptr<CScreencopyFrame>>   scframes;
+    std::vector<UP<CScreencopyFrame>>                scframes;
 
     std::vector<SPreloadTarget>                      preloadTargets;
     std::mutex                                       preloadTargetsMutex;

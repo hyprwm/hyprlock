@@ -6,6 +6,7 @@
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
+#include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>
 #include <sys/poll.h>
 #include <sys/mman.h>
@@ -43,7 +44,7 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
         exit(1);
     }
 
-    g_pEGL = std::make_unique<CEGL>(m_sWaylandState.display);
+    g_pEGL = makeUnique<CEGL>(m_sWaylandState.display);
 
     if (!immediate) {
         static const auto GRACE = g_pConfigManager->getValue<Hyprlang::INT>("general:grace");
@@ -283,10 +284,10 @@ void CHyprlock::run() {
         } else if (IFACE == ext_session_lock_manager_v1_interface.name)
             m_sWaylandState.sessionLock =
                 makeShared<CCExtSessionLockManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &ext_session_lock_manager_v1_interface, 1));
-        else if (IFACE == wl_output_interface.name)
-            m_vOutputs.emplace_back(
-                std::make_unique<COutput>(makeShared<CCWlOutput>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_output_interface, 4)), name));
-        else if (IFACE == wp_cursor_shape_manager_v1_interface.name)
+        else if (IFACE == wl_output_interface.name) {
+            m_vOutputs.emplace_back(makeShared<COutput>());
+            m_vOutputs.back()->create(m_vOutputs.back(), makeShared<CCWlOutput>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_output_interface, 4)), name);
+        } else if (IFACE == wp_cursor_shape_manager_v1_interface.name)
             g_pSeatManager->registerCursorShape(
                 makeShared<CCWpCursorShapeManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wp_cursor_shape_manager_v1_interface, 1)));
         else if (IFACE == wl_compositor_interface.name)
@@ -310,7 +311,7 @@ void CHyprlock::run() {
         Debug::log(LOG, "  | removed iface {}", name);
         auto outputIt = std::ranges::find_if(m_vOutputs, [name](const auto& other) { return other->name == name; });
         if (outputIt != m_vOutputs.end()) {
-            g_pRenderer->removeWidgetsFor(outputIt->get()->sessionLockSurface.get());
+            g_pRenderer->removeWidgetsFor((*outputIt)->m_sessionLockSurface.get());
             m_vOutputs.erase(outputIt);
         }
     });
@@ -325,8 +326,8 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer = std::make_unique<CRenderer>();
-    g_pAuth     = std::make_unique<CAuth>();
+    g_pRenderer = makeUnique<CRenderer>();
+    g_pAuth     = makeUnique<CAuth>();
     g_pAuth->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
@@ -554,23 +555,23 @@ void CHyprlock::clearPasswordBuffer() {
 void CHyprlock::renderOutput(const std::string& stringPort) {
     const auto MON = std::ranges::find_if(m_vOutputs, [stringPort](const auto& other) { return other->stringPort == stringPort; });
 
-    if (MON == m_vOutputs.end() || !MON->get())
+    if (MON == m_vOutputs.end() || !*MON)
         return;
 
-    const auto PMONITOR = MON->get();
+    const auto& PMONITOR = *MON;
 
-    if (!PMONITOR->sessionLockSurface)
+    if (!PMONITOR->m_sessionLockSurface)
         return;
 
-    PMONITOR->sessionLockSurface->render();
+    PMONITOR->m_sessionLockSurface->render();
 }
 
 void CHyprlock::renderAllOutputs() {
     for (auto& o : m_vOutputs) {
-        if (!o->sessionLockSurface)
+        if (!o->m_sessionLockSurface)
             continue;
 
-        o->sessionLockSurface->render();
+        o->m_sessionLockSurface->render();
     }
 }
 
@@ -723,7 +724,7 @@ bool CHyprlock::acquireSessionLock() {
         if (!o->done)
             continue;
 
-        o->sessionLockSurface = std::make_unique<CSessionLockSurface>(o.get());
+        o->createSessionLockSurface();
     }
 
     return true;

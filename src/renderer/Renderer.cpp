@@ -194,7 +194,7 @@ CRenderer::CRenderer() {
     borderShader.gradientLerp          = glGetUniformLocation(prog, "gradientLerp");
     borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
 
-    asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
+    asyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
 
     g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 }
@@ -397,9 +397,8 @@ void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTe
     glBindTexture(tex.m_iTarget, 0);
 }
 
-std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface* surf) {
+std::vector<SP<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface* surf) {
     if (!widgets.contains(surf)) {
-
         auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
         std::ranges::sort(CWIDGETS, [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
@@ -407,8 +406,8 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
         });
 
         for (auto& c : CWIDGETS) {
-            if (!c.monitor.empty() && c.monitor != surf->output->stringPort && !surf->output->stringDesc.starts_with(c.monitor) &&
-                !surf->output->stringDesc.starts_with("desc:" + c.monitor))
+            const auto POUTPUT = surf->m_outputRef.lock();
+            if (!c.monitor.empty() && c.monitor != POUTPUT->stringPort && !POUTPUT->stringDesc.starts_with(c.monitor) && !POUTPUT->stringDesc.starts_with("desc:" + c.monitor))
                 continue;
 
             // by type
@@ -417,7 +416,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
 
                 std::string       resourceID = "";
                 if (PATH == "screenshot") {
-                    resourceID = CScreencopyFrame::getResourceId(surf->output);
+                    resourceID = CScreencopyFrame::getResourceId(POUTPUT);
                     // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
                     // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
                     if (asyncResourceGatherer->gathered) {
@@ -433,13 +432,13 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 } else if (!PATH.empty())
                     resourceID = "background:" + PATH;
 
-                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, surf->output, resourceID, c.values, PATH == "screenshot"));
+                widgets[surf].emplace_back(makeShared<CBackground>(surf->size, POUTPUT.get(), resourceID, c.values, PATH == "screenshot"));
             } else if (c.type == "input-field") {
-                widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values, surf->output->stringPort));
+                widgets[surf].emplace_back(makeShared<CPasswordInputField>(surf->size, c.values, POUTPUT->stringPort));
             } else if (c.type == "label") {
-                widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, surf->output->stringPort));
+                widgets[surf].emplace_back(makeShared<CLabel>(surf->size, c.values, POUTPUT->stringPort));
             } else if (c.type == "shape") {
-                widgets[surf].emplace_back(std::make_unique<CShape>(surf->size, c.values));
+                widgets[surf].emplace_back(makeShared<CShape>(surf->size, c.values));
             } else if (c.type == "image") {
                 const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
 
@@ -447,7 +446,7 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
                 if (!PATH.empty())
                     resourceID = "image:" + PATH;
 
-                widgets[surf].emplace_back(std::make_unique<CImage>(surf->size, surf->output, resourceID, c.values));
+                widgets[surf].emplace_back(makeShared<CImage>(surf->size, POUTPUT.get(), resourceID, c.values));
             }
         }
     }

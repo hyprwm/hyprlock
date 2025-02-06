@@ -11,13 +11,9 @@ CSessionLockSurface::~CSessionLockSurface() {
         wl_egl_window_destroy(eglWindow);
 }
 
-CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
+CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputRef(pOutput) {
     surface = makeShared<CCWlSurface>(g_pHyprlock->getCompositor()->sendCreateSurface());
-
-    if (!surface) {
-        Debug::log(CRIT, "Couldn't create wl_surface");
-        exit(1);
-    }
+    RASSERT(surface, "Couldn't create wl_surface");
 
     static const auto FRACTIONALSCALING = g_pConfigManager->getValue<Hyprlang::INT>("general:fractional_scaling");
     const auto        ENABLE_FSV1       = *FRACTIONALSCALING == 1 || /* auto enable */ (*FRACTIONALSCALING == 2);
@@ -45,7 +41,7 @@ CSessionLockSurface::CSessionLockSurface(COutput* output) : output(output) {
     if (!PVIEWPORTER)
         Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
 
-    lockSurface = makeShared<CCExtSessionLockSurfaceV1>(g_pHyprlock->getSessionLock()->sendGetLockSurface(surface->resource(), output->output->resource()));
+    lockSurface = makeShared<CCExtSessionLockSurfaceV1>(g_pHyprlock->getSessionLock()->sendGetLockSurface(surface->resource(), pOutput->m_wlOutput->resource()));
 
     if (!lockSurface) {
         Debug::log(CRIT, "Couldn't create ext_session_lock_surface_v1");
@@ -62,6 +58,8 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     const bool SAMESIZE   = logicalSize == size_;
     const bool SAMESCALE  = appliedScale == fractionalScale;
 
+    const auto POUTPUT = m_outputRef.lock();
+
     serial       = serial_;
     logicalSize  = size_;
     appliedScale = fractionalScale;
@@ -71,8 +69,8 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
         viewport->sendSetDestination(logicalSize.x, logicalSize.y);
         surface->sendSetBufferScale(1);
     } else {
-        size = size_ * output->scale;
-        surface->sendSetBufferScale(output->scale);
+        size = size_ * POUTPUT->scale;
+        surface->sendSetBufferScale(POUTPUT->scale);
     }
 
     if (!SAMESERIAL)
@@ -129,7 +127,10 @@ void CSessionLockSurface::render() {
         if (g_pHyprlock->m_bTerminate)
             return;
 
-        Debug::log(TRACE, "[{}] frame {}, Current fps: {:.2f}", output->stringPort, m_frames, 1000.f / (frameTime - m_lastFrameTime));
+        if (Debug::verbose) {
+            const auto POUTPUT = m_outputRef.lock();
+            Debug::log(TRACE, "[{}] frame {}, Current fps: {:.2f}", POUTPUT->stringPort, m_frames, 1000.f / (frameTime - m_lastFrameTime));
+        }
 
         m_lastFrameTime = frameTime;
 
