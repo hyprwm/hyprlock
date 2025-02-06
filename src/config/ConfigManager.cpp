@@ -322,6 +322,22 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "zindex", Hyprlang::INT{0});
     SHADOWABLE("label");
 
+    m_config.addSpecialCategory("progressbar", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("progressbar", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("progressbar", "min", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("progressbar", "max", Hyprlang::INT{100});
+    m_config.addSpecialConfigValue("progressbar", "value", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("progressbar", "border_size", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("progressbar", "border_color", Hyprlang::INT{0xFF000000});
+    m_config.addSpecialConfigValue("progressbar", "rounding", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("progressbar", "size", LAYOUTCONFIG("100,20"));
+    m_config.addSpecialConfigValue("progressbar", "position", LAYOUTCONFIG("0,0"));
+    m_config.addSpecialConfigValue("progressbar", "halign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("progressbar", "valign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("progressbar", "zindex", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("progressbar", "color", Hyprlang::INT{0xFF00FF00});
+    m_config.addSpecialConfigValue("progressbar", "background_color", Hyprlang::INT{0xFF000000});
+
     m_config.registerHandler(&::handleSource, "source", {false});
     m_config.registerHandler(&::handleBezier, "bezier", {false});
     m_config.registerHandler(&::handleAnimation, "animation", {false});
@@ -504,6 +520,31 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"text_align", m_config.getSpecialConfigValue("label", "text_align", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("label", "zindex", k.c_str())},
                 SHADOWABLE("label"),
+            }
+        });
+        // clang-format on
+    }
+
+    keys = m_config.listKeysForSpecialCategory("progressbar");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            "progressbar",
+            std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("progressbar", "monitor", k.c_str())),
+            {
+                {"min", m_config.getSpecialConfigValue("progressbar", "min", k.c_str())},
+                {"max", m_config.getSpecialConfigValue("progressbar", "max", k.c_str())},
+                {"value", m_config.getSpecialConfigValue("progressbar", "value", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("progressbar", "border_size", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("progressbar", "border_color", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("progressbar", "rounding", k.c_str())},
+                {"size", m_config.getSpecialConfigValue("progressbar", "size", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("progressbar", "position", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("progressbar", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("progressbar", "valign", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("progressbar", "zindex", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("progressbar", "color", k.c_str())},
+                {"background_color", m_config.getSpecialConfigValue("progressbar", "background_color", k.c_str())},
             }
         });
         // clang-format on
