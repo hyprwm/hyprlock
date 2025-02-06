@@ -31,7 +31,7 @@ void updateColorVariable(CAnimatedVariable<CHyprColor>& av, const float POINTY, 
     const auto&                L1 = av.begun().asOkLab();
     const auto&                L2 = av.goal().asOkLab();
 
-    static const auto          lerp = [](const float one, const float two, const float progress) -> float { return one + (two - one) * progress; };
+    static const auto          lerp = [](const float one, const float two, const float progress) -> float { return one + ((two - one) * progress); };
 
     const Hyprgraphics::CColor lerped = Hyprgraphics::CColor::SOkLab{
         .l = lerp(L1.l, L2.l, POINTY),
@@ -57,7 +57,7 @@ void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const flo
         const auto&                L1 = sourceCol.asOkLab();
         const auto&                L2 = targetCol.asOkLab();
 
-        static const auto          lerp = [](const float one, const float two, const float progress) -> float { return one + (two - one) * progress; };
+        static const auto          lerp = [](const float one, const float two, const float progress) -> float { return one + ((two - one) * progress); };
 
         const Hyprgraphics::CColor lerped = Hyprgraphics::CColor::SOkLab{
             .l = lerp(L1.l, L2.l, POINTY),

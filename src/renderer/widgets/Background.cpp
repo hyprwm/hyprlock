@@ -150,7 +150,8 @@ bool CBackground::draw(const SRenderData& data) {
                                            HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
 
         if (blurPasses > 0)
-            g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{blurSize, blurPasses, noise, contrast, brightness, vibrancy, vibrancy_darkness});
+            g_pRenderer->blurFB(blurredFB, CRenderer::SBlurParams{
+                .size = blurSize, .passes = blurPasses, .noise = noise, .contrast = contrast, .brightness = brightness, .vibrancy = vibrancy, .vibrancy_darkness = vibrancy_darkness});
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     }
 
@@ -192,7 +193,7 @@ void CBackground::onCrossFadeTimerUpdate() {
         fade.reset(nullptr);
     }
 
-    if (!(blurPasses > 0 || isScreenshot))
+    if (blurPasses <= 0 && !isScreenshot)
         blurredFB.release();
 
     asset             = pendingAsset;

@@ -130,7 +130,7 @@ void CAsyncResourceGatherer::gather() {
         }
     }
 
-    while (!g_pHyprlock->m_bTerminate && std::any_of(scframes.begin(), scframes.end(), [](const auto& d) { return !d->m_asset.ready; })) {
+    while (!g_pHyprlock->m_bTerminate && std::ranges::any_of(scframes, [](const auto& d) { return !d->m_asset.ready; })) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -319,7 +319,7 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
         std::unique_lock lk(asyncLoopState.requestsMutex);
-        if (asyncLoopState.pending == false) // avoid a lock if a thread managed to request something already since we .unlock()ed
+        if (!asyncLoopState.pending) // avoid a lock if a thread managed to request something already since we .unlock()ed
             asyncLoopState.requestsCV.wait_for(lk, std::chrono::seconds(5), [this] { return asyncLoopState.pending; }); // wait for events
 
         asyncLoopState.pending = false;
@@ -349,7 +349,7 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
             // plant timer for callback
             if (r.callback)
-                g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{r.callback, r.callbackData});
+                g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{.cb = r.callback, .data = r.callbackData});
         }
     }
 }

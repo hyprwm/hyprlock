@@ -1,7 +1,7 @@
 #include "Texture.hpp"
 
 CTexture::CTexture() {
-    // naffin'
+    ; // naffin'
 }
 
 CTexture::~CTexture() {
