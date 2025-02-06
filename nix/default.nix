@@ -60,7 +60,7 @@ stdenv.mkDerivation {
 
   cmakeFlags = lib.mapAttrsToList lib.cmakeFeature {
     HYPRLOCK_COMMIT = shortRev;
-    HYPRLOCK_VERSION_COMMIT = shortRev;
+    HYPRLOCK_VERSION_COMMIT = ""; # Intentionally left empty (hyprlock --version will always print the commit)
   };
 
   meta = {
