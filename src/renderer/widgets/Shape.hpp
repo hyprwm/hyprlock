@@ -11,11 +11,17 @@
 
 class CShape : public IWidget {
   public:
-    CShape(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props);
+    CShape()          = default;
+    virtual ~CShape() = default;
 
+    void         registerSelf(const SP<CShape>& self);
+
+    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
 
   private:
+    WP<CShape>         m_self;
+
     CFramebuffer       shapeFB;
 
     int                rounding;

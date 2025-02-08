@@ -22,7 +22,7 @@ namespace std {
 }
 #endif
 
-Vector2D rotateVector(const Vector2D& vec, const double& ang) {
+static Vector2D rotateVector(const Vector2D& vec, const double& ang) {
     const double COS = std::abs(std::cos(ang));
     const double SIN = std::abs(std::sin(ang));
     return Vector2D((vec.x * COS) + (vec.y * SIN), (vec.x * SIN) + (vec.y * COS));

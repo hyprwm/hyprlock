@@ -8,26 +8,28 @@
 #include <hyprlang.hpp>
 
 CImage::~CImage() {
-    if (imageTimer) {
-        imageTimer->cancel();
-        imageTimer.reset();
+    reset();
+}
+
+void CImage::registerSelf(const SP<CImage>& self) {
+    m_self = self;
+}
+
+static void onTimer(WP<CImage> ref) {
+    if (auto PIMAGE = ref.lock(); PIMAGE) {
+        PIMAGE->onTimerUpdate();
+        PIMAGE->plantTimer();
     }
 }
 
-static void onTimer(std::shared_ptr<CTimer> self, void* data) {
-    const auto PIMAGE = (CImage*)data;
-
-    PIMAGE->onTimerUpdate();
-    PIMAGE->plantTimer();
+static void onAssetCallback(WP<CImage> ref) {
+    if (auto PIMAGE = ref.lock(); PIMAGE)
+        PIMAGE->renderUpdate();
 }
 
-static void onAssetCallback(void* data) {
+static void onAssetCallbackTimer(std::shared_ptr<CTimer> m_self, void* data) {
     const auto PIMAGE = (CImage*)data;
     PIMAGE->renderUpdate();
-}
-
-static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
-    onAssetCallback(data);
 }
 
 void CImage::onTimerUpdate() {
@@ -65,9 +67,7 @@ void CImage::onTimerUpdate() {
     pendingResourceID = request.id;
     request.asset     = path;
     request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
-
-    request.callback     = onAssetCallback;
-    request.callbackData = this;
+    request.callback  = [REF = m_self]() { onAssetCallback(REF); };
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
@@ -75,20 +75,23 @@ void CImage::onTimerUpdate() {
 void CImage::plantTimer() {
 
     if (reloadTime == 0) {
-        imageTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onTimer, this, true);
+        imageTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onTimer(REF); }, this, true);
     } else if (reloadTime > 0)
-        imageTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), onTimer, this, false);
+        imageTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), [REF = m_self](auto, auto) { onTimer(REF); }, this, false);
 }
 
-CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& resourceID_, const std::unordered_map<std::string, std::any>& props) :
-    viewport(viewport_), resourceID(resourceID_), output(output_), shadow(this, props, viewport_) {
+void CImage::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
+    reset();
+
+    shadow.configure(this, props, viewport);
+    viewport = pOutput->getViewport();
 
     try {
         size     = std::any_cast<Hyprlang::INT>(props.at("size"));
         rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
         color    = *CGradientValueData::fromAnyPv(props.at("border_color"));
-        pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
         halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
@@ -111,6 +114,25 @@ CImage::CImage(const Vector2D& viewport_, COutput* output_, const std::string& r
 
         plantTimer();
     }
+}
+
+void CImage::reset() {
+    if (imageTimer) {
+        imageTimer->cancel();
+        imageTimer.reset();
+    }
+
+    if (g_pHyprlock->m_bTerminate)
+        return;
+
+    imageFB.release();
+
+    if (asset)
+        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+
+    asset             = nullptr;
+    pendingResourceID = "";
+    resourceID        = "";
 }
 
 bool CImage::draw(const SRenderData& data) {
@@ -201,6 +223,9 @@ void CImage::renderUpdate() {
             resourceID  = pendingResourceID;
             firstRender = true;
         }
+        pendingResourceID = "";
+    } else if (!pendingResourceID.empty()) {
+        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
         pendingResourceID = "";
     } else if (!pendingResourceID.empty()) {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);

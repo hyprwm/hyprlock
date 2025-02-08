@@ -11,7 +11,9 @@
 
 class CShadowable {
   public:
-    CShadowable(IWidget* widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_ /* TODO: make this not the entire viewport */);
+    virtual ~CShadowable() = default;
+    CShadowable()          = default;
+    void configure(IWidget* widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_ /* TODO: make this not the entire viewport */);
 
     // instantly re-renders the shadow using the widget's draw() method
     void         markShadowDirty();

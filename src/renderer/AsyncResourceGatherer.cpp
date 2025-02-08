@@ -301,17 +301,6 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     preloadTargets.push_back(target);
 }
 
-struct STimerCallbackData {
-    void (*cb)(void*) = nullptr;
-    void* data        = nullptr;
-};
-
-static void timerCallback(std::shared_ptr<CTimer> self, void* data_) {
-    auto data = (STimerCallbackData*)data_;
-    data->cb(data->data);
-    delete data;
-}
-
 void CAsyncResourceGatherer::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
@@ -346,7 +335,7 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
             // plant timer for callback
             if (r.callback)
-                g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{.cb = r.callback, .data = r.callbackData});
+                g_pHyprlock->addTimer(std::chrono::milliseconds(0), [cb = r.callback](auto, auto) { cb(); }, nullptr);
         }
     }
 }
