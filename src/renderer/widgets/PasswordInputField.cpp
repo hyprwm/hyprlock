@@ -15,11 +15,24 @@
 
 using namespace Hyprutils::String;
 
-CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
-    viewport(viewport_), outputStringPort(output), shadow(this, props, viewport_) {
+CPasswordInputField::~CPasswordInputField() {
+    reset();
+}
+
+void CPasswordInputField::registerSelf(const SP<CPasswordInputField>& self) {
+    m_self = self;
+}
+
+void CPasswordInputField::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
+    reset();
+    shadow.configure(this, props, viewport);
+
+    outputStringPort = pOutput->stringPort;
+    viewport         = pOutput->getViewport();
+
     try {
-        pos                      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
-        configSize               = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
+        pos                      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
+        configSize               = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport);
         halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
@@ -61,6 +74,16 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
 
     colorConfig.caps = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
 
+    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->m_AnimationTree.getConfig("inputFieldFade"));
+    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->m_AnimationTree.getConfig("inputFieldDots"));
+    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->m_AnimationTree.getConfig("inputFieldWidth"));
+    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->m_AnimationTree.getConfig("inputFieldColors"));
+    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->m_AnimationTree.getConfig("inputFieldColors"));
+
+    srand(std::chrono::system_clock::now().time_since_epoch().count());
+
+    pos = posFromHVAlign(viewport, size->goal(), configPos, halign, valign);
+
     if (!dots.textFormat.empty()) {
         dots.textResourceID = std::format("input:{}-{}", (uintptr_t)this, dots.textFormat);
         CAsyncResourceGatherer::SPreloadRequest request;
@@ -74,23 +97,30 @@ CPasswordInputField::CPasswordInputField(const Vector2D& viewport_, const std::u
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
 
-    g_pAnimationManager->createAnimation(0.f, fade.a, g_pConfigManager->m_AnimationTree.getConfig("inputFieldFade"));
-    g_pAnimationManager->createAnimation(0.f, dots.currentAmount, g_pConfigManager->m_AnimationTree.getConfig("inputFieldDots"));
-    g_pAnimationManager->createAnimation(configSize, size, g_pConfigManager->m_AnimationTree.getConfig("inputFieldWidth"));
-
-    g_pAnimationManager->createAnimation(colorConfig.inner, colorState.inner, g_pConfigManager->m_AnimationTree.getConfig("inputFieldColors"));
-    g_pAnimationManager->createAnimation(*colorConfig.outer, colorState.outer, g_pConfigManager->m_AnimationTree.getConfig("inputFieldColors"));
-
-    srand(std::chrono::system_clock::now().time_since_epoch().count());
-
     // request the inital placeholder asset
     updatePlaceholder();
 }
 
-static void fadeOutCallback(std::shared_ptr<CTimer> self, void* data) {
-    CPasswordInputField* p = (CPasswordInputField*)data;
+void CPasswordInputField::reset() {
+    if (fade.fadeOutTimer.get()) {
+        fade.fadeOutTimer->cancel();
+        fade.fadeOutTimer.reset();
+    }
 
-    p->onFadeOutTimer();
+    if (g_pHyprlock->m_bTerminate)
+        return;
+
+    if (placeholder.asset)
+        g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.asset);
+
+    placeholder.asset = nullptr;
+    placeholder.resourceID.clear();
+    placeholder.currentText.clear();
+}
+
+static void fadeOutCallback(WP<CPasswordInputField> ref) {
+    if (const auto PP = ref.lock(); PP)
+        PP->onFadeOutTimer();
 }
 
 void CPasswordInputField::onFadeOutTimer() {
@@ -121,7 +151,8 @@ void CPasswordInputField::updateFade() {
             *fade.a           = 0.0;
             fade.allowFadeOut = false;
         } else if (!fade.fadeOutTimer.get())
-            fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), fadeOutCallback, this);
+            fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), [REF = m_self](auto, auto) { fadeOutCallback(REF); }, nullptr);
+
     } else if (INPUTUSED && fade.a->goal() != 1.0)
         *fade.a = 1.0;
 

@@ -397,6 +397,13 @@ void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTe
     glBindTexture(tex.m_iTarget, 0);
 }
 
+template <class Widget>
+static void createWidget(std::vector<SP<IWidget>>& widgets) {
+    const auto W = makeShared<Widget>();
+    W->registerSelf(W);
+    widgets.emplace_back(W);
+}
+
 std::vector<SP<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface* surf) {
     if (!widgets.contains(surf)) {
         auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
@@ -412,42 +419,21 @@ std::vector<SP<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSur
 
             // by type
             if (c.type == "background") {
-                const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-
-                std::string       resourceID = "";
-                if (PATH == "screenshot") {
-                    resourceID = CScreencopyFrame::getResourceId(POUTPUT);
-                    // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
-                    // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-                    if (asyncResourceGatherer->gathered) {
-                        if (!asyncResourceGatherer->getAssetByID(resourceID))
-                            resourceID = ""; // Fallback to solid color (background:color)
-                    }
-
-                    if (!g_pHyprlock->getScreencopy()) {
-                        Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
-                        resourceID = "";
-                    }
-
-                } else if (!PATH.empty())
-                    resourceID = "background:" + PATH;
-
-                widgets[surf].emplace_back(makeShared<CBackground>(surf->size, POUTPUT.get(), resourceID, c.values, PATH == "screenshot"));
+                createWidget<CBackground>(widgets[surf]);
             } else if (c.type == "input-field") {
-                widgets[surf].emplace_back(makeShared<CPasswordInputField>(surf->size, c.values, POUTPUT->stringPort));
+                createWidget<CPasswordInputField>(widgets[surf]);
             } else if (c.type == "label") {
-                widgets[surf].emplace_back(makeShared<CLabel>(surf->size, c.values, POUTPUT->stringPort));
+                createWidget<CLabel>(widgets[surf]);
             } else if (c.type == "shape") {
-                widgets[surf].emplace_back(makeShared<CShape>(surf->size, c.values));
+                createWidget<CShape>(widgets[surf]);
             } else if (c.type == "image") {
-                const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-
-                std::string       resourceID = "";
-                if (!PATH.empty())
-                    resourceID = "image:" + PATH;
-
-                widgets[surf].emplace_back(makeShared<CImage>(surf->size, POUTPUT.get(), resourceID, c.values));
+                createWidget<CImage>(widgets[surf]);
+            } else {
+                Debug::log(ERR, "Unknown widget type: {}", c.type);
+                continue;
             }
+
+            widgets[surf].back()->configure(c.values, POUTPUT);
         }
     }
 
@@ -619,6 +605,14 @@ void CRenderer::popFb() {
 
 void CRenderer::removeWidgetsFor(const CSessionLockSurface* surf) {
     widgets.erase(surf);
+}
+
+void CRenderer::reconfigureWidgetsFor(const CSessionLockSurface* surf) {
+    // TODO: reconfigure widgets by just calling configure again.
+    // Requires a way to get a widgets config properties.
+    // I think the best way would be to store the anonymos key of the widget config.
+    removeWidgetsFor(surf);
+    getOrCreateWidgetsFor(surf);
 }
 
 void CRenderer::startFadeIn() {

@@ -22,6 +22,8 @@ class COutput {
 
     void                createSessionLockSurface();
 
+    Vector2D                getViewport() const;
+
   private:
     std::unique_ptr<CSessionLockSurface> m_sessionLockSurface;
 };

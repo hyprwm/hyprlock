@@ -101,8 +101,8 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
-        g_pRenderer->removeWidgetsFor(this);
-        Debug::log(LOG, "Reloading widgets");
+        Debug::log(LOG, "output {} changed, reloading widgets!", POUTPUT->stringPort);
+        g_pRenderer->reconfigureWidgetsFor(this);
     }
 
     readyForFrame = true;

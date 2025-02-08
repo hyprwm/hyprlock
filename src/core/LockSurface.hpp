@@ -50,4 +50,5 @@ class CSessionLockSurface {
     SP<CCWlCallback> frameCallback = nullptr;
 
     friend class CRenderer;
+    friend class COutput;
 };

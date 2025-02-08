@@ -48,3 +48,7 @@ void COutput::create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t _name
 void COutput::createSessionLockSurface() {
     m_sessionLockSurface = makeUnique<CSessionLockSurface>(m_self.lock());
 }
+
+Vector2D COutput::getViewport() const {
+    return (m_sessionLockSurface) ? m_sessionLockSurface->size : size;
+}

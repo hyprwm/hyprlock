@@ -10,23 +10,15 @@
 #include <GLES3/gl32.h>
 
 CBackground::~CBackground() {
-
-    if (reloadTimer) {
-        reloadTimer->cancel();
-        reloadTimer.reset();
-    }
-
-    if (fade) {
-        if (fade->crossFadeTimer) {
-            fade->crossFadeTimer->cancel();
-            fade->crossFadeTimer.reset();
-        }
-        fade.reset();
-    }
+    reset();
 }
 
-CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std::string& resourceID_, const std::unordered_map<std::string, std::any>& props, bool ss) :
-    viewport(viewport_), resourceID(resourceID_), output(output_), isScreenshot(ss) {
+void CBackground::registerSelf(const SP<CBackground>& self) {
+    m_self = self;
+}
+
+void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
+    reset();
 
     try {
         color             = std::any_cast<Hyprlang::INT>(props.at("color"));
@@ -48,6 +40,29 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
         RASSERT(false, "Missing propperty for CBackground: {}", e.what()); //
     }
 
+    isScreenshot = path == "screenshot";
+
+    viewport   = pOutput->getViewport();
+    outputPort = pOutput->stringPort;
+    transform  = isScreenshot ? wlTransformToHyprutils(invertTransform(pOutput->transform)) : HYPRUTILS_TRANSFORM_NORMAL;
+
+    if (isScreenshot) {
+        resourceID = CScreencopyFrame::getResourceId(pOutput);
+        // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
+        // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
+        if (g_pRenderer->asyncResourceGatherer->gathered) {
+            if (!g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID))
+                resourceID = ""; // Fallback to solid color (background:color)
+        }
+
+        if (!g_pHyprlock->getScreencopy()) {
+            Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
+            resourceID = "";
+        }
+
+    } else if (!path.empty())
+        resourceID = "background:" + path;
+
     if (!isScreenshot && reloadTime > -1) {
         try {
             modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -57,30 +72,57 @@ CBackground::CBackground(const Vector2D& viewport_, COutput* output_, const std:
     }
 }
 
+void CBackground::reset() {
+    if (reloadTimer) {
+        reloadTimer->cancel();
+        reloadTimer.reset();
+    }
+
+    if (fade) {
+        if (fade->crossFadeTimer) {
+            fade->crossFadeTimer->cancel();
+            fade->crossFadeTimer.reset();
+        }
+        fade.reset();
+    }
+
+    if (g_pHyprlock->m_bTerminate)
+        return; // Who cares about unloading assets when we're about to exit??
+
+    // Unload existing assets
+    if (pendingAsset)
+        g_pRenderer->asyncResourceGatherer->unloadAsset(pendingAsset);
+
+    pendingAsset      = nullptr;
+    pendingResourceID = "";
+
+    if (asset)
+        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+
+    asset      = nullptr;
+    resourceID = "";
+}
+
 void CBackground::renderRect(CHyprColor color) {
     CBox monbox = {0, 0, viewport.x, viewport.y};
     g_pRenderer->renderRect(monbox, color, 0);
 }
 
-static void onReloadTimer(std::shared_ptr<CTimer> self, void* data) {
-    const auto PBG = (CBackground*)data;
-
-    PBG->onReloadTimerUpdate();
-    PBG->plantReloadTimer();
+static void onReloadTimer(WP<CBackground> ref) {
+    if (auto PBG = ref.lock(); PBG) {
+        PBG->onReloadTimerUpdate();
+        PBG->plantReloadTimer();
+    }
 }
 
-static void onCrossFadeTimer(std::shared_ptr<CTimer> self, void* data) {
-    const auto PBG = (CBackground*)data;
-    PBG->onCrossFadeTimerUpdate();
+static void onCrossFadeTimer(WP<CBackground> ref) {
+    if (auto PBG = ref.lock(); PBG)
+        PBG->onCrossFadeTimerUpdate();
 }
 
-static void onAssetCallback(void* data) {
-    const auto PBG = (CBackground*)data;
-    PBG->startCrossFadeOrUpdateRender();
-}
-
-static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
-    onAssetCallback(data);
+static void onAssetCallback(WP<CBackground> ref) {
+    if (auto PBG = ref.lock(); PBG)
+        PBG->startCrossFadeOrUpdateRender();
 }
 
 bool CBackground::draw(const SRenderData& data) {
@@ -115,7 +157,7 @@ bool CBackground::draw(const SRenderData& data) {
 
         // make it brah
         Vector2D size = asset->texture.m_vSize;
-        if (output->transform % 2 == 1 && isScreenshot) {
+        if (transform % 2 == 1 && isScreenshot) {
             size.x = asset->texture.m_vSize.y;
             size.y = asset->texture.m_vSize.x;
         }
@@ -142,12 +184,9 @@ bool CBackground::draw(const SRenderData& data) {
         if (fade)
             g_pRenderer->renderTextureMix(texbox, asset->texture, pendingAsset->texture, 1.0,
                                           std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - fade->start).count() / (1000 * crossFadeTime), 0,
-                                          HYPRUTILS_TRANSFORM_NORMAL);
+                                          transform);
         else
-            g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0,
-                                       isScreenshot ?
-                                           wlTransformToHyprutils(invertTransform(output->transform)) :
-                                           HYPRUTILS_TRANSFORM_NORMAL); // this could be omitted but whatever it's only once and makes code cleaner plus less blurring on large texs
+            g_pRenderer->renderTexture(texbox, asset->texture, 1.0, 0, transform);
 
         if (blurPasses > 0)
             g_pRenderer->blurFB(blurredFB,
@@ -185,9 +224,9 @@ bool CBackground::draw(const SRenderData& data) {
 void CBackground::plantReloadTimer() {
 
     if (reloadTime == 0)
-        reloadTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onReloadTimer, this, true);
+        reloadTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onReloadTimer(REF); }, nullptr, true);
     else if (reloadTime > 0)
-        reloadTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), onReloadTimer, this, false);
+        reloadTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), [REF = m_self](auto, auto) { onReloadTimer(REF); }, nullptr, true);
 }
 
 void CBackground::onCrossFadeTimerUpdate() {
@@ -208,7 +247,7 @@ void CBackground::onCrossFadeTimerUpdate() {
     pendingAsset      = nullptr;
     firstRender       = true;
 
-    g_pHyprlock->renderOutput(output->stringPort);
+    g_pHyprlock->renderOutput(outputPort);
 }
 
 void CBackground::onReloadTimerUpdate() {
@@ -251,8 +290,7 @@ void CBackground::onReloadTimerUpdate() {
     request.asset     = path;
     request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
 
-    request.callback     = onAssetCallback;
-    request.callbackData = this;
+    request.callback = [REF = m_self]() { onAssetCallback(REF); };
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
@@ -278,15 +316,15 @@ void CBackground::startCrossFadeOrUpdateRender() {
                 }
                 fade->start          = std::chrono::system_clock::now();
                 fade->a              = 0;
-                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossFadeTime)), onCrossFadeTimer, this);
+                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossFadeTime)), [REF = m_self](auto, auto) { onCrossFadeTimer(REF); }, this);
             } else {
                 onCrossFadeTimerUpdate();
             }
         }
     } else if (!pendingResourceID.empty()) {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, this);
     }
 
-    g_pHyprlock->renderOutput(output->stringPort);
+    g_pHyprlock->renderOutput(outputPort);
 }

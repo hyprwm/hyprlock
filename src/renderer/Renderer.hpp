@@ -44,6 +44,7 @@ class CRenderer {
     void                                  popFb();
 
     void                                  removeWidgetsFor(const CSessionLockSurface* surf);
+    void                                  reconfigureWidgetsFor(const CSessionLockSurface* surf);
 
     void                                  startFadeIn();
     void                                  startFadeOut(bool unlock = false, bool immediate = true);
