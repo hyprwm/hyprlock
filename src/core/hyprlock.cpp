@@ -20,10 +20,23 @@
 #include <algorithm>
 #include <sdbus-c++/sdbus-c++.h>
 #include <hyprutils/os/Process.hpp>
+#include <malloc.h>
 
 using namespace Hyprutils::OS;
 
+static void setMallocThreshold() {
+#ifdef M_TRIM_THRESHOLD
+    // The default is 128 pages,
+    // which is very large and can lead to a lot of memory used for no reason
+    // because trimming hasn't happened
+    static const int PAGESIZE = sysconf(_SC_PAGESIZE);
+    mallopt(M_TRIM_THRESHOLD, 6 * PAGESIZE);
+#endif
+}
+
 CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
+    setMallocThreshold();
+
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
     if (!m_sWaylandState.display) {
         Debug::log(CRIT, "Couldn't connect to a wayland compositor");
