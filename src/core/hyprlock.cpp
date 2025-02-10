@@ -441,13 +441,13 @@ void CHyprlock::run() {
             std::unique_lock lk(m_sLoopState.timerRequestMutex);
             m_sLoopState.timerCV.wait_for(lk, std::chrono::milliseconds((int)least + 1), [this] { return m_sLoopState.timerEvent; });
             m_sLoopState.timerEvent = false;
-
+                
             // notify main
-            std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
+                std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
             Debug::log(TRACE, "timer thread firing");
-            m_sLoopState.event = true;
-            m_sLoopState.loopCV.notify_all();
-        }
+                m_sLoopState.event = true;
+                m_sLoopState.loopCV.notify_all();
+            }
     });
 
     m_sLoopState.event = true; // let it process once
@@ -698,6 +698,58 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
 
         if (len > 1)
             m_sPasswordState.passBuffer += std::string{buf, len - 1};
+    }
+}
+
+void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    for (auto& o : m_vOutputs) {
+        if (!o->sessionLockSurface)
+            continue;
+
+        const auto widgets = g_pRenderer->getOrCreateWidgetsFor(o->sessionLockSurface.get());
+        for (const auto& widget : *widgets) {
+            if (widget->containsPoint(pos))
+                widget->onClick(button, down, pos);
+        }
+    }
+}
+
+void CHyprlock::onHover(const Vector2D& pos) {
+    bool cursorChanged = false;
+
+    for (auto& o : m_vOutputs) {
+        if (!o->sessionLockSurface)
+            continue;
+        const auto widgets = g_pRenderer->getOrCreateWidgetsFor(o->sessionLockSurface.get());
+        bool outputNeedsRedraw = false;
+
+        for (const auto& widget : *widgets) {
+            const bool containsPoint = widget->containsPoint(pos);
+            const bool wasHovered = widget->isHovered();
+
+            if (containsPoint) {
+                if (!wasHovered) {
+                    widget->setHover(true);
+                    widget->onHover(pos);
+                    outputNeedsRedraw = true;
+                }
+                
+                if (!cursorChanged) {
+                    cursorChanged = true;
+                }
+            } else if (wasHovered) {
+                widget->setHover(false);
+                outputNeedsRedraw = true;
+            }
+        }
+
+        if (outputNeedsRedraw) {
+            o->sessionLockSurface->render();
+        }
+    }
+
+    if (!cursorChanged) {
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
     }
 }
 
