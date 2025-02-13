@@ -12,6 +12,7 @@ class COutput {
 
     uint32_t                             name      = 0;
     bool                                 focused   = false;
+    bool                                 done      = false;
     wl_output_transform                  transform = WL_OUTPUT_TRANSFORM_NORMAL;
     Vector2D                             size;
     int                                  scale      = 1;

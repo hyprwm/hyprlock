@@ -18,10 +18,10 @@ COutput::COutput(SP<CCWlOutput> output_, uint32_t name_) : name(name_), output(o
     output->setScale([this](CCWlOutput* r, int32_t sc) { scale = sc; });
 
     output->setDone([this](CCWlOutput* r) {
+        done = true;
         Debug::log(LOG, "output {} done", name);
-        if (g_pHyprlock->m_bLocked && !sessionLockSurface) {
-            // if we are already locked, create a surface dynamically
-            Debug::log(LOG, "Creating a surface dynamically for output as we are already locked");
+        if (g_pHyprlock->m_lockAquired && !sessionLockSurface) {
+            Debug::log(LOG, "output {} creating a new lock surface", name);
             sessionLockSurface = std::make_unique<CSessionLockSurface>(this);
         }
     });
