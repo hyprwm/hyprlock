@@ -194,7 +194,7 @@ CRenderer::CRenderer() {
     borderShader.gradientLerp          = glGetUniformLocation(prog, "gradientLerp");
     borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
 
-    asyncResourceGatherer = std::make_unique<CAsyncResourceGatherer>();
+    asyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
 
     g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 }
@@ -397,9 +397,15 @@ void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTe
     glBindTexture(tex.m_iTarget, 0);
 }
 
-std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface* surf) {
-    if (!widgets.contains(surf)) {
+template <class Widget>
+static void createWidget(std::vector<SP<IWidget>>& widgets) {
+    const auto W = makeShared<Widget>();
+    W->registerSelf(W);
+    widgets.emplace_back(W);
+}
 
+std::vector<SP<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface* surf) {
+    if (!widgets.contains(surf)) {
         auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
         std::ranges::sort(CWIDGETS, [](CConfigManager::SWidgetConfig& a, CConfigManager::SWidgetConfig& b) {
@@ -407,48 +413,27 @@ std::vector<std::unique_ptr<IWidget>>* CRenderer::getOrCreateWidgetsFor(const CS
         });
 
         for (auto& c : CWIDGETS) {
-            if (!c.monitor.empty() && c.monitor != surf->output->stringPort && !surf->output->stringDesc.starts_with(c.monitor) &&
-                !surf->output->stringDesc.starts_with("desc:" + c.monitor))
+            const auto POUTPUT = surf->m_outputRef.lock();
+            if (!c.monitor.empty() && c.monitor != POUTPUT->stringPort && !POUTPUT->stringDesc.starts_with(c.monitor) && !POUTPUT->stringDesc.starts_with("desc:" + c.monitor))
                 continue;
 
             // by type
             if (c.type == "background") {
-                const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-
-                std::string       resourceID = "";
-                if (PATH == "screenshot") {
-                    resourceID = CScreencopyFrame::getResourceId(surf->output);
-                    // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
-                    // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-                    if (asyncResourceGatherer->gathered) {
-                        if (!asyncResourceGatherer->getAssetByID(resourceID))
-                            resourceID = ""; // Fallback to solid color (background:color)
-                    }
-
-                    if (!g_pHyprlock->getScreencopy()) {
-                        Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
-                        resourceID = "";
-                    }
-
-                } else if (!PATH.empty())
-                    resourceID = "background:" + PATH;
-
-                widgets[surf].emplace_back(std::make_unique<CBackground>(surf->size, surf->output, resourceID, c.values, PATH == "screenshot"));
+                createWidget<CBackground>(widgets[surf]);
             } else if (c.type == "input-field") {
-                widgets[surf].emplace_back(std::make_unique<CPasswordInputField>(surf->size, c.values, surf->output->stringPort));
+                createWidget<CPasswordInputField>(widgets[surf]);
             } else if (c.type == "label") {
-                widgets[surf].emplace_back(std::make_unique<CLabel>(surf->size, c.values, surf->output->stringPort));
+                createWidget<CLabel>(widgets[surf]);
             } else if (c.type == "shape") {
-                widgets[surf].emplace_back(std::make_unique<CShape>(surf->size, c.values));
+                createWidget<CShape>(widgets[surf]);
             } else if (c.type == "image") {
-                const std::string PATH = std::any_cast<Hyprlang::STRING>(c.values.at("path"));
-
-                std::string       resourceID = "";
-                if (!PATH.empty())
-                    resourceID = "image:" + PATH;
-
-                widgets[surf].emplace_back(std::make_unique<CImage>(surf->size, surf->output, resourceID, c.values));
+                createWidget<CImage>(widgets[surf]);
+            } else {
+                Debug::log(ERR, "Unknown widget type: {}", c.type);
+                continue;
             }
+
+            widgets[surf].back()->configure(c.values, POUTPUT);
         }
     }
 
@@ -620,6 +605,14 @@ void CRenderer::popFb() {
 
 void CRenderer::removeWidgetsFor(const CSessionLockSurface* surf) {
     widgets.erase(surf);
+}
+
+void CRenderer::reconfigureWidgetsFor(const CSessionLockSurface* surf) {
+    // TODO: reconfigure widgets by just calling configure again.
+    // Requires a way to get a widgets config properties.
+    // I think the best way would be to store the anonymos key of the widget config.
+    removeWidgetsFor(surf);
+    getOrCreateWidgetsFor(surf);
 }
 
 void CRenderer::startFadeIn() {

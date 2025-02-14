@@ -14,16 +14,23 @@ class CSessionLockSurface;
 
 class CLabel : public IWidget {
   public:
-    CLabel(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
+    CLabel() = default;
     ~CLabel();
 
+    void         registerSelf(const SP<CLabel>& self);
+
+    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+
+    void         reset();
 
     void         renderUpdate();
     void         onTimerUpdate();
     void         plantTimer();
 
   private:
+    WP<CLabel>                              m_self;
+
     std::string                             getUniqueResourceId();
 
     std::string                             labelPreFormat;

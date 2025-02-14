@@ -6,6 +6,7 @@
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
 #include "../AsyncResourceGatherer.hpp"
+#include <hyprutils/math/Misc.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>
@@ -23,10 +24,16 @@ struct SFade {
 
 class CBackground : public IWidget {
   public:
-    CBackground(const Vector2D& viewport, COutput* output_, const std::string& resourceID, const std::unordered_map<std::string, std::any>& props, bool ss_);
+    CBackground() = default;
     ~CBackground();
 
+    void         registerSelf(const SP<CBackground>& self);
+
+    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+
+    void         reset(); // Unload assets, remove timers, etc.
+
     void         renderRect(CHyprColor color);
 
     void         onReloadTimerUpdate();
@@ -35,6 +42,8 @@ class CBackground : public IWidget {
     void         startCrossFadeOrUpdateRender();
 
   private:
+    WP<CBackground> m_self;
+
     // if needed
     CFramebuffer                            blurredFB;
 
@@ -48,6 +57,9 @@ class CBackground : public IWidget {
     Vector2D                                viewport;
     std::string                             path = "";
 
+    std::string                             outputPort;
+    Hyprutils::Math::eTransform             transform;
+
     std::string                             resourceID;
     std::string                             pendingResourceID;
 
@@ -55,12 +67,11 @@ class CBackground : public IWidget {
 
     CHyprColor                              color;
     SPreloadedAsset*                        asset        = nullptr;
-    COutput*                                output       = nullptr;
     bool                                    isScreenshot = false;
     SPreloadedAsset*                        pendingAsset = nullptr;
     bool                                    firstRender  = true;
 
-    std::unique_ptr<SFade>                  fade;
+    UP<SFade>                               fade;
 
     int                                     reloadTime = -1;
     std::string                             reloadCommand;

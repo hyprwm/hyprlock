@@ -27,7 +27,7 @@ class ICustomConfigValueData {
 
 class CLayoutValueData : public ICustomConfigValueData {
   public:
-    CLayoutValueData() {};
+    CLayoutValueData() = default;
     virtual ~CLayoutValueData() {};
 
     virtual eConfigValueDataTypes getDataType() {

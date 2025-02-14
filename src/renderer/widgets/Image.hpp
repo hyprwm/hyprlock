@@ -17,16 +17,23 @@ class COutput;
 
 class CImage : public IWidget {
   public:
-    CImage(const Vector2D& viewport, COutput* output_, const std::string& resourceID, const std::unordered_map<std::string, std::any>& props);
+    CImage() = default;
     ~CImage();
 
+    void         registerSelf(const SP<CImage>& self);
+
+    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+
+    void         reset();
 
     void         renderUpdate();
     void         onTimerUpdate();
     void         plantTimer();
 
   private:
+    WP<CImage>                              m_self;
+
     CFramebuffer                            imageFB;
 
     int                                     size;
