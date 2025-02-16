@@ -14,6 +14,7 @@ enum eConfigValueDataTypes {
     CVD_TYPE_INVALID  = -1,
     CVD_TYPE_LAYOUT   = 0,
     CVD_TYPE_GRADIENT = 1,
+    CVD_TYPE_FONT_SIZE = 2,
 };
 
 class ICustomConfigValueData {
@@ -130,4 +131,58 @@ class CGradientValueData : public ICustomConfigValueData {
         RASSERT(P, "Empty config value");
         return P;
     }
+};
+
+enum eFontRelativeTypes {
+    FR_TYPE_ABSOLUTE = 0,
+    FR_TYPE_VIEW_WIDTH = 1,    
+    FR_TYPE_VIEW_HEIGHT = 2,    
+};
+
+class CFontSizeValueData : public ICustomConfigValueData {
+public:
+    CFontSizeValueData() {}
+    virtual ~CFontSizeValueData() {};
+
+    virtual eConfigValueDataTypes getDataType() {
+        return CVD_TYPE_FONT_SIZE;
+    }
+
+    static CFontSizeValueData* fromAnyPv(const std::any& v) {
+        RASSERT(v.type() == typeid(void*), "Invalid config value type");
+        const auto P = (CFontSizeValueData*)std::any_cast<void*>(v);
+        RASSERT(P, "Empty config value");
+        return P;
+    }
+
+    virtual std::string toString() {
+        return std::format("{}{}", m_size, valueSuffix());
+    }
+
+    const char *valueSuffix() {
+        switch (m_relativeTo) {
+            case FR_TYPE_VIEW_WIDTH:
+                return "vw";
+            case FR_TYPE_VIEW_HEIGHT:
+                return "vh";
+            case FR_TYPE_ABSOLUTE:
+            default:
+                return "px";
+        }
+    }
+
+    int getAbsolute(const Hyprutils::Math::Vector2D& viewport) {
+        switch (m_relativeTo) {
+            case FR_TYPE_VIEW_WIDTH:
+                return std::round((m_size / 100) * viewport.x);
+            case FR_TYPE_VIEW_HEIGHT:
+                return std::round((m_size / 100) * viewport.y);
+            case FR_TYPE_ABSOLUTE:
+            default:
+                return std::round(m_size);
+        }
+    }
+
+    float m_size;
+    eFontRelativeTypes m_relativeTo = FR_TYPE_ABSOLUTE;
 };
