@@ -345,10 +345,8 @@ void CHyprlock::run() {
         }
     }
 
-    acquireSessionLock();
-
-    // Recieved finished
-    if (m_bTerminate) {
+    // Failed to lock the session
+    if (!acquireSessionLock()) {
         m_sLoopState.timerEvent = true;
         m_sLoopState.timerCV.notify_all();
         g_pRenderer->asyncResourceGatherer->notify();
@@ -365,8 +363,6 @@ void CHyprlock::run() {
     registerSignalAction(SIGRTMIN, handlePollTerminate);
     registerSignalAction(SIGSEGV, handleCriticalSignal);
     registerSignalAction(SIGABRT, handleCriticalSignal);
-
-    createSessionLockSurfaces();
 
     pollfd pollfds[2];
     pollfds[0] = {
@@ -433,7 +429,7 @@ void CHyprlock::run() {
             float least = 10000;
             for (auto& t : m_vTimers) {
                 const auto TIME = std::clamp(t->leftMs(), 1.f, INFINITY);
-                least = std::min(TIME, least);
+                least           = std::min(TIME, least);
             }
 
             m_sLoopState.timersMutex.unlock();
@@ -701,9 +697,13 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     }
 }
 
-void CHyprlock::acquireSessionLock() {
+bool CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = makeShared<CCExtSessionLockV1>(m_sWaylandState.sessionLock->sendLock());
+    if (!m_sLockState.lock) {
+        Debug::log(ERR, "Failed to create a lock object!");
+        return false;
+    }
 
     m_sLockState.lock->setLocked([this](CCExtSessionLockV1* r) { onLockLocked(); });
 
@@ -711,6 +711,22 @@ void CHyprlock::acquireSessionLock() {
 
     // roundtrip in case the compositor sends `finished` right away
     wl_display_roundtrip(m_sWaylandState.display);
+
+    // recieved finished right away (probably already locked)
+    if (m_bTerminate)
+        return false;
+
+    m_lockAquired = true;
+
+    // create a session lock surface for exiting outputs
+    for (auto& o : m_vOutputs) {
+        if (!o->done)
+            continue;
+
+        o->sessionLockSurface = std::make_unique<CSessionLockSurface>(o.get());
+    }
+
+    return true;
 }
 
 void CHyprlock::releaseSessionLock() {
@@ -741,12 +757,6 @@ void CHyprlock::releaseSessionLock() {
     m_bLocked    = false;
 
     wl_display_roundtrip(m_sWaylandState.display);
-}
-
-void CHyprlock::createSessionLockSurfaces() {
-    for (auto& o : m_vOutputs) {
-        o->sessionLockSurface = std::make_unique<CSessionLockSurface>(o.get());
-    }
 }
 
 void CHyprlock::onLockLocked() {
