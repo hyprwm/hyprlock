@@ -4,13 +4,13 @@
 #include "../config/ConfigManager.hpp"
 
 CHyprlockAnimationManager::CHyprlockAnimationManager() {
-    ;
+    addBezierWithName("linear", {0, 0}, {1, 1});
 }
 
 template <Animable VarType>
 void updateVariable(CAnimatedVariable<VarType>& av, const float POINTY, bool warp = false) {
     if (warp || !av.enabled() || av.value() == av.goal()) {
-        av.warp();
+        av.warp(true, false);
         return;
     }
 
@@ -20,7 +20,7 @@ void updateVariable(CAnimatedVariable<VarType>& av, const float POINTY, bool war
 
 void updateColorVariable(CAnimatedVariable<CHyprColor>& av, const float POINTY, bool warp = false) {
     if (warp || !av.enabled() || av.value() == av.goal()) {
-        av.warp();
+        av.warp(true, false);
         return;
     }
 
@@ -44,7 +44,7 @@ void updateColorVariable(CAnimatedVariable<CHyprColor>& av, const float POINTY, 
 
 void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const float POINTY, bool warp = false) {
     if (warp || av.value() == av.goal()) {
-        av.warp();
+        av.warp(true, false);
         return;
     }
 

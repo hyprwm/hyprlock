@@ -426,7 +426,7 @@ void CPasswordInputField::updateColors() {
     CHyprColor          innerTarget = colorConfig.inner;
     CHyprColor          fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : colorConfig.font;
 
-    if (checkWaiting || displayFail || g_pHyprlock->m_bCapsLock || (NUMLOCK && !colorConfig.num->m_bIsFallback)) {
+    if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {
             fontTarget = targetGrad->m_vColors.front();
         } else if (BORDERLESS && !colorConfig.swapFont) {
