@@ -346,6 +346,7 @@ void CConfigManager::init() {
 
     // set config for root node
     m_AnimationTree.setConfigForNode("global", 1, 8.f, "default");
+    m_AnimationTree.setConfigForNode("inputFieldColors", 1, 8.f, "linear");
 
     m_config.commence();
 
