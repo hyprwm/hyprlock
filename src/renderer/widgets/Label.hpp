@@ -12,9 +12,11 @@
 struct SPreloadedAsset;
 class CSessionLockSurface;
 
+using WidgetProps = std::unordered_map<std::string, std::any>;
+
 class CLabel : public IWidget {
   public:
-    CLabel(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
+    CLabel(const Vector2D& viewport_, const WidgetProps& props_, const std::string& output);
     ~CLabel();
 
     virtual bool draw(const SRenderData& data);
@@ -46,4 +48,5 @@ class CLabel : public IWidget {
 
     CShadowable                             shadow;
     bool                                    updateShadow = true;
+    WidgetProps                             props;
 };
