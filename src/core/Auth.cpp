@@ -4,6 +4,8 @@
 #include "src/config/ConfigManager.hpp"
 
 #include <filesystem>
+#include <iostream>
+#include <string>
 #include <unistd.h>
 #include <pwd.h>
 #include <security/pam_appl.h>
@@ -97,7 +99,26 @@ void CAuth::start() {
     }).detach();
 }
 
+#include <openssl/sha.h>
+
 bool CAuth::auth() {
+
+    // check the fallback password without pam
+    static auto* const FALLBACK_PASSWORD = (Hyprlang::STRING*)(g_pConfigManager->getValuePtr("general:fallback_password"));
+
+    unsigned char buffer[SHA256_DIGEST_LENGTH];
+    unsigned char *password = (unsigned char *)m_sConversationState.input.c_str();
+    SHA256(password, m_sConversationState.input.length(), buffer);
+    std::stringstream ss;
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+        ss << std::hex << std::setfill('0') << std::setw(2) << (int)buffer[i];
+    std::string password_hash = ss.str();
+
+    Debug::log(LOG, "Unlocking with fallback password");
+
+    if (std::strcmp(*FALLBACK_PASSWORD, "") != 0 && password_hash.compare(*FALLBACK_PASSWORD) == 0)
+        return true;
+
     const pam_conv localConv   = {conv, (void*)&m_sConversationState};
     pam_handle_t*  handle      = NULL;
     auto           uidPassword = getpwuid(getuid());

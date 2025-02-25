@@ -35,6 +35,7 @@ add_compile_definitions(HYPRLOCK_VERSION="${VERSION}")
 # dependencies
 message(STATUS "Checking deps...")
 
+find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -61,7 +62,8 @@ pkg_check_modules(
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
 target_link_libraries(hyprlock PRIVATE pam rt Threads::Threads PkgConfig::deps
-                                       OpenGL::EGL OpenGL::GL)
+                                       OpenGL::EGL OpenGL::GL OpenSSL::SSL)
+
 
 # protocols
 find_program(WaylandScanner NAMES wayland-scanner)
