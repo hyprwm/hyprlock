@@ -18,6 +18,7 @@
   wayland,
   wayland-protocols,
   wayland-scanner,
+  openssl,
   version ? "git",
 }:
 stdenv.mkDerivation {
@@ -47,6 +48,7 @@ stdenv.mkDerivation {
     pango
     wayland
     wayland-protocols
+    openssl
   ];
 
   meta = {
