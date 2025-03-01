@@ -11,10 +11,10 @@
 CAuth::CAuth() {
     static const auto ENABLEPAM = g_pConfigManager->getValue<Hyprlang::INT>("auth:pam:enabled");
     if (*ENABLEPAM)
-        m_vImpls.push_back(std::make_shared<CPam>());
+        m_vImpls.emplace_back(makeShared<CPam>());
     static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
     if (*ENABLEFINGERPRINT)
-        m_vImpls.push_back(std::make_shared<CFingerprint>());
+        m_vImpls.emplace_back(makeShared<CFingerprint>());
 
     RASSERT(!m_vImpls.empty(), "At least one authentication method must be enabled!");
 }
@@ -32,12 +32,7 @@ void CAuth::submitInput(const std::string& input) {
 }
 
 bool CAuth::checkWaiting() {
-    for (const auto& i : m_vImpls) {
-        if (i->checkWaiting())
-            return true;
-    }
-
-    return false;
+    return std::ranges::any_of(m_vImpls, [](const auto& i) { return i->checkWaiting(); });
 }
 
 const std::string& CAuth::getCurrentFailText() {
@@ -64,7 +59,7 @@ size_t CAuth::getFailedAttempts() {
     return m_sCurrentFail.failedAttempts;
 }
 
-std::shared_ptr<IAuthImplementation> CAuth::getImpl(eAuthImplementations implType) {
+SP<IAuthImplementation> CAuth::getImpl(eAuthImplementations implType) {
     for (const auto& i : m_vImpls) {
         if (i->getImplType() == implType)
             return i;

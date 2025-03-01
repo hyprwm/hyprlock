@@ -4,15 +4,21 @@
 #include <cmath>
 #include <hyprlang.hpp>
 
-CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props) : shadow(this, props, viewport_) {
+void CShape::registerSelf(const SP<CShape>& self) {
+    m_self = self;
+}
+
+void CShape::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
+    shadow.configure(this, props, viewport);
+    viewport = pOutput->getViewport();
 
     try {
-        size       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport_);
+        size       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport);
         rounding   = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         border     = std::any_cast<Hyprlang::INT>(props.at("border_size"));
         color      = std::any_cast<Hyprlang::INT>(props.at("color"));
         borderGrad = *CGradientValueData::fromAnyPv(props.at("border_color"));
-        pos        = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        pos        = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
         halign     = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign     = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle      = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
@@ -23,8 +29,7 @@ CShape::CShape(const Vector2D& viewport_, const std::unordered_map<std::string, 
         RASSERT(false, "Missing property for CShape: {}", e.what()); //
     }
 
-    viewport = viewport_;
-    angle    = angle * M_PI / 180.0;
+    angle = angle * M_PI / 180.0;
 
     const Vector2D VBORDER  = {border, border};
     const Vector2D REALSIZE = size + VBORDER * 2.0;

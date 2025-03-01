@@ -37,9 +37,6 @@ class CHyprlock {
     void                             unlock();
     bool                             isUnlocked();
 
-    void                             onGlobal(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version);
-    void                             onGlobalRemoved(void* data, struct wl_registry* registry, uint32_t name);
-
     std::shared_ptr<CTimer>          addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
                                               bool force = false);
 
@@ -103,7 +100,7 @@ class CHyprlock {
 
     std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
 
-    std::vector<std::unique_ptr<COutput>> m_vOutputs;
+    std::vector<SP<COutput>>              m_vOutputs;
     std::vector<std::shared_ptr<CTimer>>  getTimers();
 
     struct {
@@ -167,4 +164,4 @@ class CHyprlock {
     std::vector<uint32_t>                m_vPressedKeys;
 };
 
-inline std::unique_ptr<CHyprlock> g_pHyprlock;
+inline UP<CHyprlock> g_pHyprlock;

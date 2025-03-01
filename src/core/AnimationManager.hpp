@@ -4,7 +4,6 @@
 #include <hyprutils/animation/AnimatedVariable.hpp>
 
 #include "../helpers/AnimatedVariable.hpp"
-#include "../helpers/Math.hpp"
 #include "../defines.hpp"
 
 class CHyprlockAnimationManager : public Hyprutils::Animation::CAnimationManager {
@@ -31,4 +30,4 @@ class CHyprlockAnimationManager : public Hyprutils::Animation::CAnimationManager
     bool m_bTickScheduled = false;
 };
 
-inline std::unique_ptr<CHyprlockAnimationManager> g_pAnimationManager;
+inline UP<CHyprlockAnimationManager> g_pAnimationManager;

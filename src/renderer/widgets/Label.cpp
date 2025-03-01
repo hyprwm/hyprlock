@@ -8,31 +8,25 @@
 #include <stdexcept>
 
 CLabel::~CLabel() {
-    if (labelTimer) {
-        labelTimer->cancel();
-        labelTimer.reset();
+    reset();
+}
+
+void CLabel::registerSelf(const SP<CLabel>& self) {
+    m_self = self;
+}
+
+static void onTimer(WP<CLabel> ref) {
+    if (auto PLABEL = ref.lock(); PLABEL) {
+        // update label
+        PLABEL->onTimerUpdate();
+        // plant new timer
+        PLABEL->plantTimer();
     }
 }
 
-static void onTimer(std::shared_ptr<CTimer> self, void* data) {
-    if (data == nullptr)
-        return;
-    const auto PLABEL = (CLabel*)data;
-
-    // update label
-    PLABEL->onTimerUpdate();
-
-    // plant new timer
-    PLABEL->plantTimer();
-}
-
-static void onAssetCallback(void* data) {
-    const auto PLABEL = (CLabel*)data;
-    PLABEL->renderUpdate();
-}
-
-static void onAssetCallbackTimer(std::shared_ptr<CTimer> self, void* data) {
-    onAssetCallback(data);
+static void onAssetCallback(WP<CLabel> ref) {
+    if (auto PLABEL = ref.lock(); PLABEL)
+        PLABEL->renderUpdate();
 }
 
 std::string CLabel::getUniqueResourceId() {
@@ -57,23 +51,28 @@ void CLabel::onTimerUpdate() {
     pendingResourceID = request.id;
     request.asset     = label.formatted;
 
-    request.callback     = onAssetCallback;
-    request.callbackData = this;
+    request.callback = [REF = m_self]() { onAssetCallback(REF); };
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CLabel::plantTimer() {
+
     if (label.updateEveryMs != 0)
-        labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), onTimer, this, label.allowForceUpdate);
+        labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), [REF = m_self](auto, auto) { onTimer(REF); }, this, label.allowForceUpdate);
     else if (label.updateEveryMs == 0 && label.allowForceUpdate)
-        labelTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onTimer, this, true);
+        labelTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onTimer(REF); }, this, true);
 }
 
-CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
-    outputStringPort(output), shadow(this, props, viewport_) {
+void CLabel::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
+    reset();
+    shadow.configure(this, props, viewport);
+
+    outputStringPort = pOutput->stringPort;
+    viewport         = pOutput->getViewport();
+
     try {
-        pos            = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
+        configPos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
         labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));
         halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
@@ -82,7 +81,7 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
         std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
-        CHyprColor      labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
+        CHyprColor  labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
         int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
 
         label = formatString(labelPreFormat);
@@ -105,12 +104,28 @@ CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, 
         RASSERT(false, "Missing property for CLabel: {}", e.what()); //
     }
 
-    configPos = pos;
-    viewport  = viewport_;
+    pos = configPos; // Label size not known yet
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
     plantTimer();
+}
+
+void CLabel::reset() {
+    if (labelTimer) {
+        labelTimer->cancel();
+        labelTimer.reset();
+    }
+
+    if (g_pHyprlock->m_bTerminate)
+        return;
+
+    if (asset)
+        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+
+    asset = nullptr;
+    pendingResourceID.clear();
+    resourceID.clear();
 }
 
 bool CLabel::draw(const SRenderData& data) {
@@ -150,7 +165,7 @@ void CLabel::renderUpdate() {
     } else {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
 
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, this);
         return;
     }
 

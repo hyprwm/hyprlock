@@ -5,7 +5,6 @@
 #include <hyprlang.hpp>
 #include <optional>
 #include <vector>
-#include <memory>
 #include <unordered_map>
 
 #include "../defines.hpp"
@@ -41,4 +40,4 @@ class CConfigManager {
     Hyprlang::CConfig m_config;
 };
 
-inline std::unique_ptr<CConfigManager> g_pConfigManager;
+inline UP<CConfigManager> g_pConfigManager;
