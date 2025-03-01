@@ -8,6 +8,7 @@
 #include "../../config/ConfigDataValues.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
 #include <chrono>
+#include <hyprutils/math/Vector2D.hpp>
 #include <vector>
 #include <any>
 #include <unordered_map>
@@ -16,37 +17,45 @@ struct SPreloadedAsset;
 
 class CPasswordInputField : public IWidget {
   public:
-    CPasswordInputField(const Vector2D& viewport, const std::unordered_map<std::string, std::any>& props, const std::string& output);
+    CPasswordInputField() = default;
+    virtual ~CPasswordInputField();
 
+    void         registerSelf(const SP<CPasswordInputField>& self);
+
+    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+
+    void         reset();
     void         onFadeOutTimer();
 
   private:
-    void                 updateDots();
-    void                 updateFade();
-    void                 updatePlaceholder();
-    void                 updateWidth();
-    void                 updateHiddenInputState();
-    void                 updateInputState();
-    void                 updateColors();
+    WP<CPasswordInputField> m_self;
 
-    bool                 firstRender  = true;
-    bool                 redrawShadow = false;
-    bool                 checkWaiting = false;
-    bool                 displayFail  = false;
+    void                    updateDots();
+    void                    updateFade();
+    void                    updatePlaceholder();
+    void                    updateWidth();
+    void                    updateHiddenInputState();
+    void                    updateInputState();
+    void                    updateColors();
 
-    size_t               passwordLength = 0;
+    bool                    firstRender  = true;
+    bool                    redrawShadow = false;
+    bool                    checkWaiting = false;
+    bool                    displayFail  = false;
 
-    PHLANIMVAR<Vector2D> size;
-    Vector2D             pos;
-    Vector2D             viewport;
-    Vector2D             configPos;
-    Vector2D             configSize;
+    size_t                  passwordLength = 0;
 
-    std::string          halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
-    uint64_t             configFailTimeoutMs = 2000;
+    PHLANIMVAR<Vector2D>    size;
+    Vector2D                pos;
+    Vector2D                viewport;
+    Vector2D                configPos;
+    Vector2D                configSize;
 
-    int                  outThick, rounding;
+    std::string             halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
+    uint64_t                configFailTimeoutMs = 2000;
+
+    int                     outThick, rounding;
 
     struct {
         PHLANIMVAR<float> currentAmount;

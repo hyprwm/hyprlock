@@ -37,8 +37,7 @@ class CAsyncResourceGatherer {
         // optional. Callbacks will be dispatched from the main thread,
         // so wayland/gl calls are OK.
         // will fire once the resource is fully loaded and ready.
-        void (*callback)(void*) = nullptr;
-        void* callbackData      = nullptr;
+        std::function<void()> callback = nullptr;
     };
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
@@ -75,7 +74,7 @@ class CAsyncResourceGatherer {
         Vector2D                        size;
     };
 
-    std::vector<std::unique_ptr<CScreencopyFrame>>   scframes;
+    std::vector<UP<CScreencopyFrame>>                scframes;
 
     std::vector<SPreloadTarget>                      preloadTargets;
     std::mutex                                       preloadTargetsMutex;
