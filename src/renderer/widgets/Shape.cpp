@@ -9,8 +9,9 @@ void CShape::registerSelf(const SP<CShape>& self) {
 }
 
 void CShape::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
-    shadow.configure(this, props, viewport);
     viewport = pOutput->getViewport();
+
+    shadow.configure(m_self.lock(), props, viewport);
 
     try {
         size       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport);

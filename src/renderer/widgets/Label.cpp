@@ -66,10 +66,11 @@ void CLabel::plantTimer() {
 
 void CLabel::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
-    shadow.configure(this, props, viewport);
 
     outputStringPort = pOutput->stringPort;
     viewport         = pOutput->getViewport();
+
+    shadow.configure(m_self.lock(), props, viewport);
 
     try {
         configPos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);

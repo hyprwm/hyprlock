@@ -86,8 +86,8 @@ void CBackground::reset() {
         fade.reset();
     }
 
-    if (g_pHyprlock->m_bTerminate)
-        return; // Who cares about unloading assets when we're about to exit??
+    if (g_pHyprlock->m_bTerminate || isScreenshot)
+        return; // Keeping screenshot assets and who cares about unloading assets when we're about to exit??
 
     // Unload existing assets
     if (pendingAsset)

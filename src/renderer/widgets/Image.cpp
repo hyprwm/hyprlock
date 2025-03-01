@@ -83,8 +83,9 @@ void CImage::plantTimer() {
 void CImage::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
 
-    shadow.configure(this, props, viewport);
     viewport = pOutput->getViewport();
+
+    shadow.configure(m_self.lock(), props, viewport);
 
     try {
         size     = std::any_cast<Hyprlang::INT>(props.at("size"));
