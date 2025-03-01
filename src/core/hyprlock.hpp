@@ -67,6 +67,8 @@ class CHyprlock {
     size_t                           getPasswordBufferLen();
     size_t                           getPasswordBufferDisplayLen();
 
+    std::string                      getActiveKeyboardLayout();
+
     SP<CCExtSessionLockManagerV1>    getSessionLockMgr();
     SP<CCExtSessionLockV1>           getSessionLock();
     SP<CCWlCompositor>               getCompositor();
