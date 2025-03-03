@@ -27,11 +27,6 @@ static void onAssetCallback(WP<CImage> ref) {
         PIMAGE->renderUpdate();
 }
 
-static void onAssetCallbackTimer(std::shared_ptr<CTimer> m_self, void* data) {
-    const auto PIMAGE = (CImage*)data;
-    PIMAGE->renderUpdate();
-}
-
 void CImage::onTimerUpdate() {
     const std::string OLDPATH = path;
 
@@ -75,9 +70,9 @@ void CImage::onTimerUpdate() {
 void CImage::plantTimer() {
 
     if (reloadTime == 0) {
-        imageTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onTimer(REF); }, this, true);
+        imageTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onTimer(REF); }, nullptr, true);
     } else if (reloadTime > 0)
-        imageTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), [REF = m_self](auto, auto) { onTimer(REF); }, this, false);
+        imageTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), [REF = m_self](auto, auto) { onTimer(REF); }, nullptr, false);
 }
 
 void CImage::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
@@ -231,7 +226,7 @@ void CImage::renderUpdate() {
     } else if (!pendingResourceID.empty()) {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
 
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), onAssetCallbackTimer, this);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
     }
 
     g_pHyprlock->renderOutput(output->stringPort);

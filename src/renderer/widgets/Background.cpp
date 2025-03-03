@@ -314,16 +314,17 @@ void CBackground::startCrossFadeOrUpdateRender() {
                         fade->crossFadeTimer.reset();
                     }
                 }
-                fade->start          = std::chrono::system_clock::now();
-                fade->a              = 0;
-                fade->crossFadeTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossFadeTime)), [REF = m_self](auto, auto) { onCrossFadeTimer(REF); }, this);
+                fade->start = std::chrono::system_clock::now();
+                fade->a     = 0;
+                fade->crossFadeTimer =
+                    g_pHyprlock->addTimer(std::chrono::milliseconds((int)(1000.0 * crossFadeTime)), [REF = m_self](auto, auto) { onCrossFadeTimer(REF); }, nullptr);
             } else {
                 onCrossFadeTimerUpdate();
             }
         }
     } else if (!pendingResourceID.empty()) {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, this);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
     }
 
     g_pHyprlock->renderOutput(outputPort);
