@@ -2,7 +2,10 @@
 #include "../Renderer.hpp"
 #include <hyprlang.hpp>
 
-CShadowable::CShadowable(IWidget* widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) : widget(widget_), viewport(viewport_) {
+void CShadowable::configure(WP<IWidget> widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) {
+    m_widget = widget_;
+    viewport = viewport_;
+
     size   = std::any_cast<Hyprlang::INT>(props.at("shadow_size"));
     passes = std::any_cast<Hyprlang::INT>(props.at("shadow_passes"));
     color  = std::any_cast<Hyprlang::INT>(props.at("shadow_color"));
@@ -10,6 +13,10 @@ CShadowable::CShadowable(IWidget* widget_, const std::unordered_map<std::string,
 }
 
 void CShadowable::markShadowDirty() {
+    const auto WIDGET = m_widget.lock();
+
+    if (!m_widget)
+        return;
 
     if (passes == 0)
         return;
@@ -22,7 +29,7 @@ void CShadowable::markShadowDirty() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     ignoreDraw = true;
-    widget->draw(IWidget::SRenderData{.opacity = 1.0});
+    WIDGET->draw(IWidget::SRenderData{.opacity = 1.0});
     ignoreDraw = false;
 
     g_pRenderer->blurFB(shadowFB, CRenderer::SBlurParams{.size = size, .passes = passes, .colorize = color, .boostA = boostA});
@@ -31,7 +38,7 @@ void CShadowable::markShadowDirty() {
 }
 
 bool CShadowable::draw(const IWidget::SRenderData& data) {
-    if (passes == 0)
+    if (!m_widget || passes == 0)
         return true;
 
     if (!shadowFB.isAllocated() || ignoreDraw)

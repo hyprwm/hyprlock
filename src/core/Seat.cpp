@@ -131,7 +131,7 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
 }
 
 void CSeatManager::registerCursorShape(SP<CCWpCursorShapeManagerV1> shape) {
-    m_pCursorShape = std::make_unique<CCursorShape>(shape);
+    m_pCursorShape = makeUnique<CCursorShape>(shape);
 }
 
 bool CSeatManager::registered() {

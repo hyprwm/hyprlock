@@ -48,15 +48,12 @@ void CAsyncResourceGatherer::enqueueScreencopyFrames() {
     }
 
     for (auto& mon : mons) {
-        const auto MON = std::find_if(g_pHyprlock->m_vOutputs.begin(), g_pHyprlock->m_vOutputs.end(),
-                                      [mon](const auto& other) { return other->stringPort == mon || other->stringDesc.starts_with(mon); });
+        const auto MON = std::ranges::find_if(g_pHyprlock->m_vOutputs, [mon](const auto& other) { return other->stringPort == mon || other->stringDesc.starts_with(mon); });
 
         if (MON == g_pHyprlock->m_vOutputs.end())
             continue;
 
-        const auto PMONITOR = MON->get();
-
-        scframes.emplace_back(std::make_unique<CScreencopyFrame>(PMONITOR));
+        scframes.emplace_back(makeUnique<CScreencopyFrame>(*MON));
     }
 }
 
@@ -304,17 +301,6 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     preloadTargets.push_back(target);
 }
 
-struct STimerCallbackData {
-    void (*cb)(void*) = nullptr;
-    void* data        = nullptr;
-};
-
-static void timerCallback(std::shared_ptr<CTimer> self, void* data_) {
-    auto data = (STimerCallbackData*)data_;
-    data->cb(data->data);
-    delete data;
-}
-
 void CAsyncResourceGatherer::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
@@ -349,7 +335,7 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
             // plant timer for callback
             if (r.callback)
-                g_pHyprlock->addTimer(std::chrono::milliseconds(0), timerCallback, new STimerCallbackData{.cb = r.callback, .data = r.callbackData});
+                g_pHyprlock->addTimer(std::chrono::milliseconds(0), [cb = r.callback](auto, auto) { cb(); }, nullptr);
         }
     }
 }

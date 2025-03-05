@@ -1,9 +1,9 @@
 #pragma once
 
-#include <memory>
-
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+
+#include "../defines.hpp"
 
 class CEGL {
   public:
@@ -19,4 +19,4 @@ class CEGL {
     void                                     makeCurrent(EGLSurface surf);
 };
 
-inline std::unique_ptr<CEGL> g_pEGL;
+inline UP<CEGL> g_pEGL;

@@ -1,16 +1,23 @@
 #pragma once
 
 #include "../../helpers/Math.hpp"
+#include "../../defines.hpp"
 #include <string>
+#include <unordered_map>
+#include <any>
+
+class COutput;
 
 class IWidget {
   public:
     struct SRenderData {
         float opacity = 1;
     };
+
     virtual ~IWidget() = default;
 
-    virtual bool    draw(const SRenderData& data) = 0;
+    virtual void    configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) = 0;
+    virtual bool    draw(const SRenderData& data)                                                                = 0;
 
     static Vector2D posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign,
                                    const double& ang = 0);
