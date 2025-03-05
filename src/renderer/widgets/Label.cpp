@@ -44,6 +44,18 @@ void CLabel::onTimerUpdate() {
 
     label = formatString(labelPreFormat);
 
+    try {
+        const auto LAYOUT = CLayoutValueData::fromAnyPv(props.at("position"));
+        if (LAYOUT->needsUpdate()) {
+            const auto OLD_POS = LAYOUT->getAbsolute(viewport);
+            LAYOUT->update();
+            if (OLD_POS != LAYOUT->getAbsolute(viewport)) { // redraw:
+                configPos = LAYOUT->getAbsolute(viewport);
+                g_pHyprlock->renderOutput(outputStringPort);
+            }
+        }
+    } catch (...) { /* TODO */ }
+
     if (label.formatted == oldFormatted && !label.alwaysUpdate)
         return;
 
@@ -70,8 +82,8 @@ void CLabel::plantTimer() {
         labelTimer = g_pHyprlock->addTimer(std::chrono::hours(1), onTimer, this, true);
 }
 
-CLabel::CLabel(const Vector2D& viewport_, const std::unordered_map<std::string, std::any>& props, const std::string& output) :
-    outputStringPort(output), shadow(this, props, viewport_) {
+CLabel::CLabel(const Vector2D& viewport_, const WidgetProps& props_, const std::string& output) :
+    outputStringPort(output), shadow(this, props_, viewport_), props(props_) {
     try {
         pos            = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport_);
         labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));

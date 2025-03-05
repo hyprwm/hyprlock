@@ -30,11 +30,92 @@ class CLayoutValueData : public ICustomConfigValueData {
     CLayoutValueData() {};
     virtual ~CLayoutValueData() {};
 
+    struct SExecuteResult {
+        Hyprutils::Math::Vector2D values;
+        struct {
+            bool x = false;
+            bool y = false;
+        } isRelative;
+    };
+
+    SExecuteResult executeCommand() {
+        if (!m_bIsCommand)
+            return {{0,0}, {false, false}};
+            
+        FILE* pipe = popen(m_sCommand.c_str(), "r");
+        if (!pipe) {
+            Debug::log(ERR, "Failed to execute position command");
+            return {{0,0}, {false, false}};
+        }
+
+        char buffer[128];
+        std::string result = "";
+        while (!feof(pipe)) {
+            if (fgets(buffer, 128, pipe) != NULL)
+                result += buffer;
+        }
+        pclose(pipe);
+
+        if (!result.empty() && result.back() == '\n')
+            result.pop_back();
+
+        SExecuteResult out;
+        const auto SPLIT = result.find(',');
+        if (SPLIT == std::string::npos) {
+            Debug::log(ERR, "Position command output must be x,y format");
+            return {{0,0}, {false, false}};
+        }
+
+        auto lhs = result.substr(0, SPLIT);
+        auto rhs = result.substr(SPLIT + 1);
+        if (rhs.starts_with(" "))
+            rhs = rhs.substr(1);
+
+        if (lhs.ends_with("%")) {
+            out.isRelative.x = true;
+            lhs.pop_back();
+        }
+
+        if (rhs.ends_with("%")) {
+            out.isRelative.y = true;
+            rhs.pop_back();
+        }
+
+        try {
+            out.values = {std::stof(lhs), std::stof(rhs)};
+        } catch (std::exception& e) {
+            Debug::log(ERR, "Failed to parse command output as coordinates");
+            return {{0,0}, {false, false}};
+        }
+
+        return out;
+    }
+
+    bool needsUpdate() const {
+        return m_bIsCommand;
+    }
+
+    float updateMs() const {
+        return m_bIsCommand ? m_iUpdateMs : 0;
+    }
+
+    void update() {
+        if (!m_bIsCommand)
+            return;
+            
+        auto result = executeCommand();
+        m_vValues = result.values;
+        m_sIsRelative.x = result.isRelative.x;
+        m_sIsRelative.y = result.isRelative.y;
+    }
+
     virtual eConfigValueDataTypes getDataType() {
         return CVD_TYPE_LAYOUT;
     }
 
     virtual std::string toString() {
+        if (m_bIsCommand)
+            return std::format("cmd[update:{}]{}", m_iUpdateMs, m_sCommand);
         return std::format("{}{},{}{}", m_vValues.x, (m_sIsRelative.x) ? "%" : "px", m_vValues.y, (m_sIsRelative.y) ? "%" : "px");
     }
 
@@ -46,6 +127,8 @@ class CLayoutValueData : public ICustomConfigValueData {
     }
 
     Hyprutils::Math::Vector2D getAbsolute(const Hyprutils::Math::Vector2D& viewport) {
+        if (m_bIsCommand)
+            update();
         return {
             (m_sIsRelative.x ? (m_vValues.x / 100) * viewport.x : m_vValues.x),
             (m_sIsRelative.y ? (m_vValues.y / 100) * viewport.y : m_vValues.y),
@@ -57,6 +140,10 @@ class CLayoutValueData : public ICustomConfigValueData {
         bool x = false;
         bool y = false;
     } m_sIsRelative;
+    
+    bool        m_bIsCommand = false;
+    std::string m_sCommand = "";
+    int         m_iUpdateMs = 0;
 };
 
 class CGradientValueData : public ICustomConfigValueData {
