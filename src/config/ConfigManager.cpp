@@ -603,6 +603,11 @@ std::optional<std::string> CConfigManager::handleAnimation(const std::string& co
     if (enabledInt > 1 || enabledInt < 0)
         return "invalid animation on/off state";
 
+    if (!enabledInt) {
+        m_AnimationTree.setConfigForNode(ANIMNAME, 0, 1, "default");
+        return {};
+    }
+
     int64_t speed = -1;
 
     // speed
