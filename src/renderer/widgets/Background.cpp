@@ -85,22 +85,6 @@ void CBackground::reset() {
         }
         fade.reset();
     }
-
-    if (g_pHyprlock->m_bTerminate || isScreenshot)
-        return; // Keeping screenshot assets and who cares about unloading assets when we're about to exit??
-
-    // Unload existing assets
-    if (pendingAsset)
-        g_pRenderer->asyncResourceGatherer->unloadAsset(pendingAsset);
-
-    pendingAsset      = nullptr;
-    pendingResourceID = "";
-
-    if (asset)
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
-
-    asset      = nullptr;
-    resourceID = "";
 }
 
 void CBackground::renderRect(CHyprColor color) {
