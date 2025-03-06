@@ -101,7 +101,8 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
         RASSERT(false, "Missing propperty for CImage: {}", e.what()); //
     }
 
-    angle = angle * M_PI / 180.0;
+    resourceID = "image:" + path;
+    angle      = angle * M_PI / 180.0;
 
     if (reloadTime > -1) {
         try {
@@ -123,7 +124,7 @@ void CImage::reset() {
 
     imageFB.release();
 
-    if (asset)
+    if (asset && reloadTime > -1) // Don't unload asset if it's a static image
         g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
 
     asset             = nullptr;
