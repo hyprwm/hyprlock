@@ -29,6 +29,14 @@ std::optional<std::string> parseArg(const std::vector<std::string>& args, const 
     }
 }
 
+static void printVersion() {
+    constexpr bool ISTAGGEDRELEASE = std::string_view(HYPRLOCK_COMMIT) == HYPRLOCK_VERSION_COMMIT;
+    if (ISTAGGEDRELEASE)
+        std::println("Hyprlock version v{}", HYPRLOCK_VERSION);
+    else
+        std::println("Hyprlock version v{} (commit {})", HYPRLOCK_VERSION, HYPRLOCK_COMMIT);
+}
+
 int main(int argc, char** argv, char** envp) {
     std::string              configPath;
     std::string              wlDisplay;
@@ -47,12 +55,7 @@ int main(int argc, char** argv, char** envp) {
         }
 
         if (arg == "--version" || arg == "-V") {
-            constexpr bool ISTAGGEDRELEASE = std::string_view(HYPRLOCK_COMMIT) == HYPRLOCK_VERSION_COMMIT;
-            if (ISTAGGEDRELEASE)
-                std::println("Hyprlock version v{}", HYPRLOCK_VERSION);
-            else
-                std::println("Hyprlock version v{} (commit {})", HYPRLOCK_VERSION, HYPRLOCK_COMMIT);
-
+            printVersion();
             return 0;
         }
 
@@ -90,6 +93,7 @@ int main(int argc, char** argv, char** envp) {
         }
     }
 
+    printVersion();
     g_pAnimationManager = makeUnique<CHyprlockAnimationManager>();
 
     try {
