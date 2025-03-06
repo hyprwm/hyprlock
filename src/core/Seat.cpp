@@ -134,6 +134,25 @@ void CSeatManager::registerCursorShape(SP<CCWpCursorShapeManagerV1> shape) {
     m_pCursorShape = makeUnique<CCursorShape>(shape);
 }
 
+std::string CSeatManager::getActiveKbLayoutName() {
+    if (!m_pXKBState || !m_pXKBKeymap)
+        return "error";
+
+    const auto LAYOUTSNUM = xkb_keymap_num_layouts(m_pXKBKeymap);
+
+    for (uint32_t i = 0; i < LAYOUTSNUM; ++i) {
+        if (xkb_state_layout_index_is_active(m_pXKBState, i, XKB_STATE_LAYOUT_EFFECTIVE) == 1) {
+            const auto LAYOUTNAME = xkb_keymap_layout_get_name(m_pXKBKeymap, i);
+
+            if (LAYOUTNAME)
+                return std::string{LAYOUTNAME};
+            return "error";
+        }
+    }
+
+    return "none";
+}
+
 bool CSeatManager::registered() {
     return m_pSeat;
 }
