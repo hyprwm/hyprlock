@@ -46,6 +46,16 @@ void COutput::create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t _name
 }
 
 void COutput::createSessionLockSurface() {
+    if (!m_self.valid()) {
+        Debug::log(ERR, "output {} dead??", m_ID);
+        return;
+    }
+
+    if (m_sessionLockSurface) {
+        Debug::log(ERR, "output {} already has a session lock surface", m_ID);
+        return;
+    }
+
     m_sessionLockSurface = makeUnique<CSessionLockSurface>(m_self.lock());
 }
 
