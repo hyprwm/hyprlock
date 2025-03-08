@@ -285,8 +285,9 @@ void CHyprlock::run() {
             m_sWaylandState.sessionLock =
                 makeShared<CCExtSessionLockManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &ext_session_lock_manager_v1_interface, 1));
         else if (IFACE == wl_output_interface.name) {
-            m_vOutputs.emplace_back(makeShared<COutput>());
-            m_vOutputs.back()->create(m_vOutputs.back(), makeShared<CCWlOutput>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_output_interface, 4)), name);
+            const auto POUTPUT = makeShared<COutput>();
+            POUTPUT->create(POUTPUT, makeShared<CCWlOutput>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wl_output_interface, 4)), name);
+            m_vOutputs.emplace_back(POUTPUT);
         } else if (IFACE == wp_cursor_shape_manager_v1_interface.name)
             g_pSeatManager->registerCursorShape(
                 makeShared<CCWpCursorShapeManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wp_cursor_shape_manager_v1_interface, 1)));
