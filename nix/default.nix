@@ -10,7 +10,7 @@
   libjpeg,
   libwebp,
   libxkbcommon,
-  mesa,
+  libgbm,
   hyprgraphics,
   hyprlang,
   hyprutils,
@@ -46,7 +46,7 @@ stdenv.mkDerivation {
     libjpeg
     libwebp
     libxkbcommon
-    mesa
+    libgbm
     hyprgraphics
     hyprlang
     hyprutils
