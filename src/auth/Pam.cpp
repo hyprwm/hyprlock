@@ -138,14 +138,7 @@ bool CPam::auth() {
     return true;
 }
 
-// clearing the input must be done from the main thread
-static void clearInputTimerCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pHyprlock->clearPasswordBuffer();
-}
-
 void CPam::waitForInput() {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(1), clearInputTimerCallback, nullptr);
-
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
     m_bBlockInput                          = false;
     m_sConversationState.waitingForPamAuth = false;
