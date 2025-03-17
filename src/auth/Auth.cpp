@@ -29,6 +29,8 @@ void CAuth::submitInput(const std::string& input) {
     for (const auto& i : m_vImpls) {
         i->handleInput(input);
     }
+
+    g_pHyprlock->clearPasswordBuffer();
 }
 
 bool CAuth::checkWaiting() {
@@ -76,8 +78,6 @@ void CAuth::terminate() {
 
 static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pAuth->m_bDisplayFailText = true;
-
-    g_pHyprlock->clearPasswordBuffer();
 
     g_pHyprlock->enqueueForceUpdateTimers();
 

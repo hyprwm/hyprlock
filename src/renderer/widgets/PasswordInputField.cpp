@@ -165,6 +165,9 @@ void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
+    if (checkWaiting)
+        return;
+
     if (passwordLength == 0)
         dots.currentAmount->setValueAndWarp(passwordLength);
     else
@@ -298,7 +301,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (passwordLength == 0 && !placeholder.resourceID.empty()) {
+    if (passwordLength == 0 && !checkWaiting && !placeholder.resourceID.empty()) {
         SPreloadedAsset* currAsset = nullptr;
 
         if (!placeholder.asset)
@@ -451,7 +454,7 @@ void CPasswordInputField::updateColors() {
 
     if (checkWaiting)
         targetGrad = colorConfig.check;
-    else if (displayFail)
+    else if (displayFail && passwordLength == 0)
         targetGrad = colorConfig.fail;
 
     CGradientValueData* outerTarget = colorConfig.outer;
