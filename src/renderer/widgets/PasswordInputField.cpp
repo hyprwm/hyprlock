@@ -48,7 +48,6 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-        configFailTimeoutMs      = std::any_cast<Hyprlang::INT>(props.at("fail_timeout"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -326,13 +325,6 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     return redrawShadow || forceReload;
 }
 
-static void failTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
-    if (g_pAuth->m_bDisplayFailText) {
-        g_pAuth->m_bDisplayFailText = false;
-        g_pHyprlock->renderAllOutputs();
-    }
-}
-
 void CPasswordInputField::updatePlaceholder() {
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
@@ -351,12 +343,7 @@ void CPasswordInputField::updatePlaceholder() {
 
     placeholder.failedAttempts = g_pAuth->getFailedAttempts();
 
-    std::string newText;
-    if (displayFail) {
-        g_pHyprlock->addTimer(std::chrono::milliseconds(configFailTimeoutMs), failTimeoutCallback, nullptr);
-        newText = formatString(configFailText).formatted;
-    } else
-        newText = formatString(configPlaceholderText).formatted;
+    std::string newText = (displayFail) ? formatString(configFailText).formatted : formatString(configPlaceholderText).formatted;
 
     // if the text is unchanged we don't need to do anything, unless we are swapping font color
     const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
@@ -388,6 +375,10 @@ void CPasswordInputField::updatePlaceholder() {
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorState.font;
     request.props["font_size"]   = (int)size->value().y / 4;
+    request.callback             = [REF = m_self] {
+        if (const auto SELF = REF.lock(); SELF)
+            g_pHyprlock->renderOutput(SELF->outputStringPort);
+    };
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
