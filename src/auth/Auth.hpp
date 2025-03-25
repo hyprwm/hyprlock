@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "../defines.hpp"
+#include "../core/Timer.hpp"
 
 enum eAuthImplementations {
     AUTH_IMPL_PAM         = 0,
@@ -47,6 +48,8 @@ class CAuth {
     void                       enqueueUnlock();
     void                       enqueueFail(const std::string& failText, eAuthImplementations implType);
 
+    void                       resetDisplayFail();
+
     // Should only be set via the main thread
     bool m_bDisplayFailText = false;
 
@@ -58,6 +61,7 @@ class CAuth {
     } m_sCurrentFail;
 
     std::vector<SP<IAuthImplementation>> m_vImpls;
+    std::shared_ptr<CTimer>              m_resetDisplayFailTimer;
 };
 
 inline UP<CAuth> g_pAuth;

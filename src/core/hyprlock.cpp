@@ -602,6 +602,9 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
+    if (g_pAuth->m_bDisplayFailText)
+        g_pAuth->resetDisplayFail();
+
     if (down) {
         m_bCapsLock = xkb_state_mod_name_is_active(g_pSeatManager->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
         m_bNumLock  = xkb_state_mod_name_is_active(g_pSeatManager->m_pXKBState, XKB_MOD_NAME_NUM, XKB_STATE_MODS_LOCKED);
