@@ -42,11 +42,7 @@ CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputR
         Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
 
     lockSurface = makeShared<CCExtSessionLockSurfaceV1>(g_pHyprlock->getSessionLock()->sendGetLockSurface(surface->resource(), pOutput->m_wlOutput->resource()));
-
-    if (!lockSurface) {
-        Debug::log(CRIT, "Couldn't create ext_session_lock_surface_v1");
-        exit(1);
-    }
+    RASSERT(lockSurface, "Couldn't create ext_session_lock_surface_v1");
 
     lockSurface->setConfigure([this](CCExtSessionLockSurfaceV1* r, uint32_t serial, uint32_t width, uint32_t height) { configure({(double)width, (double)height}, serial); });
 }
@@ -82,22 +78,13 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 
     if (!eglWindow) {
         eglWindow = wl_egl_window_create((wl_surface*)surface->resource(), size.x, size.y);
-        if (!eglWindow) {
-            Debug::log(CRIT, "Couldn't create eglWindow");
-            exit(1);
-        }
+        RASSERT(eglWindow, "Couldn't create eglWindow");
     } else
         wl_egl_window_resize(eglWindow, size.x, size.y, 0, 0);
 
     if (!eglSurface) {
         eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
-        if (!eglSurface) {
-            Debug::log(CRIT, "Couldn't create eglSurface: {}", eglGetError());
-            // Clean up resources to prevent leaks
-            wl_egl_window_destroy(eglWindow);
-            eglWindow = nullptr;
-            exit(1); // Consider graceful exit or fallback
-        }
+        RASSERT(eglSurface, "Couldn't create eglSurface");
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {

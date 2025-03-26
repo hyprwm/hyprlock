@@ -39,10 +39,7 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
-    if (!m_sWaylandState.display) {
-        Debug::log(CRIT, "Couldn't connect to a wayland compositor");
-        exit(1);
-    }
+    RASSERT(m_sWaylandState.display, "Couldn't connect to a wayland compositor");
 
     g_pEGL = makeUnique<CEGL>(m_sWaylandState.display);
 
@@ -93,20 +90,6 @@ static void handleForceUpdateSignal(int sig) {
 
 static void handlePollTerminate(int sig) {
     ;
-}
-
-static void handleCriticalSignal(int sig) {
-    g_pHyprlock->attemptRestoreOnDeath();
-
-    // remove our handlers
-    struct sigaction sa;
-    sa.sa_handler = SIG_IGN;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGABRT, &sa, nullptr);
-    sigaction(SIGSEGV, &sa, nullptr);
-
-    abort();
 }
 
 static char* gbm_find_render_node(drmDevice* device) {
@@ -244,10 +227,7 @@ void CHyprlock::addDmabufListener() {
         memcpy(&device, device_arr->data, sizeof(device));
 
         drmDevice* drmDev;
-        if (drmGetDeviceFromDevId(device, /* flags */ 0, &drmDev) != 0) {
-            Debug::log(WARN, "[dmabuf] unable to open main device?");
-            exit(1);
-        }
+        RASSERT(drmGetDeviceFromDevId(device, /* flags */ 0, &drmDev) == 0, "unable to open main device?");
 
         dma.gbmDevice = createGBMDevice(drmDev);
         drmFreeDevice(&drmDev);
@@ -363,8 +343,6 @@ void CHyprlock::run() {
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
-    registerSignalAction(SIGSEGV, handleCriticalSignal);
-    registerSignalAction(SIGABRT, handleCriticalSignal);
 
     pollfd pollfds[2];
     pollfds[0] = {
@@ -389,23 +367,11 @@ void CHyprlock::run() {
 
                 if (events < 0) {
                     wl_display_cancel_read(m_sWaylandState.display);
-
-                    if (errno == EINTR)
-                        continue;
-
-                    Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
-                    attemptRestoreOnDeath();
-                    m_bTerminate = true;
-                    exit(1);
+                    RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
                 }
 
                 for (size_t i = 0; i < fdcount; ++i) {
-                    if (pollfds[i].revents & POLLHUP) {
-                        Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
-                        attemptRestoreOnDeath();
-                        m_bTerminate = true;
-                        exit(1);
-                    }
+                    RASSERT(!(pollfds[i].revents & POLLHUP), "[core] Disconnected from pollfd id {}", i);
                 }
 
                 wl_display_read_events(m_sWaylandState.display);
@@ -866,54 +832,4 @@ SP<CCZwlrScreencopyManagerV1> CHyprlock::getScreencopy() {
 
 SP<CCWlShm> CHyprlock::getShm() {
     return m_sWaylandState.shm;
-}
-
-void CHyprlock::attemptRestoreOnDeath() {
-    if (m_bTerminate || m_sCurrentDesktop != "Hyprland")
-        return;
-
-    const auto XDG_RUNTIME_DIR = getenv("XDG_RUNTIME_DIR");
-    const auto HIS             = getenv("HYPRLAND_INSTANCE_SIGNATURE");
-
-    if (!XDG_RUNTIME_DIR || !HIS)
-        return;
-
-    // dirty hack
-    uint64_t   timeNowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t(0)).count();
-
-    const auto LASTRESTARTPATH = std::string{XDG_RUNTIME_DIR} + "/.hyprlockrestart";
-
-    if (std::filesystem::exists(LASTRESTARTPATH)) {
-        std::ifstream ifs(LASTRESTARTPATH);
-        std::string   content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-        uint64_t      timeEncoded = 0;
-        try {
-            timeEncoded = std::stoull(content);
-        } catch (std::exception& e) {
-            // oops?
-            ifs.close();
-            std::filesystem::remove(LASTRESTARTPATH);
-            return;
-        }
-        ifs.close();
-
-        if (timeNowMs - timeEncoded < 4000 /* 4s, seems reasonable */) {
-            Debug::log(LOG, "Not restoring on death; less than 4s since last death");
-            return;
-        }
-    }
-
-    std::ofstream ofs(LASTRESTARTPATH, std::ios::trunc);
-    ofs << timeNowMs;
-    ofs.close();
-
-    if (m_bLocked && m_sLockState.lock) {
-        m_sLockState.lock.reset();
-
-        // Destroy sessionLockSurfaces
-        m_vOutputs.clear();
-    }
-
-    spawnSync("hyprctl keyword misc:allow_session_lock_restore true");
-    spawnSync("hyprctl dispatch exec \"hyprlock --immediate --immediate-render\"");
 }
