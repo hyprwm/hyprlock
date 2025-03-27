@@ -29,12 +29,12 @@ class CFingerprint : public IAuthImplementation {
         std::shared_ptr<sdbus::IConnection> connection;
         std::unique_ptr<sdbus::IProxy>      login;
         std::unique_ptr<sdbus::IProxy>      device;
-        sdbus::UnixFd                       inhibitLock;
 
-        bool                                abort    = false;
-        bool                                done     = false;
-        int                                 retries  = 0;
-        bool                                sleeping = false;
+        bool                                abort     = false;
+        bool                                done      = false;
+        int                                 retries   = 0;
+        bool                                sleeping  = false;
+        bool                                verifying = false;
     } m_sDBUSState;
 
     std::string m_sFingerprintReady;
@@ -44,8 +44,6 @@ class CFingerprint : public IAuthImplementation {
     std::string m_sFailureReason{""};
 
     void        handleVerifyStatus(const std::string& result, const bool done);
-
-    void        inhibitSleep();
 
     bool        createDeviceProxy();
     void        claimDevice();
