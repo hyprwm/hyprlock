@@ -113,6 +113,13 @@ void CFramebuffer::release() {
     m_pStencilTex   = nullptr;
 }
 
+void CFramebuffer::abandon() {
+    m_cTex.m_iTexID = 0;
+    m_iFb           = -1;
+    m_vSize         = Vector2D();
+    m_pStencilTex   = nullptr;
+}
+
 CFramebuffer::~CFramebuffer() {
     release();
 }

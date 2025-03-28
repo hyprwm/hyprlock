@@ -47,7 +47,7 @@ class CRenderer {
     void                                  reconfigureWidgetsFor(OUTPUTID id);
 
     void                                  startFadeIn();
-    void                                  startFadeOut(bool unlock = false, bool immediate = true);
+    void                                  startFadeOut(bool unlock = false);
     std::vector<SP<IWidget>>&             getOrCreateWidgetsFor(const CSessionLockSurface& surf);
 
   private:
