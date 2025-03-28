@@ -47,7 +47,9 @@ class CRenderer {
     void                                  reconfigureWidgetsFor(OUTPUTID id);
 
     void                                  startFadeIn();
-    void                                  startFadeOut(bool unlock = false, bool immediate = true);
+    void                                  startFadeOut(bool unlock = false);
+
+    PHLANIMVAR<float>                     opacity;
 
   private:
     widgetMap_t               widgets;
@@ -65,8 +67,6 @@ class CRenderer {
 
     Mat3x3                    projMatrix = Mat3x3::identity();
     Mat3x3                    projection;
-
-    PHLANIMVAR<float>         opacity;
 
     std::vector<GLint>        boundFBs;
 };
