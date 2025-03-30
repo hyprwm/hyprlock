@@ -48,8 +48,6 @@ class CHyprlock {
     bool                             acquireSessionLock();
     void                             releaseSessionLock();
 
-    void                             attemptRestoreOnDeath();
-
     std::string                      spawnSync(const std::string& cmd);
 
     void                             onKey(uint32_t key, bool down);
