@@ -70,9 +70,8 @@ void CFingerprint::init() {
     m_sDBUSState.login->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
         Debug::log(LOG, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
-        if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying) {
+        if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
             startVerify();
-        }
     });
 }
 
