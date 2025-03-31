@@ -60,6 +60,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         colorConfig.num          = CGradientValueData::fromAnyPv(props.at("numlock_color"));
         colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
         colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
+        colorConfig.hiddenBase   = std::any_cast<Hyprlang::INT>(props.at("hide_input_base_color"));
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CPasswordInputField: {}", e.what()); //
     } catch (const std::out_of_range& e) {
@@ -420,7 +421,7 @@ void CPasswordInputField::updateHiddenInputState() {
     // randomize new thang
     hiddenInputState.lastPasswordLength = passwordLength;
 
-    const auto BASEOK = colorConfig.outer->m_vColors.front().asOkLab();
+    const auto BASEOK = colorConfig.hiddenBase.asOkLab();
 
     // convert to polar coordinates
     const auto OKICHCHROMA = std::sqrt(std::pow(BASEOK.a, 2) + std::pow(BASEOK.b, 2));
