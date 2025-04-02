@@ -101,6 +101,8 @@ class CPasswordInputField : public IWidget {
         CGradientValueData* num   = nullptr;
         CGradientValueData* both  = nullptr;
 
+        CHyprColor          hiddenBase;
+
         int                 transitionMs = 0;
         bool                invertNum    = false;
         bool                swapFont     = false;
