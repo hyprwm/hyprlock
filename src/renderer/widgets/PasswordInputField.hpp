@@ -7,7 +7,6 @@
 #include "Shadowable.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
-#include <chrono>
 #include <hyprutils/math/Vector2D.hpp>
 #include <vector>
 #include <any>
@@ -83,7 +82,6 @@ class CPasswordInputField : public IWidget {
         size_t                   failedAttempts = 0;
 
         std::vector<std::string> registeredResourceIDs;
-
     } placeholder;
 
     struct {

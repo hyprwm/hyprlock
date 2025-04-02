@@ -76,6 +76,14 @@ void CAuth::terminate() {
     }
 }
 
+static void passwordUnlockCallback(std::shared_ptr<CTimer> self, void* data) {
+    g_pHyprlock->unlock();
+}
+
+void CAuth::enqueueUnlock() {
+    g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordUnlockCallback, nullptr);
+}
+
 static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pAuth->m_bDisplayFailText = true;
 
@@ -84,20 +92,33 @@ static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->renderAllOutputs();
 }
 
-static void passwordUnlockCallback(std::shared_ptr<CTimer> self, void* data) {
-    g_pHyprlock->unlock();
+static void displayFailTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
+    if (g_pAuth->m_bDisplayFailText) {
+        g_pAuth->m_bDisplayFailText = false;
+        g_pHyprlock->renderAllOutputs();
+    }
 }
 
 void CAuth::enqueueFail(const std::string& failText, eAuthImplementations implType) {
+    const auto FAILTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:fail_timeout");
+
     m_sCurrentFail.failText   = failText;
     m_sCurrentFail.failSource = implType;
     m_sCurrentFail.failedAttempts++;
 
     Debug::log(LOG, "Failed attempts: {}", m_sCurrentFail.failedAttempts);
 
+    if (m_resetDisplayFailTimer) {
+        m_resetDisplayFailTimer->cancel();
+        m_resetDisplayFailTimer.reset();
+    }
+
     g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordFailCallback, nullptr);
+    m_resetDisplayFailTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(*FAILTIMEOUT), displayFailTimeoutCallback, nullptr);
 }
 
-void CAuth::enqueueUnlock() {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordUnlockCallback, nullptr);
+void CAuth::resetDisplayFail() {
+    g_pAuth->m_bDisplayFailText = false;
+    m_resetDisplayFailTimer->cancel();
+    m_resetDisplayFailTimer.reset();
 }
