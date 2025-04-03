@@ -65,20 +65,13 @@ void CFingerprint::init() {
         // When entering sleep, the wake signal will trigger startVerify().
         if (m_sDBUSState.sleeping)
             return;
-        inhibitSleep();
         startVerify();
     });
     m_sDBUSState.login->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
         Debug::log(LOG, "fprint: PrepareForSleep (start: {})", start);
-        if (start) {
-            m_sDBUSState.sleeping = true;
-            stopVerify();
-            m_sDBUSState.inhibitLock.reset();
-        } else {
-            m_sDBUSState.sleeping = false;
-            inhibitSleep();
+        m_sDBUSState.sleeping = start;
+        if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
             startVerify();
-        }
     });
 }
 
@@ -109,18 +102,6 @@ void CFingerprint::terminate() {
 
 std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
     return m_sDBUSState.connection;
-}
-
-void CFingerprint::inhibitSleep() {
-    m_sDBUSState.login->callMethodAsync("Inhibit")
-        .onInterface(LOGIN_MANAGER)
-        .withArguments("sleep", "hyprlock", "Fingerprint verifcation must be stopped before sleep", "delay")
-        .uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::UnixFd fd) {
-            if (e)
-                Debug::log(WARN, "fprint: could not inhibit sleep: {}", e->what());
-            else
-                m_sDBUSState.inhibitLock = fd;
-        });
 }
 
 bool CFingerprint::createDeviceProxy() {
@@ -163,8 +144,11 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
     auto matchResult   = s_mapStringToTestType[result];
     bool authenticated = false;
     bool retry         = false;
-    if (m_sDBUSState.sleeping && matchResult != MATCH_DISCONNECTED)
+    if (m_sDBUSState.sleeping) {
+        stopVerify();
+        Debug::log(LOG, "fprint: device suspended");
         return;
+    }
     switch (matchResult) {
         case MATCH_INVALID: Debug::log(WARN, "fprint: unknown status: {}", result); break;
         case MATCH_NO_MATCH:
@@ -229,6 +213,7 @@ void CFingerprint::claimDevice() {
 }
 
 void CFingerprint::startVerify(bool isRetry) {
+    m_sDBUSState.verifying = true;
     if (!m_sDBUSState.device) {
         if (!createDeviceProxy())
             return;
@@ -256,6 +241,7 @@ void CFingerprint::startVerify(bool isRetry) {
 }
 
 bool CFingerprint::stopVerify() {
+    m_sDBUSState.verifying = false;
     if (!m_sDBUSState.device)
         return false;
     try {
