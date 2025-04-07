@@ -41,6 +41,10 @@ class CBackground : public IWidget {
     void         plantReloadTimer();
     void         startCrossFadeOrUpdateRender();
 
+    // New members for video background support
+    bool         isVideoBackground = false;
+    std::string  videoPath;
+
   private:
     WP<CBackground> m_self;
 
