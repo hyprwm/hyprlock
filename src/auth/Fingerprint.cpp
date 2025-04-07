@@ -195,6 +195,8 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
 
     if (!authenticated && !retry)
         g_pAuth->enqueueFail(m_sFailureReason, AUTH_IMPL_FINGERPRINT);
+    else if (retry)
+        g_pHyprlock->enqueueForceUpdateTimers();
 
     if (done || m_sDBUSState.abort)
         m_sDBUSState.done = true;
