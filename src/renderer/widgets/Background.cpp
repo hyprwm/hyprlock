@@ -35,19 +35,30 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         crossFadeTime     = std::any_cast<Hyprlang::FLOAT>(props.at("crossfade_time"));
 
     } catch (const std::bad_any_cast& e) {
-        RASSERT(false, "Failed to construct CBackground: {}", e.what()); //
+        RASSERT(false, "Failed to construct CBackground: {}", e.what());
     } catch (const std::out_of_range& e) {
-        RASSERT(false, "Missing propperty for CBackground: {}", e.what()); //
+        RASSERT(false, "Missing propperty for CBackground: {}", e.what());
     }
 
     isScreenshot = path == "screenshot";
+
+    // Check if the path is an MP4 file
+    if (path.ends_with(".mp4")) {
+        isVideoBackground = true;
+        videoPath = path;
+        Debug::log(LOG, "Detected video background: {}", path);
+        resourceID = "";  // Skip loading a static texture since we'll use mpvpaper
+    } else {
+        isVideoBackground = false;
+        videoPath = "";
+        resourceID = isScreenshot ? CScreencopyFrame::getResourceId(pOutput) : (!path.empty() ? "background:" + path : "");
+    }
 
     viewport   = pOutput->getViewport();
     outputPort = pOutput->stringPort;
     transform  = isScreenshot ? wlTransformToHyprutils(invertTransform(pOutput->transform)) : HYPRUTILS_TRANSFORM_NORMAL;
 
-    if (isScreenshot) {
-        resourceID = CScreencopyFrame::getResourceId(pOutput);
+    if (isScreenshot && !isVideoBackground) {
         // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
         // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
         if (g_pRenderer->asyncResourceGatherer->gathered) {
@@ -59,16 +70,14 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
             resourceID = "";
         }
+    }
 
-    } else if (!path.empty())
-        resourceID = "background:" + path;
-
-    if (!isScreenshot && reloadTime > -1) {
+    if (!isScreenshot && !isVideoBackground && reloadTime > -1) {
         try {
             modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
         } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
 
-        plantReloadTimer(); // No reloads for screenshots.
+        plantReloadTimer(); // No reloads for screenshots or videos
     }
 }
 
@@ -110,6 +119,11 @@ static void onAssetCallback(WP<CBackground> ref) {
 }
 
 bool CBackground::draw(const SRenderData& data) {
+    if (isVideoBackground) {
+        // Skip rendering the static background since mpvpaper is handling the video
+        Debug::log(LOG, "Skipping static background rendering; using video background via mpvpaper");
+        return false;
+    }
 
     if (resourceID.empty()) {
         CHyprColor col = color;
@@ -135,7 +149,6 @@ bool CBackground::draw(const SRenderData& data) {
     }
 
     if (fade || ((blurPasses > 0 || isScreenshot) && (!blurredFB.isAllocated() || firstRender))) {
-
         if (firstRender)
             firstRender = false;
 
@@ -204,9 +217,7 @@ bool CBackground::draw(const SRenderData& data) {
 
     return fade || data.opacity < 1.0; // actively render during fading
 }
-
 void CBackground::plantReloadTimer() {
-
     if (reloadTime == 0)
         reloadTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onReloadTimer(REF); }, nullptr, true);
     else if (reloadTime > 0)
@@ -214,9 +225,7 @@ void CBackground::plantReloadTimer() {
 }
 
 void CBackground::onCrossFadeTimerUpdate() {
-
     // Animation done: Unload previous asset, deinitialize the fade and pass the asset
-
     if (fade) {
         fade->crossFadeTimer.reset();
         fade.reset();
@@ -238,7 +247,6 @@ void CBackground::onReloadTimerUpdate() {
     const std::string OLDPATH = path;
 
     // Path parsing and early returns
-
     if (!reloadCommand.empty()) {
         path = g_pHyprlock->spawnSync(reloadCommand);
 
@@ -251,6 +259,10 @@ void CBackground::onReloadTimerUpdate() {
         if (path.empty())
             return;
     }
+
+    // Skip reload for video backgrounds
+    if (isVideoBackground)
+        return;
 
     try {
         const auto MTIME = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -268,7 +280,6 @@ void CBackground::onReloadTimerUpdate() {
         return;
 
     // Issue the next request
-
     request.id        = std::string{"background:"} + path + ",time:" + std::to_string((uint64_t)modificationTime.time_since_epoch().count());
     pendingResourceID = request.id;
     request.asset     = path;
@@ -292,7 +303,7 @@ void CBackground::startCrossFadeOrUpdateRender() {
                 if (!fade)
                     fade = makeUnique<SFade>(std::chrono::system_clock::now(), 0, nullptr);
                 else {
-                    // Maybe we where already fading so reset it just in case, but should'nt be happening.
+                    // Maybe we were already fading so reset it just in case, but shouldn't be happening.
                     if (fade->crossFadeTimer) {
                         fade->crossFadeTimer->cancel();
                         fade->crossFadeTimer.reset();

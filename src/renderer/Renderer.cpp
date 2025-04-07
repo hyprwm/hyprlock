@@ -17,6 +17,8 @@
 #include "widgets/Label.hpp"
 #include "widgets/Image.hpp"
 #include "widgets/Shape.hpp"
+#include <cstdlib>  // For system()
+#include <string>
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -197,6 +199,37 @@ CRenderer::CRenderer() {
     asyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
 
     g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
+
+    mpvpaperRunning = false;  // Initialize the flag
+}
+
+CRenderer::~CRenderer() {
+    stopMpvpaper();  // Ensure mpvpaper is stopped when the renderer is destroyed
+}
+
+void CRenderer::startMpvpaper(const std::string& monitor, const std::string& videoPath) {
+    if (mpvpaperRunning) {
+        stopMpvpaper();  // Ensure no existing mpvpaper instance is running
+    }
+
+    // Construct the mpvpaper command
+    std::string mpvpaperCmd = "mpvpaper -o \"--loop=inf --no-osc --no-osd-bar\" " + monitor + " " + videoPath + " &";
+    system(mpvpaperCmd.c_str());
+    mpvpaperRunning = true;
+    currentMonitor = monitor;
+    currentVideoPath = videoPath;
+
+    Debug::log(LOG, "Started mpvpaper on monitor {} with video {}", monitor, videoPath);
+}
+
+void CRenderer::stopMpvpaper() {
+    if (mpvpaperRunning) {
+        system("pkill mpvpaper");
+        mpvpaperRunning = false;
+        currentMonitor = "";
+        currentVideoPath = "";
+        Debug::log(LOG, "Stopped mpvpaper");
+    }
 }
 
 //
@@ -210,7 +243,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fb);
     pushFb(fb);
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(0.0, 0.0, 0.0, 0.0);  // Clear to transparent
     glClear(GL_COLOR_BUFFER_BIT);
 
     glEnable(GL_BLEND);
@@ -220,10 +253,30 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !asyncResourceGatherer->gathered;
 
     if (!WAITFORASSETS) {
-        // render widgets
+        // Render widgets
         const auto WIDGETS = getOrCreateWidgetsFor(surf);
+        bool hasVideoBackground = false;
+
+        // Check for a video background
         for (auto& w : WIDGETS) {
+            if (auto* bg = dynamic_cast<CBackground*>(w.get()); bg) {
+                if (bg->isVideoBackground) {
+                    hasVideoBackground = true;
+                    // Launch mpvpaper if not already running
+                    if (!mpvpaperRunning) {
+                        std::string monitor = surf.m_outputRef.lock()->stringPort;  // Get monitor output name
+                        startMpvpaper(monitor, bg->videoPath);
+                    }
+                    // Skip rendering the background widget since mpvpaper is handling it
+                    continue;
+                }
+            }
             feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
+        }
+
+        // If we have a video background, ensure the background is transparent
+        if (hasVideoBackground) {
+            glClearColor(0.0, 0.0, 0.0, 0.0);  // Ensure transparency
         }
     }
 
@@ -233,7 +286,6 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
 
     return feedback;
 }
-
 void CRenderer::renderRect(const CBox& box, const CHyprColor& col, int rounding) {
     const auto ROUNDEDBOX = box.copy().round();
     Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, HYPRUTILS_TRANSFORM_NORMAL, box.rot);
@@ -386,7 +438,6 @@ void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTe
 
     glBindTexture(tex.m_iTarget, 0);
 }
-
 template <class Widget>
 static void createWidget(std::vector<SP<IWidget>>& widgets) {
     const auto W = makeShared<Widget>();
@@ -535,90 +586,92 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     for (int i = params.passes - 1; i >= 0; --i) {
         drawPass(&blurShader2); // up
     }
-
-    // finalize the image
-    {
-        if (currentRenderToFB == &mirrors[0])
-            mirrors[1].bind();
-        else
-            mirrors[0].bind();
-
-        glActiveTexture(GL_TEXTURE0);
-
-        glBindTexture(currentRenderToFB->m_cTex.m_iTarget, currentRenderToFB->m_cTex.m_iTexID);
-
-        glTexParameteri(currentRenderToFB->m_cTex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        glUseProgram(blurFinishShader.program);
-
-        glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
-        glUniform1f(blurFinishShader.noise, params.noise);
-        glUniform1f(blurFinishShader.brightness, params.brightness);
-        glUniform1i(blurFinishShader.colorize, params.colorize.has_value());
-        if (params.colorize.has_value())
-            glUniform3f(blurFinishShader.colorizeTint, params.colorize->r, params.colorize->g, params.colorize->b);
-        glUniform1f(blurFinishShader.boostA, params.boostA);
-
-        glUniform1i(blurFinishShader.tex, 0);
-
-        glVertexAttribPointer(blurFinishShader.posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
-        glVertexAttribPointer(blurFinishShader.texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
-
-        glEnableVertexAttribArray(blurFinishShader.posAttrib);
-        glEnableVertexAttribArray(blurFinishShader.texAttrib);
-
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-        glDisableVertexAttribArray(blurFinishShader.posAttrib);
-        glDisableVertexAttribArray(blurFinishShader.texAttrib);
-
-        if (currentRenderToFB != &mirrors[0])
-            currentRenderToFB = &mirrors[0];
-        else
-            currentRenderToFB = &mirrors[1];
+        // finalize the image
+        {
+            if (currentRenderToFB == &mirrors[0])
+                mirrors[1].bind();
+            else
+                mirrors[0].bind();
+    
+            glActiveTexture(GL_TEXTURE0);
+    
+            glBindTexture(currentRenderToFB->m_cTex.m_iTarget, currentRenderToFB->m_cTex.m_iTexID);
+    
+            glTexParameteri(currentRenderToFB->m_cTex.m_iTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    
+            glUseProgram(blurFinishShader.program);
+    
+            glUniformMatrix3fv(blurFinishShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
+            glUniform1f(blurFinishShader.noise, params.noise);
+            glUniform1f(blurFinishShader.brightness, params.brightness);
+            glUniform1i(blurFinishShader.colorize, params.colorize.has_value());
+            if (params.colorize.has_value())
+                glUniform3f(blurFinishShader.colorizeTint, params.colorize->r, params.colorize->g, params.colorize->b);
+            glUniform1f(blurFinishShader.boostA, params.boostA);
+    
+            glUniform1i(blurFinishShader.tex, 0);
+    
+            glVertexAttribPointer(blurFinishShader.posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+            glVertexAttribPointer(blurFinishShader.texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+    
+            glEnableVertexAttribArray(blurFinishShader.posAttrib);
+            glEnableVertexAttribArray(blurFinishShader.texAttrib);
+    
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    
+            glDisableVertexAttribArray(blurFinishShader.posAttrib);
+            glDisableVertexAttribArray(blurFinishShader.texAttrib);
+    
+            if (currentRenderToFB != &mirrors[0])
+                currentRenderToFB = &mirrors[0];
+            else
+                currentRenderToFB = &mirrors[1];
+        }
+    
+        // finish
+        outfb.bind();
+        renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, HYPRUTILS_TRANSFORM_NORMAL);
+    
+        glEnable(GL_BLEND);
     }
-
-    // finish
-    outfb.bind();
-    renderTexture(box, currentRenderToFB->m_cTex, 1.0, 0, HYPRUTILS_TRANSFORM_NORMAL);
-
-    glEnable(GL_BLEND);
-}
-
-void CRenderer::pushFb(GLint fb) {
-    boundFBs.push_back(fb);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
-}
-
-void CRenderer::popFb() {
-    boundFBs.pop_back();
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, boundFBs.empty() ? 0 : boundFBs.back());
-}
-
-void CRenderer::removeWidgetsFor(OUTPUTID id) {
-    widgets.erase(id);
-}
-
-void CRenderer::reconfigureWidgetsFor(OUTPUTID id) {
-    // TODO: reconfigure widgets by just calling their configure method again.
-    // Requires a way to get a widgets config properties.
-    // I think the best way would be to store the anonymos key of the widget config.
-    removeWidgetsFor(id);
-}
-
-void CRenderer::startFadeIn() {
-    Debug::log(LOG, "Starting fade in");
-    *opacity = 1.f;
-
-    opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->m_AnimationTree.getConfig("fadeOut")); }, true);
-}
-
-void CRenderer::startFadeOut(bool unlock, bool immediate) {
-    if (immediate)
-        opacity->setValueAndWarp(0.f);
-    else
-        *opacity = 0.f;
-
-    if (unlock)
-        opacity->setCallbackOnEnd([](auto) { g_pHyprlock->releaseSessionLock(); }, true);
-}
+    
+    void CRenderer::pushFb(GLint fb) {
+        boundFBs.push_back(fb);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+    }
+    
+    void CRenderer::popFb() {
+        boundFBs.pop_back();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, boundFBs.empty() ? 0 : boundFBs.back());
+    }
+    
+    void CRenderer::removeWidgetsFor(OUTPUTID id) {
+        widgets.erase(id);
+    }
+    
+    void CRenderer::reconfigureWidgetsFor(OUTPUTID id) {
+        // TODO: reconfigure widgets by just calling their configure method again.
+        // Requires a way to get a widgets config properties.
+        // I think the best way would be to store the anonymos key of the widget config.
+        removeWidgetsFor(id);
+    }
+    
+    void CRenderer::startFadeIn() {
+        Debug::log(LOG, "Starting fade in");
+        *opacity = 1.f;
+    
+        opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->m_AnimationTree.getConfig("fadeOut")); }, true);
+    }
+    
+    void CRenderer::startFadeOut(bool unlock, bool immediate) {
+        if (immediate)
+            opacity->setValueAndWarp(0.f);
+        else
+            *opacity = 0.f;
+    
+        if (unlock)
+            opacity->setCallbackOnEnd([this](auto) {
+                stopMpvpaper();  // Stop mpvpaper when fading out
+                g_pHyprlock->releaseSessionLock();
+            }, true);
+    }
