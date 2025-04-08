@@ -100,7 +100,7 @@ static void displayFailTimeoutCallback(std::shared_ptr<CTimer> self, void* data)
 }
 
 void CAuth::enqueueFail(const std::string& failText, eAuthImplementations implType) {
-    const auto FAILTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:fail_timeout");
+    static const auto FAILTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:fail_timeout");
 
     m_sCurrentFail.failText   = failText;
     m_sCurrentFail.failSource = implType;
