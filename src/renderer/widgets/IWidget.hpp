@@ -17,7 +17,8 @@ class IWidget {
     virtual ~IWidget() = default;
 
     virtual void    configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) = 0;
-    virtual bool    draw(const SRenderData& data)                                                                = 0;
+    virtual bool    draw(const SRenderData& data) = 0;
+    virtual std::string type() const = 0; // Added for layered rendering
 
     static Vector2D posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign,
                                    const double& ang = 0);

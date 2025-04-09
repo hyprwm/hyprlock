@@ -29,8 +29,9 @@ class CBackground : public IWidget {
 
     void         registerSelf(const SP<CBackground>& self);
 
-    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
-    virtual bool draw(const SRenderData& data);
+    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) override;
+    virtual bool draw(const SRenderData& data) override;
+    virtual std::string type() const override; // Added for layered rendering
 
     void         reset(); // Unload assets, remove timers, etc.
 
@@ -41,9 +42,11 @@ class CBackground : public IWidget {
     void         plantReloadTimer();
     void         startCrossFadeOrUpdateRender();
 
-    // New members for video background support
+    // Members for video background support
     bool         isVideoBackground = false;
     std::string  videoPath;
+    std::string  monitor; // Store monitor name for mpvpaper
+    std::string  fallbackPath; // Added for fallback image if video fails
 
   private:
     WP<CBackground> m_self;

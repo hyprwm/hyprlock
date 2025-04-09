@@ -23,6 +23,10 @@ void CPasswordInputField::registerSelf(const SP<CPasswordInputField>& self) {
     m_self = self;
 }
 
+std::string CPasswordInputField::type() const {
+    return "input-field";
+}
+
 void CPasswordInputField::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
 

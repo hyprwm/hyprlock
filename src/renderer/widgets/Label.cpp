@@ -15,6 +15,10 @@ void CLabel::registerSelf(const SP<CLabel>& self) {
     m_self = self;
 }
 
+std::string CLabel::type() const {
+    return "label";
+}
+
 static void onTimer(WP<CLabel> ref) {
     if (auto PLABEL = ref.lock(); PLABEL) {
         // update label
@@ -57,7 +61,6 @@ void CLabel::onTimerUpdate() {
 }
 
 void CLabel::plantTimer() {
-
     if (label.updateEveryMs != 0)
         labelTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((int)label.updateEveryMs), [REF = m_self](auto, auto) { onTimer(REF); }, this, label.allowForceUpdate);
     else if (label.updateEveryMs == 0 && label.allowForceUpdate)

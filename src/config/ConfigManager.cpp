@@ -202,7 +202,6 @@ inline static constexpr auto LAYOUTCONFIG = [](const char* default_value) -> Hyp
     return Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, default_value};
 };
 void CConfigManager::init() {
-
     #define SHADOWABLE(name)                                                                                                                                                           \
         m_config.addSpecialConfigValue(name, "shadow_size", Hyprlang::INT{3});                                                                                                         \
         m_config.addSpecialConfigValue(name, "shadow_passes", Hyprlang::INT{0});                                                                                                       \
@@ -242,6 +241,7 @@ void CConfigManager::init() {
         m_config.addSpecialConfigValue("background", "reload_time", Hyprlang::INT{-1});
         m_config.addSpecialConfigValue("background", "reload_cmd", Hyprlang::STRING{""});
         m_config.addSpecialConfigValue("background", "crossfade_time", Hyprlang::FLOAT{-1.0});
+        m_config.addSpecialConfigValue("background", "fallback_path", Hyprlang::STRING{""});
     
         m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
         m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
@@ -356,281 +356,283 @@ void CConfigManager::init() {
             Debug::log(ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
     
     #undef SHADOWABLE
-    }
-    std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
-        std::vector<CConfigManager::SWidgetConfig> result;
-    
+}
+
+std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
+    std::vector<CConfigManager::SWidgetConfig> result;
+
     #define SHADOWABLE(name)                                                                                                                                                           \
         {"shadow_size", m_config.getSpecialConfigValue(name, "shadow_size", k.c_str())}, {"shadow_passes", m_config.getSpecialConfigValue(name, "shadow_passes", k.c_str())},          \
             {"shadow_color", m_config.getSpecialConfigValue(name, "shadow_color", k.c_str())}, {                                                                                       \
             "shadow_boost", m_config.getSpecialConfigValue(name, "shadow_boost", k.c_str())                                                                                            \
         }
-    
-        //
-        auto keys = m_config.listKeysForSpecialCategory("background");
-        result.reserve(keys.size());
-        for (auto& k : keys) {
-            // clang-format off
-            result.push_back(CConfigManager::SWidgetConfig{
-                .type = "background",
-                .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("background", "monitor", k.c_str())),
-                .values = {
-                    {"type", m_config.getSpecialConfigValue("background", "type", k.c_str())},  // New type field
-                    {"path", m_config.getSpecialConfigValue("background", "path", k.c_str())},
-                    {"color", m_config.getSpecialConfigValue("background", "color", k.c_str())},
-                    {"blur_size", m_config.getSpecialConfigValue("background", "blur_size", k.c_str())},
-                    {"blur_passes", m_config.getSpecialConfigValue("background", "blur_passes", k.c_str())},
-                    {"noise", m_config.getSpecialConfigValue("background", "noise", k.c_str())},
-                    {"contrast", m_config.getSpecialConfigValue("background", "contrast", k.c_str())},
-                    {"vibrancy", m_config.getSpecialConfigValue("background", "vibrancy", k.c_str())},
-                    {"brightness", m_config.getSpecialConfigValue("background", "brightness", k.c_str())},
-                    {"vibrancy_darkness", m_config.getSpecialConfigValue("background", "vibrancy_darkness", k.c_str())},
-                    {"zindex", m_config.getSpecialConfigValue("background", "zindex", k.c_str())},
-                    {"reload_time", m_config.getSpecialConfigValue("background", "reload_time", k.c_str())},
-                    {"reload_cmd", m_config.getSpecialConfigValue("background", "reload_cmd", k.c_str())},
-                    {"crossfade_time", m_config.getSpecialConfigValue("background", "crossfade_time", k.c_str())},
-                }
-            });
-            // clang-format on
-        }
-    
-        //
-        keys = m_config.listKeysForSpecialCategory("shape");
-        for (auto& k : keys) {
-            // clang-format off
-            result.push_back(CConfigManager::SWidgetConfig{
-                .type = "shape",
-                .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("shape", "monitor", k.c_str())),
-                .values = {
-                    {"size", m_config.getSpecialConfigValue("shape", "size", k.c_str())},
-                    {"rounding", m_config.getSpecialConfigValue("shape", "rounding", k.c_str())},
-                    {"border_size", m_config.getSpecialConfigValue("shape", "border_size", k.c_str())},
-                    {"border_color", m_config.getSpecialConfigValue("shape", "border_color", k.c_str())},
-                    {"color", m_config.getSpecialConfigValue("shape", "color", k.c_str())},
-                    {"position", m_config.getSpecialConfigValue("shape", "position", k.c_str())},
-                    {"halign", m_config.getSpecialConfigValue("shape", "halign", k.c_str())},
-                    {"valign", m_config.getSpecialConfigValue("shape", "valign", k.c_str())},
-                    {"rotate", m_config.getSpecialConfigValue("shape", "rotate", k.c_str())},
-                    {"xray", m_config.getSpecialConfigValue("shape", "xray", k.c_str())},
-                    {"zindex", m_config.getSpecialConfigValue("shape", "zindex", k.c_str())},
-                    SHADOWABLE("shape"),
-                }
-            });
-            // clang-format on
-        }
-    
-        //
-        keys = m_config.listKeysForSpecialCategory("image");
-        for (auto& k : keys) {
-            // clang-format off
-            result.push_back(CConfigManager::SWidgetConfig{
-                .type = "image",
-                .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("image", "monitor", k.c_str())),
-                .values = {
-                    {"path", m_config.getSpecialConfigValue("image", "path", k.c_str())},
-                    {"size", m_config.getSpecialConfigValue("image", "size", k.c_str())},
-                    {"rounding", m_config.getSpecialConfigValue("image", "rounding", k.c_str())},
-                    {"border_size", m_config.getSpecialConfigValue("image", "border_size", k.c_str())},
-                    {"border_color", m_config.getSpecialConfigValue("image", "border_color", k.c_str())},
-                    {"position", m_config.getSpecialConfigValue("image", "position", k.c_str())},
-                    {"halign", m_config.getSpecialConfigValue("image", "halign", k.c_str())},
-                    {"valign", m_config.getSpecialConfigValue("image", "valign", k.c_str())},
-                    {"rotate", m_config.getSpecialConfigValue("image", "rotate", k.c_str())},
-                    {"reload_time", m_config.getSpecialConfigValue("image", "reload_time", k.c_str())},
-                    {"reload_cmd", m_config.getSpecialConfigValue("image", "reload_cmd", k.c_str())},
-                    {"zindex", m_config.getSpecialConfigValue("image", "zindex", k.c_str())},
-                    SHADOWABLE("image"),
-                }
-            });
-            // clang-format on
-        }
-    
-        keys = m_config.listKeysForSpecialCategory("input-field");
-        for (auto& k : keys) {
-            // clang-format off
-            result.push_back(CConfigManager::SWidgetConfig{
-                .type = "input-field",
-                .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("input-field", "monitor", k.c_str())),
-                .values = {
-                    {"size", m_config.getSpecialConfigValue("input-field", "size", k.c_str())},
-                    {"inner_color", m_config.getSpecialConfigValue("input-field", "inner_color", k.c_str())},
-                    {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
-                    {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},
-                    {"dots_size", m_config.getSpecialConfigValue("input-field", "dots_size", k.c_str())},
-                    {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
-                    {"dots_center", m_config.getSpecialConfigValue("input-field", "dots_center", k.c_str())},
-                    {"dots_rounding", m_config.getSpecialConfigValue("input-field", "dots_rounding", k.c_str())},
-                    {"dots_text_format", m_config.getSpecialConfigValue("input-field", "dots_text_format", k.c_str())},
-                    {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
-                    {"fade_timeout", m_config.getSpecialConfigValue("input-field", "fade_timeout", k.c_str())},
-                    {"font_color", m_config.getSpecialConfigValue("input-field", "font_color", k.c_str())},
-                    {"font_family", m_config.getSpecialConfigValue("input-field", "font_family", k.c_str())},
-                    {"halign", m_config.getSpecialConfigValue("input-field", "halign", k.c_str())},
-                    {"valign", m_config.getSpecialConfigValue("input-field", "valign", k.c_str())},
-                    {"position", m_config.getSpecialConfigValue("input-field", "position", k.c_str())},
-                    {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
-                    {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
-                    {"hide_input_base_color", m_config.getSpecialConfigValue("input-field", "hide_input_base_color", k.c_str())},
-                    {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
-                    {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
-                    {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
-                    {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
-                    {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
-                    {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
-                    {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
-                    {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
-                    {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
-                    {"zindex", m_config.getSpecialConfigValue("input-field", "zindex", k.c_str())},
-                    SHADOWABLE("input-field"),
-                }
-            });
-            // clang-format on
-        }
-        keys = m_config.listKeysForSpecialCategory("label");
-        for (auto& k : keys) {
-            // clang-format off
-            result.push_back(CConfigManager::SWidgetConfig{
-                .type = "label",
-                .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("label", "monitor", k.c_str())),
-                .values = {
-                    {"position", m_config.getSpecialConfigValue("label", "position", k.c_str())},
-                    {"color", m_config.getSpecialConfigValue("label", "color", k.c_str())},
-                    {"font_size", m_config.getSpecialConfigValue("label", "font_size", k.c_str())},
-                    {"font_family", m_config.getSpecialConfigValue("label", "font_family", k.c_str())},
-                    {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
-                    {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
-                    {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
-                    {"rotate", m_config.getSpecialConfigValue("label", "rotate", k.c_str())},
-                    {"text_align", m_config.getSpecialConfigValue("label", "text_align", k.c_str())},
-                    {"zindex", m_config.getSpecialConfigValue("label", "zindex", k.c_str())},
-                    SHADOWABLE("label"),
-                }
-            });
-            // clang-format on
-        }
-    
-        return result;
+
+    //
+    auto keys = m_config.listKeysForSpecialCategory("background");
+    result.reserve(keys.size());
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type = "background",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("background", "monitor", k.c_str())),
+            .values = {
+                {"type", m_config.getSpecialConfigValue("background", "type", k.c_str())},
+                {"path", m_config.getSpecialConfigValue("background", "path", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("background", "color", k.c_str())},
+                {"blur_size", m_config.getSpecialConfigValue("background", "blur_size", k.c_str())},
+                {"blur_passes", m_config.getSpecialConfigValue("background", "blur_passes", k.c_str())},
+                {"noise", m_config.getSpecialConfigValue("background", "noise", k.c_str())},
+                {"contrast", m_config.getSpecialConfigValue("background", "contrast", k.c_str())},
+                {"vibrancy", m_config.getSpecialConfigValue("background", "vibrancy", k.c_str())},
+                {"brightness", m_config.getSpecialConfigValue("background", "brightness", k.c_str())},
+                {"vibrancy_darkness", m_config.getSpecialConfigValue("background", "vibrancy_darkness", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("background", "zindex", k.c_str())},
+                {"reload_time", m_config.getSpecialConfigValue("background", "reload_time", k.c_str())},
+                {"reload_cmd", m_config.getSpecialConfigValue("background", "reload_cmd", k.c_str())},
+                {"crossfade_time", m_config.getSpecialConfigValue("background", "crossfade_time", k.c_str())},
+                {"fallback_path", m_config.getSpecialConfigValue("background", "fallback_path", k.c_str())},
+            }
+        });
+        // clang-format on
     }
-    
-    std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
-        if (rawpath.length() < 2) {
-            Debug::log(ERR, "source= path garbage");
-            return "source path " + rawpath + " bogus!";
+
+    //
+    keys = m_config.listKeysForSpecialCategory("shape");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type = "shape",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("shape", "monitor", k.c_str())),
+            .values = {
+                {"size", m_config.getSpecialConfigValue("shape", "size", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("shape", "rounding", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("shape", "border_size", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("shape", "border_color", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("shape", "color", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("shape", "position", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("shape", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("shape", "valign", k.c_str())},
+                {"rotate", m_config.getSpecialConfigValue("shape", "rotate", k.c_str())},
+                {"xray", m_config.getSpecialConfigValue("shape", "xray", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("shape", "zindex", k.c_str())},
+                SHADOWABLE("shape"),
+            }
+        });
+        // clang-format on
+    }
+
+    //
+    keys = m_config.listKeysForSpecialCategory("image");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type = "image",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("image", "monitor", k.c_str())),
+            .values = {
+                {"path", m_config.getSpecialConfigValue("image", "path", k.c_str())},
+                {"size", m_config.getSpecialConfigValue("image", "size", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("image", "rounding", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("image", "border_size", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("image", "border_color", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("image", "position", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("image", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("image", "valign", k.c_str())},
+                {"rotate", m_config.getSpecialConfigValue("image", "rotate", k.c_str())},
+                {"reload_time", m_config.getSpecialConfigValue("image", "reload_time", k.c_str())},
+                {"reload_cmd", m_config.getSpecialConfigValue("image", "reload_cmd", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("image", "zindex", k.c_str())},
+                SHADOWABLE("image"),
+            }
+        });
+        // clang-format on
+    }
+
+    keys = m_config.listKeysForSpecialCategory("input-field");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type = "input-field",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("input-field", "monitor", k.c_str())),
+            .values = {
+                {"size", m_config.getSpecialConfigValue("input-field", "size", k.c_str())},
+                {"inner_color", m_config.getSpecialConfigValue("input-field", "inner_color", k.c_str())},
+                {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
+                {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},
+                {"dots_size", m_config.getSpecialConfigValue("input-field", "dots_size", k.c_str())},
+                {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
+                {"dots_center", m_config.getSpecialConfigValue("input-field", "dots_center", k.c_str())},
+                {"dots_rounding", m_config.getSpecialConfigValue("input-field", "dots_rounding", k.c_str())},
+                {"dots_text_format", m_config.getSpecialConfigValue("input-field", "dots_text_format", k.c_str())},
+                {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
+                {"fade_timeout", m_config.getSpecialConfigValue("input-field", "fade_timeout", k.c_str())},
+                {"font_color", m_config.getSpecialConfigValue("input-field", "font_color", k.c_str())},
+                {"font_family", m_config.getSpecialConfigValue("input-field", "font_family", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("input-field", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("input-field", "valign", k.c_str())},
+                {"position", m_config.getSpecialConfigValue("input-field", "position", k.c_str())},
+                {"placeholder_text", m_config.getSpecialConfigValue("input-field", "placeholder_text", k.c_str())},
+                {"hide_input", m_config.getSpecialConfigValue("input-field", "hide_input", k.c_str())},
+                {"hide_input_base_color", m_config.getSpecialConfigValue("input-field", "hide_input_base_color", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
+                {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
+                {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
+                {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
+                {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
+                {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
+                {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},
+                {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
+                {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("input-field", "zindex", k.c_str())},
+                SHADOWABLE("input-field"),
+            }
+        });
+        // clang-format on
+    }
+    keys = m_config.listKeysForSpecialCategory("label");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type = "label",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("label", "monitor", k.c_str())),
+            .values = {
+                {"position", m_config.getSpecialConfigValue("label", "position", k.c_str())},
+                {"color", m_config.getSpecialConfigValue("label", "color", k.c_str())},
+                {"font_size", m_config.getSpecialConfigValue("label", "font_size", k.c_str())},
+                {"font_family", m_config.getSpecialConfigValue("label", "font_family", k.c_str())},
+                {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},
+                {"rotate", m_config.getSpecialConfigValue("label", "rotate", k.c_str())},
+                {"text_align", m_config.getSpecialConfigValue("label", "text_align", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("label", "zindex", k.c_str())},
+                SHADOWABLE("label"),
+            }
+        });
+        // clang-format on
+    }
+
+    return result;
+}
+
+std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
+    if (rawpath.length() < 2) {
+        Debug::log(ERR, "source= path garbage");
+        return "source path " + rawpath + " bogus!";
+    }
+    std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
+    memset(glob_buf.get(), 0, sizeof(glob_t));
+
+    const auto CURRENTDIR = std::filesystem::path(configCurrentPath).parent_path().string();
+
+    if (auto r = glob(absolutePath(rawpath, CURRENTDIR).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
+        std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
+        Debug::log(ERR, "{}", err);
+        return err;
+    }
+
+    for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
+        const auto PATH = absolutePath(glob_buf->gl_pathv[i], CURRENTDIR);
+
+        if (PATH.empty() || PATH == configCurrentPath) {
+            Debug::log(WARN, "source= skipping invalid path");
+            continue;
         }
-        std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
-        memset(glob_buf.get(), 0, sizeof(glob_t));
-    
-        const auto CURRENTDIR = std::filesystem::path(configCurrentPath).parent_path().string();
-    
-        if (auto r = glob(absolutePath(rawpath, CURRENTDIR).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
-            std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
-            Debug::log(ERR, "{}", err);
-            return err;
-        }
-    
-        for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
-            const auto PATH = absolutePath(glob_buf->gl_pathv[i], CURRENTDIR);
-    
-            if (PATH.empty() || PATH == configCurrentPath) {
-                Debug::log(WARN, "source= skipping invalid path");
+
+        if (!std::filesystem::is_regular_file(PATH)) {
+            if (std::filesystem::exists(PATH)) {
+                Debug::log(WARN, "source= skipping non-file {}", PATH);
                 continue;
             }
-    
-            if (!std::filesystem::is_regular_file(PATH)) {
-                if (std::filesystem::exists(PATH)) {
-                    Debug::log(WARN, "source= skipping non-file {}", PATH);
-                    continue;
-                }
-    
-                Debug::log(ERR, "source= file doesnt exist");
-                return "source file " + PATH + " doesn't exist!";
-            }
-    
-            // allow for nested config parsing
-            auto backupConfigPath = configCurrentPath;
-            configCurrentPath     = PATH;
-    
-            m_config.parseFile(PATH.c_str());
-    
-            configCurrentPath = backupConfigPath;
+
+            Debug::log(ERR, "source= file doesnt exist");
+            return "source file " + PATH + " doesn't exist!";
         }
-    
+
+        // allow for nested config parsing
+        auto backupConfigPath = configCurrentPath;
+        configCurrentPath     = PATH;
+
+        m_config.parseFile(PATH.c_str());
+
+        configCurrentPath = backupConfigPath;
+    }
+
+    return {};
+}
+
+std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
+    const auto  ARGS = CVarList(args);
+
+    std::string bezierName = ARGS[0];
+
+    if (ARGS[1] == "")
+        return "too few arguments";
+    float p1x = std::stof(ARGS[1]);
+
+    if (ARGS[2] == "")
+        return "too few arguments";
+    float p1y = std::stof(ARGS[2]);
+
+    if (ARGS[3] == "")
+        return "too few arguments";
+    float p2x = std::stof(ARGS[3]);
+
+    if (ARGS[4] == "")
+        return "too few arguments";
+    float p2y = std::stof(ARGS[4]);
+
+    if (ARGS[5] != "")
+        return "too many arguments";
+
+    g_pAnimationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
+
+    return {};
+}
+
+std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
+    const auto ARGS = CVarList(args);
+
+    const auto ANIMNAME = ARGS[0];
+
+    if (!m_AnimationTree.nodeExists(ANIMNAME))
+        return "no such animation";
+
+    // This helper casts strings like "1", "true", "off", "yes"... to int.
+    int64_t enabledInt = configStringToInt(ARGS[1]);
+
+    // Checking that the int is 1 or 0 because the helper can return integers out of range.
+    if (enabledInt > 1 || enabledInt < 0)
+        return "invalid animation on/off state";
+
+    if (!enabledInt) {
+        m_AnimationTree.setConfigForNode(ANIMNAME, 0, 1, "default");
         return {};
     }
-    
-    std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
-        const auto  ARGS = CVarList(args);
-    
-        std::string bezierName = ARGS[0];
-    
-        if (ARGS[1] == "")
-            return "too few arguments";
-        float p1x = std::stof(ARGS[1]);
-    
-        if (ARGS[2] == "")
-            return "too few arguments";
-        float p1y = std::stof(ARGS[2]);
-    
-        if (ARGS[3] == "")
-            return "too few arguments";
-        float p2x = std::stof(ARGS[3]);
-    
-        if (ARGS[4] == "")
-            return "too few arguments";
-        float p2y = std::stof(ARGS[4]);
-    
-        if (ARGS[5] != "")
-            return "too many arguments";
-    
-        g_pAnimationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
-    
-        return {};
-    }
-    
-    std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
-        const auto ARGS = CVarList(args);
-    
-        const auto ANIMNAME = ARGS[0];
-    
-        if (!m_AnimationTree.nodeExists(ANIMNAME))
-            return "no such animation";
-    
-        // This helper casts strings like "1", "true", "off", "yes"... to int.
-        int64_t enabledInt = configStringToInt(ARGS[1]);
-    
-        // Checking that the int is 1 or 0 because the helper can return integers out of range.
-        if (enabledInt > 1 || enabledInt < 0)
-            return "invalid animation on/off state";
-    
-        if (!enabledInt) {
-            m_AnimationTree.setConfigForNode(ANIMNAME, 0, 1, "default");
-            return {};
-        }
-    
-        int64_t speed = -1;
-    
-        // speed
-        if (isNumber(ARGS[2], true)) {
-            speed = std::stof(ARGS[2]);
-    
-            if (speed <= 0) {
-                speed = 1.f;
-                return "invalid speed";
-            }
-        } else {
-            speed = 10.f;
+
+    int64_t speed = -1;
+
+    // speed
+    if (isNumber(ARGS[2], true)) {
+        speed = std::stof(ARGS[2]);
+
+        if (speed <= 0) {
+            speed = 1.f;
             return "invalid speed";
         }
-    
-        std::string bezierName = ARGS[3];
-        // ARGS[4] (style) currently usused by hyprlock
-        m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, bezierName, "");
-    
-        if (!g_pAnimationManager->bezierExists(bezierName)) {
-            const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
-            PANIMNODE->internalBezier = "default";
-            return "no such bezier";
-        }
-    
-        return {};
+    } else {
+        speed = 10.f;
+        return "invalid speed";
     }
+
+    std::string bezierName = ARGS[3];
+    // ARGS[4] (style) currently usused by hyprlock
+    m_AnimationTree.setConfigForNode(ANIMNAME, enabledInt, speed, bezierName, "");
+
+    if (!g_pAnimationManager->bezierExists(bezierName)) {
+        const auto PANIMNODE      = m_AnimationTree.getConfig(ANIMNAME);
+        PANIMNODE->internalBezier = "default";
+        return "no such bezier";
+    }
+
+    return {};
+}

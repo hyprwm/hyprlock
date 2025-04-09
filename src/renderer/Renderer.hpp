@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <optional>
+#include <mutex> // Added for mpvpaperMutex
 #include "Shader.hpp"
 #include "../defines.hpp"
 #include "../core/LockSurface.hpp"
@@ -11,6 +12,8 @@
 #include "../config/ConfigDataValues.hpp"
 #include "widgets/IWidget.hpp"
 #include "Framebuffer.hpp"
+#include <map>
+#include <string>
 
 typedef std::unordered_map<OUTPUTID, std::vector<SP<IWidget>>> widgetMap_t;
 
@@ -34,8 +37,13 @@ class CRenderer {
     void            renderRect(const CBox& box, const CHyprColor& col, int rounding = 0);
     void            renderBorder(const CBox& box, const CGradientValueData& gradient, int thickness, int rounding = 0, float alpha = 1.0);
     void            renderTexture(const CBox& box, const CTexture& tex, float a = 1.0, int rounding = 0, std::optional<eTransform> tr = {});
-    void renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
-    void blurFB(const CFramebuffer& outfb, SBlurParams params);
+    void            renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
+    void            blurFB(const CFramebuffer& outfb, SBlurParams params);
+
+    // Added methods for layered rendering
+    void            renderBackground(const CSessionLockSurface& surf, float opacity);
+    void            renderShapes(const CSessionLockSurface& surf, float opacity);
+    void            renderInputFields(const CSessionLockSurface& surf, float opacity);
 
     UP<CAsyncResourceGatherer>            asyncResourceGatherer;
     std::chrono::system_clock::time_point firstFullFrameTime;
@@ -48,6 +56,10 @@ class CRenderer {
 
     void                                  startFadeIn();
     void                                  startFadeOut(bool unlock = false, bool immediate = true);
+
+    bool                                  startMpvpaper(const std::string& monitor, const std::string& videoPath);
+    void                                  stopMpvpaper();
+    void                                  stopMpvpaper(const std::string& monitor);
 
   private:
     widgetMap_t               widgets;
@@ -67,6 +79,10 @@ class CRenderer {
     Mat3x3                    projection;
 
     PHLANIMVAR<float>         opacity;
+
+    std::map<std::string, pid_t> mpvpaperPids;
+    std::map<std::string, std::string> mpvpaperVideoPaths;
+    std::mutex                mpvpaperMutex; // Added for safe PID management
 
     std::vector<GLint>        boundFBs;
 };

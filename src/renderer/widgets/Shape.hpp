@@ -11,34 +11,37 @@
 
 class CShape : public IWidget {
   public:
-    CShape()          = default;
+    CShape() = default;
     virtual ~CShape() = default;
 
-    void         registerSelf(const SP<CShape>& self);
+    void registerSelf(const SP<CShape>& self);
 
-    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
-    virtual bool draw(const SRenderData& data);
+    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) override;
+    virtual bool draw(const SRenderData& data) override;
+    virtual std::string type() const override; // Added for layered rendering
 
   private:
-    WP<CShape>         m_self;
+    WP<CShape> m_self;
 
-    CFramebuffer       shapeFB;
+    CFramebuffer shapeFB;
 
-    int                rounding;
-    double             border;
-    double             angle;
-    CHyprColor         color;
+    std::string shapeType; // e.g., "rectangle"
+    bool blurEnabled = false;
+    struct {
+        int size = 0;
+        int passes = 0;
+    } blurParams;
+    int zindex = 10; // Default: above background, below input-field
+
+    int rounding;
+    double border;
+    double angle;
+    CHyprColor color;
     CGradientValueData borderGrad;
-    Vector2D           size;
-    Vector2D           pos;
-    CBox               shapeBox;
-    CBox               borderBox;
-    bool               xray;
+    Vector2D size;
+    Vector2D pos;
 
-    std::string        halign, valign;
-
-    bool               firstRender = true;
-
-    Vector2D           viewport;
-    CShadowable        shadow;
+    std::string halign, valign;
+    Vector2D viewport;
+    CShadowable shadow;
 };

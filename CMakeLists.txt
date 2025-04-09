@@ -28,9 +28,6 @@ set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-unused-value
                     -Wno-missing-field-initializers -Wno-narrowing)
 
-
-
-
 add_compile_definitions(HYPRLOCK_VERSION="${VERSION}")
 
 if (DEFINED HYPRLOCK_COMMIT)
@@ -135,6 +132,7 @@ make_directory(${CMAKE_SOURCE_DIR}/protocols) # we don't ship any custom ones so
 
 protocolwayland()
 
+protocolnew("stable/xdg-shell" "xdg-shell" false) # Added for xdg-shell
 protocolnew("protocols" "wlr-screencopy-unstable-v1" true)
 protocolnew("staging/ext-session-lock" "ext-session-lock-v1" false)
 protocolnew("stable/linux-dmabuf" "linux-dmabuf-v1" false)
@@ -142,6 +140,7 @@ protocolnew("staging/fractional-scale" "fractional-scale-v1" false)
 protocolnew("stable/viewporter" "viewporter" false)
 protocolnew("staging/cursor-shape" "cursor-shape-v1" false)
 protocolnew("stable/tablet" "tablet-v2" false)
+protocolnew("protocols" "wlr-layer-shell-unstable-v1" true)
 
 # Installation
 install(TARGETS hyprlock)

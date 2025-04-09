@@ -1,4 +1,3 @@
-
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
 #include "helpers/Log.hpp"
@@ -93,28 +92,36 @@ int main(int argc, char** argv, char** envp) {
         }
     }
 
-    printVersion();
-    g_pAnimationManager = makeUnique<CHyprlockAnimationManager>();
-
     try {
-        g_pConfigManager = makeUnique<CConfigManager>(configPath);
-        g_pConfigManager->init();
-    } catch (const std::exception& ex) {
-        Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
-        if (std::string(ex.what()).contains("File does not exist"))
-            Debug::log(NONE, "           Make sure you have a config.");
+        printVersion();
+        g_pAnimationManager = makeUnique<CHyprlockAnimationManager>();
 
+        try {
+            g_pConfigManager = makeUnique<CConfigManager>(configPath);
+            g_pConfigManager->init();
+        } catch (const std::exception& ex) {
+            Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
+            if (std::string(ex.what()).contains("File does not exist"))
+                Debug::log(NONE, "           Make sure you have a config.");
+
+            throw; // Re-throw to outer catch
+        }
+
+        if (noFadeIn)
+            g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
+
+        try {
+            g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender);
+            g_pHyprlock->run();
+        } catch (const std::exception& ex) {
+            Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
+            throw; // Re-throw to outer catch
+        }
+    } catch (const std::exception& e) {
+        Debug::log(ERR, "Unhandled exception in main: {}", e.what());
         return 1;
-    }
-
-    if (noFadeIn)
-        g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
-
-    try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender);
-        g_pHyprlock->run();
-    } catch (const std::exception& ex) {
-        Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
+    } catch (...) {
+        Debug::log(ERR, "Unknown exception in main");
         return 1;
     }
 
