@@ -31,7 +31,8 @@ class CBackground : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) override;
     virtual bool draw(const SRenderData& data) override;
-    virtual std::string type() const override; // Added for layered rendering
+    virtual std::string type() const override;
+    virtual bool isVideoBackground() const; // Method for video background check
 
     void         reset(); // Unload assets, remove timers, etc.
 
@@ -43,7 +44,7 @@ class CBackground : public IWidget {
     void         startCrossFadeOrUpdateRender();
 
     // Members for video background support
-    bool         isVideoBackground = false;
+    bool         m_bIsVideoBackground = false; // Renamed to avoid conflict
     std::string  videoPath;
     std::string  monitor; // Store monitor name for mpvpaper
     std::string  fallbackPath; // Added for fallback image if video fails

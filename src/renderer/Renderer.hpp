@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <optional>
-#include <mutex> // Added for mpvpaperMutex
+#include <mutex>
 #include "Shader.hpp"
 #include "../defines.hpp"
 #include "../core/LockSurface.hpp"
@@ -14,6 +14,8 @@
 #include "Framebuffer.hpp"
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 typedef std::unordered_map<OUTPUTID, std::vector<SP<IWidget>>> widgetMap_t;
 
@@ -40,7 +42,7 @@ class CRenderer {
     void            renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
     void            blurFB(const CFramebuffer& outfb, SBlurParams params);
 
-    // Added methods for layered rendering
+    // Layered rendering methods
     void            renderBackground(const CSessionLockSurface& surf, float opacity);
     void            renderShapes(const CSessionLockSurface& surf, float opacity);
     void            renderInputFields(const CSessionLockSurface& surf, float opacity);
@@ -82,7 +84,7 @@ class CRenderer {
 
     std::map<std::string, pid_t> mpvpaperPids;
     std::map<std::string, std::string> mpvpaperVideoPaths;
-    std::mutex                mpvpaperMutex; // Added for safe PID management
+    std::mutex                mpvpaperMutex; // For safe PID management
 
     std::vector<GLint>        boundFBs;
 };

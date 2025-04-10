@@ -13,9 +13,9 @@ extern UP<CRenderer> g_pRenderer;
 
 CBackground::~CBackground() {
     reset();
-    if (isVideoBackground && !monitor.empty()) {
+    if (m_bIsVideoBackground && !monitor.empty()) {
         g_pRenderer->stopMpvpaper(monitor);
-        isVideoBackground = false;
+        m_bIsVideoBackground = false;
     }
 }
 
@@ -25,6 +25,10 @@ void CBackground::registerSelf(const SP<CBackground>& self) {
 
 std::string CBackground::type() const {
     return "background";
+}
+
+bool CBackground::isVideoBackground() const {
+    return m_bIsVideoBackground;
 }
 
 void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
@@ -251,7 +255,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             }
         }
 
-        isVideoBackground = false;
+        m_bIsVideoBackground = false;
         videoPath = "";
         resourceID = "";
         if (type == "video" || path.ends_with(".mp4")) {
@@ -260,11 +264,12 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             if (!path.empty()) {
                 Debug::log(LOG, "Attempting to start mpvpaper for monitor {} with video {}", monitor, path);
                 bool mpvSuccess = g_pRenderer->startMpvpaper(monitor, path);
-                isVideoBackground = mpvSuccess;
+                m_bIsVideoBackground = mpvSuccess;
                 if (!mpvSuccess) {
                     if (!fallbackPath.empty() && !fallbackPath.ends_with(".mp4")) {
                         Debug::log(LOG, "Video background failed, using fallback: {}", fallbackPath);
                         resourceID = "background:" + fallbackPath;
+                        m_bIsVideoBackground = false; // Ensure fallback image renders
                     } else {
                         Debug::log(ERR, "Video background failed and no valid fallback path provided, using transparent.");
                         resourceID = "";
@@ -279,7 +284,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         outputPort = pOutput->stringPort;
         transform = isScreenshot ? wlTransformToHyprutils(invertTransform(pOutput->transform)) : HYPRUTILS_TRANSFORM_NORMAL;
 
-        if (isScreenshot && !isVideoBackground) {
+        if (isScreenshot && !m_bIsVideoBackground) {
             if (g_pRenderer->asyncResourceGatherer->gathered) {
                 if (!g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID))
                     resourceID = "";
@@ -290,7 +295,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             }
         }
 
-        if (!isScreenshot && !isVideoBackground && reloadTime > -1) {
+        if (!isScreenshot && !m_bIsVideoBackground && reloadTime > -1) {
             try {
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
             } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
@@ -298,7 +303,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         }
     } catch (const std::exception& e) {
         Debug::log(ERR, "Exception in CBackground::configure: {}", e.what());
-        isVideoBackground = false;
+        m_bIsVideoBackground = false;
         resourceID = "";
     }
 }
@@ -323,7 +328,7 @@ void CBackground::renderRect(CHyprColor color) {
 }
 
 bool CBackground::draw(const SRenderData& data) {
-    if (isVideoBackground) {
+    if (m_bIsVideoBackground) {
         Debug::log(LOG, "Skipping static background rendering; using video background via mpvpaper");
         return false; // mpvpaper handles rendering
     }
@@ -440,7 +445,7 @@ void CBackground::onReloadTimerUpdate() {
             return;
     }
 
-    if (isVideoBackground)
+    if (m_bIsVideoBackground)
         return;
 
     try {

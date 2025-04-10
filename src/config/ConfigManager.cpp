@@ -98,7 +98,6 @@ static void configHandleLayoutOptionDestroy(void** data) {
     if (*data)
         delete reinterpret_cast<CLayoutValueData*>(*data);
 }
-
 static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** data) {
     const std::string V = VALUE;
 
@@ -201,6 +200,7 @@ inline static constexpr auto GRADIENTCONFIG = [](const char* default_value) -> H
 inline static constexpr auto LAYOUTCONFIG = [](const char* default_value) -> Hyprlang::CUSTOMTYPE {
     return Hyprlang::CUSTOMTYPE{&configHandleLayoutOption, configHandleLayoutOptionDestroy, default_value};
 };
+
 void CConfigManager::init() {
     #define SHADOWABLE(name)                                                                                                                                                           \
         m_config.addSpecialConfigValue(name, "shadow_size", Hyprlang::INT{3});                                                                                                         \
@@ -227,7 +227,7 @@ void CConfigManager::init() {
     
         m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
         m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
-        m_config.addSpecialConfigValue("background", "type", Hyprlang::STRING{"image"});  // New type field
+        m_config.addSpecialConfigValue("background", "type", Hyprlang::STRING{"image"});
         m_config.addSpecialConfigValue("background", "path", Hyprlang::STRING{""});
         m_config.addSpecialConfigValue("background", "color", Hyprlang::INT{0xFF111111});
         m_config.addSpecialConfigValue("background", "blur_size", Hyprlang::INT{8});
@@ -242,6 +242,11 @@ void CConfigManager::init() {
         m_config.addSpecialConfigValue("background", "reload_cmd", Hyprlang::STRING{""});
         m_config.addSpecialConfigValue("background", "crossfade_time", Hyprlang::FLOAT{-1.0});
         m_config.addSpecialConfigValue("background", "fallback_path", Hyprlang::STRING{""});
+        m_config.addSpecialConfigValue("background", "mpvpaper_mute", Hyprlang::INT{1});
+        m_config.addSpecialConfigValue("background", "mpvpaper_fps", Hyprlang::INT{30});
+        m_config.addSpecialConfigValue("background", "mpvpaper_panscan", Hyprlang::FLOAT{1.0});
+        m_config.addSpecialConfigValue("background", "mpvpaper_hwdec", Hyprlang::STRING{"vaapi"});
+        m_config.addSpecialConfigValue("background", "mpvpaper_layer", Hyprlang::STRING{"bottom"});
     
         m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
         m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
@@ -360,6 +365,7 @@ void CConfigManager::init() {
 
 std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     std::vector<CConfigManager::SWidgetConfig> result;
+    std::vector<std::string> keys;
 
     #define SHADOWABLE(name)                                                                                                                                                           \
         {"shadow_size", m_config.getSpecialConfigValue(name, "shadow_size", k.c_str())}, {"shadow_passes", m_config.getSpecialConfigValue(name, "shadow_passes", k.c_str())},          \
@@ -368,7 +374,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         }
 
     //
-    auto keys = m_config.listKeysForSpecialCategory("background");
+    keys = m_config.listKeysForSpecialCategory("background");
     result.reserve(keys.size());
     for (auto& k : keys) {
         // clang-format off
@@ -391,6 +397,11 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"reload_cmd", m_config.getSpecialConfigValue("background", "reload_cmd", k.c_str())},
                 {"crossfade_time", m_config.getSpecialConfigValue("background", "crossfade_time", k.c_str())},
                 {"fallback_path", m_config.getSpecialConfigValue("background", "fallback_path", k.c_str())},
+                {"mpvpaper_mute", m_config.getSpecialConfigValue("background", "mpvpaper_mute", k.c_str())},
+                {"mpvpaper_fps", m_config.getSpecialConfigValue("background", "mpvpaper_fps", k.c_str())},
+                {"mpvpaper_panscan", m_config.getSpecialConfigValue("background", "mpvpaper_panscan", k.c_str())},
+                {"mpvpaper_hwdec", m_config.getSpecialConfigValue("background", "mpvpaper_hwdec", k.c_str())},
+                {"mpvpaper_layer", m_config.getSpecialConfigValue("background", "mpvpaper_layer", k.c_str())},
             }
         });
         // clang-format on
@@ -447,6 +458,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         // clang-format on
     }
 
+    //
     keys = m_config.listKeysForSpecialCategory("input-field");
     for (auto& k : keys) {
         // clang-format off
@@ -488,6 +500,8 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         });
         // clang-format on
     }
+
+    //
     keys = m_config.listKeysForSpecialCategory("label");
     for (auto& k : keys) {
         // clang-format off

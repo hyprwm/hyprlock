@@ -19,10 +19,13 @@ class CConfigManager {
         return Hyprlang::CSimpleConfigValue<T>(&m_config, name.c_str());
     }
 
+    // Structure for widget configurations (background, shape, image, input-field, label)
     struct SWidgetConfig {
-        std::string                               type;
-        std::string                               monitor;
-
+        std::string                               type;    // Widget type (e.g., "background")
+        std::string                               monitor; // Monitor name (e.g., "DP-3")
+        // Map of configuration values, e.g.:
+        // For background: "path", "type", "color", "mpvpaper_mute", "mpvpaper_fps", etc.
+        // For input-field: "size", "inner_color", etc.
         std::unordered_map<std::string, std::any> values;
     };
 

@@ -22,7 +22,9 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdexcept>
-#include <mutex> // Added for mpvpaper safeguards
+#include <mutex>
+#include <vector>
+#include <sstream>
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -223,13 +225,25 @@ CRenderer::CRenderer() {
         throw;
     }
 }
-
 void CRenderer::renderBackground(const CSessionLockSurface& surf, float opacity) {
     try {
         auto widgets = getOrCreateWidgetsFor(surf);
+        bool hasVideoBackground = false;
         for (auto& w : widgets) {
             if (w->type() == "background") {
+                auto* bgWidget = dynamic_cast<CBackground*>(w.get());
+                if (bgWidget && bgWidget->isVideoBackground()) {
+                    hasVideoBackground = true;
+                    continue; // Skip rendering static background for video
+                }
                 w->draw({opacity});
+            }
+        }
+        if (hasVideoBackground) {
+            static bool logged = false; // Log only once to avoid spam
+            if (!logged) {
+                Debug::log(LOG, "Skipping static background rendering; using video background via mpvpaper");
+                logged = true;
             }
         }
     } catch (const std::exception& e) {
@@ -307,6 +321,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         return {};
     }
 }
+
 void CRenderer::renderRect(const CBox& box, const CHyprColor& col, int rounding) {
     try {
         const auto ROUNDEDBOX = box.copy().round();
@@ -374,7 +389,6 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
         Debug::log(ERR, "renderBorder failed: {}", e.what());
     }
 }
-
 void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int rounding, std::optional<eTransform> tr) {
     try {
         const auto ROUNDEDBOX = box.copy().round();
@@ -518,6 +532,7 @@ std::vector<SP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSur
         return empty;
     }
 }
+
 void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
     try {
         glDisable(GL_BLEND);
@@ -629,7 +644,6 @@ void CRenderer::blurFB(const CFramebuffer& outfb, SBlurParams params) {
         glEnable(GL_BLEND);
     }
 }
-
 void CRenderer::pushFb(GLint fb) {
     try {
         boundFBs.push_back(fb);
@@ -699,18 +713,61 @@ bool CRenderer::startMpvpaper(const std::string& monitor, const std::string& vid
             return true;
         }
         Debug::log(LOG, "Starting mpvpaper for monitor {} with video {}", monitor, videoPath);
+
+        // Get background widget config to read mpvpaper options
+        std::string mpvOptions = "loop";
+        std::string layer = "overlay"; // Default to overlay for lock screen
+        auto configs = g_pConfigManager->getWidgetConfigs();
+        for (const auto& config : configs) {
+            if (config.type == "background" && config.monitor == monitor) {
+                try {
+                    if (config.values.contains("mpvpaper_mute")) {
+                        int mute = std::any_cast<Hyprlang::INT>(config.values.at("mpvpaper_mute"));
+                        if (mute) mpvOptions += " mute=yes";
+                    }
+                    if (config.values.contains("mpvpaper_fps")) {
+                        int fps = std::any_cast<Hyprlang::INT>(config.values.at("mpvpaper_fps"));
+                        if (fps > 0) mpvOptions += " --vf=fps=" + std::to_string(fps); // Use --vf=fps instead of --fps
+                    }
+                    if (config.values.contains("mpvpaper_panscan")) {
+                        float panscan = std::any_cast<Hyprlang::FLOAT>(config.values.at("mpvpaper_panscan"));
+                        if (panscan >= 0) mpvOptions += " panscan=" + std::to_string(panscan);
+                    }
+                    if (config.values.contains("mpvpaper_hwdec")) {
+                        std::string hwdec = std::any_cast<Hyprlang::STRING>(config.values.at("mpvpaper_hwdec"));
+                        if (!hwdec.empty()) mpvOptions += " --hwdec=" + hwdec;
+                    }
+                    if (config.values.contains("mpvpaper_layer")) {
+                        std::string configLayer = std::any_cast<Hyprlang::STRING>(config.values.at("mpvpaper_layer"));
+                        if (!configLayer.empty()) layer = configLayer;
+                    }
+                } catch (const std::exception& e) {
+                    Debug::log(WARN, "Failed to parse mpvpaper options for monitor {}: {}", monitor, e.what());
+                }
+                break;
+            }
+        }
+
+        // Split options into arguments
+        std::vector<std::string> args = {"mpvpaper", "-l", layer, "-o", mpvOptions, monitor, videoPath};
+        std::vector<char*> argv;
+        for (auto& arg : args) {
+            argv.push_back(const_cast<char*>(arg.c_str()));
+        }
+        argv.push_back(nullptr);
+
         pid_t pid = fork();
         if (pid == 0) {
-            // Redirect stderr to log file for debugging
-            freopen("/tmp/mpvpaper.log", "w", stderr);
-            // Use minimal mpvpaper options, relying on default Wayland surface layering
-            execlp("mpvpaper", "mpvpaper", "-o", "loop panscan=1.0 mute=yes", monitor.c_str(), videoPath.c_str(), (char*)nullptr);
-            Debug::log(ERR, "execlp failed for mpvpaper on monitor {} with video {}: errno {}", monitor, videoPath, errno);
+            // Redirect stderr to unique log file
+            std::string logFile = "/tmp/mpvpaper_hyprlock_" + std::to_string(getpid()) + ".log";
+            freopen(logFile.c_str(), "w", stderr);
+            execvp("mpvpaper", argv.data());
+            Debug::log(ERR, "execvp failed for mpvpaper on monitor {} with video {}: errno {}", monitor, videoPath, errno);
             _exit(1);
         } else if (pid > 0) {
             mpvpaperPids[monitor] = pid;
             mpvpaperVideoPaths[monitor] = videoPath;
-            Debug::log(LOG, "Started mpvpaper for monitor {} with PID {}", monitor, pid);
+            Debug::log(LOG, "Started mpvpaper for monitor {} with PID {} and options '{}'", monitor, pid, mpvOptions);
             return true;
         } else {
             Debug::log(ERR, "Fork failed for mpvpaper on monitor {}: errno {}", monitor, errno);
