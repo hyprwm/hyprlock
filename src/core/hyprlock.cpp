@@ -668,6 +668,58 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     }
 }
 
+void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    for (auto& o : m_vOutputs) {
+        if (!o->m_sessionLockSurface)
+            continue;
+
+        const auto widgets = g_pRenderer->getOrCreateWidgetsFor(*o->m_sessionLockSurface);
+        for (const auto& widget : widgets) {
+            if (widget->containsPoint(pos))
+                widget->onClick(button, down, pos);
+        }
+    }
+}
+
+void CHyprlock::onHover(const Vector2D& pos) {
+    bool cursorChanged = false;
+
+    for (auto& o : m_vOutputs) {
+        if (!o->m_sessionLockSurface)
+            continue;
+
+        const auto widgets           = g_pRenderer->getOrCreateWidgetsFor(*o->m_sessionLockSurface);
+        bool       outputNeedsRedraw = false;
+
+        for (const auto& widget : widgets) {
+            const bool containsPoint = widget->containsPoint(pos);
+            const bool wasHovered    = widget->isHovered();
+
+            if (containsPoint) {
+                if (!wasHovered) {
+                    widget->setHover(true);
+                    widget->onHover(pos);
+                    outputNeedsRedraw = true;
+                }
+
+                if (!cursorChanged)
+                    cursorChanged = true;
+
+            } else if (wasHovered) {
+                widget->setHover(false);
+                outputNeedsRedraw = true;
+            }
+        }
+
+        if (outputNeedsRedraw)
+            o->m_sessionLockSurface->render();
+    }
+
+    if (!cursorChanged) {
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+    }
+}
+
 bool CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = makeShared<CCExtSessionLockV1>(m_sWaylandState.sessionLock->sendLock());

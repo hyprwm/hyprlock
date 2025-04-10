@@ -209,6 +209,9 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue(name, "shadow_passes", Hyprlang::INT{0});                                                                                                       \
     m_config.addSpecialConfigValue(name, "shadow_color", Hyprlang::INT{0xFF000000});                                                                                               \
     m_config.addSpecialConfigValue(name, "shadow_boost", Hyprlang::FLOAT{1.2});
+
+#define CLICKABLE(name) m_config.addSpecialConfigValue(name, "onclick", Hyprlang::STRING{""});
+
     m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:grace", Hyprlang::INT{0});
@@ -320,6 +323,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "text_align", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("label", "zindex", Hyprlang::INT{0});
     SHADOWABLE("label");
+    CLICKABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {.allowFlags = false});
     m_config.registerHandler(&::handleBezier, "bezier", {.allowFlags = false});
@@ -356,6 +360,7 @@ void CConfigManager::init() {
         Debug::log(ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
 
 #undef SHADOWABLE
+#undef CLICKABLE
 }
 
 std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
@@ -366,6 +371,8 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         {"shadow_color", m_config.getSpecialConfigValue(name, "shadow_color", k.c_str())}, {                                                                                       \
         "shadow_boost", m_config.getSpecialConfigValue(name, "shadow_boost", k.c_str())                                                                                            \
     }
+
+#define CLICKABLE(name) {"onclick", m_config.getSpecialConfigValue(name, "onclick", k.c_str())}
 
     //
     auto keys = m_config.listKeysForSpecialCategory("background");
@@ -505,6 +512,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"text_align", m_config.getSpecialConfigValue("label", "text_align", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("label", "zindex", k.c_str())},
                 SHADOWABLE("label"),
+                CLICKABLE("label"),
             }
         });
         // clang-format on

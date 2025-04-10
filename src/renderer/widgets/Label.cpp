@@ -79,6 +79,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle          = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
         angle          = angle * M_PI / 180.0;
+        onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
         std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
@@ -171,4 +172,20 @@ void CLabel::renderUpdate() {
     }
 
     g_pHyprlock->renderOutput(outputStringPort);
+}
+
+CBox CLabel::getBoundingBox() const {
+    if (!asset)
+        return {pos.x, abs(pos.y - viewport.y), 0, 0};
+    return {pos.x, abs(pos.y - viewport.y + asset->texture.m_vSize.y), asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+}
+
+void CLabel::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (down && !onclickCommand.empty())
+        g_pHyprlock->spawnSync(onclickCommand);
+}
+
+void CLabel::onHover(const Vector2D& pos) {
+    if (!onclickCommand.empty())
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
 }
