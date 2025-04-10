@@ -613,11 +613,8 @@ void CRenderer::startFadeIn() {
     opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->m_AnimationTree.getConfig("fadeOut")); }, true);
 }
 
-void CRenderer::startFadeOut(bool unlock, bool immediate) {
-    if (immediate)
-        opacity->setValueAndWarp(0.f);
-    else
-        *opacity = 0.f;
+void CRenderer::startFadeOut(bool unlock) {
+    *opacity = 0.f;
 
     if (unlock)
         opacity->setCallbackOnEnd([](auto) { g_pHyprlock->releaseSessionLock(); }, true);
