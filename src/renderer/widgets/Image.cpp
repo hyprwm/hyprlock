@@ -78,7 +78,8 @@ void CImage::plantTimer() {
 void CImage::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
 
-    viewport = pOutput->getViewport();
+    viewport   = pOutput->getViewport();
+    stringPort = pOutput->stringPort;
 
     shadow.configure(m_self.lock(), props, viewport);
 
@@ -230,5 +231,5 @@ void CImage::renderUpdate() {
         g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
     }
 
-    g_pHyprlock->renderOutput(output->stringPort);
+    g_pHyprlock->renderOutput(stringPort);
 }

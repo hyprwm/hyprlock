@@ -54,9 +54,10 @@ class CImage : public IWidget {
     CAsyncResourceGatherer::SPreloadRequest request;
 
     Vector2D                                viewport;
+    std::string                             stringPort;
+
     std::string                             resourceID;
     std::string                             pendingResourceID; // if reloading image
-    SPreloadedAsset*                        asset  = nullptr;
-    COutput*                                output = nullptr;
+    SPreloadedAsset*                        asset = nullptr;
     CShadowable                             shadow;
 };
