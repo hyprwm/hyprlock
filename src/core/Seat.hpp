@@ -14,7 +14,6 @@ class CSeatManager {
     void               registerSeat(SP<CCWlSeat> seat);
     void               registerCursorShape(SP<CCWpCursorShapeManagerV1> shape);
     bool               registered();
-    std::string        getActiveKbLayoutName();
 
     SP<CCWlKeyboard>   m_pKeeb;
     SP<CCWlPointer>    m_pPointer;
