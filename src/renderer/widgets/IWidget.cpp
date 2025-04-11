@@ -271,5 +271,5 @@ bool IWidget::isHovered() const {
 }
 
 bool IWidget::containsPoint(const Vector2D& pos) const {
-    return getBoundingBox().containsPoint(pos);
+    return getBoundingBoxWl().containsPoint(pos);
 }

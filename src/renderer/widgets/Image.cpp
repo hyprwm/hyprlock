@@ -6,6 +6,7 @@
 #include "../../config/ConfigDataValues.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
+#include <hyprutils/math/Vector2D.hpp>
 
 CImage::~CImage() {
     reset();
@@ -84,14 +85,14 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
     shadow.configure(m_self.lock(), props, viewport);
 
     try {
-        size     = std::any_cast<Hyprlang::INT>(props.at("size"));
-        rounding = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-        border   = std::any_cast<Hyprlang::INT>(props.at("border_size"));
-        color    = *CGradientValueData::fromAnyPv(props.at("border_color"));
-        pos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
-        halign   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-        valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-        angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        size      = std::any_cast<Hyprlang::INT>(props.at("size"));
+        rounding  = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+        border    = std::any_cast<Hyprlang::INT>(props.at("border_size"));
+        color     = *CGradientValueData::fromAnyPv(props.at("border_color"));
+        configPos = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
+        halign    = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign    = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        angle     = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
 
         path           = std::any_cast<Hyprlang::STRING>(props.at("path"));
         reloadTime     = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
@@ -197,10 +198,10 @@ bool CImage::draw(const SRenderData& data) {
 
     shadow.draw(data);
 
-    const auto TEXPOS = posFromHVAlign(viewport, tex->m_vSize, pos, halign, valign, angle);
+    pos = posFromHVAlign(viewport, tex->m_vSize, configPos, halign, valign, angle);
 
-    texbox.x = TEXPOS.x;
-    texbox.y = TEXPOS.y;
+    texbox.x = pos.x;
+    texbox.y = pos.y;
 
     texbox.round();
     texbox.rot = angle;
@@ -235,10 +236,14 @@ void CImage::renderUpdate() {
     g_pHyprlock->renderOutput(stringPort);
 }
 
-CBox CImage::getBoundingBox() const {
-    if (!asset)
-        return {pos.x, abs(pos.y - viewport.y), 0, 0};
-    return {pos.x, abs(pos.y - viewport.y + asset->texture.m_vSize.y), asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+CBox CImage::getBoundingBoxWl() const {
+    if (!imageFB.isAllocated())
+        return CBox{};
+
+    return {
+        Vector2D{pos.x, viewport.y - pos.y - imageFB.m_cTex.m_vSize.y},
+        imageFB.m_cTex.m_vSize,
+    };
 }
 
 void CImage::onClick(uint32_t button, bool down, const Vector2D& pos) {

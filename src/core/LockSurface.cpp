@@ -139,3 +139,7 @@ void CSessionLockSurface::onCallback() {
         render();
     }
 }
+
+SP<CCWlSurface> CSessionLockSurface::getWlSurface() {
+    return surface;
+}

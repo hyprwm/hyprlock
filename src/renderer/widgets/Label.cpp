@@ -174,10 +174,14 @@ void CLabel::renderUpdate() {
     g_pHyprlock->renderOutput(outputStringPort);
 }
 
-CBox CLabel::getBoundingBox() const {
+CBox CLabel::getBoundingBoxWl() const {
     if (!asset)
-        return {pos.x, abs(pos.y - viewport.y), 0, 0};
-    return {pos.x, abs(pos.y - viewport.y + asset->texture.m_vSize.y), asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+        return CBox{};
+
+    return {
+        Vector2D{pos.x, viewport.y - pos.y - asset->texture.m_vSize.y},
+        asset->texture.m_vSize,
+    };
 }
 
 void CLabel::onClick(uint32_t button, bool down, const Vector2D& pos) {

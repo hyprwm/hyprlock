@@ -53,7 +53,18 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
                     m_pCursorShape->setShape(wpCursorShapeDeviceV1Shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
 
                 g_pHyprlock->m_vLastEnterCoords = {wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)};
+
+                for (const auto& POUTPUT : g_pHyprlock->m_vOutputs) {
+                    if (!POUTPUT->m_sessionLockSurface)
+                        continue;
+
+                    const auto& PWLSURFACE = POUTPUT->m_sessionLockSurface->getWlSurface();
+                    if (PWLSURFACE->resource() == surf)
+                        g_pHyprlock->m_focusedOutput = POUTPUT;
+                }
             });
+
+            m_pPointer->setLeave([](CCWlPointer* r, uint32_t serial, wl_proxy* surf) { g_pHyprlock->m_focusedOutput.reset(); });
 
             m_pPointer->setButton([](CCWlPointer* r, uint32_t serial, uint32_t time, uint32_t button, wl_pointer_button_state state) {
                 g_pHyprlock->onClick(button, state == WL_POINTER_BUTTON_STATE_PRESSED, g_pHyprlock->m_vMouseLocation);

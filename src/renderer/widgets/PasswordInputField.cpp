@@ -474,8 +474,11 @@ void CPasswordInputField::updateColors() {
     colorState.font = fontTarget;
 }
 
-CBox CPasswordInputField::getBoundingBox() const {
-    return {pos.x, abs(pos.y - viewport.y + size->value().y), size->value().x, size->value().y};
+CBox CPasswordInputField::getBoundingBoxWl() const {
+    return {
+        Vector2D{pos.x, viewport.y - pos.y - size->value().y},
+        size->value(),
+    };
 }
 
 void CPasswordInputField::onHover(const Vector2D& pos) {

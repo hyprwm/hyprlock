@@ -24,7 +24,7 @@ class IWidget {
     static int      roundingForBox(const CBox& box, int roundingConfig);
     static int      roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness);
 
-    virtual CBox    getBoundingBox() const {
+    virtual CBox    getBoundingBoxWl() const {
         return CBox();
     };
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos) {}

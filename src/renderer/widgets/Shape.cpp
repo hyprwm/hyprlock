@@ -4,6 +4,7 @@
 #include "../../core/hyprlock.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
+#include <sys/types.h>
 
 void CShape::registerSelf(const SP<CShape>& self) {
     m_self = self;
@@ -102,9 +103,11 @@ bool CShape::draw(const SRenderData& data) {
 
     return data.opacity < 1.0;
 }
-
-CBox CShape::getBoundingBox() const {
-    return {pos.x, abs(pos.y - viewport.y + size.y), size.x, size.y};
+CBox CShape::getBoundingBoxWl() const {
+    return {
+        Vector2D{pos.x, viewport.y - pos.y - size.y},
+        size,
+    };
 }
 
 void CShape::onClick(uint32_t button, bool down, const Vector2D& pos) {

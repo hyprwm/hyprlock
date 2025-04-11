@@ -99,7 +99,9 @@ class CHyprlock {
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
     Vector2D                              m_vLastEnterCoords = {};
-    Vector2D                              m_vMouseLocation   = {};
+    WP<COutput>                           m_focusedOutput;
+
+    Vector2D                              m_vMouseLocation = {};
 
     std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
 
