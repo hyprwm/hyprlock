@@ -21,6 +21,9 @@ class CLabel : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual CBox getBoundingBoxWl() const;
+    virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
+    virtual void onHover(const Vector2D& pos);
 
     void         reset();
 
@@ -43,6 +46,7 @@ class CLabel : public IWidget {
     std::string                             resourceID;
     std::string                             pendingResourceID; // if dynamic label
     std::string                             halign, valign;
+    std::string                             onclickCommand;
     SPreloadedAsset*                        asset = nullptr;
 
     std::string                             outputStringPort;

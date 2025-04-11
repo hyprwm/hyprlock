@@ -17,15 +17,16 @@ class CSessionLockSurface {
     CSessionLockSurface(const SP<COutput>& pOutput);
     ~CSessionLockSurface();
 
-    void  configure(const Vector2D& size, uint32_t serial);
+    void            configure(const Vector2D& size, uint32_t serial);
 
-    bool  readyForFrame = false;
+    bool            readyForFrame = false;
 
-    float fractionalScale = 1.0;
+    float           fractionalScale = 1.0;
 
-    void  render();
-    void  onCallback();
-    void  onScaleUpdate();
+    void            render();
+    void            onCallback();
+    void            onScaleUpdate();
+    SP<CCWlSurface> getWlSurface();
 
   private:
     WP<COutput>                   m_outputRef;

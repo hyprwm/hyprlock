@@ -668,6 +668,61 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     }
 }
 
+void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (!m_focusedOutput.lock())
+        return;
+
+    // TODO: add the UNLIKELY marco from Hyprland
+    if (!m_focusedOutput->m_sessionLockSurface)
+        return;
+
+    const auto SCALEDPOS = pos * m_focusedOutput->m_sessionLockSurface->fractionalScale;
+    const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
+    for (const auto& widget : widgets) {
+        if (widget->containsPoint(SCALEDPOS))
+            widget->onClick(button, down, pos);
+    }
+}
+
+void CHyprlock::onHover(const Vector2D& pos) {
+    if (!m_focusedOutput.lock())
+        return;
+
+    if (!m_focusedOutput->m_sessionLockSurface)
+        return;
+
+    bool       outputNeedsRedraw = false;
+    bool       cursorChanged     = false;
+
+    const auto SCALEDPOS = pos * m_focusedOutput->m_sessionLockSurface->fractionalScale;
+    const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
+    for (const auto& widget : widgets) {
+        const bool CONTAINSPOINT = widget->containsPoint(SCALEDPOS);
+        const bool HOVERED       = widget->isHovered();
+
+        if (CONTAINSPOINT) {
+            if (!HOVERED) {
+                widget->setHover(true);
+                widget->onHover(pos);
+                outputNeedsRedraw = true;
+            }
+
+            if (!cursorChanged)
+                cursorChanged = true;
+
+        } else if (HOVERED) {
+            widget->setHover(false);
+            outputNeedsRedraw = true;
+        }
+    }
+
+    if (!cursorChanged)
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+
+    if (outputNeedsRedraw)
+        m_focusedOutput->m_sessionLockSurface->render();
+}
+
 bool CHyprlock::acquireSessionLock() {
     Debug::log(LOG, "Locking session");
     m_sLockState.lock = makeShared<CCExtSessionLockV1>(m_sWaylandState.sessionLock->sendLock());

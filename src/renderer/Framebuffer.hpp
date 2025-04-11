@@ -13,7 +13,7 @@ class CFramebuffer {
     void      bind() const;
     void      release();
     void      reset();
-    bool      isAllocated();
+    bool      isAllocated() const;
 
     Vector2D  m_vSize;
 

@@ -117,6 +117,6 @@ CFramebuffer::~CFramebuffer() {
     release();
 }
 
-bool CFramebuffer::isAllocated() {
+bool CFramebuffer::isAllocated() const {
     return m_iFb != (GLuint)-1;
 }

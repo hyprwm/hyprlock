@@ -48,27 +48,26 @@ class CRenderer {
 
     void                                  startFadeIn();
     void                                  startFadeOut(bool unlock = false, bool immediate = true);
+    std::vector<SP<IWidget>>&             getOrCreateWidgetsFor(const CSessionLockSurface& surf);
 
   private:
-    widgetMap_t               widgets;
+    widgetMap_t        widgets;
 
-    std::vector<SP<IWidget>>& getOrCreateWidgetsFor(const CSessionLockSurface& surf);
+    CShader            rectShader;
+    CShader            texShader;
+    CShader            texMixShader;
+    CShader            blurShader1;
+    CShader            blurShader2;
+    CShader            blurPrepareShader;
+    CShader            blurFinishShader;
+    CShader            borderShader;
 
-    CShader                   rectShader;
-    CShader                   texShader;
-    CShader                   texMixShader;
-    CShader                   blurShader1;
-    CShader                   blurShader2;
-    CShader                   blurPrepareShader;
-    CShader                   blurFinishShader;
-    CShader                   borderShader;
+    Mat3x3             projMatrix = Mat3x3::identity();
+    Mat3x3             projection;
 
-    Mat3x3                    projMatrix = Mat3x3::identity();
-    Mat3x3                    projection;
+    PHLANIMVAR<float>  opacity;
 
-    PHLANIMVAR<float>         opacity;
-
-    std::vector<GLint>        boundFBs;
+    std::vector<GLint> boundFBs;
 };
 
 inline UP<CRenderer> g_pRenderer;
