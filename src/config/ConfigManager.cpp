@@ -260,6 +260,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("shape", "xray", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("shape", "zindex", Hyprlang::INT{0});
     SHADOWABLE("shape");
+    CLICKABLE("shape");
 
     m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("image", "monitor", Hyprlang::STRING{""});
@@ -276,6 +277,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "reload_cmd", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("image", "zindex", Hyprlang::INT{0});
     SHADOWABLE("image");
+    CLICKABLE("image");
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
@@ -421,6 +423,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"xray", m_config.getSpecialConfigValue("shape", "xray", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("shape", "zindex", k.c_str())},
                 SHADOWABLE("shape"),
+                CLICKABLE("shape"),
             }
         });
         // clang-format on
@@ -447,6 +450,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"reload_cmd", m_config.getSpecialConfigValue("image", "reload_cmd", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("image", "zindex", k.c_str())},
                 SHADOWABLE("image"),
+                CLICKABLE("image"),
             }
         });
         // clang-format on

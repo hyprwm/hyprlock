@@ -24,6 +24,9 @@ class CImage : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual CBox getBoundingBox() const;
+    virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
+    virtual void onHover(const Vector2D& pos);
 
     void         reset();
 
@@ -49,6 +52,8 @@ class CImage : public IWidget {
 
     int                                     reloadTime;
     std::string                             reloadCommand;
+    std::string                             onclickCommand;
+
     std::filesystem::file_time_type         modificationTime;
     std::shared_ptr<CTimer>                 imageTimer;
     CAsyncResourceGatherer::SPreloadRequest request;

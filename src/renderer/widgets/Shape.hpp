@@ -18,6 +18,9 @@ class CShape : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual CBox getBoundingBox() const;
+    virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
+    virtual void onHover(const Vector2D& pos);
 
   private:
     WP<CShape>         m_self;
@@ -38,6 +41,7 @@ class CShape : public IWidget {
     std::string        halign, valign;
 
     bool               firstRender = true;
+    std::string        onclickCommand;
 
     Vector2D           viewport;
     CShadowable        shadow;

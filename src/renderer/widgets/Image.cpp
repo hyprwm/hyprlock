@@ -93,9 +93,10 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
         valign   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         angle    = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
 
-        path          = std::any_cast<Hyprlang::STRING>(props.at("path"));
-        reloadTime    = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
-        reloadCommand = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
+        path           = std::any_cast<Hyprlang::STRING>(props.at("path"));
+        reloadTime     = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
+        reloadCommand  = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
+        onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CImage: {}", e.what()); //
     } catch (const std::out_of_range& e) {
@@ -232,4 +233,20 @@ void CImage::renderUpdate() {
     }
 
     g_pHyprlock->renderOutput(stringPort);
+}
+
+CBox CImage::getBoundingBox() const {
+    if (!asset)
+        return {pos.x, abs(pos.y - viewport.y), 0, 0};
+    return {pos.x, abs(pos.y - viewport.y + asset->texture.m_vSize.y), asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+}
+
+void CImage::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (down && !onclickCommand.empty())
+        g_pHyprlock->spawnSync(onclickCommand);
+}
+
+void CImage::onHover(const Vector2D& pos) {
+    if (!onclickCommand.empty())
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
 }
