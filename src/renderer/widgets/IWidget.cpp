@@ -101,9 +101,10 @@ static void replaceAllAttempts(std::string& str) {
 
 static void replaceAllLayout(std::string& str) {
 
-    const auto LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
-    const auto LAYOUTNAME = g_pSeatManager->getActiveKbLayoutName();
-    size_t     pos        = 0;
+    const auto        LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
+    const auto        STR        = xkb_keymap_layout_get_name(g_pSeatManager->m_pXKBKeymap, LAYOUTIDX);
+    const std::string LAYOUTNAME = STR ? STR : "error";
+    size_t            pos        = 0;
 
     while ((pos = str.find("$LAYOUT", pos)) != std::string::npos) {
         if (str.substr(pos, 8).ends_with('[') && str.substr(pos).contains(']')) {
