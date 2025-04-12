@@ -1,33 +1,11 @@
 #pragma once
 
 #include "Auth.hpp"
-#include "../helpers/NotJson.hpp"
+#include "GreetdProto.hpp"
 #include <condition_variable>
 #include <string>
 #include <expected>
 #include <thread>
-
-// GREETD PROTOCOL
-enum eGreetdResponse : uint8_t {
-    GREETD_RESPONSE_UNKNOWN = 0xff,
-    GREETD_RESPONSE_SUCCESS = 0,
-    GREETD_RESPONSE_ERROR   = 1,
-    GREETD_RESPONSE_AUTH    = 2,
-};
-
-enum eGreetdErrorMessageType : uint8_t {
-    GREETD_OK         = 0,
-    GREETD_ERROR_AUTH = 1,
-    GREETD_ERROR      = 2,
-};
-
-enum eGreetdAuthMessageType : uint8_t {
-    GREETD_INITIAL      = 0,
-    GREETD_AUTH_VISIBLE = 0,
-    GREETD_AUTH_SECRET  = 1,
-    GREETD_AUTH_INFO    = 2,
-    GREETD_AUTH_ERROR   = 3,
-};
 
 // INTERNAL
 enum eRequestError : uint8_t {
@@ -66,7 +44,7 @@ class CGreetdLogin : public IAuthImplementation {
     friend class CAuth;
 
   private:
-    std::expected<NNotJson::SObject, eRequestError> request(const NNotJson::SObject& req);
+    std::expected<VGreetdResponse, eRequestError> request(const VGreetdRequest& req);
 
     //
     void        createSession();
@@ -74,7 +52,7 @@ class CGreetdLogin : public IAuthImplementation {
     void        recreateSession();
     void        startSessionAfterSuccess();
 
-    void        handleResponse(const std::string& request, NNotJson::SObject& response);
+    void        handleResponse(const VGreetdRequest& request, const VGreetdResponse& response);
     void        processInput();
     void        waitForInput();
 
