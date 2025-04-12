@@ -272,7 +272,7 @@ void CRenderer::renderBorder(const CBox& box, const CGradientValueData& gradient
 
     glUniformMatrix3fv(borderShader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
 
-    glUniform4fv(borderShader.gradient, gradient.m_vColorsOkLabA.size(), (float*)gradient.m_vColorsOkLabA.data());
+    glUniform4fv(borderShader.gradient, gradient.m_vColorsOkLabA.size() / 4, (float*)gradient.m_vColorsOkLabA.data());
     glUniform1i(borderShader.gradientLength, gradient.m_vColorsOkLabA.size() / 4);
     glUniform1f(borderShader.angle, (int)(gradient.m_fAngle / (M_PI / 180.0)) % 360 * (M_PI / 180.0));
     glUniform1f(borderShader.alpha, alpha);
