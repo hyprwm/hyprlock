@@ -2,9 +2,10 @@
   lib,
   stdenv,
   cmake,
-  pkg-config,
   cairo,
   file,
+  glaze,
+  pkg-config,
   libdrm,
   libGL,
   libjpeg,
@@ -40,6 +41,7 @@ stdenv.mkDerivation {
 
   buildInputs = [
     cairo
+    glaze
     file
     libdrm
     libGL
