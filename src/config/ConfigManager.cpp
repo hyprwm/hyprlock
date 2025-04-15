@@ -314,8 +314,8 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
-    m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"none"});
-    m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"none"});
+    m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"center"});
+    m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("label", "rotate", Hyprlang::FLOAT{0});
     m_config.addSpecialConfigValue("label", "text_align", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("label", "zindex", Hyprlang::INT{0});
