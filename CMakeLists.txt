@@ -21,6 +21,7 @@ endif()
 
 include_directories(. "protocols/")
 
+include(CTest)
 include(GNUInstallDirs)
 
 # configure
@@ -162,3 +163,18 @@ install(
   FILES ${CMAKE_SOURCE_DIR}/assets/example.conf
   DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/hypr
   RENAME hyprlock.conf)
+
+if(TESTS)
+  message(STATUS "building tests is enabled TESTS")
+
+  enable_testing()
+  add_custom_target(tests)
+
+  add_subdirectory(tests)
+  add_test(
+    NAME "Main Test"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
+    COMMAND lock_tester)
+
+  add_dependencies(tests lock_tester)
+endif()
