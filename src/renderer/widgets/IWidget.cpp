@@ -100,11 +100,16 @@ static void replaceAllAttempts(std::string& str) {
 }
 
 static void replaceAllLayout(std::string& str) {
+    std::string layoutName = "error";
+    const auto  LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
 
-    const auto LAYOUTIDX  = g_pHyprlock->m_uiActiveLayout;
-    const auto LAYOUTNAME = g_pSeatManager->getActiveKbLayoutName();
-    size_t     pos        = 0;
+    if (g_pSeatManager->m_pXKBKeymap) {
+        const auto PNAME = xkb_keymap_layout_get_name(g_pSeatManager->m_pXKBKeymap, LAYOUTIDX);
+        if (PNAME)
+            layoutName = PNAME;
+    }
 
+    size_t pos = 0;
     while ((pos = str.find("$LAYOUT", pos)) != std::string::npos) {
         if (str.substr(pos, 8).ends_with('[') && str.substr(pos).contains(']')) {
             const std::string REPL = str.substr(pos + 8, str.find_first_of(']', pos) - 8 - pos);
@@ -114,12 +119,12 @@ static void replaceAllLayout(std::string& str) {
                 continue;
             }
 
-            const std::string LANG = LANGS[LAYOUTIDX].empty() ? LAYOUTNAME : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
+            const std::string LANG = LANGS[LAYOUTIDX].empty() ? layoutName : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
             str.replace(pos, 9 + REPL.length(), LANG);
             pos += LANG.length();
         } else {
-            str.replace(pos, 7, LAYOUTNAME);
-            pos += LAYOUTNAME.length();
+            str.replace(pos, 7, layoutName);
+            pos += layoutName.length();
         }
     }
 }
