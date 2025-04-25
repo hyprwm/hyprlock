@@ -32,39 +32,37 @@
     };
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      systems,
-      ...
-    }@inputs:
-    let
-      inherit (nixpkgs) lib;
-      eachSystem = lib.genAttrs (import systems);
-      pkgsFor = eachSystem (
-        system:
+  outputs = {
+    self,
+    nixpkgs,
+    systems,
+    ...
+  } @ inputs: let
+    inherit (nixpkgs) lib;
+    eachSystem = lib.genAttrs (import systems);
+    pkgsFor = eachSystem (
+      system:
         import nixpkgs {
           localSystem.system = system;
-          overlays = with self.overlays; [ hyprlock-with-deps ];
+          overlays = with self.overlays; [hyprlock-with-deps];
         }
-      );
-    in
-    {
-      overlays = import ./nix/overlays.nix { inherit inputs lib self; };
+    );
+  in {
+    overlays = import ./nix/overlays.nix {inherit inputs lib self;};
 
-      packages = eachSystem (system: {
-        default = self.packages.${system}.hyprlock;
-        inherit (pkgsFor.${system}) hyprlock;
-      });
+    packages = eachSystem (system: {
+      default = self.packages.${system}.hyprlock;
+      inherit (pkgsFor.${system}) hyprlock;
+      inherit (pkgsFor.${system}) lock_tester;
+    });
 
-      homeManagerModules = {
-        default = self.homeManagerModules.hyprlock;
-        hyprlock = builtins.throw "hyprlock: the flake HM module has been removed. Use the module from Home Manager upstream.";
-      };
-
-      checks = eachSystem (system: self.packages.${system});
-
-      formatter = eachSystem (system: pkgsFor.${system}.nixfmt-tree);
+    homeManagerModules = {
+      default = self.homeManagerModules.hyprlock;
+      hyprlock = builtins.throw "hyprlock: the flake HM module has been removed. Use the module from Home Manager upstream.";
     };
+
+    checks = eachSystem (system: self.packages.${system});
+
+    formatter = eachSystem (system: pkgsFor.${system}.nixfmt-tree);
+  };
 }
