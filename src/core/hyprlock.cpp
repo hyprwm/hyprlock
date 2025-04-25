@@ -73,7 +73,7 @@ static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Debug::log(LOG, "Unlocking with a SIGUSR1");
-        g_pHyprlock->releaseSessionLock();
+        g_pAuth->enqueueUnlock();
     }
 }
 
