@@ -3,6 +3,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Color.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include <hyprlang.hpp>
 #include <stdexcept>
@@ -186,7 +187,7 @@ CBox CLabel::getBoundingBoxWl() const {
 
 void CLabel::onClick(uint32_t button, bool down, const Vector2D& pos) {
     if (down && !onclickCommand.empty())
-        g_pHyprlock->spawnSync(onclickCommand);
+        spawnAsync(onclickCommand);
 }
 
 void CLabel::onHover(const Vector2D& pos) {

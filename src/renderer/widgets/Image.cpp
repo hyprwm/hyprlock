@@ -32,7 +32,7 @@ void CImage::onTimerUpdate() {
     const std::string OLDPATH = path;
 
     if (!reloadCommand.empty()) {
-        path = g_pHyprlock->spawnSync(reloadCommand);
+        path = spawnSync(reloadCommand);
 
         if (path.ends_with('\n'))
             path.pop_back();
@@ -248,7 +248,7 @@ CBox CImage::getBoundingBoxWl() const {
 
 void CImage::onClick(uint32_t button, bool down, const Vector2D& pos) {
     if (down && !onclickCommand.empty())
-        g_pHyprlock->spawnSync(onclickCommand);
+        spawnAsync(onclickCommand);
 }
 
 void CImage::onHover(const Vector2D& pos) {

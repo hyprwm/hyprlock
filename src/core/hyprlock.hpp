@@ -48,8 +48,6 @@ class CHyprlock {
     bool                             acquireSessionLock();
     void                             releaseSessionLock();
 
-    std::string                      spawnSync(const std::string& cmd);
-
     void                             onKey(uint32_t key, bool down);
     void                             onClick(uint32_t button, bool down, const Vector2D& pos);
     void                             onHover(const Vector2D& pos);

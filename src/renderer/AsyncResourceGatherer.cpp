@@ -218,7 +218,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     const bool        ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
 
     static const auto TRIM = g_pConfigManager->getValue<Hyprlang::INT>("general:text_trim");
-    std::string       text = ISCMD ? g_pHyprlock->spawnSync(rq.asset) : rq.asset;
+    std::string       text = ISCMD ? spawnSync(rq.asset) : rq.asset;
 
     if (*TRIM) {
         text.erase(0, text.find_first_not_of(" \n\r\t"));

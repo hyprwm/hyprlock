@@ -871,19 +871,6 @@ void CHyprlock::enqueueForceUpdateTimers() {
         nullptr, false);
 }
 
-std::string CHyprlock::spawnSync(const std::string& cmd) {
-    CProcess proc("/bin/sh", {"-c", cmd});
-    if (!proc.runSync()) {
-        Debug::log(ERR, "Failed to run \"{}\"", cmd);
-        return "";
-    }
-
-    if (!proc.stdErr().empty())
-        Debug::log(ERR, "Shell command \"{}\" STDERR:\n{}", cmd, proc.stdErr());
-
-    return proc.stdOut();
-}
-
 SP<CCZwlrScreencopyManagerV1> CHyprlock::getScreencopy() {
     return m_sWaylandState.screencopy;
 }
