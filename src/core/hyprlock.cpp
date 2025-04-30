@@ -366,8 +366,9 @@ void CHyprlock::run() {
                 events = poll(pollfds, fdcount, 5000);
 
                 if (events < 0) {
-                    wl_display_cancel_read(m_sWaylandState.display);
                     RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
+                    wl_display_cancel_read(m_sWaylandState.display);
+                    continue;
                 }
 
                 for (size_t i = 0; i < fdcount; ++i) {
