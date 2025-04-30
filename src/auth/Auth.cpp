@@ -76,12 +76,12 @@ void CAuth::terminate() {
     }
 }
 
-static void passwordUnlockCallback(std::shared_ptr<CTimer> self, void* data) {
+static void unlockCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->unlock();
 }
 
 void CAuth::enqueueUnlock() {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordUnlockCallback, nullptr);
+    g_pHyprlock->addTimer(std::chrono::milliseconds(0), unlockCallback, nullptr);
 }
 
 static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
