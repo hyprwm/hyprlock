@@ -2,10 +2,7 @@
 
 #include "IWidget.hpp"
 #include "Shadowable.hpp"
-#include "../../helpers/Math.hpp"
-#include "../../helpers/AnimatedVariable.hpp"
-#include "../Framebuffer.hpp"
-#include "../../config/ConfigManager.hpp"
+#include "../../config/ConfigDataValues.hpp"
 #include "../../helpers/Color.hpp"
 #include <hyprutils/math/Vector2D.hpp>
 #include <string>
@@ -34,7 +31,7 @@ class CSessionPicker : public IWidget {
     void         onGotSessionEntryAsset(const std::string& sessionName);
 
   private:
-    void                       requestSessionEntryTexts();
+    void                       setupSessionEntryTexts();
 
     WP<CSessionPicker>         m_self;
     std::vector<SSessionAsset> m_loginSessions;
@@ -49,7 +46,7 @@ class CSessionPicker : public IWidget {
     int                        m_entryHeight  = -1;
     int                        m_entrySpacing = -1;
 
-    size_t                     m_biggestEntryTextWidth = 0;
+    Vector2D                   m_biggestEntryAssetSize;
 
     struct {
         CHyprColor          inner;

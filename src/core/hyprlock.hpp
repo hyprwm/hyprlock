@@ -29,7 +29,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool greetdLogin, const std::vector<SLoginSessionConfig>& sessions);
+    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool greetdLogin, const std::string& sessionDirs);
     ~CHyprlock();
 
     void                       run();
@@ -118,13 +118,8 @@ class CHyprlock {
     } dma;
     gbm_device* createGBMDevice(drmDevice* dev);
 
-    struct {
-        uint32_t                         iSelectedLoginSession = 0;
-        std::vector<SLoginSessionConfig> vLoginSessions;
-    } m_sGreetdLoginSessionState;
-    SLoginSessionConfig getSelectedGreetdLoginSession();
-
-    std::string         m_sCurrentDesktop = "";
+    std::string m_greetdSessionDirs = "";
+    std::string m_currentDesktop    = "";
 
   private:
     struct {

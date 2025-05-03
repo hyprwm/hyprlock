@@ -1,9 +1,10 @@
 #include "SessionPicker.hpp"
 #include "../Renderer.hpp"
 #include "../../helpers/Log.hpp"
-#include "../../core/hyprlock.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../config/ConfigDataValues.hpp"
+#include "../../config/LoginSessionManager.hpp"
+#include <algorithm>
 #include <hyprlang.hpp>
 #include <hyprutils/math/Vector2D.hpp>
 #include <stdexcept>
@@ -35,11 +36,14 @@ void CSessionPicker::configure(const std::unordered_map<std::string, std::any>& 
         RASSERT(false, "Missing property for CSessionPicker: {}", e.what()); //
     }
 
-    requestSessionEntryTexts();
+    setupSessionEntryTexts();
 }
 
 bool CSessionPicker::draw(const SRenderData& data) {
-    const Vector2D SIZE{std::max(m_size.x, static_cast<double>(m_biggestEntryTextWidth)), m_size.y};
+    const size_t   SELECTEDENTRYINDEX = g_pLoginSessionManager->getSelectedLoginSessionIndex();
+
+    const double   PAD = std::abs((m_size.y - m_biggestEntryAssetSize.y) / 2);
+    const Vector2D SIZE{std::max(m_size.x, m_biggestEntryAssetSize.x + PAD), m_size.y};
     const CBox     RECTBOX{
         posFromHVAlign(m_viewport, SIZE, m_configPos, m_halign, m_valign),
         SIZE,
@@ -50,6 +54,7 @@ bool CSessionPicker::draw(const SRenderData& data) {
 
     for (size_t i = 0; i < m_loginSessions.size(); ++i) {
         auto&      sessionEntry = m_loginSessions[i];
+
         const CBox ENTRYBOX{
             TOPLEFT.x,
             TOPLEFT.y - ENTRYHEIGHT - (i * (ENTRYHEIGHT + m_entrySpacing)),
@@ -58,7 +63,7 @@ bool CSessionPicker::draw(const SRenderData& data) {
         };
 
         const auto ENTRYROUND = roundingForBox(ENTRYBOX, m_rounding);
-        const bool SELECTED   = i == g_pHyprlock->m_sGreetdLoginSessionState.iSelectedLoginSession;
+        const bool SELECTED   = i == SELECTEDENTRYINDEX;
 
         CHyprColor entryCol;
         if (SELECTED)
@@ -77,6 +82,15 @@ bool CSessionPicker::draw(const SRenderData& data) {
             g_pRenderer->renderBorder(ENTRYBORDERBOX, (SELECTED) ? *m_colorConfig.selectedBorder : *m_colorConfig.border, m_borderSize, ENTRYBORDERROUND, data.opacity);
         }
 
+        if (!sessionEntry.m_textAsset) {
+            sessionEntry.m_textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(sessionEntry.m_textResourceID);
+            if (sessionEntry.m_textAsset)
+                m_biggestEntryAssetSize = Vector2D{
+                    std::max<double>(m_biggestEntryAssetSize.x, sessionEntry.m_textAsset->texture.m_vSize.x),
+                    sessionEntry.m_textAsset->texture.m_vSize.y,
+                };
+        }
+
         if (sessionEntry.m_textAsset) {
             const CBox ASSETBOXCENTERED{
                 ENTRYBOX.pos() +
@@ -90,48 +104,20 @@ bool CSessionPicker::draw(const SRenderData& data) {
         }
     }
 
-    return false;
+    return false; // rely on the asset update callback in case m_textAsset is a nullptr
 }
 
-// TODO: Move this out of here, so it does not get called for each monitor
+void CSessionPicker::setupSessionEntryTexts() {
+    const auto& LOGINSESSIONS           = g_pLoginSessionManager->getLoginSessions();
+    const auto& LOGINSESSIONRESOURCEIDS = g_pLoginSessionManager->getLoginSessionResourceIds();
 
-static void onAssetCallback(WP<CSessionPicker> self, const std::string& sessionName) {
-    if (auto PSELF = self.lock())
-        PSELF->onGotSessionEntryAsset(sessionName);
-}
+    RASSERT(LOGINSESSIONS.size() == LOGINSESSIONRESOURCEIDS.size(), "Login session resource IDs size does not match login sessions size");
 
-void CSessionPicker::onGotSessionEntryAsset(const std::string& sessionName) {
-    auto session = std::ranges::find_if(m_loginSessions, [&sessionName](const SSessionAsset& s) { return s.m_loginSession.name == sessionName; });
-    if (session == m_loginSessions.end()) {
-        Debug::log(ERR, "Failed to find session entry for {}", sessionName);
-        return;
-    }
-
-    session->m_textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(session->m_textResourceID);
-    if (!session->m_textAsset)
-        Debug::log(ERR, "Failed to get asset for session entry {}", sessionName);
-    else
-        m_biggestEntryTextWidth = std::max(m_biggestEntryTextWidth, static_cast<size_t>(session->m_textAsset->texture.m_vSize.x));
-}
-
-void CSessionPicker::requestSessionEntryTexts() {
-    m_loginSessions.resize(g_pHyprlock->m_sGreetdLoginSessionState.vLoginSessions.size());
-    for (size_t i = 0; i < m_loginSessions.size(); ++i) {
-        const auto& SESSIONCONFIG           = g_pHyprlock->m_sGreetdLoginSessionState.vLoginSessions[i];
-        m_loginSessions[i].m_textResourceID = std::format("session:{}-{}", (uintptr_t)this, SESSIONCONFIG.name);
-
-        // request asset preload
-        CAsyncResourceGatherer::SPreloadRequest request;
-        request.id    = m_loginSessions[i].m_textResourceID;
-        request.asset = SESSIONCONFIG.name;
-        request.type  = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        //request.props["font_family"] = fontFamily;
-        //request.props["color"]     = colorConfig.font;
-        //request.props["font_size"] = rowHeight;
-        request.callback = [REF = m_self, sessionName = SESSIONCONFIG.name]() { onAssetCallback(REF, sessionName); };
-
-        m_loginSessions[i].m_loginSession = SESSIONCONFIG;
-
-        g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
-    }
+    m_loginSessions.resize(LOGINSESSIONS.size());
+    for (size_t i = 0; i < LOGINSESSIONS.size(); i++) {
+        m_loginSessions[i] = {
+            .m_loginSession   = LOGINSESSIONS[i],
+            .m_textResourceID = LOGINSESSIONRESOURCEIDS[i],
+        };
+    };
 }

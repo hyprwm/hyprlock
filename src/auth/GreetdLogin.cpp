@@ -1,7 +1,9 @@
 #include "GreetdLogin.hpp"
 #include "../config/ConfigManager.hpp"
+#include "../config/LoginSessionManager.hpp"
 #include "../core/hyprlock.hpp"
 #include "../helpers/Log.hpp"
+#include "../helpers/MiscFunctions.hpp"
 
 #include <hyprutils/string/VarList.hpp>
 #include <hyprutils/os/Process.hpp>
@@ -137,7 +139,12 @@ void CGreetdLogin::init() {
     const auto LOGINUSER = g_pConfigManager->getValue<Hyprlang::STRING>("login:user");
     m_loginUserName      = *LOGINUSER;
 
-    Debug::log(LOG, "[GreetdLogin] Login user: {}", m_loginUserName);
+    if (m_loginUserName.empty()) {
+        Debug::log(ERR, "[GreetdLogin] No user specified");
+        m_ok = false;
+        return;
+    } else
+        Debug::log(LOG, "[GreetdLogin] Login user: {}", m_loginUserName);
 
     m_thread = std::thread([this]() {
         m_socketFD = socketConnect();
@@ -210,7 +217,7 @@ void CGreetdLogin::handleResponse(const VGreetdRequest& request, const VGreetdRe
 }
 
 void CGreetdLogin::startSessionAfterSuccess() {
-    const auto                  SELECTEDSESSION = g_pHyprlock->getSelectedGreetdLoginSession();
+    const auto                  SELECTEDSESSION = g_pLoginSessionManager->getSelectedLoginSession();
     Hyprutils::String::CVarList args(SELECTEDSESSION.exec, 0, ' ');
 
     SGreetdStartSession         startSession;
@@ -221,8 +228,8 @@ void CGreetdLogin::startSessionAfterSuccess() {
     if (!sendGreetdRequest(m_socketFD, REQUEST))
         m_ok = false;
     else {
-        if (g_pHyprlock->m_sCurrentDesktop == "Hyprland")
-            g_pHyprlock->spawnSync("hyprctl dispatch exit");
+        if (g_pHyprlock->m_currentDesktop == "Hyprland")
+            spawnSync("hyprctl dispatch exit");
         else
             g_pAuth->enqueueUnlock();
     }

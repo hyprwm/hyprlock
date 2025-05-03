@@ -18,7 +18,7 @@ void help() {
                  "  --grace SECONDS          - Set grace period in seconds before requiring authentication\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
-                 "  --session-dirs DIR1,DIR2 - Specify additional directories to search for session files\n"
+                 "  --session-dirs DIR1:DIR2 - Specify directories to search for session files\n"
                  "  -V, --version            - Show version information\n"
                  "  -h, --help               - Show this help message");
 }
@@ -51,8 +51,7 @@ int main(int argc, char** argv, char** envp) {
     std::vector<std::string> args(argv, argv + argc);
 
     // Used for greetd login
-    std::string                      additionalSessionDirs;
-    std::vector<SLoginSessionConfig> loginSessions;
+    std::string sessionDirs;
 
     for (std::size_t i = 1; i < args.size(); ++i) {
         const std::string arg = argv[i];
@@ -72,7 +71,7 @@ int main(int argc, char** argv, char** envp) {
             immediateRender = true;
         } else if (arg == "--session-dirs" && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
-                additionalSessionDirs = *value;
+                sessionDirs = *value;
             else
                 return 1;
         } else if (arg == "--verbose" || arg == "-v")
@@ -143,15 +142,8 @@ int main(int argc, char** argv, char** envp) {
     if (noFadeIn)
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
-    if (greetdLogin) {
-        CVarList sessionDirs{additionalSessionDirs, 0, ',', true};
-        loginSessions                 = gatherSessions(std::vector<std::string>{sessionDirs.begin(), sessionDirs.end()});
-        const auto CONFIGUREDSESSIONS = g_pConfigManager->getLoginSessionConfigs();
-        loginSessions.insert(loginSessions.end(), CONFIGUREDSESSIONS.begin(), CONFIGUREDSESSIONS.end());
-    }
-
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender, greetdLogin, loginSessions);
+        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender, greetdLogin, sessionDirs);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());

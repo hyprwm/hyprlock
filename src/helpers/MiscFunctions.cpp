@@ -1,11 +1,9 @@
 #include <filesystem>
 #include <algorithm>
-#include <fstream>
 #include <cmath>
 #include <fcntl.h>
 #include "MiscFunctions.hpp"
 #include "Log.hpp"
-#include "../defines.hpp"
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/os/Process.hpp>
 #include <unistd.h>
@@ -159,46 +157,4 @@ void spawnAsync(const std::string& cmd) {
     CProcess proc("/bin/sh", {"-c", cmd});
     if (!proc.runAsync())
         Debug::log(ERR, "Failed to start \"{}\"", cmd);
-}
-
-std::vector<SLoginSessionConfig> gatherSessions(std::vector<std::string> searchPaths) {
-    std::vector<SLoginSessionConfig> sessions;
-    searchPaths.insert(searchPaths.end(),
-                       {
-                           "/usr/local/share/wayland-sessions",
-                           "/usr/share/wayland-sessions",
-                       });
-
-    for (const auto& DIR : searchPaths) {
-        if (!std::filesystem::exists(DIR))
-            continue;
-
-        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator{DIR}) {
-            if (!dirEntry.is_regular_file() || dirEntry.path().extension() != ".desktop")
-                continue;
-
-            SLoginSessionConfig session;
-
-            // read line for line and parse the desktop file naivly
-            std::ifstream fHandle(dirEntry.path().c_str());
-            std::string   line;
-            while (std::getline(fHandle, line)) {
-                if (line.empty())
-                    continue;
-
-                if (line.find("Name=") != std::string::npos)
-                    session.name = line.substr(5);
-                else if (line.find("Exec=") != std::string::npos)
-                    session.exec = line.substr(5);
-            }
-
-            if (!session.name.empty() && !session.exec.empty()) {
-                sessions.emplace_back(session);
-                Debug::log(LOG, "Registered session from {}: {}", dirEntry.path().c_str(), session.name.c_str());
-            } else
-                Debug::log(LOG, "Failed to parse session file: {}", dirEntry.path().c_str());
-        }
-    }
-
-    return sessions;
 }

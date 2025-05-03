@@ -16,8 +16,3 @@ using namespace Hyprgraphics;
 
 typedef int64_t    OUTPUTID;
 constexpr OUTPUTID OUTPUT_INVALID = -1;
-
-struct SLoginSessionConfig {
-    std::string name = "";
-    std::string exec = "";
-};
