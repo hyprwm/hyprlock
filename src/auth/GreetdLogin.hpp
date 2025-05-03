@@ -2,6 +2,7 @@
 
 #include "Auth.hpp"
 #include "GreetdProto.hpp"
+#include "../config/LoginSessionManager.hpp"
 #include <condition_variable>
 #include <string>
 #include <expected>

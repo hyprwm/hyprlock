@@ -2,6 +2,7 @@
 #include "AnimationManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
+#include "../config/LoginSessionManager.hpp"
 #include "../renderer/Renderer.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
@@ -36,8 +37,8 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool greetdLogin,
-                     const std::vector<SLoginSessionConfig>& loginSessions) : m_bGreetdLogin(greetdLogin) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const bool greetdLogin, const std::string& sessionDirs) :
+    m_bGreetdLogin(greetdLogin), m_greetdSessionDirs(sessionDirs) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -56,10 +57,10 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
 
     const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
-    m_sCurrentDesktop         = SZCURRENTD;
+    m_currentDesktop          = SZCURRENTD;
 
-    if (greetdLogin)
-        m_sGreetdLoginSessionState.vLoginSessions = loginSessions;
+    if (greetdLogin && m_greetdSessionDirs.empty())
+        m_greetdSessionDirs = "/usr/share/wayland-sessions:/usr/local/share/wayland-sessions";
 }
 
 CHyprlock::~CHyprlock() {
@@ -137,12 +138,6 @@ gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
 
     free(renderNode);
     return gbm_create_device(fd);
-}
-
-SLoginSessionConfig CHyprlock::getSelectedGreetdLoginSession() {
-    RASSERT(m_sGreetdLoginSessionState.iSelectedLoginSession < m_sGreetdLoginSessionState.vLoginSessions.size(), "Invalid selected login session");
-
-    return m_sGreetdLoginSessionState.vLoginSessions[m_sGreetdLoginSessionState.iSelectedLoginSession];
 }
 
 void CHyprlock::addDmabufListener() {
@@ -318,14 +313,15 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer = makeUnique<CRenderer>();
-    g_pAuth     = makeUnique<CAuth>(m_bGreetdLogin);
+    g_pRenderer            = makeUnique<CRenderer>();
+    g_pLoginSessionManager = makeUnique<CLoginSessionManager>(m_greetdSessionDirs);
+    g_pAuth                = makeUnique<CAuth>(m_bGreetdLogin);
     g_pAuth->start();
 
-    Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
+    Debug::log(LOG, "Running on {}", m_currentDesktop);
 
     // Hyprland violates the protocol a bit to allow for this.
-    if (m_sCurrentDesktop != "Hyprland") {
+    if (m_currentDesktop != "Hyprland") {
         while (!g_pRenderer->asyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
@@ -510,7 +506,7 @@ void CHyprlock::unlock() {
         return;
     }
 
-    const bool IMMEDIATE = m_sCurrentDesktop != "Hyprland";
+    const bool IMMEDIATE = m_currentDesktop != "Hyprland";
 
     g_pRenderer->startFadeOut(true, IMMEDIATE);
     m_bUnlockedCalled = true;
@@ -670,17 +666,11 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
         m_bCapsLock = !m_bCapsLock;
     else if (SYM == XKB_KEY_Num_Lock)
         m_bNumLock = !m_bNumLock;
-    else if (SYM == XKB_KEY_Up) {
-        if (m_sGreetdLoginSessionState.iSelectedLoginSession > 0)
-            m_sGreetdLoginSessionState.iSelectedLoginSession--;
-        else
-            m_sGreetdLoginSessionState.iSelectedLoginSession = m_sGreetdLoginSessionState.vLoginSessions.size() - 1;
-    } else if (SYM == XKB_KEY_Down) {
-        if (m_sGreetdLoginSessionState.iSelectedLoginSession < m_sGreetdLoginSessionState.vLoginSessions.size() - 1)
-            m_sGreetdLoginSessionState.iSelectedLoginSession++;
-        else
-            m_sGreetdLoginSessionState.iSelectedLoginSession = 0;
-    } else {
+    else if (SYM == XKB_KEY_Up)
+        g_pLoginSessionManager->handleKeyUp();
+    else if (SYM == XKB_KEY_Down)
+        g_pLoginSessionManager->handleKeyDown();
+    else {
         char buf[16] = {0};
         int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
                                     xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* already includes a nullbyte */;

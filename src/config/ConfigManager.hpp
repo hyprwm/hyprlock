@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include "../defines.hpp"
+#include "./ConfigDataValues.hpp"
 
 class CConfigManager {
   public:
@@ -29,6 +30,8 @@ class CConfigManager {
     std::vector<SWidgetConfig>                 getWidgetConfigs();
 
     std::vector<SLoginSessionConfig>           getLoginSessionConfigs();
+
+    bool                                       widgetsContainSessionPicker();
 
     std::optional<std::string>                 handleSource(const std::string&, const std::string&);
     std::optional<std::string>                 handleBezier(const std::string&, const std::string&);

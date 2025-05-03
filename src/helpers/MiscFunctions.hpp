@@ -9,5 +9,3 @@ int64_t     configStringToInt(const std::string& VALUE);
 int         createPoolFile(size_t size, std::string& name);
 std::string spawnSync(const std::string& cmd);
 void        spawnAsync(const std::string& cmd);
-class SLoginSessionConfig;
-std::vector<SLoginSessionConfig> gatherSessions(std::vector<std::string> searchPaths);

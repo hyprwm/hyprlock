@@ -3,6 +3,8 @@
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
 #include "../core/AnimationManager.hpp"
+#include "../config/LoginSessionManager.hpp"
+#include <algorithm>
 #include <hyprlang.hpp>
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
@@ -231,6 +233,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});
 
     m_config.addConfigValue("login:user", Hyprlang::STRING{"max"});
+    m_config.addConfigValue("login:default_session", Hyprlang::STRING{""});
     m_config.addSpecialCategory("login-session", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("login-session", "name", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("login-session", "exec", Hyprlang::STRING{""});
@@ -585,6 +588,10 @@ std::vector<SLoginSessionConfig> CConfigManager::getLoginSessionConfigs() {
     }
 
     return result;
+}
+
+bool CConfigManager::widgetsContainSessionPicker() {
+    return !m_config.listKeysForSpecialCategory("session-picker").empty();
 }
 
 std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
