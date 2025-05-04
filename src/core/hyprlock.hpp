@@ -155,8 +155,6 @@ class CHyprlock {
         bool                    timerEvent = false;
     } m_sLoopState;
 
-    bool                                 m_bUnlockedCalled = false;
-
     std::vector<std::shared_ptr<CTimer>> m_vTimers;
 
     std::vector<uint32_t>                m_vPressedKeys;
