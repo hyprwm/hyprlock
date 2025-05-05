@@ -1,8 +1,11 @@
 #include "Shape.hpp"
 #include "../Renderer.hpp"
 #include "../../config/ConfigDataValues.hpp"
+#include "../../core/hyprlock.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
+#include <sys/types.h>
 
 void CShape::registerSelf(const SP<CShape>& self) {
     m_self = self;
@@ -14,16 +17,17 @@ void CShape::configure(const std::unordered_map<std::string, std::any>& props, c
     shadow.configure(m_self.lock(), props, viewport);
 
     try {
-        size       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport);
-        rounding   = std::any_cast<Hyprlang::INT>(props.at("rounding"));
-        border     = std::any_cast<Hyprlang::INT>(props.at("border_size"));
-        color      = std::any_cast<Hyprlang::INT>(props.at("color"));
-        borderGrad = *CGradientValueData::fromAnyPv(props.at("border_color"));
-        pos        = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
-        halign     = std::any_cast<Hyprlang::STRING>(props.at("halign"));
-        valign     = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-        angle      = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-        xray       = std::any_cast<Hyprlang::INT>(props.at("xray"));
+        size           = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(viewport);
+        rounding       = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+        border         = std::any_cast<Hyprlang::INT>(props.at("border_size"));
+        color          = std::any_cast<Hyprlang::INT>(props.at("color"));
+        borderGrad     = *CGradientValueData::fromAnyPv(props.at("border_color"));
+        pos            = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
+        halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
+        valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
+        angle          = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        xray           = std::any_cast<Hyprlang::INT>(props.at("xray"));
+        onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CShape: {}", e.what()); //
     } catch (const std::out_of_range& e) {
@@ -99,4 +103,20 @@ bool CShape::draw(const SRenderData& data) {
     g_pRenderer->renderTexture(texbox, *tex, data.opacity, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
 
     return data.opacity < 1.0;
+}
+CBox CShape::getBoundingBoxWl() const {
+    return {
+        Vector2D{pos.x, viewport.y - pos.y - size.y},
+        size,
+    };
+}
+
+void CShape::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (down && !onclickCommand.empty())
+        spawnAsync(onclickCommand);
+}
+
+void CShape::onHover(const Vector2D& pos) {
+    if (!onclickCommand.empty())
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
 }

@@ -5,9 +5,11 @@
 #include "MiscFunctions.hpp"
 #include "Log.hpp"
 #include <hyprutils/string/String.hpp>
+#include <hyprutils/os/Process.hpp>
 #include <unistd.h>
 
 using namespace Hyprutils::String;
+using namespace Hyprutils::OS;
 
 std::string absolutePath(const std::string& rawpath, const std::string& currentDir) {
     std::filesystem::path path(rawpath);
@@ -136,4 +138,23 @@ int createPoolFile(size_t size, std::string& name) {
     }
 
     return FD;
+}
+
+std::string spawnSync(const std::string& cmd) {
+    CProcess proc("/bin/sh", {"-c", cmd});
+    if (!proc.runSync()) {
+        Debug::log(ERR, "Failed to run \"{}\"", cmd);
+        return "";
+    }
+
+    if (!proc.stdErr().empty())
+        Debug::log(ERR, "Shell command \"{}\" STDERR:\n{}", cmd, proc.stdErr());
+
+    return proc.stdOut();
+}
+
+void spawnAsync(const std::string& cmd) {
+    CProcess proc("/bin/sh", {"-c", cmd});
+    if (!proc.runAsync())
+        Debug::log(ERR, "Failed to start \"{}\"", cmd);
 }

@@ -48,9 +48,9 @@ class CHyprlock {
     bool                             acquireSessionLock();
     void                             releaseSessionLock();
 
-    std::string                      spawnSync(const std::string& cmd);
-
     void                             onKey(uint32_t key, bool down);
+    void                             onClick(uint32_t button, bool down, const Vector2D& pos);
+    void                             onHover(const Vector2D& pos);
     void                             startKeyRepeat(xkb_keysym_t sym);
     void                             repeatKey(xkb_keysym_t sym);
     void                             handleKeySym(xkb_keysym_t sym, bool compose);
@@ -95,6 +95,9 @@ class CHyprlock {
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
     Vector2D                              m_vLastEnterCoords = {};
+    WP<COutput>                           m_focusedOutput;
+
+    Vector2D                              m_vMouseLocation = {};
 
     std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
 

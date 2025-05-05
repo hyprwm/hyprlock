@@ -266,3 +266,15 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     result.formatted = in;
     return result;
 }
+
+void IWidget::setHover(bool hover) {
+    hovered = hover;
+}
+
+bool IWidget::isHovered() const {
+    return hovered;
+}
+
+bool IWidget::containsPoint(const Vector2D& pos) const {
+    return getBoundingBoxWl().containsPoint(pos);
+}

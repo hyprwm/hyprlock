@@ -240,7 +240,7 @@ void CBackground::onReloadTimerUpdate() {
     // Path parsing and early returns
 
     if (!reloadCommand.empty()) {
-        path = g_pHyprlock->spawnSync(reloadCommand);
+        path = spawnSync(reloadCommand);
 
         if (path.ends_with('\n'))
             path.pop_back();
