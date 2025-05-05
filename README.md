@@ -2,10 +2,14 @@
 Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility.
 
 ## Features
- - uses the secure ext-session-lock protocol
- - full support for fractional-scale
- - fully GPU accelerated
- - multi-threaded resource acquisition for no hitches
+ - Uses the ext-session-lock protocol
+ - Support for fractional-scale
+ - Fully GPU accelerated
+ - Multi-threaded resource acquisition
+ - Blurred screenshot as the background
+ - Native fingerprint support (using libfprint's dbus interface)
+ - Some of Hyprland's eyecandy: gradient borders, blur, animations, shadows, etc.
+ - and more...
 
 ## How it looks
 
@@ -25,26 +29,23 @@ yay -S hyprlock-git # compiles from latest source
 
 ### Deps
 You need the following dependencies
-- wayland-client
-- wayland-protocols
-- mesa
-- hyprwayland-scanner
 
-And the development libraries for the following
 - cairo
-- libdrm
-- pango
-- xkbcommon
-- pam
+- hyprgraphics
+- hyprland-protocols
 - hyprlang
 - hyprutils
-- hyprgraphics
-- libmagic (file-devel on Fedora)
+- hyprwayland-scanner
+- mesa (required is libgbm, libdrm and the opengl runtime)
+- pam
+- pango
+- sdbus-cpp (>= 2.0.0)
+- wayland-client
+- wayland-protocols
+- xkbcommon
 
-Development libraries are usually suffixed with `-devel` or `-dev` in most distro repos.
-
-You also need to install `mesa-libgbm-devel` on some distros like RPM based ones where its not
-bundled with the mesa package.
+Sometimes distro packages are missing required development files.
+Such distros usually offer development versions of library package - commonly suffixed with `-devel` or `-dev`.
 
 ### Building
 

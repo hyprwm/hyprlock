@@ -4,11 +4,8 @@
   cmake,
   pkg-config,
   cairo,
-  file,
   libdrm,
   libGL,
-  libjpeg,
-  libwebp,
   libxkbcommon,
   libgbm,
   hyprgraphics,
@@ -40,11 +37,8 @@ stdenv.mkDerivation {
 
   buildInputs = [
     cairo
-    file
     libdrm
     libGL
-    libjpeg
-    libwebp
     libxkbcommon
     libgbm
     hyprgraphics
