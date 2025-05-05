@@ -36,7 +36,7 @@ add_compile_definitions(HYPRLOCK_VERSION="${VERSION}")
 if (DEFINED HYPRLOCK_COMMIT)
   add_compile_definitions(HYPRLOCK_COMMIT="${HYPRLOCK_COMMIT}")
 else()
-   # get git commit
+  # get git commit
   execute_process(
     OUTPUT_VARIABLE GIT_SHORT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -82,9 +82,6 @@ pkg_check_modules(
   hyprlang>=0.6.0
   egl
   xkbcommon
-  libjpeg
-  libwebp
-  libmagic
   cairo
   pangocairo
   libdrm

@@ -2,7 +2,6 @@
 #include "../config/ConfigManager.hpp"
 #include "../core/Egl.hpp"
 #include <cairo/cairo.h>
-#include <magic.h>
 #include <pango/pangocairo.h>
 #include <algorithm>
 #include <filesystem>
