@@ -406,7 +406,7 @@ std::vector<SP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSur
 
         const auto POUTPUT = surf.m_outputRef.lock();
         for (auto& c : CWIDGETS) {
-            if (!c.monitor.empty() && c.monitor != POUTPUT->stringPort && !POUTPUT->stringDesc.starts_with(c.monitor) && !POUTPUT->stringDesc.starts_with("desc:" + c.monitor))
+            if (!c.monitor.empty() && c.monitor != POUTPUT->stringPort && !POUTPUT->stringDesc.starts_with(c.monitor) && !("desc:" + POUTPUT->stringDesc).starts_with(c.monitor))
                 continue;
 
             // by type
