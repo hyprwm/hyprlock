@@ -107,7 +107,7 @@ int main(int argc, char** argv, char** envp) {
         return 1;
     }
 
-    if (noFadeIn)
+    if (noFadeIn || immediate)
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
