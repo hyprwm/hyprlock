@@ -26,8 +26,8 @@ void CSessionPicker::configure(const std::unordered_map<std::string, std::any>& 
         m_entrySpacing               = std::any_cast<Hyprlang::FLOAT>(props.at("entry_spacing"));
         m_colorConfig.inner          = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
         m_colorConfig.selected       = std::any_cast<Hyprlang::INT>(props.at("selected_color"));
-        m_colorConfig.border         = CGradientValueData::fromAnyPv(props.at("border_color"));
-        m_colorConfig.selectedBorder = CGradientValueData::fromAnyPv(props.at("selected_border_color"));
+        m_colorConfig.border         = *CGradientValueData::fromAnyPv(props.at("border_color"));
+        m_colorConfig.selectedBorder = *CGradientValueData::fromAnyPv(props.at("selected_border_color"));
         m_halign                     = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         m_valign                     = std::any_cast<Hyprlang::STRING>(props.at("valign"));
     } catch (const std::bad_any_cast& e) {
@@ -79,7 +79,7 @@ bool CSessionPicker::draw(const SRenderData& data) {
             };
 
             const auto ENTRYBORDERROUND = roundingForBorderBox(ENTRYBORDERBOX, m_rounding, m_borderSize);
-            g_pRenderer->renderBorder(ENTRYBORDERBOX, (SELECTED) ? *m_colorConfig.selectedBorder : *m_colorConfig.border, m_borderSize, ENTRYBORDERROUND, data.opacity);
+            g_pRenderer->renderBorder(ENTRYBORDERBOX, (SELECTED) ? m_colorConfig.selectedBorder : m_colorConfig.border, m_borderSize, ENTRYBORDERROUND, data.opacity);
         }
 
         if (!sessionEntry.m_textAsset) {
