@@ -49,11 +49,11 @@ class CSessionPicker : public IWidget {
     Vector2D                   m_biggestEntryAssetSize;
 
     struct {
-        CHyprColor          inner;
-        CHyprColor          selected;
+        CHyprColor         inner;
+        CHyprColor         selected;
 
-        CGradientValueData* border         = nullptr;
-        CGradientValueData* selectedBorder = nullptr;
+        CGradientValueData border;
+        CGradientValueData selectedBorder;
     } m_colorConfig;
 
     CShadowable m_shadow;
