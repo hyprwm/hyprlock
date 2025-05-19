@@ -116,7 +116,7 @@ static void replaceAllLayout(std::string& str) {
             const CVarList    LANGS(REPL);
             if (LAYOUTIDX >= LANGS.size()) {
                 Debug::log(ERR, "Layout index {} out of bounds. Max is {}.", LAYOUTIDX, LANGS.size() - 1);
-                continue;
+                return;
             }
 
             const std::string LANG = LANGS[LAYOUTIDX].empty() ? layoutName : LANGS[LAYOUTIDX] == "!" ? "" : LANGS[LAYOUTIDX];
