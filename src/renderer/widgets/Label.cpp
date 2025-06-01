@@ -84,6 +84,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
         std::string fontFamily = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
+        int         fontWeight = std::any_cast<Hyprlang::INT>(props.at("font_weight"));
         CHyprColor  labelColor = std::any_cast<Hyprlang::INT>(props.at("color"));
         int         fontSize   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
 
@@ -94,6 +95,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
         request.asset                = label.formatted;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = fontFamily;
+        request.props["font_weight"] = fontWeight;
         request.props["color"]       = labelColor;
         request.props["font_size"]   = fontSize;
         request.props["cmd"]         = label.cmd;

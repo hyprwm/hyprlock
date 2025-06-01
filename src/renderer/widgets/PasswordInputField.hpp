@@ -56,7 +56,7 @@ class CPasswordInputField : public IWidget {
     std::string             halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
     uint64_t                configFailTimeoutMs = 2000;
 
-    int                     outThick, rounding;
+    int                     outThick, rounding, fontWeight;
 
     struct {
         PHLANIMVAR<float> currentAmount;

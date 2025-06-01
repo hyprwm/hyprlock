@@ -294,6 +294,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "fade_timeout", Hyprlang::INT{2000});
     m_config.addSpecialConfigValue("input-field", "font_color", Hyprlang::INT{0xFF000000});
     m_config.addSpecialConfigValue("input-field", "font_family", Hyprlang::STRING{"Sans"});
+    m_config.addSpecialConfigValue("input-field", "font_weight", Hyprlang::INT{400});
     m_config.addSpecialConfigValue("input-field", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("input-field", "position", LAYOUTCONFIG("0,0"));
@@ -319,6 +320,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "font_size", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("label", "text", Hyprlang::STRING{"Sample Text"});
     m_config.addSpecialConfigValue("label", "font_family", Hyprlang::STRING{"Sans"});
+    m_config.addSpecialConfigValue("label", "font_weight", Hyprlang::INT{400});
     m_config.addSpecialConfigValue("label", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("label", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("label", "rotate", Hyprlang::FLOAT{0});
@@ -476,6 +478,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"fade_timeout", m_config.getSpecialConfigValue("input-field", "fade_timeout", k.c_str())},
                 {"font_color", m_config.getSpecialConfigValue("input-field", "font_color", k.c_str())},
                 {"font_family", m_config.getSpecialConfigValue("input-field", "font_family", k.c_str())},
+                {"font_weight", m_config.getSpecialConfigValue("input-field", "font_weight", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("input-field", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("input-field", "valign", k.c_str())},
                 {"position", m_config.getSpecialConfigValue("input-field", "position", k.c_str())},
@@ -509,6 +512,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"color", m_config.getSpecialConfigValue("label", "color", k.c_str())},
                 {"font_size", m_config.getSpecialConfigValue("label", "font_size", k.c_str())},
                 {"font_family", m_config.getSpecialConfigValue("label", "font_family", k.c_str())},
+                {"font_weight", m_config.getSpecialConfigValue("label", "font_weight", k.c_str())},
                 {"text", m_config.getSpecialConfigValue("label", "text", k.c_str())},
                 {"halign", m_config.getSpecialConfigValue("label", "halign", k.c_str())},
                 {"valign", m_config.getSpecialConfigValue("label", "valign", k.c_str())},

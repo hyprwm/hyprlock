@@ -49,6 +49,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
+        fontWeight               = std::any_cast<Hyprlang::INT>(props.at("font_weight"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
         colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
@@ -92,6 +93,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         request.asset                = dots.textFormat;
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = fontFamily;
+        request.props["font_weight"] = fontWeight;
         request.props["color"]       = colorConfig.font;
         request.props["font_size"]   = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
 
@@ -374,6 +376,7 @@ void CPasswordInputField::updatePlaceholder() {
     request.asset                = placeholder.currentText;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = fontFamily;
+    request.props["font_weight"] = fontWeight;
     request.props["color"]       = colorState.font;
     request.props["font_size"]   = (int)size->value().y / 4;
     request.callback             = [REF = m_self] {

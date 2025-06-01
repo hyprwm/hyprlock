@@ -214,6 +214,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     const int         FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
     const CHyprColor  FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
     const std::string FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
+    const int         FONTWEIGHT = rq.props.contains("font_weight") ? std::any_cast<int>(rq.props.at("font_weight")) : 400;
     const bool        ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
 
     static const auto TRIM = g_pConfigManager->getValue<Hyprlang::INT>("general:text_trim");
@@ -232,6 +233,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
 
     PangoFontDescription* fontDesc = pango_font_description_from_string(FONTFAMILY.c_str());
     pango_font_description_set_size(fontDesc, FONTSIZE * PANGO_SCALE);
+    pango_font_description_set_weight(fontDesc, static_cast<PangoWeight>(FONTWEIGHT));
     pango_layout_set_font_description(layout, fontDesc);
     pango_font_description_free(fontDesc);
 
