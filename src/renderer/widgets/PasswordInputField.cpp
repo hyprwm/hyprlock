@@ -206,12 +206,23 @@ void CPasswordInputField::updatePassword() {
     if (passwordContent == password.content) {
         return;
     }
-    password.content = passwordContent;
 
-    std::string                             textResourceID = std::format("password:{}-{}", (uintptr_t)this, password.content);
+    if (password.content.length() > passwordContent.length() && password.trim > 0) {
+        password.trim -= 1;
+    }
+
+    password.content           = passwordContent;
+    std::string trimmedContent = passwordContent;
+
+    if (password.trim) {
+        trimmedContent.erase(0, password.trim);
+        password.trimmed = true;
+    }
+
+    std::string                             textResourceID = std::format("password:{}-{}", (uintptr_t)this, trimmedContent);
     CAsyncResourceGatherer::SPreloadRequest request;
     request.id                   = textResourceID;
-    request.asset                = password.content;
+    request.asset                = trimmedContent;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorConfig.font;
@@ -355,11 +366,17 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
             if (password.asset != nullptr) {
-                auto     size = password.asset->texture.m_vSize;
+                auto   size   = password.asset->texture.m_vSize;
+                double offset = (inputFieldBox.h - size.y) / 2.0;
 
-                double   xstart = password.center ? inputFieldBox.w / 2.0 - size.x / 2.0 : inputFieldBox.h / 2.0 - size.y / 2.0;
+                if (size.x > inputFieldBox.w - offset * 2 && password.trimmed == true) {
+                    password.trim += 1;
+                    password.trimmed = false;
+                }
 
-                Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart, (inputFieldBox.h / 2.0) - (size.y / 2.0)};
+                double   xstart = password.center ? inputFieldBox.w / 2.0 - size.x / 2.0 : offset;
+
+                Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart, offset};
                 CBox     box{dotPosition, Vector2D(size.x, size.y)};
 
                 g_pRenderer->renderTexture(box, password.asset->texture, fontCol.a);
