@@ -42,6 +42,8 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
         dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
         dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
+        password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password_size"));
+        password.center          = std::any_cast<Hyprlang::INT>(props.at("password_center"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
