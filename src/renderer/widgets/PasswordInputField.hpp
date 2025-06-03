@@ -29,6 +29,8 @@ class CPasswordInputField : public IWidget {
     void         reset();
     void         onFadeOutTimer();
 
+    void         renderPasswordUpdate();
+
   private:
     WP<CPasswordInputField> m_self;
 
@@ -76,6 +78,7 @@ class CPasswordInputField : public IWidget {
         float            size   = 0;
         std::string      content;
         std::string      resourceID;
+        std::string      pendingResourceID;
         SPreloadedAsset* asset = nullptr;
     } password;
 
