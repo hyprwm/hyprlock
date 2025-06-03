@@ -655,6 +655,8 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
                 m_sPasswordState.passBuffer.pop_back();
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
+    } else if (SYM == XKB_KEY_Tab) {
+        m_sPasswordState.show = !m_sPasswordState.show;
     } else if (SYM == XKB_KEY_Caps_Lock) {
         m_bCapsLock = !m_bCapsLock;
     } else if (SYM == XKB_KEY_Num_Lock) {
@@ -842,6 +844,10 @@ size_t CHyprlock::getPasswordBufferLen() {
 
 std::string CHyprlock::getPasswordBuffer() {
     return m_sPasswordState.passBuffer;
+}
+
+bool CHyprlock::getPasswordShow() {
+    return m_sPasswordState.show;
 }
 
 size_t CHyprlock::getPasswordBufferDisplayLen() {

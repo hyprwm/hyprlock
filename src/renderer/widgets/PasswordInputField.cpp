@@ -232,9 +232,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
-    passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
-    checkWaiting   = g_pAuth->checkWaiting();
-    displayFail    = g_pAuth->m_bDisplayFailText;
+    bool showPassword = g_pHyprlock->getPasswordShow();
+    passwordLength    = g_pHyprlock->getPasswordBufferDisplayLen();
+    checkWaiting      = g_pAuth->checkWaiting();
+    displayFail       = g_pAuth->m_bDisplayFailText;
 
     updatePassword();
     updateFade();
@@ -286,7 +287,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
     if (!hiddenInputState.enabled) {
-        if (!password.show) {
+        if (!showPassword) {
             const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
             Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
             int       passSpacing = std::floor(passSize.x * dots.spacing);

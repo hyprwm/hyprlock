@@ -73,7 +73,6 @@ class CPasswordInputField : public IWidget {
     } dots;
 
     struct {
-        bool             show   = false;
         bool             center = false;
         float            size   = .25;
         std::string      content;
