@@ -71,7 +71,9 @@ class CPasswordInputField : public IWidget {
     } dots;
 
     struct {
-        float            size = 0;
+        bool             show   = true;
+        bool             center = false;
+        float            size   = 0;
         std::string      content;
         std::string      resourceID;
         SPreloadedAsset* asset = nullptr;

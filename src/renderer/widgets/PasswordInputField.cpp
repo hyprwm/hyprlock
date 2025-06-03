@@ -260,8 +260,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
     if (!hiddenInputState.enabled) {
-
-        if (false) {
+        if (!password.show) {
             const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
             Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
             int       passSpacing = std::floor(passSize.x * dots.spacing);
@@ -331,7 +330,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             if (password.asset != nullptr) {
                 auto     size = password.asset->texture.m_vSize;
 
-                double   xstart = inputFieldBox.w / 2.0 - size.x / 2.0;
+                double   xstart = password.center ? inputFieldBox.w / 2.0 - size.x / 2.0 : inputFieldBox.h / 2.0 - size.y / 2.0;
 
                 Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart, (inputFieldBox.h / 2.0) - (size.y / 2.0)};
                 CBox     box{dotPosition, Vector2D(size.x, size.y)};
