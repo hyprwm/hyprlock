@@ -190,7 +190,7 @@ void CPasswordInputField::updatePassword() {
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorConfig.font;
-    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
+    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
 
     password.resourceID = textResourceID;
 
