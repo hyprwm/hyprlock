@@ -32,6 +32,7 @@ class CPasswordInputField : public IWidget {
   private:
     WP<CPasswordInputField> m_self;
 
+    void                    updatePassword();
     void                    updateDots();
     void                    updateFade();
     void                    updatePlaceholder();
@@ -68,6 +69,13 @@ class CPasswordInputField : public IWidget {
         std::string       textResourceID;
         SPreloadedAsset*  textAsset = nullptr;
     } dots;
+
+    struct {
+        float            size = 0;
+        std::string      content;
+        std::string      resourceID;
+        SPreloadedAsset* asset = nullptr;
+    } password;
 
     struct {
         PHLANIMVAR<float>       a;

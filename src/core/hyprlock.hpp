@@ -64,6 +64,7 @@ class CHyprlock {
 
     size_t                           getPasswordBufferLen();
     size_t                           getPasswordBufferDisplayLen();
+    std::string                      getPasswordBuffer();
 
     SP<CCExtSessionLockManagerV1>    getSessionLockMgr();
     SP<CCExtSessionLockV1>           getSessionLock();
