@@ -367,7 +367,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         } else {
             password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
-            if (password.asset != nullptr) {
+            if (password.asset) {
                 auto   size   = password.asset->texture.m_vSize;
                 double offset = (inputFieldBox.h - size.y) / 2.0;
 
