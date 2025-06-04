@@ -128,6 +128,11 @@ static void fadeOutCallback(WP<CPasswordInputField> ref) {
         PP->onFadeOutTimer();
 }
 
+static void assetReadyCallback(WP<CPasswordInputField> ref) {
+    if (auto PINPUT = ref.lock(); PINPUT)
+        PINPUT->renderPasswordUpdate();
+}
+
 void CPasswordInputField::onFadeOutTimer() {
     fade.allowFadeOut = true;
     fade.fadeOutTimer.reset();
@@ -178,29 +183,6 @@ void CPasswordInputField::updateDots() {
         *dots.currentAmount = passwordLength;
 }
 
-static void onAssetCallback(WP<CPasswordInputField> ref) {
-    if (auto PINPUT = ref.lock(); PINPUT)
-        PINPUT->renderPasswordUpdate();
-}
-
-void CPasswordInputField::renderPasswordUpdate() {
-    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.pendingResourceID);
-    if (newAsset) {
-        // new asset is ready :D
-        g_pRenderer->asyncResourceGatherer->unloadAsset(password.asset);
-        password.asset             = newAsset;
-        password.resourceID        = password.pendingResourceID;
-        password.pendingResourceID = "";
-    } else {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", password.pendingResourceID);
-
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
-        return;
-    }
-
-    g_pHyprlock->renderOutput(outputStringPort);
-}
-
 void CPasswordInputField::updatePassword() {
     std::string passwordContent = g_pHyprlock->getPasswordBuffer();
     if (passwordContent == password.content) {
@@ -231,11 +213,29 @@ void CPasswordInputField::updatePassword() {
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorConfig.font;
     request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
-    request.callback             = [REF = m_self]() { onAssetCallback(REF); };
+    request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
 
     password.pendingResourceID = textResourceID;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+}
+
+void CPasswordInputField::renderPasswordUpdate() {
+    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.pendingResourceID);
+    if (newAsset) {
+        // new asset is ready :D
+        g_pRenderer->asyncResourceGatherer->unloadAsset(password.asset);
+        password.asset             = newAsset;
+        password.resourceID        = password.pendingResourceID;
+        password.pendingResourceID = "";
+    } else {
+        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", password.pendingResourceID);
+
+        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { assetReadyCallback(REF); }, nullptr);
+        return;
+    }
+
+    g_pHyprlock->renderOutput(outputStringPort);
 }
 
 bool CPasswordInputField::draw(const SRenderData& data) {
