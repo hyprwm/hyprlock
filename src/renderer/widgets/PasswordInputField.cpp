@@ -231,7 +231,7 @@ void CPasswordInputField::renderPasswordUpdate() {
     } else {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", password.pendingResourceID);
 
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { assetReadyCallback(REF); }, nullptr);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(10), [REF = m_self](auto, auto) { assetReadyCallback(REF); }, nullptr);
         return;
     }
 
