@@ -207,6 +207,10 @@ void CPasswordInputField::updatePassword() {
         return;
     }
 
+    if (password.content.length() == 0) {
+        password.trim = 0;
+    }
+
     if (password.content.length() > passwordContent.length() && password.trim > 0) {
         password.trim -= 1;
     }
