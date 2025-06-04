@@ -100,8 +100,6 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
 
-    password.size = 0.25;
-
     // request the inital placeholder asset
     updatePlaceholder();
 }
