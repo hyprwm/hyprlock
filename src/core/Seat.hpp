@@ -17,6 +17,7 @@ class CSeatManager {
 
     SP<CCWlKeyboard>   m_pKeeb;
     SP<CCWlPointer>    m_pPointer;
+    SP<CCWlTouch>      m_pTouch;
 
     UP<CCursorShape>   m_pCursorShape;
 
