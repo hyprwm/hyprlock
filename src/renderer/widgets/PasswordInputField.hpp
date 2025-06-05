@@ -29,9 +29,12 @@ class CPasswordInputField : public IWidget {
     void         reset();
     void         onFadeOutTimer();
 
+    void         renderPasswordUpdate();
+
   private:
     WP<CPasswordInputField> m_self;
 
+    void                    updatePassword();
     void                    updateDots();
     void                    updateFade();
     void                    updatePlaceholder();
@@ -68,6 +71,18 @@ class CPasswordInputField : public IWidget {
         std::string       textResourceID;
         SPreloadedAsset*  textAsset = nullptr;
     } dots;
+
+    struct {
+        bool             center            = false;
+        float            size              = .25;
+        std::string      content           = "";
+        std::string      resourceID        = "";
+        std::string      pendingResourceID = "";
+        SPreloadedAsset* asset             = nullptr;
+        SPreloadedAsset* previousAsset     = nullptr;
+        int              trim              = 0;
+        bool             trimmed           = true;
+    } password;
 
     struct {
         PHLANIMVAR<float>       a;

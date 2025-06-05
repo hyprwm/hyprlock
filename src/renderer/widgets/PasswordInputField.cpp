@@ -42,6 +42,8 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
         dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
         dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
+        password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password_size"));
+        password.center          = std::any_cast<Hyprlang::INT>(props.at("password_center"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -124,6 +126,11 @@ static void fadeOutCallback(WP<CPasswordInputField> ref) {
         PP->onFadeOutTimer();
 }
 
+static void assetReadyCallback(WP<CPasswordInputField> ref) {
+    if (auto PINPUT = ref.lock(); PINPUT)
+        PINPUT->renderPasswordUpdate();
+}
+
 void CPasswordInputField::onFadeOutTimer() {
     fade.allowFadeOut = true;
     fade.fadeOutTimer.reset();
@@ -174,6 +181,61 @@ void CPasswordInputField::updateDots() {
         *dots.currentAmount = passwordLength;
 }
 
+void CPasswordInputField::updatePassword() {
+    std::string passwordContent = g_pHyprlock->getPasswordBuffer();
+    if (passwordContent == password.content) {
+        return;
+    }
+
+    if (password.content.length() == 0) {
+        password.trim = 0;
+    }
+
+    if (password.content.length() > passwordContent.length() && password.trim > 0) {
+        password.trim -= 1;
+    }
+
+    password.content           = passwordContent;
+    std::string trimmedContent = passwordContent;
+
+    if (password.trim) {
+        trimmedContent.erase(0, password.trim);
+        password.trimmed = true;
+    }
+
+    std::string                             textResourceID = std::format("password:{}-{}", (uintptr_t)this, trimmedContent);
+    CAsyncResourceGatherer::SPreloadRequest request;
+    request.id                   = textResourceID;
+    request.asset                = trimmedContent;
+    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+    request.props["font_family"] = fontFamily;
+    request.props["color"]       = colorConfig.font;
+    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
+    request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
+
+    password.pendingResourceID = textResourceID;
+
+    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+}
+
+void CPasswordInputField::renderPasswordUpdate() {
+    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.pendingResourceID);
+    if (newAsset) {
+        // new asset is ready :D
+        g_pRenderer->asyncResourceGatherer->unloadAsset(password.asset);
+        password.asset             = newAsset;
+        password.resourceID        = password.pendingResourceID;
+        password.pendingResourceID = "";
+    } else {
+        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", password.pendingResourceID);
+
+        g_pHyprlock->addTimer(std::chrono::milliseconds(10), [REF = m_self](auto, auto) { assetReadyCallback(REF); }, nullptr);
+        return;
+    }
+
+    g_pHyprlock->renderOutput(outputStringPort);
+}
+
 bool CPasswordInputField::draw(const SRenderData& data) {
     if (firstRender || redrawShadow) {
         firstRender  = false;
@@ -183,10 +245,12 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
-    passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
-    checkWaiting   = g_pAuth->checkWaiting();
-    displayFail    = g_pAuth->m_bDisplayFailText;
+    bool showPassword = g_pHyprlock->getPasswordShow();
+    passwordLength    = g_pHyprlock->getPasswordBufferDisplayLen();
+    checkWaiting      = g_pAuth->checkWaiting();
+    displayFail       = g_pAuth->m_bDisplayFailText;
 
+    updatePassword();
     updateFade();
     updateDots();
     updateColors();
@@ -236,68 +300,89 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
     if (!hiddenInputState.enabled) {
-        const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
-        Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
-        int       passSpacing = std::floor(passSize.x * dots.spacing);
+        if (!showPassword) {
+            const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
+            Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
+            int       passSpacing = std::floor(passSize.x * dots.spacing);
 
-        if (!dots.textFormat.empty()) {
-            if (!dots.textAsset)
-                dots.textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(dots.textResourceID);
-
-            if (!dots.textAsset)
-                forceReload = true;
-            else {
-                passSize    = dots.textAsset->texture.m_vSize;
-                passSpacing = std::floor(passSize.x * dots.spacing);
-            }
-        }
-
-        const auto   CURRDOTS     = dots.currentAmount->value();
-        const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
-        const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2);
-        const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
-        const int    DOTFLOORED   = std::floor(CURRDOTS);
-        const auto   DOTALPHA     = fontCol.a;
-
-        // Calculate the total width required for all dots including spaces between them
-        const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
-
-        // Calculate starting x-position to ensure dots stay centered within the input field
-        double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
-
-        if (CURRDOTS > MAXDOTS)
-            xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2.0;
-
-        if (dots.rounding == -1)
-            dots.rounding = passSize.x / 2.0;
-        else if (dots.rounding == -2)
-            dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * dots.size;
-
-        for (int i = 0; i < CURRDOTS; ++i) {
-            if (i < DOTFLOORED - MAXDOTS)
-                continue;
-
-            if (CURRDOTS != DOTFLOORED) {
-                if (i == DOTFLOORED)
-                    fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
-                else if (i == DOTFLOORED - MAXDOTS)
-                    fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
-            }
-
-            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
-            CBox     box{dotPosition, passSize};
             if (!dots.textFormat.empty()) {
-                if (!dots.textAsset) {
+                if (!dots.textAsset)
+                    dots.textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(dots.textResourceID);
+
+                if (!dots.textAsset)
                     forceReload = true;
-                    fontCol.a   = DOTALPHA;
-                    break;
+                else {
+                    passSize    = dots.textAsset->texture.m_vSize;
+                    passSpacing = std::floor(passSize.x * dots.spacing);
+                }
+            }
+
+            const auto   CURRDOTS     = dots.currentAmount->value();
+            const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
+            const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2);
+            const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
+            const int    DOTFLOORED   = std::floor(CURRDOTS);
+            const auto   DOTALPHA     = fontCol.a;
+
+            // Calculate the total width required for all dots including spaces between them
+            const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
+
+            // Calculate starting x-position to ensure dots stay centered within the input field
+            double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
+
+            if (CURRDOTS > MAXDOTS)
+                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2.0;
+
+            if (dots.rounding == -1)
+                dots.rounding = passSize.x / 2.0;
+            else if (dots.rounding == -2)
+                dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * dots.size;
+
+            for (int i = 0; i < CURRDOTS; ++i) {
+                if (i < DOTFLOORED - MAXDOTS)
+                    continue;
+
+                if (CURRDOTS != DOTFLOORED) {
+                    if (i == DOTFLOORED)
+                        fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
+                    else if (i == DOTFLOORED - MAXDOTS)
+                        fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
                 }
 
-                g_pRenderer->renderTexture(box, dots.textAsset->texture, fontCol.a, dots.rounding);
-            } else
-                g_pRenderer->renderRect(box, fontCol, dots.rounding);
+                Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
+                CBox     box{dotPosition, passSize};
+                if (!dots.textFormat.empty()) {
+                    if (!dots.textAsset) {
+                        forceReload = true;
+                        fontCol.a   = DOTALPHA;
+                        break;
+                    }
 
-            fontCol.a = DOTALPHA;
+                    g_pRenderer->renderTexture(box, dots.textAsset->texture, fontCol.a, dots.rounding);
+                } else
+                    g_pRenderer->renderRect(box, fontCol, dots.rounding);
+
+                fontCol.a = DOTALPHA;
+            }
+        } else {
+            password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
+
+            if (password.asset) {
+                auto   size   = password.asset->texture.m_vSize;
+                double offset = (inputFieldBox.h - size.y) / 2.0;
+
+                if (size.x > inputFieldBox.w - offset * 2 && password.trimmed == true) {
+                    password.trim += 1;
+                    password.trimmed = false;
+                }
+
+                double   xstart = password.center ? inputFieldBox.w / 2.0 - size.x / 2.0 : offset;
+
+                Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart, offset};
+                CBox     box{dotPosition, Vector2D(size.x, size.y)};
+
+                g_pRenderer->renderTexture(box, password.asset->texture, fontCol.a);
+            }
         }
     }
 
