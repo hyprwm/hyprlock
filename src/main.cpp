@@ -2,6 +2,7 @@
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
 #include "helpers/Log.hpp"
+#include "helpers/MiscFunctions.hpp"
 #include "core/AnimationManager.hpp"
 #include <cstddef>
 #include <string_view>
@@ -9,6 +10,7 @@
 void help() {
     std::println("Usage: hyprlock [options]\n\n"
                  "Options:\n"
+                 "  -g, --greetd             - Start hyprlock for session login via greetd\n"
                  "  -v, --verbose            - Enable verbose logging\n"
                  "  -q, --quiet              - Disable logging\n"
                  "  -c FILE, --config FILE   - Specify config file to use\n"
@@ -16,6 +18,7 @@ void help() {
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
+                 "  --session-dirs DIR1:DIR2 - Specify directories to search for session files\n"
                  "  -V, --version            - Show version information\n"
                  "  -h, --help               - Show this help message");
 }
@@ -43,8 +46,12 @@ int main(int argc, char** argv, char** envp) {
     bool                     immediate       = false;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
+    bool                     greetdLogin     = false;
 
     std::vector<std::string> args(argv, argv + argc);
+
+    // Used for greetd login
+    std::string sessionDirs;
 
     for (std::size_t i = 1; i < args.size(); ++i) {
         const std::string arg = argv[i];
@@ -59,7 +66,16 @@ int main(int argc, char** argv, char** envp) {
             return 0;
         }
 
-        if (arg == "--verbose" || arg == "-v")
+        if (arg == "--greetd" || arg == "-g") {
+            greetdLogin     = true;
+            immediate       = true;
+            immediateRender = true;
+        } else if (arg == "--session-dirs" && i + 1 < (std::size_t)argc) {
+            if (auto value = parseArg(args, arg, i); value)
+                sessionDirs = *value;
+            else
+                return 1;
+        } else if (arg == "--verbose" || arg == "-v")
             Debug::verbose = true;
 
         else if (arg == "--quiet" || arg == "-q")
@@ -111,7 +127,7 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender);
+        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender, greetdLogin, sessionDirs);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
