@@ -16,6 +16,7 @@ void help() {
                  "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
+                 "  --grace SECONDS          - Set grace time overriding the config\n"
                  "  -V, --version            - Show version information\n"
                  "  -h, --help               - Show this help message");
 }
@@ -43,6 +44,7 @@ int main(int argc, char** argv, char** envp) {
     bool                     immediate       = false;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
+    long                     grace           = -1;
 
     std::vector<std::string> args(argv, argv + argc);
 
@@ -86,6 +88,24 @@ int main(int argc, char** argv, char** envp) {
         else if (arg == "--no-fade-in")
             noFadeIn = true;
 
+        else if (arg == "--grace") {
+            auto value = parseArg(args, arg, i);
+            if (!value)
+                return 1;
+
+            try {
+                grace = std::stol(*value);
+            } catch (const std::exception& e) {
+                std::println(stderr, "Error: Invalid grace time value: {}", *value);
+                return 1;
+            }
+
+            if (grace < 0) {
+                std::println(stderr, "Error: Invalid grace time value: {}", *value);
+                return 1;
+            }
+        }
+
         else {
             std::println(stderr, "Unknown option: {}", arg);
             help();
@@ -111,7 +131,7 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender);
+        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender, grace);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
