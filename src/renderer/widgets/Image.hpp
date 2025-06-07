@@ -20,7 +20,7 @@ class CImage : public IWidget {
     CImage() = default;
     ~CImage();
 
-    void         registerSelf(const SP<CImage>& self);
+    void         registerSelf(const std::shared_ptr<CImage>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -35,7 +35,7 @@ class CImage : public IWidget {
     void         plantTimer();
 
   private:
-    WP<CImage>                              m_self;
+    std::weak_ptr<CImage>                   m_self;
 
     CFramebuffer                            imageFB;
 

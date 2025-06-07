@@ -12,11 +12,11 @@ CLabel::~CLabel() {
     reset();
 }
 
-void CLabel::registerSelf(const SP<CLabel>& self) {
+void CLabel::registerSelf(const std::shared_ptr<CLabel>& self) {
     m_self = self;
 }
 
-static void onTimer(WP<CLabel> ref) {
+static void onTimer(std::weak_ptr<CLabel> ref) {
     if (auto PLABEL = ref.lock(); PLABEL) {
         // update label
         PLABEL->onTimerUpdate();
@@ -25,7 +25,7 @@ static void onTimer(WP<CLabel> ref) {
     }
 }
 
-static void onAssetCallback(WP<CLabel> ref) {
+static void onAssetCallback(std::weak_ptr<CLabel> ref) {
     if (auto PLABEL = ref.lock(); PLABEL)
         PLABEL->renderUpdate();
 }
@@ -115,13 +115,13 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 }
 
 void CLabel::reset() {
+    if (g_pHyprlock->m_bTerminate)
+        return;
+
     if (labelTimer) {
         labelTimer->cancel();
         labelTimer.reset();
     }
-
-    if (g_pHyprlock->m_bTerminate)
-        return;
 
     if (asset)
         g_pRenderer->asyncResourceGatherer->unloadAsset(asset);

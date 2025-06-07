@@ -2,7 +2,7 @@
 #include "../Renderer.hpp"
 #include <hyprlang.hpp>
 
-void CShadowable::configure(WP<IWidget> widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) {
+void CShadowable::configure(std::weak_ptr<IWidget> widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) {
     m_widget = widget_;
     viewport = viewport_;
 
@@ -15,7 +15,7 @@ void CShadowable::configure(WP<IWidget> widget_, const std::unordered_map<std::s
 void CShadowable::markShadowDirty() {
     const auto WIDGET = m_widget.lock();
 
-    if (!m_widget)
+    if (!WIDGET)
         return;
 
     if (passes == 0)
@@ -38,7 +38,7 @@ void CShadowable::markShadowDirty() {
 }
 
 bool CShadowable::draw(const IWidget::SRenderData& data) {
-    if (!m_widget || passes == 0)
+    if (!m_widget.expired() || passes == 0)
         return true;
 
     if (!shadowFB.isAllocated() || ignoreDraw)

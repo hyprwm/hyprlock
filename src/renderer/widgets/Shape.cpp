@@ -7,7 +7,7 @@
 #include <hyprlang.hpp>
 #include <sys/types.h>
 
-void CShape::registerSelf(const SP<CShape>& self) {
+void CShape::registerSelf(const std::shared_ptr<CShape>& self) {
     m_self = self;
 }
 

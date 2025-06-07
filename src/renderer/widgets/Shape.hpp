@@ -14,7 +14,7 @@ class CShape : public IWidget {
     CShape()          = default;
     virtual ~CShape() = default;
 
-    void         registerSelf(const SP<CShape>& self);
+    void         registerSelf(const std::shared_ptr<CShape>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -23,26 +23,26 @@ class CShape : public IWidget {
     virtual void onHover(const Vector2D& pos);
 
   private:
-    WP<CShape>         m_self;
+    std::weak_ptr<CShape> m_self;
 
-    CFramebuffer       shapeFB;
+    CFramebuffer          shapeFB;
 
-    int                rounding;
-    double             border;
-    double             angle;
-    CHyprColor         color;
-    CGradientValueData borderGrad;
-    Vector2D           size;
-    Vector2D           pos;
-    CBox               shapeBox;
-    CBox               borderBox;
-    bool               xray;
+    int                   rounding;
+    double                border;
+    double                angle;
+    CHyprColor            color;
+    CGradientValueData    borderGrad;
+    Vector2D              size;
+    Vector2D              pos;
+    CBox                  shapeBox;
+    CBox                  borderBox;
+    bool                  xray;
 
-    std::string        halign, valign;
+    std::string           halign, valign;
 
-    bool               firstRender = true;
-    std::string        onclickCommand;
+    bool                  firstRender = true;
+    std::string           onclickCommand;
 
-    Vector2D           viewport;
-    CShadowable        shadow;
+    Vector2D              viewport;
+    CShadowable           shadow;
 };

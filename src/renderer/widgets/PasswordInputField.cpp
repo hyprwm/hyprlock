@@ -19,7 +19,7 @@ CPasswordInputField::~CPasswordInputField() {
     reset();
 }
 
-void CPasswordInputField::registerSelf(const SP<CPasswordInputField>& self) {
+void CPasswordInputField::registerSelf(const std::shared_ptr<CPasswordInputField>& self) {
     m_self = self;
 }
 
@@ -119,7 +119,7 @@ void CPasswordInputField::reset() {
     placeholder.currentText.clear();
 }
 
-static void fadeOutCallback(WP<CPasswordInputField> ref) {
+static void fadeOutCallback(std::weak_ptr<CPasswordInputField> ref) {
     if (const auto PP = ref.lock(); PP)
         PP->onFadeOutTimer();
 }
