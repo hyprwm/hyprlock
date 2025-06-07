@@ -27,7 +27,7 @@ class CBackground : public IWidget {
     CBackground() = default;
     ~CBackground();
 
-    void         registerSelf(const SP<CBackground>& self);
+    void         registerSelf(const std::shared_ptr<CBackground>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -42,7 +42,7 @@ class CBackground : public IWidget {
     void         startCrossFadeOrUpdateRender();
 
   private:
-    WP<CBackground> m_self;
+    std::weak_ptr<CBackground> m_self;
 
     // if needed
     CFramebuffer                            blurredFB;

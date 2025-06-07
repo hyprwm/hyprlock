@@ -459,6 +459,8 @@ void CHyprlock::run() {
                 passed.push_back(t);
         }
 
+        timerscpy.clear();
+
         m_sLoopState.timersMutex.lock();
         std::erase_if(m_vTimers, [passed](const auto& timer) { return std::find(passed.begin(), passed.end(), timer) != passed.end(); });
         m_sLoopState.timersMutex.unlock();

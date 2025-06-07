@@ -13,7 +13,7 @@ CBackground::~CBackground() {
     reset();
 }
 
-void CBackground::registerSelf(const SP<CBackground>& self) {
+void CBackground::registerSelf(const std::shared_ptr<CBackground>& self) {
     m_self = self;
 }
 
@@ -92,19 +92,19 @@ void CBackground::renderRect(CHyprColor color) {
     g_pRenderer->renderRect(monbox, color, 0);
 }
 
-static void onReloadTimer(WP<CBackground> ref) {
+static void onReloadTimer(std::weak_ptr<CBackground> ref) {
     if (auto PBG = ref.lock(); PBG) {
         PBG->onReloadTimerUpdate();
         PBG->plantReloadTimer();
     }
 }
 
-static void onCrossFadeTimer(WP<CBackground> ref) {
+static void onCrossFadeTimer(std::weak_ptr<CBackground> ref) {
     if (auto PBG = ref.lock(); PBG)
         PBG->onCrossFadeTimerUpdate();
 }
 
-static void onAssetCallback(WP<CBackground> ref) {
+static void onAssetCallback(std::weak_ptr<CBackground> ref) {
     if (auto PBG = ref.lock(); PBG)
         PBG->startCrossFadeOrUpdateRender();
 }
