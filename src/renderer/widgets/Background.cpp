@@ -169,6 +169,7 @@ bool CBackground::draw(const SRenderData& data) {
     if (!asset && !resourceID.empty())
         asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
 
+    // path=screenshot -> scAsset = asset
     if (!scAsset)
         scAsset = (asset && isScreenshot) ? asset : g_pRenderer->asyncResourceGatherer->getAssetByID(scResourceID);
 
@@ -202,16 +203,15 @@ bool CBackground::draw(const SRenderData& data) {
         renderBlur(pendingAsset->texture, pendingBlurredFB);
 
     const auto& TEX    = blurredFB.isAllocated() ? blurredFB.m_cTex : asset->texture;
-    const auto  texbox = getScaledBoxForTexture(TEX, viewport);
+    const auto  TEXBOX = getScaledBoxForTexture(TEX, viewport);
 
     if (data.opacity < 1.0 && scAsset)
-        g_pRenderer->renderTextureMix(texbox, scAsset->texture, TEX, 1.0, data.opacity, 0);
+        g_pRenderer->renderTextureMix(TEXBOX, scAsset->texture, TEX, 1.0, data.opacity, 0);
     else if (crossFadeProgress->isBeingAnimated()) {
         const auto& PENDINGTEX = pendingBlurredFB.isAllocated() ? pendingBlurredFB.m_cTex : pendingAsset->texture;
-        g_pRenderer->renderTextureMix(texbox, TEX, PENDINGTEX, 1.0, crossFadeProgress->value(), 0);
-        Debug::log(LOG, "Crossfade progress: {}", crossFadeProgress->value());
+        g_pRenderer->renderTextureMix(TEXBOX, TEX, PENDINGTEX, 1.0, crossFadeProgress->value(), 0);
     } else
-        g_pRenderer->renderTexture(texbox, TEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
 
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
 }
