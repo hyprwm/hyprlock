@@ -12,7 +12,7 @@ class CFramebuffer {
     void      addStencil();
     void      bind() const;
     void      release();
-    void      reset();
+    void      abandon();
     bool      isAllocated() const;
 
     Vector2D  m_vSize;
