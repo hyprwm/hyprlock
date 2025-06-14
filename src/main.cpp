@@ -14,7 +14,6 @@ void help() {
                  "  -c FILE, --config FILE   - Specify config file to use\n"
                  "  --display NAME           - Specify the Wayland display to connect to\n"
                  "  --grace SECONDS          - Set grace period in seconds before requiring authentication\n"
-                 "  --immediate              - Lock immediately, ignoring any configured grace period\n"
                  "  --immediate-render       - Do not wait for resources before drawing the background\n"
                  "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
                  "  -V, --version            - Show version information\n"
@@ -41,10 +40,9 @@ static void printVersion() {
 int main(int argc, char** argv, char** envp) {
     std::string              configPath;
     std::string              wlDisplay;
-    bool                     immediate       = false;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
-    int                      graceSeconds     = 0;
+    int                      graceSeconds    = 0;
 
     std::vector<std::string> args(argv, argv + argc);
 
@@ -94,10 +92,7 @@ int main(int argc, char** argv, char** envp) {
             } else
                 return 1;
 
-        } else if (arg == "--immediate")
-            immediate = true;
-
-        else if (arg == "--immediate-render")
+        } else if (arg == "--immediate-render")
             immediateRender = true;
 
         else if (arg == "--no-fade-in")
@@ -124,11 +119,11 @@ int main(int argc, char** argv, char** envp) {
         return 1;
     }
 
-    if (noFadeIn || immediate)
+    if (noFadeIn)
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender, graceSeconds);
+        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
