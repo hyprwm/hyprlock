@@ -125,7 +125,7 @@ void CImage::reset() {
     if (g_pHyprlock->m_bTerminate)
         return;
 
-    imageFB.release();
+    imageFB.destroyBuffer();
 
     if (asset && reloadTime > -1) // Don't unload asset if it's a static image
         g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
@@ -217,7 +217,7 @@ void CImage::renderUpdate() {
             g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
         } else if (resourceID != pendingResourceID) {
             g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
-            imageFB.release();
+            imageFB.destroyBuffer();
 
             asset       = newAsset;
             resourceID  = pendingResourceID;

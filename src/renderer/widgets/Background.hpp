@@ -19,7 +19,7 @@ class COutput;
 
 class CBackground : public IWidget {
   public:
-    CBackground() = default;
+    CBackground();
     ~CBackground();
 
     void         registerSelf(const SP<CBackground>& self);
@@ -41,8 +41,8 @@ class CBackground : public IWidget {
     WP<CBackground> m_self;
 
     // if needed
-    CFramebuffer                            blurredFB;
-    CFramebuffer                            pendingBlurredFB;
+    UP<CFramebuffer>                        blurredFB;
+    UP<CFramebuffer>                        pendingBlurredFB;
 
     int                                     blurSize          = 10;
     int                                     blurPasses        = 3;

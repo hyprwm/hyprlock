@@ -13,6 +13,11 @@
 #include <memory>
 #include <GLES3/gl32.h>
 
+CBackground::CBackground() {
+    blurredFB        = makeUnique<CFramebuffer>();
+    pendingBlurredFB = makeUnique<CFramebuffer>();
+}
+
 CBackground::~CBackground() {
     reset();
 }
@@ -83,6 +88,9 @@ void CBackground::reset() {
         reloadTimer->cancel();
         reloadTimer.reset();
     }
+
+    blurredFB->destroyBuffer();
+    pendingBlurredFB->destroyBuffer();
 }
 
 void CBackground::renderRect(CHyprColor color) {
@@ -195,20 +203,20 @@ bool CBackground::draw(const SRenderData& data) {
         return false;
     }
 
-    if (asset && (blurPasses > 0 || isScreenshot) && (!blurredFB.isAllocated() || firstRender))
-        renderBlur(asset->texture, blurredFB);
+    if (asset && (blurPasses > 0 || isScreenshot) && (!blurredFB->isAllocated() || firstRender))
+        renderBlur(asset->texture, *blurredFB);
 
     // For crossfading a new asset
-    if (pendingAsset && blurPasses > 0 && !pendingBlurredFB.isAllocated())
-        renderBlur(pendingAsset->texture, pendingBlurredFB);
+    if (pendingAsset && blurPasses > 0 && !pendingBlurredFB->isAllocated())
+        renderBlur(pendingAsset->texture, *pendingBlurredFB);
 
-    const auto& TEX    = blurredFB.isAllocated() ? blurredFB.m_cTex : asset->texture;
+    const auto& TEX    = blurredFB->isAllocated() ? blurredFB->m_cTex : asset->texture;
     const auto  TEXBOX = getScaledBoxForTexture(TEX, viewport);
 
     if (data.opacity < 1.0 && scAsset)
         g_pRenderer->renderTextureMix(TEXBOX, scAsset->texture, TEX, 1.0, data.opacity, 0);
     else if (crossFadeProgress->isBeingAnimated()) {
-        const auto& PENDINGTEX = pendingBlurredFB.isAllocated() ? pendingBlurredFB.m_cTex : pendingAsset->texture;
+        const auto& PENDINGTEX = pendingBlurredFB->isAllocated() ? pendingBlurredFB->m_cTex : pendingAsset->texture;
         g_pRenderer->renderTextureMix(TEXBOX, TEX, PENDINGTEX, 1.0, crossFadeProgress->value(), 0);
     } else
         g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
@@ -290,9 +298,8 @@ void CBackground::startCrossFade() {
                         PSELF->resourceID        = PSELF->pendingResourceID;
                         PSELF->pendingResourceID = "";
 
-                        PSELF->blurredFB.release();
-                        PSELF->blurredFB = PSELF->pendingBlurredFB;
-                        PSELF->pendingBlurredFB.abandon();
+                        PSELF->blurredFB->destroyBuffer();
+                        PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
                     }
                 },
                 true);
