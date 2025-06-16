@@ -1,16 +1,19 @@
 #include "AsyncResourceGatherer.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../core/Egl.hpp"
-#include <cairo/cairo.h>
-#include <pango/pangocairo.h>
-#include <algorithm>
-#include <filesystem>
 #include "../core/hyprlock.hpp"
+#include "../helpers/Color.hpp"
+#include "../helpers/Log.hpp"
 #include "../helpers/MiscFunctions.hpp"
-#include "src/helpers/Color.hpp"
-#include "src/helpers/Log.hpp"
+#include <algorithm>
+#include <cairo/cairo.h>
+#include <filesystem>
+#include <pango/pangocairo.h>
+#include <sys/eventfd.h>
 #include <hyprgraphics/image/Image.hpp>
+#include <hyprutils/os/FileDescriptor.hpp>
 using namespace Hyprgraphics;
+using namespace Hyprutils::OS;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     if (g_pHyprlock->getScreencopy())
@@ -18,6 +21,10 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
 
     initialGatherThread = std::thread([this]() { this->gather(); });
     asyncLoopThread     = std::thread([this]() { this->asyncAssetSpinLock(); });
+
+    gatheredEventfd = CFileDescriptor{eventfd(0, EFD_CLOEXEC)};
+    if (!gatheredEventfd.isValid())
+        Debug::log(ERR, "Failed to create eventfd: {}", strerror(errno));
 }
 
 void CAsyncResourceGatherer::enqueueScreencopyFrames() {
@@ -115,6 +122,9 @@ void CAsyncResourceGatherer::gather() {
     }
 
     gathered = true;
+    // wake hyprlock from poll
+    if (gatheredEventfd.isValid())
+        eventfd_write(gatheredEventfd.get(), 1);
 }
 
 bool CAsyncResourceGatherer::apply() {
