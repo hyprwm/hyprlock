@@ -317,7 +317,7 @@ void CHyprlock::run() {
     if (!g_pHyprlock->m_bImmediateRender) {
         // Gather background resources and screencopy frames before locking the screen.
         // We need to do this because as soon as we lock the screen, workspaces frames can no longer be captured. It either won't work at all, or we will capture hyprlock itself.
-        // Bypass with --immediate-render (can cause the background first rendering a solid clor and missing or inaccurate screencopy frames)
+        // Bypass with --immediate-render (can cause the background first rendering a solid color and missing or inaccurate screencopy frames)
         const auto MAXDELAYMS    = 2000; // 2 Seconds
         const auto STARTGATHERTP = std::chrono::system_clock::now();
 
@@ -353,7 +353,7 @@ void CHyprlock::run() {
             }
 
             if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count() > MAXDELAYMS) {
-                Debug::log(WARN, "Gathering resources timed out after 2 seconds. Backgrounds may render `background:color` at first.");
+                Debug::log(WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
                 break;
             }
         }
