@@ -12,18 +12,18 @@ CImage::~CImage() {
     reset();
 }
 
-void CImage::registerSelf(const SP<CImage>& self) {
+void CImage::registerSelf(const std::shared_ptr<CImage>& self) {
     m_self = self;
 }
 
-static void onTimer(WP<CImage> ref) {
+static void onTimer(std::weak_ptr<CImage> ref) {
     if (auto PIMAGE = ref.lock(); PIMAGE) {
         PIMAGE->onTimerUpdate();
         PIMAGE->plantTimer();
     }
 }
 
-static void onAssetCallback(WP<CImage> ref) {
+static void onAssetCallback(std::weak_ptr<CImage> ref) {
     if (auto PIMAGE = ref.lock(); PIMAGE)
         PIMAGE->renderUpdate();
 }

@@ -388,13 +388,13 @@ void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTe
 }
 
 template <class Widget>
-static void createWidget(std::vector<SP<IWidget>>& widgets) {
-    const auto W = makeShared<Widget>();
+static void createWidget(std::vector<std::shared_ptr<IWidget>>& widgets) {
+    const auto W = std::make_shared<Widget>();
     W->registerSelf(W);
     widgets.emplace_back(W);
 }
 
-std::vector<SP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface& surf) {
+std::vector<std::shared_ptr<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface& surf) {
     RASSERT(surf.m_outputID != OUTPUT_INVALID, "Invalid output ID!");
 
     if (!widgets.contains(surf.m_outputID)) {

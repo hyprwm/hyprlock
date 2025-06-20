@@ -12,7 +12,7 @@
 #include "widgets/IWidget.hpp"
 #include "Framebuffer.hpp"
 
-typedef std::unordered_map<OUTPUTID, std::vector<SP<IWidget>>> widgetMap_t;
+typedef std::unordered_map<OUTPUTID, std::vector<std::shared_ptr<IWidget>>> widgetMap_t;
 
 class CRenderer {
   public:
@@ -37,18 +37,18 @@ class CRenderer {
     void renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
     void blurFB(const CFramebuffer& outfb, SBlurParams params);
 
-    UP<CAsyncResourceGatherer>            asyncResourceGatherer;
-    std::chrono::system_clock::time_point firstFullFrameTime;
+    UP<CAsyncResourceGatherer>             asyncResourceGatherer;
+    std::chrono::system_clock::time_point  firstFullFrameTime;
 
-    void                                  pushFb(GLint fb);
-    void                                  popFb();
+    void                                   pushFb(GLint fb);
+    void                                   popFb();
 
-    void                                  removeWidgetsFor(OUTPUTID id);
-    void                                  reconfigureWidgetsFor(OUTPUTID id);
+    void                                   removeWidgetsFor(OUTPUTID id);
+    void                                   reconfigureWidgetsFor(OUTPUTID id);
 
-    void                                  startFadeIn();
-    void                                  startFadeOut(bool unlock = false, bool immediate = true);
-    std::vector<SP<IWidget>>&             getOrCreateWidgetsFor(const CSessionLockSurface& surf);
+    void                                   startFadeIn();
+    void                                   startFadeOut(bool unlock = false, bool immediate = true);
+    std::vector<std::shared_ptr<IWidget>>& getOrCreateWidgetsFor(const CSessionLockSurface& surf);
 
   private:
     widgetMap_t        widgets;
