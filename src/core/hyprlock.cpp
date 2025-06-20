@@ -6,6 +6,7 @@
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
+#include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>
 #include <sys/poll.h>
@@ -313,18 +314,52 @@ void CHyprlock::run() {
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
-    // Hyprland violates the protocol a bit to allow for this.
-    if (m_sCurrentDesktop != "Hyprland") {
+    if (!g_pHyprlock->m_bImmediateRender) {
+        // Gather background resources and screencopy frames before locking the screen.
+        // We need to do this because as soon as we lock the screen, workspaces frames can no longer be captured. It either won't work at all, or we will capture hyprlock itself.
+        // Bypass with --immediate-render (can cause the background first rendering a solid color and missing or inaccurate screencopy frames)
+        const auto MAXDELAYMS    = 2000; // 2 Seconds
+        const auto STARTGATHERTP = std::chrono::system_clock::now();
+
+        int        fdcount = 1;
+        pollfd     pollfds[2];
+        pollfds[0] = {
+            .fd     = wl_display_get_fd(m_sWaylandState.display),
+            .events = POLLIN,
+        };
+
+        if (g_pRenderer->asyncResourceGatherer->gatheredEventfd.isValid()) {
+            pollfds[1] = {
+                .fd     = g_pRenderer->asyncResourceGatherer->gatheredEventfd.get(),
+                .events = POLLIN,
+            };
+
+            fdcount++;
+        }
+
         while (!g_pRenderer->asyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
+                if (poll(pollfds, fdcount, /* 100ms timeout */ 100) < 0) {
+                    RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
+                    wl_display_cancel_read(m_sWaylandState.display);
+                    continue;
+                }
                 wl_display_read_events(m_sWaylandState.display);
                 wl_display_dispatch_pending(m_sWaylandState.display);
             } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 wl_display_dispatch(m_sWaylandState.display);
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count() > MAXDELAYMS) {
+                Debug::log(WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
+                break;
+            }
         }
+
+        Debug::log(LOG, "Resources gathered after {} milliseconds",
+                   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
     }
 
     // Failed to lock the session
@@ -499,16 +534,13 @@ void CHyprlock::unlock() {
         return;
     }
 
-    const bool IMMEDIATE = m_sCurrentDesktop != "Hyprland";
-
-    g_pRenderer->startFadeOut(true, IMMEDIATE);
-    m_bUnlockedCalled = true;
+    g_pRenderer->startFadeOut(true);
 
     renderAllOutputs();
 }
 
 bool CHyprlock::isUnlocked() {
-    return m_bUnlockedCalled || m_bTerminate;
+    return !m_bLocked;
 }
 
 void CHyprlock::clearPasswordBuffer() {

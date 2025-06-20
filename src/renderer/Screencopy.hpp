@@ -22,7 +22,8 @@ class ISCFrame {
 
 class CScreencopyFrame {
   public:
-    static std::string getResourceId(SP<COutput> pOutput);
+    static std::string                 getResourceId(SP<COutput> pOutput);
+    static constexpr const std::string RESOURCEIDPREFIX = "screencopy";
 
     CScreencopyFrame(SP<COutput> pOutput);
     ~CScreencopyFrame() = default;

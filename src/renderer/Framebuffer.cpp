@@ -1,6 +1,8 @@
 #include "Framebuffer.hpp"
 #include "../helpers/Log.hpp"
+#include <hyprutils/os/FileDescriptor.hpp>
 #include <libdrm/drm_fourcc.h>
+#include <utility>
 
 static uint32_t drmFormatToGL(uint32_t drm) {
     switch (drm) {
@@ -97,7 +99,7 @@ void CFramebuffer::bind() const {
     glViewport(0, 0, m_vSize.x, m_vSize.y);
 }
 
-void CFramebuffer::release() {
+void CFramebuffer::destroyBuffer() {
     if (m_iFb != (uint32_t)-1 && m_iFb)
         glDeleteFramebuffers(1, &m_iFb);
 
@@ -114,7 +116,7 @@ void CFramebuffer::release() {
 }
 
 CFramebuffer::~CFramebuffer() {
-    release();
+    destroyBuffer();
 }
 
 bool CFramebuffer::isAllocated() const {
