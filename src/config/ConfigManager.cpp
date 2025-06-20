@@ -214,7 +214,6 @@ void CConfigManager::init() {
 
     m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
-    m_config.addConfigValue("general:grace", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
