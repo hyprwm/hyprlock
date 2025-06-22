@@ -19,7 +19,7 @@ class CPasswordInputField : public IWidget {
     CPasswordInputField() = default;
     virtual ~CPasswordInputField();
 
-    void         registerSelf(const SP<CPasswordInputField>& self);
+    void         registerSelf(const ASP<CPasswordInputField>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -30,7 +30,7 @@ class CPasswordInputField : public IWidget {
     void         onFadeOutTimer();
 
   private:
-    WP<CPasswordInputField> m_self;
+    AWP<CPasswordInputField> m_self;
 
     void                    updateDots();
     void                    updateFade();

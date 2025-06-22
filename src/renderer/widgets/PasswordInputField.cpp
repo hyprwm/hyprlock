@@ -19,7 +19,7 @@ CPasswordInputField::~CPasswordInputField() {
     reset();
 }
 
-void CPasswordInputField::registerSelf(const SP<CPasswordInputField>& self) {
+void CPasswordInputField::registerSelf(const ASP<CPasswordInputField>& self) {
     m_self = self;
 }
 
@@ -29,7 +29,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
     outputStringPort = pOutput->stringPort;
     viewport         = pOutput->getViewport();
 
-    shadow.configure(m_self.lock(), props, viewport);
+    shadow.configure(m_self, props, viewport);
 
     try {
         pos                      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);
@@ -119,7 +119,7 @@ void CPasswordInputField::reset() {
     placeholder.currentText.clear();
 }
 
-static void fadeOutCallback(WP<CPasswordInputField> ref) {
+static void fadeOutCallback(AWP<CPasswordInputField> ref) {
     if (const auto PP = ref.lock(); PP)
         PP->onFadeOutTimer();
 }

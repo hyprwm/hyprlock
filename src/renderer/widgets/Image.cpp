@@ -12,18 +12,18 @@ CImage::~CImage() {
     reset();
 }
 
-void CImage::registerSelf(const SP<CImage>& self) {
+void CImage::registerSelf(const ASP<CImage>& self) {
     m_self = self;
 }
 
-static void onTimer(WP<CImage> ref) {
+static void onTimer(AWP<CImage> ref) {
     if (auto PIMAGE = ref.lock(); PIMAGE) {
         PIMAGE->onTimerUpdate();
         PIMAGE->plantTimer();
     }
 }
 
-static void onAssetCallback(WP<CImage> ref) {
+static void onAssetCallback(AWP<CImage> ref) {
     if (auto PIMAGE = ref.lock(); PIMAGE)
         PIMAGE->renderUpdate();
 }
@@ -82,7 +82,7 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
     viewport   = pOutput->getViewport();
     stringPort = pOutput->stringPort;
 
-    shadow.configure(m_self.lock(), props, viewport);
+    shadow.configure(m_self, props, viewport);
 
     try {
         size      = std::any_cast<Hyprlang::INT>(props.at("size"));
