@@ -44,7 +44,7 @@ int main(int argc, char** argv, char** envp) {
     bool                     immediate       = false;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
-    int                      graceSeconds     = 0;
+    int                      graceSeconds    = 0;
 
     std::vector<std::string> args(argv, argv + argc);
 
@@ -94,8 +94,11 @@ int main(int argc, char** argv, char** envp) {
             } else
                 return 1;
 
-        } else if (arg == "--immediate")
-            immediate = true;
+        } else if (arg == "--immediate") {
+            immediate    = true;
+            graceSeconds = 0;
+            Debug::log(WARN, "\"--immediate\" is deprecated. It will be removed in an upcoming release. Use the \"--grace\" option instead.");
+        }
 
         else if (arg == "--immediate-render")
             immediateRender = true;
