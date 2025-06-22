@@ -35,7 +35,7 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender, const int graceSeconds) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -48,15 +48,12 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
         Debug::log(WARN, "\"general:grace\" config option is deprecated. It will be removed in an upcoming release. Use the \"--grace\" option instead.");
     }
 
-    if (immediate) {
-        m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
-    } else if (graceSeconds > 0) {
+    if (graceSeconds > 0)
         m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(graceSeconds);
-    } else if (*GRACE > 0) {
+    else if (*GRACE > 0)
         m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(*GRACE);
-    } else {
+    else
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
-    }
 
     static const auto IMMEDIATERENDER = g_pConfigManager->getValue<Hyprlang::INT>("general:immediate_render");
     m_bImmediateRender                = immediateRender || *IMMEDIATERENDER;
