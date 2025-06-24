@@ -380,7 +380,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
                 fontCol.a = DOTALPHA;
             }
-        } else {
+        } else if (password.content.length() > 0) {
             password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
             if (password.asset) {
