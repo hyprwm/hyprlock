@@ -206,11 +206,7 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     preloadTargets.push_back(target);
 }
 
-Vector2D CAsyncResourceGatherer::getTextAssetSize(const SPreloadRequest& rq) {
-    SPreloadTarget target;
-    target.type = TARGET_IMAGE; /* text is just an image lol */
-    target.id   = rq.id;
-
+PangoLayout* CAsyncResourceGatherer::getPangoLayout(const SPreloadRequest& rq) {
     const int         FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
     const std::string FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
     const bool        ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
@@ -266,11 +262,14 @@ Vector2D CAsyncResourceGatherer::getTextAssetSize(const SPreloadRequest& rq) {
     pango_layout_set_attributes(layout, attrList);
     pango_attr_list_unref(attrList);
 
-    int layoutWidth, layoutHeight;
-    pango_layout_get_size(layout, &layoutWidth, &layoutHeight);
+    return layout;
+}
 
-    // TODO: avoid this?
-    cairo_destroy(CAIRO);
+Vector2D CAsyncResourceGatherer::getTextAssetSize(const SPreloadRequest& rq) {
+    PangoLayout* layout = getPangoLayout(rq);
+
+    int          layoutWidth, layoutHeight;
+    pango_layout_get_size(layout, &layoutWidth, &layoutHeight);
 
     return Vector2D{layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE};
 }
@@ -280,69 +279,15 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     target.type = TARGET_IMAGE; /* text is just an image lol */
     target.id   = rq.id;
 
-    const int         FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
-    const CHyprColor  FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
-    const std::string FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
-    const bool        ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
+    const CHyprColor FONTCOLOR = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
 
-    static const auto TRIM = g_pConfigManager->getValue<Hyprlang::INT>("general:text_trim");
-    std::string       text = ISCMD ? spawnSync(rq.asset) : rq.asset;
+    PangoLayout*     layout = getPangoLayout(rq);
 
-    if (*TRIM) {
-        text.erase(0, text.find_first_not_of(" \n\r\t"));
-        text.erase(text.find_last_not_of(" \n\r\t") + 1);
-    }
-
-    auto CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080 /* dummy value */));
-    auto CAIRO        = cairo_create(CAIROSURFACE->cairo());
-
-    // draw title using Pango
-    PangoLayout*          layout = pango_cairo_create_layout(CAIRO);
-
-    PangoFontDescription* fontDesc = pango_font_description_from_string(FONTFAMILY.c_str());
-    pango_font_description_set_size(fontDesc, FONTSIZE * PANGO_SCALE);
-    pango_layout_set_font_description(layout, fontDesc);
-    pango_font_description_free(fontDesc);
-
-    if (rq.props.contains("text_align")) {
-        const std::string TEXTALIGN = std::any_cast<std::string>(rq.props.at("text_align"));
-        PangoAlignment    align     = PANGO_ALIGN_LEFT;
-        if (TEXTALIGN == "center")
-            align = PANGO_ALIGN_CENTER;
-        else if (TEXTALIGN == "right")
-            align = PANGO_ALIGN_RIGHT;
-
-        pango_layout_set_alignment(layout, align);
-    }
-
-    PangoAttrList* attrList = nullptr;
-    GError*        gError   = nullptr;
-    char*          buf      = nullptr;
-    if (pango_parse_markup(text.c_str(), -1, 0, &attrList, &buf, nullptr, &gError))
-        pango_layout_set_text(layout, buf, -1);
-    else {
-        Debug::log(ERR, "Pango markup parsing for {} failed: {}", text, gError->message);
-        g_error_free(gError);
-        pango_layout_set_text(layout, text.c_str(), -1);
-    }
-
-    if (!attrList)
-        attrList = pango_attr_list_new();
-
-    if (buf)
-        free(buf);
-
-    pango_attr_list_insert(attrList, pango_attr_scale_new(1));
-    pango_layout_set_attributes(layout, attrList);
-    pango_attr_list_unref(attrList);
-
-    int layoutWidth, layoutHeight;
+    int              layoutWidth, layoutHeight;
     pango_layout_get_size(layout, &layoutWidth, &layoutHeight);
 
-    // TODO: avoid this?
-    cairo_destroy(CAIRO);
-    CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE));
-    CAIRO        = cairo_create(CAIROSURFACE->cairo());
+    auto CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE));
+    auto CAIRO        = cairo_create(CAIROSURFACE->cairo());
 
     // clear the pixmap
     cairo_save(CAIRO);
