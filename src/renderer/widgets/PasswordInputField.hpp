@@ -81,7 +81,6 @@ class CPasswordInputField : public IWidget {
         SPreloadedAsset* asset             = nullptr;
         SPreloadedAsset* previousAsset     = nullptr;
         int              trim              = 0;
-        bool             trimmed           = true;
     } password;
 
     struct {

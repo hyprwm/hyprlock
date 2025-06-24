@@ -1,5 +1,6 @@
 #include "PasswordInputField.hpp"
 #include "../Renderer.hpp"
+#include "../AsyncResourceGatherer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
 #include "../../config/ConfigDataValues.hpp"
@@ -195,25 +196,40 @@ void CPasswordInputField::updatePassword() {
         password.trim -= 1;
     }
 
-    password.content           = passwordContent;
-    std::string trimmedContent = passwordContent;
+    password.content = passwordContent;
 
-    if (password.trim) {
-        trimmedContent.erase(0, password.trim);
-        password.trimmed = true;
-    }
-
-    std::string                             textResourceID = std::format("password:{}-{}", (uintptr_t)this, trimmedContent);
     CAsyncResourceGatherer::SPreloadRequest request;
-    request.id                   = textResourceID;
-    request.asset                = trimmedContent;
-    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = fontFamily;
-    request.props["color"]       = colorConfig.font;
-    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
-    request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
+    Vector2D                                assetSize;
+    double                                  offset;
+    CBox                                    inputFieldBox = {pos, size->value()};
 
-    password.pendingResourceID = textResourceID;
+    while (true) {
+        std::string trimmedContent = passwordContent;
+
+        if (password.trim) {
+            trimmedContent.erase(0, password.trim);
+        }
+
+        std::string textResourceID   = std::format("password:{}-{}", (uintptr_t)this, trimmedContent);
+        request.id                   = textResourceID;
+        request.asset                = trimmedContent;
+        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+        request.props["font_family"] = fontFamily;
+        request.props["color"]       = colorConfig.font;
+        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
+        request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
+
+        password.pendingResourceID = textResourceID;
+
+        assetSize = g_pRenderer->asyncResourceGatherer->getTextAssetSize(request);
+        offset    = (inputFieldBox.h - assetSize.y) / 2.0;
+
+        if (assetSize.x <= (inputFieldBox.w - offset * 2)) {
+            break;
+        }
+
+        password.trim += 1;
+    }
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
@@ -368,13 +384,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
             if (password.asset) {
-                auto   size   = password.asset->texture.m_vSize;
-                double offset = (inputFieldBox.h - size.y) / 2.0;
-
-                if (size.x > inputFieldBox.w - offset * 2 && password.trimmed == true) {
-                    password.trim += 1;
-                    password.trimmed = false;
-                }
+                auto     size   = password.asset->texture.m_vSize;
+                double   offset = (inputFieldBox.h - size.y) / 2.0;
 
                 double   xstart = password.center ? inputFieldBox.w / 2.0 - size.x / 2.0 : offset;
 

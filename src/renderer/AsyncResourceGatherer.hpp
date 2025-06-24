@@ -40,10 +40,11 @@ class CAsyncResourceGatherer {
         std::function<void()> callback = nullptr;
     };
 
-    void requestAsyncAssetPreload(const SPreloadRequest& request);
-    void unloadAsset(SPreloadedAsset* asset);
-    void notify();
-    void await();
+    Vector2D getTextAssetSize(const SPreloadRequest& request);
+    void     requestAsyncAssetPreload(const SPreloadRequest& request);
+    void     unloadAsset(SPreloadedAsset* asset);
+    void     notify();
+    void     await();
 
   private:
     std::thread asyncLoopThread;
