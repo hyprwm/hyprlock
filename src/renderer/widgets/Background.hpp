@@ -73,6 +73,6 @@ class CBackground : public IWidget {
     int                                     reloadTime = -1;
     std::string                             reloadCommand;
     CAsyncResourceGatherer::SPreloadRequest request;
-    std::shared_ptr<CTimer>                 reloadTimer;
+    ASP<CTimer>                 reloadTimer;
     std::filesystem::file_time_type         modificationTime;
 };

@@ -158,7 +158,7 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             } else {
                 done                         = false;
                 static const auto RETRYDELAY = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:retry_delay");
-                g_pHyprlock->addTimer(std::chrono::milliseconds(*RETRYDELAY), [](std::shared_ptr<CTimer> self, void* data) { ((CFingerprint*)data)->startVerify(true); }, this);
+                g_pHyprlock->addTimer(std::chrono::milliseconds(*RETRYDELAY), [](ASP<CTimer> self, void* data) { ((CFingerprint*)data)->startVerify(true); }, this);
                 m_sFailureReason = "Fingerprint did not match";
             }
             break;

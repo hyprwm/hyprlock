@@ -53,7 +53,7 @@ class CLabel : public IWidget {
 
     CAsyncResourceGatherer::SPreloadRequest request;
 
-    std::shared_ptr<CTimer>                 labelTimer = nullptr;
+    ASP<CTimer>                 labelTimer = nullptr;
 
     CShadowable                             shadow;
     bool                                    updateShadow = true;

@@ -1,6 +1,6 @@
 #include "Timer.hpp"
 
-CTimer::CTimer(std::chrono::system_clock::duration timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data_, bool force) :
+CTimer::CTimer(std::chrono::system_clock::duration timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data_, bool force) :
     cb(cb_), data(data_), allowForceUpdate(force) {
     expires = std::chrono::system_clock::now() + timeout;
 }
@@ -17,7 +17,7 @@ bool CTimer::cancelled() {
     return wasCancelled;
 }
 
-void CTimer::call(std::shared_ptr<CTimer> self) {
+void CTimer::call(ASP<CTimer> self) {
     cb(self, data);
 }
 

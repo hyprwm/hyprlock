@@ -37,7 +37,7 @@ class CHyprlock {
     void                             unlock();
     bool                             isUnlocked();
 
-    std::shared_ptr<CTimer>          addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
+    ASP<CTimer>          addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data,
                                               bool force = false);
 
     void                             enqueueForceUpdateTimers();
@@ -99,10 +99,10 @@ class CHyprlock {
 
     Vector2D                              m_vMouseLocation = {};
 
-    std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
+    ASP<CTimer>               m_pKeyRepeatTimer = nullptr;
 
     std::vector<SP<COutput>>              m_vOutputs;
-    std::vector<std::shared_ptr<CTimer>>  getTimers();
+    std::vector<ASP<CTimer>>  getTimers();
 
     struct {
         SP<CCZwpLinuxDmabufV1>         linuxDmabuf         = nullptr;
@@ -158,7 +158,7 @@ class CHyprlock {
         bool                    timerEvent = false;
     } m_sLoopState;
 
-    std::vector<std::shared_ptr<CTimer>> m_vTimers;
+    std::vector<ASP<CTimer>> m_vTimers;
 
     std::vector<uint32_t>                m_vPressedKeys;
 };

@@ -61,7 +61,7 @@ class CAuth {
     } m_sCurrentFail;
 
     std::vector<SP<IAuthImplementation>> m_vImpls;
-    std::shared_ptr<CTimer>              m_resetDisplayFailTimer;
+    ASP<CTimer>              m_resetDisplayFailTimer;
 };
 
 inline UP<CAuth> g_pAuth;

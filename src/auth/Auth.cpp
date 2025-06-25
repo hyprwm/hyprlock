@@ -76,7 +76,7 @@ void CAuth::terminate() {
     }
 }
 
-static void unlockCallback(std::shared_ptr<CTimer> self, void* data) {
+static void unlockCallback(ASP<CTimer> self, void* data) {
     g_pHyprlock->unlock();
 }
 
@@ -84,7 +84,7 @@ void CAuth::enqueueUnlock() {
     g_pHyprlock->addTimer(std::chrono::milliseconds(0), unlockCallback, nullptr);
 }
 
-static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
+static void passwordFailCallback(ASP<CTimer> self, void* data) {
     g_pAuth->m_bDisplayFailText = true;
 
     g_pHyprlock->enqueueForceUpdateTimers();
@@ -92,7 +92,7 @@ static void passwordFailCallback(std::shared_ptr<CTimer> self, void* data) {
     g_pHyprlock->renderAllOutputs();
 }
 
-static void displayFailTimeoutCallback(std::shared_ptr<CTimer> self, void* data) {
+static void displayFailTimeoutCallback(ASP<CTimer> self, void* data) {
     if (g_pAuth->m_bDisplayFailText) {
         g_pAuth->m_bDisplayFailText = false;
         g_pHyprlock->renderAllOutputs();

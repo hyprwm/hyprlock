@@ -56,7 +56,7 @@ class CImage : public IWidget {
     std::string                             onclickCommand;
 
     std::filesystem::file_time_type         modificationTime;
-    std::shared_ptr<CTimer>                 imageTimer;
+    ASP<CTimer>                 imageTimer;
     CAsyncResourceGatherer::SPreloadRequest request;
 
     Vector2D                                viewport;

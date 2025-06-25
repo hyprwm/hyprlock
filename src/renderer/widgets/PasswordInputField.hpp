@@ -72,7 +72,7 @@ class CPasswordInputField : public IWidget {
     struct {
         PHLANIMVAR<float>       a;
         bool                    appearing    = true;
-        std::shared_ptr<CTimer> fadeOutTimer = nullptr;
+        ASP<CTimer> fadeOutTimer = nullptr;
         bool                    allowFadeOut = false;
     } fade;
 
