@@ -94,7 +94,7 @@ int main(int argc, char** argv, char** envp) {
 
         } else if (arg == "--immediate") {
             graceSeconds = 0;
-            Debug::log(WARN, "\"--immediate\" is deprecated. It will be removed in an upcoming release. Use the \"--grace\" option instead.");
+            Debug::log(WARN, R"("--immediate" is deprecated. Use the "--grace" option instead.)");
         }
 
         else if (arg == "--immediate-render")

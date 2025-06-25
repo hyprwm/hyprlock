@@ -43,15 +43,8 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, c
 
     g_pEGL = makeUnique<CEGL>(m_sWaylandState.display);
 
-    static const auto GRACE = g_pConfigManager->getValue<Hyprlang::INT>("general:grace");
-    if (*GRACE > 0) {
-        Debug::log(WARN, "\"general:grace\" config option is deprecated. It will be removed in an upcoming release. Use the \"--grace\" option instead.");
-    }
-
     if (graceSeconds > 0)
         m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(graceSeconds);
-    else if (*GRACE > 0)
-        m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(*GRACE);
     else
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
 
