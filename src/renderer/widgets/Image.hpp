@@ -35,7 +35,7 @@ class CImage : public IWidget {
     void         plantTimer();
 
   private:
-    AWP<CImage>                              m_self;
+    AWP<CImage>                             m_self;
 
     CFramebuffer                            imageFB;
 
@@ -56,7 +56,7 @@ class CImage : public IWidget {
     std::string                             onclickCommand;
 
     std::filesystem::file_time_type         modificationTime;
-    ASP<CTimer>                 imageTimer;
+    ASP<CTimer>                             imageTimer;
     CAsyncResourceGatherer::SPreloadRequest request;
 
     Vector2D                                viewport;

@@ -23,7 +23,7 @@ class CShape : public IWidget {
     virtual void onHover(const Vector2D& pos);
 
   private:
-    AWP<CShape>         m_self;
+    AWP<CShape>        m_self;
 
     CFramebuffer       shapeFB;
 

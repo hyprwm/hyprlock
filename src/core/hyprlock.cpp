@@ -877,8 +877,7 @@ size_t CHyprlock::getPasswordBufferDisplayLen() {
     return std::count_if(m_sPasswordState.passBuffer.begin(), m_sPasswordState.passBuffer.end(), [](char c) { return (c & 0xc0) != 0x80; });
 }
 
-ASP<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data,
-                                            bool force) {
+ASP<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force) {
     std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
     const auto                  T = m_vTimers.emplace_back(makeAtomicShared<CTimer>(timeout, cb_, data, force));
     m_sLoopState.timerEvent       = true;
