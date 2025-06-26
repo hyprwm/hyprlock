@@ -36,7 +36,7 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -44,10 +44,9 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
 
     g_pEGL = makeUnique<CEGL>(m_sWaylandState.display);
 
-    if (!immediate) {
-        static const auto GRACE = g_pConfigManager->getValue<Hyprlang::INT>("general:grace");
-        m_tGraceEnds            = *GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(*GRACE) : std::chrono::system_clock::from_time_t(0);
-    } else
+    if (graceSeconds > 0)
+        m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(graceSeconds);
+    else
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
 
     static const auto IMMEDIATERENDER = g_pConfigManager->getValue<Hyprlang::INT>("general:immediate_render");
