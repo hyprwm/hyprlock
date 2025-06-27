@@ -62,11 +62,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1750873284,
-        "narHash": "sha256-k+Ch7nfBNx0mnUoj9bASWQtRqsEGGT0L9Q0GaJfwumQ=",
+        "lastModified": 1750966151,
+        "narHash": "sha256-SlIgrGlF/MDl8DcAiz0Xg2dK+N+Sy03gHxMhzbBK8vY=",
         "owner": "hyprwm",
         "repo": "hyprutils",
-        "rev": "925f26633fb0a5ca8f11884c1bbf82e96c22e34b",
+        "rev": "1eb6759ae7a53cff9a9f80e1e6db88235e0c7648",
         "type": "github"
       },
       "original": {
