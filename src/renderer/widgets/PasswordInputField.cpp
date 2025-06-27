@@ -400,13 +400,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                     g_pRenderer->renderRect(box, fontCol, dots.rounding);
 
                 fontCol.a = DOTALPHA;
-
-                auto eyeSize     = eye.asset->texture.m_vSize;
-                auto eyePosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - eyeSize.x - DOTPAD, DOTPAD};
-                box              = {eyePosition, eyeSize};
-                g_pRenderer->renderTexture(box, eye.asset->texture, fontCol.a);
             }
-        } else if (password.content.length() > 0) {
+        } else if (passwordLength != 0) {
             password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
             if (password.asset) {
@@ -420,13 +415,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 CBox     box{passwordPosition, passSize};
 
                 g_pRenderer->renderTexture(box, password.asset->texture, fontCol.a);
-
-                passwordPosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - eyeSize.x - padding, padding};
-                box              = {passwordPosition, eyeSize};
-                g_pRenderer->renderTexture(box, eye.asset->texture, fontCol.a);
             } else {
                 forceReload = true;
             }
+        }
+
+        if (passwordLength != 0) {
+            auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
+            auto eyePosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - eyeSize.x - padding, (inputFieldBox.h - eyeSize.y) / 2};
+            CBox box         = {eyePosition, eyeSize};
+            g_pRenderer->renderTexture(box, eye.asset->texture, fontCol.a);
         }
     }
 
