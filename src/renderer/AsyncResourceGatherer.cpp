@@ -200,13 +200,8 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     preloadTargets.push_back(target);
 }
 
-void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
-    SPreloadTarget target;
-    target.type = TARGET_IMAGE; /* text is just an image lol */
-    target.id   = rq.id;
-
+PangoLayout* CAsyncResourceGatherer::getPangoLayout(const SPreloadRequest& rq) {
     const int         FONTSIZE   = rq.props.contains("font_size") ? std::any_cast<int>(rq.props.at("font_size")) : 16;
-    const CHyprColor  FONTCOLOR  = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
     const std::string FONTFAMILY = rq.props.contains("font_family") ? std::any_cast<std::string>(rq.props.at("font_family")) : "Sans";
     const bool        ISCMD      = rq.props.contains("cmd") ? std::any_cast<bool>(rq.props.at("cmd")) : false;
 
@@ -261,13 +256,32 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     pango_layout_set_attributes(layout, attrList);
     pango_attr_list_unref(attrList);
 
-    int layoutWidth, layoutHeight;
+    return layout;
+}
+
+Vector2D CAsyncResourceGatherer::getTextAssetSize(const SPreloadRequest& rq) {
+    PangoLayout* layout = getPangoLayout(rq);
+
+    int          layoutWidth, layoutHeight;
     pango_layout_get_size(layout, &layoutWidth, &layoutHeight);
 
-    // TODO: avoid this?
-    cairo_destroy(CAIRO);
-    CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE));
-    CAIRO        = cairo_create(CAIROSURFACE->cairo());
+    return Vector2D{layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE};
+}
+
+void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
+    SPreloadTarget target;
+    target.type = TARGET_IMAGE; /* text is just an image lol */
+    target.id   = rq.id;
+
+    const CHyprColor FONTCOLOR = rq.props.contains("color") ? std::any_cast<CHyprColor>(rq.props.at("color")) : CHyprColor(1.0, 1.0, 1.0, 1.0);
+
+    PangoLayout*     layout = getPangoLayout(rq);
+
+    int              layoutWidth, layoutHeight;
+    pango_layout_get_size(layout, &layoutWidth, &layoutHeight);
+
+    auto CAIROSURFACE = makeShared<CCairoSurface>(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, layoutWidth / PANGO_SCALE, layoutHeight / PANGO_SCALE));
+    auto CAIRO        = cairo_create(CAIROSURFACE->cairo());
 
     // clear the pixmap
     cairo_save(CAIRO);

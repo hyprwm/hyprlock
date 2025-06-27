@@ -1,5 +1,6 @@
 #include "PasswordInputField.hpp"
 #include "../Renderer.hpp"
+#include "../AsyncResourceGatherer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
 #include "../../config/ConfigDataValues.hpp"
@@ -42,6 +43,8 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
         dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
         dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
+        password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password_size"));
+        password.center          = std::any_cast<Hyprlang::INT>(props.at("password_center"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -100,6 +103,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
 
     // request the inital placeholder asset
     updatePlaceholder();
+    updateEye();
 }
 
 void CPasswordInputField::reset() {
@@ -122,6 +126,11 @@ void CPasswordInputField::reset() {
 static void fadeOutCallback(WP<CPasswordInputField> ref) {
     if (const auto PP = ref.lock(); PP)
         PP->onFadeOutTimer();
+}
+
+static void assetReadyCallback(WP<CPasswordInputField> ref) {
+    if (auto PINPUT = ref.lock(); PINPUT)
+        PINPUT->renderPasswordUpdate();
 }
 
 void CPasswordInputField::onFadeOutTimer() {
@@ -174,6 +183,93 @@ void CPasswordInputField::updateDots() {
         *dots.currentAmount = passwordLength;
 }
 
+void CPasswordInputField::updatePassword() {
+    std::string passwordContent = g_pHyprlock->getPasswordBuffer();
+    if (passwordContent == password.content) {
+        return;
+    }
+
+    if (password.content.length() == 0) {
+        password.trim = 0;
+    }
+
+    if (password.content.length() > passwordContent.length() && password.trim > 0) {
+        password.trim -= 1;
+    }
+
+    password.content = passwordContent;
+
+    CAsyncResourceGatherer::SPreloadRequest request;
+    Vector2D                                assetSize;
+    double                                  offset;
+    CBox                                    inputFieldBox = {pos, size->value()};
+
+    while (true) {
+        std::string trimmedContent = passwordContent;
+
+        if (password.trim) {
+            trimmedContent.erase(0, password.trim);
+        }
+
+        std::string textResourceID   = std::format("password:{}-{}", (uintptr_t)this, trimmedContent);
+        request.id                   = textResourceID;
+        request.asset                = trimmedContent;
+        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+        request.props["font_family"] = fontFamily;
+        request.props["color"]       = colorConfig.font;
+        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
+        request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
+
+        password.pendingResourceID = textResourceID;
+
+        assetSize = g_pRenderer->asyncResourceGatherer->getTextAssetSize(request);
+        offset    = (inputFieldBox.h - assetSize.y) / 2.0;
+
+        // It can be safely assumed that the eye asset is always available
+        if (!eye.asset || assetSize.x <= (inputFieldBox.w - offset * 2 - eye.margin - eye.asset->texture.m_vSize.x)) {
+            break;
+        }
+
+        password.trim += 1;
+    }
+
+    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+}
+
+void CPasswordInputField::renderPasswordUpdate() {
+    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.pendingResourceID);
+    if (newAsset) {
+        // new asset is ready :D
+        g_pRenderer->asyncResourceGatherer->unloadAsset(password.asset);
+        password.asset             = newAsset;
+        password.resourceID        = password.pendingResourceID;
+        password.pendingResourceID = "";
+    } else {
+        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", password.pendingResourceID);
+
+        g_pHyprlock->addTimer(std::chrono::milliseconds(10), [REF = m_self](auto, auto) { assetReadyCallback(REF); }, nullptr);
+        return;
+    }
+
+    g_pHyprlock->renderOutput(outputStringPort);
+}
+
+void CPasswordInputField::updateEye() {
+    CAsyncResourceGatherer::SPreloadRequest request;
+
+    std::string                             textResourceID = std::format("eye:{}", (uintptr_t)this);
+    request.id                                             = textResourceID;
+    request.asset                                          = "👁";
+    request.type                                           = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+    request.props["font_family"]                           = fontFamily;
+    request.props["color"]                                 = colorConfig.font;
+    request.props["font_size"]                             = (int)(std::nearbyint(configSize.y * eye.size * 0.5f) * 2.f);
+
+    eye.resourceID = textResourceID;
+
+    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+}
+
 bool CPasswordInputField::draw(const SRenderData& data) {
     if (firstRender || redrawShadow) {
         firstRender  = false;
@@ -183,10 +279,12 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
-    passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
-    checkWaiting   = g_pAuth->checkWaiting();
-    displayFail    = g_pAuth->m_bDisplayFailText;
+    bool showPassword = g_pHyprlock->getPasswordShow();
+    passwordLength    = g_pHyprlock->getPasswordBufferDisplayLen();
+    checkWaiting      = g_pAuth->checkWaiting();
+    displayFail       = g_pAuth->m_bDisplayFailText;
 
+    updatePassword();
     updateFade();
     updateDots();
     updateColors();
@@ -235,69 +333,97 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     const int ROUND = roundingForBox(inputFieldBox, rounding);
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
-    if (!hiddenInputState.enabled) {
-        const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
-        Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
-        int       passSpacing = std::floor(passSize.x * dots.spacing);
+    eye.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.resourceID);
+    if (!hiddenInputState.enabled && eye.asset) {
+        Vector2D eyeSize = eye.asset->texture.m_vSize;
 
-        if (!dots.textFormat.empty()) {
-            if (!dots.textAsset)
-                dots.textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(dots.textResourceID);
+        if (!showPassword) {
+            const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
+            Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
+            int       passSpacing = std::floor(passSize.x * dots.spacing);
 
-            if (!dots.textAsset)
+            if (!dots.textFormat.empty()) {
+                if (!dots.textAsset)
+                    dots.textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(dots.textResourceID);
+
+                if (!dots.textAsset)
+                    forceReload = true;
+                else {
+                    passSize    = dots.textAsset->texture.m_vSize;
+                    passSpacing = std::floor(passSize.x * dots.spacing);
+                }
+            }
+
+            const auto   CURRDOTS     = dots.currentAmount->value();
+            const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
+            const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2) - eye.margin - eyeSize.x;
+            const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
+            const int    DOTFLOORED   = std::floor(CURRDOTS);
+            const auto   DOTALPHA     = fontCol.a;
+
+            // Calculate the total width required for all dots including spaces between them
+            const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
+
+            // Calculate starting x-position to ensure dots stay centered within the input field
+            double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
+
+            if (CURRDOTS > MAXDOTS)
+                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eye.margin - eyeSize.x) / 2.0;
+
+            if (dots.rounding == -1)
+                dots.rounding = passSize.x / 2.0;
+            else if (dots.rounding == -2)
+                dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * dots.size;
+
+            for (int i = 0; i < CURRDOTS; ++i) {
+                if (i < DOTFLOORED - MAXDOTS)
+                    continue;
+
+                if (CURRDOTS != DOTFLOORED) {
+                    if (i == DOTFLOORED)
+                        fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
+                    else if (i == DOTFLOORED - MAXDOTS)
+                        fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
+                }
+
+                Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
+                CBox     box{dotPosition, passSize};
+                if (!dots.textFormat.empty()) {
+                    if (!dots.textAsset) {
+                        fontCol.a = DOTALPHA;
+                        break;
+                    }
+
+                    g_pRenderer->renderTexture(box, dots.textAsset->texture, fontCol.a, dots.rounding);
+                } else
+                    g_pRenderer->renderRect(box, fontCol, dots.rounding);
+
+                fontCol.a = DOTALPHA;
+            }
+        } else if (passwordLength != 0) {
+            password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
+
+            if (password.asset) {
+                auto     passSize = password.asset->texture.m_vSize;
+                auto     eyeSize  = eye.asset->texture.m_vSize;
+                double   padding  = (inputFieldBox.h - passSize.y) / 2.0;
+
+                double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeSize.x + eye.margin) / 2.0 : padding;
+
+                Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
+                CBox     box{passwordPosition, passSize};
+
+                g_pRenderer->renderTexture(box, password.asset->texture, fontCol.a);
+            } else {
                 forceReload = true;
-            else {
-                passSize    = dots.textAsset->texture.m_vSize;
-                passSpacing = std::floor(passSize.x * dots.spacing);
             }
         }
 
-        const auto   CURRDOTS     = dots.currentAmount->value();
-        const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
-        const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2);
-        const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
-        const int    DOTFLOORED   = std::floor(CURRDOTS);
-        const auto   DOTALPHA     = fontCol.a;
-
-        // Calculate the total width required for all dots including spaces between them
-        const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
-
-        // Calculate starting x-position to ensure dots stay centered within the input field
-        double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
-
-        if (CURRDOTS > MAXDOTS)
-            xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2.0;
-
-        if (dots.rounding == -1)
-            dots.rounding = passSize.x / 2.0;
-        else if (dots.rounding == -2)
-            dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * dots.size;
-
-        for (int i = 0; i < CURRDOTS; ++i) {
-            if (i < DOTFLOORED - MAXDOTS)
-                continue;
-
-            if (CURRDOTS != DOTFLOORED) {
-                if (i == DOTFLOORED)
-                    fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
-                else if (i == DOTFLOORED - MAXDOTS)
-                    fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
-            }
-
-            Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
-            CBox     box{dotPosition, passSize};
-            if (!dots.textFormat.empty()) {
-                if (!dots.textAsset) {
-                    forceReload = true;
-                    fontCol.a   = DOTALPHA;
-                    break;
-                }
-
-                g_pRenderer->renderTexture(box, dots.textAsset->texture, fontCol.a, dots.rounding);
-            } else
-                g_pRenderer->renderRect(box, fontCol, dots.rounding);
-
-            fontCol.a = DOTALPHA;
+        if (passwordLength != 0) {
+            auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
+            auto eyePosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - eyeSize.x - padding, (inputFieldBox.h - eyeSize.y) / 2};
+            CBox box         = {eyePosition, eyeSize};
+            g_pRenderer->renderTexture(box, eye.asset->texture, fontCol.a);
         }
     }
 
@@ -483,4 +609,22 @@ CBox CPasswordInputField::getBoundingBoxWl() const {
 
 void CPasswordInputField::onHover(const Vector2D& pos) {
     g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+}
+
+void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& pos) {
+
+    if (!password.asset || !eye.asset || !down)
+        return;
+
+    CBox     inputFieldBox = getBoundingBoxWl();
+    auto     eyeSize       = eye.asset->texture.m_vSize;
+    auto     passwordSize  = password.asset->texture.m_vSize;
+    double   offset        = (inputFieldBox.h - passwordSize.y) / 2.0;
+
+    Vector2D dotPosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - offset - eye.margin - eyeSize.x, offset};
+    inputFieldBox        = {dotPosition, eyeSize};
+
+    if (inputFieldBox.containsPoint(pos)) {
+        g_pHyprlock->togglePasswordShow();
+    }
 }

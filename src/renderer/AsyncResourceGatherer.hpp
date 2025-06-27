@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Screencopy.hpp"
+#include <pango/pangocairo.h>
 #include <thread>
 #include <atomic>
 #include <vector>
@@ -42,18 +43,22 @@ class CAsyncResourceGatherer {
         std::function<void()> callback = nullptr;
     };
 
-    void requestAsyncAssetPreload(const SPreloadRequest& request);
-    void unloadAsset(SPreloadedAsset* asset);
-    void notify();
-    void await();
+    Vector2D getTextAssetSize(const SPreloadRequest& request);
+
+    void     requestAsyncAssetPreload(const SPreloadRequest& request);
+    void     unloadAsset(SPreloadedAsset* asset);
+    void     notify();
+    void     await();
 
   private:
-    std::thread asyncLoopThread;
-    std::thread initialGatherThread;
+    std::thread  asyncLoopThread;
+    std::thread  initialGatherThread;
 
-    void        asyncAssetSpinLock();
-    void        renderText(const SPreloadRequest& rq);
-    void        renderImage(const SPreloadRequest& rq);
+    PangoLayout* getPangoLayout(const SPreloadRequest& rq);
+
+    void         asyncAssetSpinLock();
+    void         renderText(const SPreloadRequest& rq);
+    void         renderImage(const SPreloadRequest& rq);
 
     struct {
         std::condition_variable      requestsCV;

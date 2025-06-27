@@ -24,14 +24,19 @@ class CPasswordInputField : public IWidget {
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
     virtual void onHover(const Vector2D& pos);
+    virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
     virtual CBox getBoundingBoxWl() const;
 
     void         reset();
     void         onFadeOutTimer();
 
+    void         renderPasswordUpdate();
+
   private:
     WP<CPasswordInputField> m_self;
 
+    void                    updatePassword();
+    void                    updateEye();
     void                    updateDots();
     void                    updateFade();
     void                    updatePlaceholder();
@@ -68,6 +73,25 @@ class CPasswordInputField : public IWidget {
         std::string       textResourceID;
         SPreloadedAsset*  textAsset = nullptr;
     } dots;
+
+    struct {
+        bool             center            = false;
+        float            size              = 0.25;
+        std::string      content           = "";
+        std::string      resourceID        = "";
+        std::string      pendingResourceID = "";
+        SPreloadedAsset* asset             = nullptr;
+        SPreloadedAsset* previousAsset     = nullptr;
+        int              trim              = 0;
+    } password;
+
+    struct {
+        int              margin     = 4;
+        double           size       = 0.25;
+        std::string      resourceID = "";
+        std::string      placement  = "right";
+        SPreloadedAsset* asset      = nullptr;
+    } eye;
 
     struct {
         PHLANIMVAR<float>       a;
