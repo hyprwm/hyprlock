@@ -390,8 +390,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 CBox     box{dotPosition, passSize};
                 if (!dots.textFormat.empty()) {
                     if (!dots.textAsset) {
-                        forceReload = true;
-                        fontCol.a   = DOTALPHA;
+                        fontCol.a = DOTALPHA;
                         break;
                     }
 
