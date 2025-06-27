@@ -263,7 +263,7 @@ void CPasswordInputField::updateEye() {
     request.type                                           = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"]                           = fontFamily;
     request.props["color"]                                 = colorConfig.font;
-    request.props["font_size"]                             = eye.size;
+    request.props["font_size"]                             = (int)(std::nearbyint(configSize.y * eye.size * 0.5f) * 2.f);
 
     eye.resourceID = textResourceID;
 

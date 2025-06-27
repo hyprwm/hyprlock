@@ -76,7 +76,7 @@ class CPasswordInputField : public IWidget {
 
     struct {
         bool             center            = false;
-        float            size              = .25;
+        float            size              = 0.25;
         std::string      content           = "";
         std::string      resourceID        = "";
         std::string      pendingResourceID = "";
@@ -86,12 +86,11 @@ class CPasswordInputField : public IWidget {
     } password;
 
     struct {
-        int              size       = 16;
+        int              margin     = 4;
+        double           size       = 0.25;
         std::string      resourceID = "";
         std::string      placement  = "right";
         SPreloadedAsset* asset      = nullptr;
-
-        const int        margin = 4;
     } eye;
 
     struct {
