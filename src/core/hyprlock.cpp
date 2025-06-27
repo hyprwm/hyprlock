@@ -850,6 +850,10 @@ bool CHyprlock::getPasswordShow() {
     return m_sPasswordState.show;
 }
 
+void CHyprlock::togglePasswordShow() {
+    m_sPasswordState.show = !m_sPasswordState.show;
+}
+
 size_t CHyprlock::getPasswordBufferDisplayLen() {
     // Counts utf-8 codepoints in the buffer. A byte is counted if it does not match 0b10xxxxxx.
     return std::count_if(m_sPasswordState.passBuffer.begin(), m_sPasswordState.passBuffer.end(), [](char c) { return (c & 0xc0) != 0x80; });

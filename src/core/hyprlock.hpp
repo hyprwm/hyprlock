@@ -67,6 +67,8 @@ class CHyprlock {
     std::string                      getPasswordBuffer();
     bool                             getPasswordShow();
 
+    void                             togglePasswordShow();
+
     SP<CCExtSessionLockManagerV1>    getSessionLockMgr();
     SP<CCExtSessionLockV1>           getSessionLock();
     SP<CCWlCompositor>               getCompositor();
