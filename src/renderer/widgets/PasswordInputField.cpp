@@ -365,10 +365,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
 
             // Calculate starting x-position to ensure dots stay centered within the input field
-            double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD - (eye.margin - eyeSize.x) / 2 : DOTPAD;
+            double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
 
             if (CURRDOTS > MAXDOTS)
-                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH) / 2.0;
+                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eye.margin - eyeSize.x) / 2.0;
 
             if (dots.rounding == -1)
                 dots.rounding = passSize.x / 2.0;
