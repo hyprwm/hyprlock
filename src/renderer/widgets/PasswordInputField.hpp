@@ -19,7 +19,7 @@ class CPasswordInputField : public IWidget {
     CPasswordInputField() = default;
     virtual ~CPasswordInputField();
 
-    void         registerSelf(const SP<CPasswordInputField>& self);
+    void         registerSelf(const ASP<CPasswordInputField>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -30,33 +30,33 @@ class CPasswordInputField : public IWidget {
     void         onFadeOutTimer();
 
   private:
-    WP<CPasswordInputField> m_self;
+    AWP<CPasswordInputField> m_self;
 
-    void                    updateDots();
-    void                    updateFade();
-    void                    updatePlaceholder();
-    void                    updateWidth();
-    void                    updateHiddenInputState();
-    void                    updateInputState();
-    void                    updateColors();
+    void                     updateDots();
+    void                     updateFade();
+    void                     updatePlaceholder();
+    void                     updateWidth();
+    void                     updateHiddenInputState();
+    void                     updateInputState();
+    void                     updateColors();
 
-    bool                    firstRender  = true;
-    bool                    redrawShadow = false;
-    bool                    checkWaiting = false;
-    bool                    displayFail  = false;
+    bool                     firstRender  = true;
+    bool                     redrawShadow = false;
+    bool                     checkWaiting = false;
+    bool                     displayFail  = false;
 
-    size_t                  passwordLength = 0;
+    size_t                   passwordLength = 0;
 
-    PHLANIMVAR<Vector2D>    size;
-    Vector2D                pos;
-    Vector2D                viewport;
-    Vector2D                configPos;
-    Vector2D                configSize;
+    PHLANIMVAR<Vector2D>     size;
+    Vector2D                 pos;
+    Vector2D                 viewport;
+    Vector2D                 configPos;
+    Vector2D                 configSize;
 
-    std::string             halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
-    uint64_t                configFailTimeoutMs = 2000;
+    std::string              halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
+    uint64_t                 configFailTimeoutMs = 2000;
 
-    int                     outThick, rounding;
+    int                      outThick, rounding;
 
     struct {
         PHLANIMVAR<float> currentAmount;
@@ -70,10 +70,10 @@ class CPasswordInputField : public IWidget {
     } dots;
 
     struct {
-        PHLANIMVAR<float>       a;
-        bool                    appearing    = true;
-        std::shared_ptr<CTimer> fadeOutTimer = nullptr;
-        bool                    allowFadeOut = false;
+        PHLANIMVAR<float> a;
+        bool              appearing    = true;
+        ASP<CTimer>       fadeOutTimer = nullptr;
+        bool              allowFadeOut = false;
     } fade;
 
     struct {

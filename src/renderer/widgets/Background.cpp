@@ -22,7 +22,7 @@ CBackground::~CBackground() {
     reset();
 }
 
-void CBackground::registerSelf(const SP<CBackground>& self) {
+void CBackground::registerSelf(const ASP<CBackground>& self) {
     m_self = self;
 }
 
@@ -98,14 +98,14 @@ void CBackground::renderRect(CHyprColor color) {
     g_pRenderer->renderRect(monbox, color, 0);
 }
 
-static void onReloadTimer(WP<CBackground> ref) {
+static void onReloadTimer(AWP<CBackground> ref) {
     if (auto PBG = ref.lock(); PBG) {
         PBG->onReloadTimerUpdate();
         PBG->plantReloadTimer();
     }
 }
 
-static void onAssetCallback(WP<CBackground> ref) {
+static void onAssetCallback(AWP<CBackground> ref) {
     if (auto PBG = ref.lock(); PBG)
         PBG->startCrossFade();
 }

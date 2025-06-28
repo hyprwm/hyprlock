@@ -87,7 +87,7 @@ pkg_check_modules(
   libdrm
   gbm
   pam
-  hyprutils>=0.5.0
+  hyprutils>=0.8.0
   sdbus-c++>=2.0.0
   hyprgraphics)
 

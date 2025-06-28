@@ -82,9 +82,7 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
             m_pTouch->setDown([](CCWlTouch* r, uint32_t serial, uint32_t time, wl_proxy* surface, int32_t id, wl_fixed_t x, wl_fixed_t y) {
                 g_pHyprlock->onClick(BTN_LEFT, true, {wl_fixed_to_double(x), wl_fixed_to_double(y)});
             });
-            m_pTouch->setUp([](CCWlTouch* r, uint32_t serial, uint32_t time, int32_t id) {
-                g_pHyprlock->onClick(BTN_LEFT, false, {0, 0});
-            });
+            m_pTouch->setUp([](CCWlTouch* r, uint32_t serial, uint32_t time, int32_t id) { g_pHyprlock->onClick(BTN_LEFT, false, {0, 0}); });
         };
         if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
             m_pKeeb = makeShared<CCWlKeyboard>(r->sendGetKeyboard());

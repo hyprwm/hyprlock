@@ -22,7 +22,7 @@ class CBackground : public IWidget {
     CBackground();
     ~CBackground();
 
-    void         registerSelf(const SP<CBackground>& self);
+    void         registerSelf(const ASP<CBackground>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -38,7 +38,7 @@ class CBackground : public IWidget {
     void         startCrossFade();
 
   private:
-    WP<CBackground> m_self;
+    AWP<CBackground> m_self;
 
     // if needed
     UP<CFramebuffer>                        blurredFB;
@@ -73,6 +73,6 @@ class CBackground : public IWidget {
     int                                     reloadTime = -1;
     std::string                             reloadCommand;
     CAsyncResourceGatherer::SPreloadRequest request;
-    std::shared_ptr<CTimer>                 reloadTimer;
+    ASP<CTimer>                             reloadTimer;
     std::filesystem::file_time_type         modificationTime;
 };

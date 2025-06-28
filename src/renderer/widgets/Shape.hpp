@@ -14,7 +14,7 @@ class CShape : public IWidget {
     CShape()          = default;
     virtual ~CShape() = default;
 
-    void         registerSelf(const SP<CShape>& self);
+    void         registerSelf(const ASP<CShape>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -23,7 +23,7 @@ class CShape : public IWidget {
     virtual void onHover(const Vector2D& pos);
 
   private:
-    WP<CShape>         m_self;
+    AWP<CShape>        m_self;
 
     CFramebuffer       shapeFB;
 

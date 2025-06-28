@@ -17,7 +17,7 @@ class CLabel : public IWidget {
     CLabel() = default;
     ~CLabel();
 
-    void         registerSelf(const SP<CLabel>& self);
+    void         registerSelf(const ASP<CLabel>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -32,7 +32,7 @@ class CLabel : public IWidget {
     void         plantTimer();
 
   private:
-    WP<CLabel>                              m_self;
+    AWP<CLabel>                             m_self;
 
     std::string                             getUniqueResourceId();
 
@@ -53,7 +53,7 @@ class CLabel : public IWidget {
 
     CAsyncResourceGatherer::SPreloadRequest request;
 
-    std::shared_ptr<CTimer>                 labelTimer = nullptr;
+    ASP<CTimer>                             labelTimer = nullptr;
 
     CShadowable                             shadow;
     bool                                    updateShadow = true;

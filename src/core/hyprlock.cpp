@@ -481,7 +481,7 @@ void CHyprlock::run() {
         auto timerscpy = m_vTimers;
         m_sLoopState.timersMutex.unlock();
 
-        std::vector<std::shared_ptr<CTimer>> passed;
+        std::vector<ASP<CTimer>> passed;
 
         for (auto& t : timerscpy) {
             if (t->passed() && !t->cancelled()) {
@@ -586,7 +586,7 @@ void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
     if (m_iKeebRepeatDelay <= 0)
         return;
 
-    m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+    m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](ASP<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 }
 
 void CHyprlock::repeatKey(xkb_keysym_t sym) {
@@ -597,7 +597,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 
     // This condition is for backspace and delete keys, but should also be ok for other keysyms since our buffer won't be empty anyways
     if (bool CONTINUE = m_sPasswordState.passBuffer.length() > 0; CONTINUE)
-        m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+        m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatRate), [sym](ASP<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 
     renderAllOutputs();
 }
@@ -876,23 +876,22 @@ size_t CHyprlock::getPasswordBufferDisplayLen() {
     return std::count_if(m_sPasswordState.passBuffer.begin(), m_sPasswordState.passBuffer.end(), [](char c) { return (c & 0xc0) != 0x80; });
 }
 
-std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
-                                            bool force) {
+ASP<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force) {
     std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
-    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data, force));
+    const auto                  T = m_vTimers.emplace_back(makeAtomicShared<CTimer>(timeout, cb_, data, force));
     m_sLoopState.timerEvent       = true;
     m_sLoopState.timerCV.notify_all();
     return T;
 }
 
-std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
+std::vector<ASP<CTimer>> CHyprlock::getTimers() {
     return m_vTimers;
 }
 
 void CHyprlock::enqueueForceUpdateTimers() {
     addTimer(
         std::chrono::milliseconds(1),
-        [](std::shared_ptr<CTimer> self, void* data) {
+        [](ASP<CTimer> self, void* data) {
             for (auto& t : g_pHyprlock->getTimers()) {
                 if (t->canForceUpdate()) {
                     t->call(t);

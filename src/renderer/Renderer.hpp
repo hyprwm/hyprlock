@@ -12,7 +12,7 @@
 #include "widgets/IWidget.hpp"
 #include "Framebuffer.hpp"
 
-typedef std::unordered_map<OUTPUTID, std::vector<SP<IWidget>>> widgetMap_t;
+typedef std::unordered_map<OUTPUTID, std::vector<ASP<IWidget>>> widgetMap_t;
 
 class CRenderer {
   public:
@@ -48,7 +48,7 @@ class CRenderer {
 
     void                                  startFadeIn();
     void                                  startFadeOut(bool unlock = false);
-    std::vector<SP<IWidget>>&             getOrCreateWidgetsFor(const CSessionLockSurface& surf);
+    std::vector<ASP<IWidget>>&            getOrCreateWidgetsFor(const CSessionLockSurface& surf);
 
   private:
     widgetMap_t        widgets;
