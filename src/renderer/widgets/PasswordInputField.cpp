@@ -401,7 +401,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 fontCol.a = DOTALPHA;
             }
         } else if (passwordLength != 0) {
-            password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
+            if (!password.asset)
+                password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
             if (password.asset) {
                 auto     passSize = password.asset->texture.m_vSize;
