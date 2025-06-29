@@ -388,13 +388,13 @@ void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTe
 }
 
 template <class Widget>
-static void createWidget(std::vector<SP<IWidget>>& widgets) {
-    const auto W = makeShared<Widget>();
+static void createWidget(std::vector<ASP<IWidget>>& widgets) {
+    const auto W = makeAtomicShared<Widget>();
     W->registerSelf(W);
     widgets.emplace_back(W);
 }
 
-std::vector<SP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface& surf) {
+std::vector<ASP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSurface& surf) {
     RASSERT(surf.m_outputID != OUTPUT_INVALID, "Invalid output ID!");
 
     if (!widgets.contains(surf.m_outputID)) {
@@ -613,11 +613,8 @@ void CRenderer::startFadeIn() {
     opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->m_AnimationTree.getConfig("fadeOut")); }, true);
 }
 
-void CRenderer::startFadeOut(bool unlock, bool immediate) {
-    if (immediate)
-        opacity->setValueAndWarp(0.f);
-    else
-        *opacity = 0.f;
+void CRenderer::startFadeOut(bool unlock) {
+    *opacity = 0.f;
 
     if (unlock)
         opacity->setCallbackOnEnd([](auto) { g_pHyprlock->releaseSessionLock(); }, true);

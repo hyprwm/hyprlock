@@ -29,45 +29,44 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender);
+    CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int gracePeriod);
     ~CHyprlock();
 
-    void                             run();
+    void                       run();
 
-    void                             unlock();
-    bool                             isUnlocked();
+    void                       unlock();
+    bool                       isUnlocked();
 
-    std::shared_ptr<CTimer>          addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
-                                              bool force = false);
+    ASP<CTimer>                addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force = false);
 
-    void                             enqueueForceUpdateTimers();
+    void                       enqueueForceUpdateTimers();
 
-    void                             onLockLocked();
-    void                             onLockFinished();
+    void                       onLockLocked();
+    void                       onLockFinished();
 
-    bool                             acquireSessionLock();
-    void                             releaseSessionLock();
+    bool                       acquireSessionLock();
+    void                       releaseSessionLock();
 
-    void                             onKey(uint32_t key, bool down);
-    void                             onClick(uint32_t button, bool down, const Vector2D& pos);
-    void                             onHover(const Vector2D& pos);
-    void                             startKeyRepeat(xkb_keysym_t sym);
-    void                             repeatKey(xkb_keysym_t sym);
-    void                             handleKeySym(xkb_keysym_t sym, bool compose);
-    void                             onPasswordCheckTimer();
-    void                             clearPasswordBuffer();
-    bool                             passwordCheckWaiting();
-    std::optional<std::string>       passwordLastFailReason();
+    void                       onKey(uint32_t key, bool down);
+    void                       onClick(uint32_t button, bool down, const Vector2D& pos);
+    void                       onHover(const Vector2D& pos);
+    void                       startKeyRepeat(xkb_keysym_t sym);
+    void                       repeatKey(xkb_keysym_t sym);
+    void                       handleKeySym(xkb_keysym_t sym, bool compose);
+    void                       onPasswordCheckTimer();
+    void                       clearPasswordBuffer();
+    bool                       passwordCheckWaiting();
+    std::optional<std::string> passwordLastFailReason();
 
-    void                             renderOutput(const std::string& stringPort);
-    void                             renderAllOutputs();
+    void                       renderOutput(const std::string& stringPort);
+    void                       renderAllOutputs();
 
-    size_t                           getPasswordBufferLen();
-    size_t                           getPasswordBufferDisplayLen();
-    std::string                      getPasswordBuffer();
-    bool                             getPasswordShow();
+    size_t                     getPasswordBufferLen();
+    size_t                     getPasswordBufferDisplayLen();
+    std::string                getPasswordBuffer();
+    bool                       getPasswordShow();
 
-    void                             togglePasswordShow();
+    void                       togglePasswordShow();
 
     SP<CCExtSessionLockManagerV1>    getSessionLockMgr();
     SP<CCExtSessionLockV1>           getSessionLock();
@@ -103,10 +102,10 @@ class CHyprlock {
 
     Vector2D                              m_vMouseLocation = {};
 
-    std::shared_ptr<CTimer>               m_pKeyRepeatTimer = nullptr;
+    ASP<CTimer>                           m_pKeyRepeatTimer = nullptr;
 
     std::vector<SP<COutput>>              m_vOutputs;
-    std::vector<std::shared_ptr<CTimer>>  getTimers();
+    std::vector<ASP<CTimer>>              getTimers();
 
     struct {
         SP<CCZwpLinuxDmabufV1>         linuxDmabuf         = nullptr;
@@ -163,11 +162,9 @@ class CHyprlock {
         bool                    timerEvent = false;
     } m_sLoopState;
 
-    bool                                 m_bUnlockedCalled = false;
+    std::vector<ASP<CTimer>> m_vTimers;
 
-    std::vector<std::shared_ptr<CTimer>> m_vTimers;
-
-    std::vector<uint32_t>                m_vPressedKeys;
+    std::vector<uint32_t>    m_vPressedKeys;
 };
 
 inline UP<CHyprlock> g_pHyprlock;

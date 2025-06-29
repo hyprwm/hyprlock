@@ -12,11 +12,11 @@ CLabel::~CLabel() {
     reset();
 }
 
-void CLabel::registerSelf(const SP<CLabel>& self) {
+void CLabel::registerSelf(const ASP<CLabel>& self) {
     m_self = self;
 }
 
-static void onTimer(WP<CLabel> ref) {
+static void onTimer(AWP<CLabel> ref) {
     if (auto PLABEL = ref.lock(); PLABEL) {
         // update label
         PLABEL->onTimerUpdate();
@@ -25,7 +25,7 @@ static void onTimer(WP<CLabel> ref) {
     }
 }
 
-static void onAssetCallback(WP<CLabel> ref) {
+static void onAssetCallback(AWP<CLabel> ref) {
     if (auto PLABEL = ref.lock(); PLABEL)
         PLABEL->renderUpdate();
 }
@@ -71,7 +71,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
     outputStringPort = pOutput->stringPort;
     viewport         = pOutput->getViewport();
 
-    shadow.configure(m_self.lock(), props, viewport);
+    shadow.configure(m_self, props, viewport);
 
     try {
         configPos      = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(viewport);

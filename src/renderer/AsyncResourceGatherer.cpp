@@ -1,16 +1,19 @@
 #include "AsyncResourceGatherer.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../core/Egl.hpp"
-#include <cairo/cairo.h>
-#include <pango/pangocairo.h>
-#include <algorithm>
-#include <filesystem>
 #include "../core/hyprlock.hpp"
+#include "../helpers/Color.hpp"
+#include "../helpers/Log.hpp"
 #include "../helpers/MiscFunctions.hpp"
-#include "src/helpers/Color.hpp"
-#include "src/helpers/Log.hpp"
+#include <algorithm>
+#include <cairo/cairo.h>
+#include <filesystem>
+#include <pango/pangocairo.h>
+#include <sys/eventfd.h>
 #include <hyprgraphics/image/Image.hpp>
+#include <hyprutils/os/FileDescriptor.hpp>
 using namespace Hyprgraphics;
+using namespace Hyprutils::OS;
 
 CAsyncResourceGatherer::CAsyncResourceGatherer() {
     if (g_pHyprlock->getScreencopy())
@@ -18,45 +21,39 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
 
     initialGatherThread = std::thread([this]() { this->gather(); });
     asyncLoopThread     = std::thread([this]() { this->asyncAssetSpinLock(); });
+
+    gatheredEventfd = CFileDescriptor{eventfd(0, EFD_CLOEXEC)};
+    if (!gatheredEventfd.isValid())
+        Debug::log(ERR, "Failed to create eventfd: {}", strerror(errno));
 }
 
 void CAsyncResourceGatherer::enqueueScreencopyFrames() {
-    // some things can't be done async :(
-    // gather background textures when needed
+    const auto FADEINCFG    = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
+    const auto FADEOUTCFG   = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
+    const auto BGSCREENSHOT = std::ranges::any_of(g_pConfigManager->getWidgetConfigs(), [](const auto& w) { //
+        return w.type == "background" && std::string{std::any_cast<Hyprlang::STRING>(w.values.at("path"))} == "screenshot";
+    });
 
-    const auto               CWIDGETS = g_pConfigManager->getWidgetConfigs();
+    // No screenshot background AND no fade in AND no fade out -> we don't need screencopy
+    if (!BGSCREENSHOT && (!FADEINCFG->pValues || !FADEINCFG->pValues->internalEnabled) && //
+        (!FADEOUTCFG->pValues || !FADEOUTCFG->pValues->internalEnabled))
+        return;
 
-    std::vector<std::string> mons;
-
-    for (auto& c : CWIDGETS) {
-        if (c.type != "background")
-            continue;
-
-        if (std::string{std::any_cast<Hyprlang::STRING>(c.values.at("path"))} != "screenshot")
-            continue;
-
-        // mamma mia
-        if (c.monitor.empty()) {
-            mons.clear();
-            for (auto& m : g_pHyprlock->m_vOutputs) {
-                mons.push_back(m->stringPort);
-            }
-            break;
-        } else
-            mons.push_back(c.monitor);
-    }
-
-    for (auto& mon : mons) {
-        const auto MON = std::ranges::find_if(g_pHyprlock->m_vOutputs, [mon](const auto& other) { return other->stringPort == mon || other->stringDesc.starts_with(mon); });
-
-        if (MON == g_pHyprlock->m_vOutputs.end())
-            continue;
-
-        scframes.emplace_back(makeUnique<CScreencopyFrame>(*MON));
+    for (const auto& MON : g_pHyprlock->m_vOutputs) {
+        scframes.emplace_back(makeUnique<CScreencopyFrame>(MON));
     }
 }
 
 SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
+    if (id.contains(CScreencopyFrame::RESOURCEIDPREFIX)) {
+        for (auto& frame : scframes) {
+            if (id == frame->m_resourceID)
+                return frame->m_asset.ready ? &frame->m_asset : nullptr;
+        }
+
+        return nullptr;
+    }
+
     for (auto& a : assets) {
         if (a.first == id)
             return &a.second;
@@ -69,16 +66,10 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
         }
     };
 
-    for (auto& frame : scframes) {
-        if (id == frame->m_resourceID)
-            return frame->m_asset.ready ? &frame->m_asset : nullptr;
-    }
-
     return nullptr;
 }
 
 static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::path& path) {
-
     auto image = CImage(path);
     if (!image.success()) {
         Debug::log(ERR, "Image {} could not be loaded: {}", path.string(), image.getError());
@@ -131,6 +122,9 @@ void CAsyncResourceGatherer::gather() {
     }
 
     gathered = true;
+    // wake hyprlock from poll
+    if (gatheredEventfd.isValid())
+        eventfd_write(gatheredEventfd.get(), 1);
 }
 
 bool CAsyncResourceGatherer::apply() {

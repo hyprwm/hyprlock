@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IWidget.hpp"
+#include "../../helpers/AnimatedVariable.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
@@ -16,18 +17,12 @@
 struct SPreloadedAsset;
 class COutput;
 
-struct SFade {
-    std::chrono::system_clock::time_point start;
-    float                                 a              = 0;
-    std::shared_ptr<CTimer>               crossFadeTimer = nullptr;
-};
-
 class CBackground : public IWidget {
   public:
-    CBackground() = default;
+    CBackground();
     ~CBackground();
 
-    void         registerSelf(const SP<CBackground>& self);
+    void         registerSelf(const ASP<CBackground>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -36,16 +31,18 @@ class CBackground : public IWidget {
 
     void         renderRect(CHyprColor color);
 
+    void         renderBlur(const CTexture& text, CFramebuffer& fb);
+
     void         onReloadTimerUpdate();
-    void         onCrossFadeTimerUpdate();
     void         plantReloadTimer();
-    void         startCrossFadeOrUpdateRender();
+    void         startCrossFade();
 
   private:
-    WP<CBackground> m_self;
+    AWP<CBackground> m_self;
 
     // if needed
-    CFramebuffer                            blurredFB;
+    UP<CFramebuffer>                        blurredFB;
+    UP<CFramebuffer>                        pendingBlurredFB;
 
     int                                     blurSize          = 10;
     int                                     blurPasses        = 3;
@@ -61,21 +58,21 @@ class CBackground : public IWidget {
     Hyprutils::Math::eTransform             transform;
 
     std::string                             resourceID;
+    std::string                             scResourceID;
     std::string                             pendingResourceID;
 
-    float                                   crossFadeTime = -1.0;
+    PHLANIMVAR<float>                       crossFadeProgress;
 
     CHyprColor                              color;
     SPreloadedAsset*                        asset        = nullptr;
-    bool                                    isScreenshot = false;
+    SPreloadedAsset*                        scAsset      = nullptr;
     SPreloadedAsset*                        pendingAsset = nullptr;
+    bool                                    isScreenshot = false;
     bool                                    firstRender  = true;
-
-    UP<SFade>                               fade;
 
     int                                     reloadTime = -1;
     std::string                             reloadCommand;
     CAsyncResourceGatherer::SPreloadRequest request;
-    std::shared_ptr<CTimer>                 reloadTimer;
+    ASP<CTimer>                             reloadTimer;
     std::filesystem::file_time_type         modificationTime;
 };

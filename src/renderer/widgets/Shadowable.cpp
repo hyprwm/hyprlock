@@ -2,7 +2,7 @@
 #include "../Renderer.hpp"
 #include <hyprlang.hpp>
 
-void CShadowable::configure(WP<IWidget> widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) {
+void CShadowable::configure(AWP<IWidget> widget_, const std::unordered_map<std::string, std::any>& props, const Vector2D& viewport_) {
     m_widget = widget_;
     viewport = viewport_;
 

@@ -10,13 +10,15 @@
 #include <any>
 #include "Shared.hpp"
 #include <hyprgraphics/cairo/CairoSurface.hpp>
+#include <hyprutils/os/FileDescriptor.hpp>
 
 class CAsyncResourceGatherer {
   public:
     CAsyncResourceGatherer();
-    std::atomic<bool>  gathered = false;
+    std::atomic<bool>              gathered = false;
+    Hyprutils::OS::CFileDescriptor gatheredEventfd;
 
-    std::atomic<float> progress = 0;
+    std::atomic<float>             progress = 0;
 
     /* only call from ogl thread */
     SPreloadedAsset* getAssetByID(const std::string& id);

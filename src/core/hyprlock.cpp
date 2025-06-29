@@ -6,6 +6,7 @@
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
+#include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>
 #include <sys/poll.h>
@@ -35,7 +36,7 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const bool immediateRender) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -43,10 +44,9 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediate, const b
 
     g_pEGL = makeUnique<CEGL>(m_sWaylandState.display);
 
-    if (!immediate) {
-        static const auto GRACE = g_pConfigManager->getValue<Hyprlang::INT>("general:grace");
-        m_tGraceEnds            = *GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(*GRACE) : std::chrono::system_clock::from_time_t(0);
-    } else
+    if (graceSeconds > 0)
+        m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(graceSeconds);
+    else
         m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
 
     static const auto IMMEDIATERENDER = g_pConfigManager->getValue<Hyprlang::INT>("general:immediate_render");
@@ -313,18 +313,52 @@ void CHyprlock::run() {
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
-    // Hyprland violates the protocol a bit to allow for this.
-    if (m_sCurrentDesktop != "Hyprland") {
+    if (!g_pHyprlock->m_bImmediateRender) {
+        // Gather background resources and screencopy frames before locking the screen.
+        // We need to do this because as soon as we lock the screen, workspaces frames can no longer be captured. It either won't work at all, or we will capture hyprlock itself.
+        // Bypass with --immediate-render (can cause the background first rendering a solid color and missing or inaccurate screencopy frames)
+        const auto MAXDELAYMS    = 2000; // 2 Seconds
+        const auto STARTGATHERTP = std::chrono::system_clock::now();
+
+        int        fdcount = 1;
+        pollfd     pollfds[2];
+        pollfds[0] = {
+            .fd     = wl_display_get_fd(m_sWaylandState.display),
+            .events = POLLIN,
+        };
+
+        if (g_pRenderer->asyncResourceGatherer->gatheredEventfd.isValid()) {
+            pollfds[1] = {
+                .fd     = g_pRenderer->asyncResourceGatherer->gatheredEventfd.get(),
+                .events = POLLIN,
+            };
+
+            fdcount++;
+        }
+
         while (!g_pRenderer->asyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
+                if (poll(pollfds, fdcount, /* 100ms timeout */ 100) < 0) {
+                    RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
+                    wl_display_cancel_read(m_sWaylandState.display);
+                    continue;
+                }
                 wl_display_read_events(m_sWaylandState.display);
                 wl_display_dispatch_pending(m_sWaylandState.display);
             } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 wl_display_dispatch(m_sWaylandState.display);
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count() > MAXDELAYMS) {
+                Debug::log(WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
+                break;
+            }
         }
+
+        Debug::log(LOG, "Resources gathered after {} milliseconds",
+                   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
     }
 
     // Failed to lock the session
@@ -447,7 +481,7 @@ void CHyprlock::run() {
         auto timerscpy = m_vTimers;
         m_sLoopState.timersMutex.unlock();
 
-        std::vector<std::shared_ptr<CTimer>> passed;
+        std::vector<ASP<CTimer>> passed;
 
         for (auto& t : timerscpy) {
             if (t->passed() && !t->cancelled()) {
@@ -499,16 +533,13 @@ void CHyprlock::unlock() {
         return;
     }
 
-    const bool IMMEDIATE = m_sCurrentDesktop != "Hyprland";
-
-    g_pRenderer->startFadeOut(true, IMMEDIATE);
-    m_bUnlockedCalled = true;
+    g_pRenderer->startFadeOut(true);
 
     renderAllOutputs();
 }
 
 bool CHyprlock::isUnlocked() {
-    return m_bUnlockedCalled || m_bTerminate;
+    return !m_bLocked;
 }
 
 void CHyprlock::clearPasswordBuffer() {
@@ -555,7 +586,7 @@ void CHyprlock::startKeyRepeat(xkb_keysym_t sym) {
     if (m_iKeebRepeatDelay <= 0)
         return;
 
-    m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+    m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatDelay), [sym](ASP<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 }
 
 void CHyprlock::repeatKey(xkb_keysym_t sym) {
@@ -566,7 +597,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 
     // This condition is for backspace and delete keys, but should also be ok for other keysyms since our buffer won't be empty anyways
     if (bool CONTINUE = m_sPasswordState.passBuffer.length() > 0; CONTINUE)
-        m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatRate), [sym](std::shared_ptr<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
+        m_pKeyRepeatTimer = addTimer(std::chrono::milliseconds(m_iKeebRepeatRate), [sym](ASP<CTimer> self, void* data) { g_pHyprlock->repeatKey(sym); }, nullptr);
 
     renderAllOutputs();
 }
@@ -859,23 +890,22 @@ size_t CHyprlock::getPasswordBufferDisplayLen() {
     return std::count_if(m_sPasswordState.passBuffer.begin(), m_sPasswordState.passBuffer.end(), [](char c) { return (c & 0xc0) != 0x80; });
 }
 
-std::shared_ptr<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(std::shared_ptr<CTimer> self, void* data)> cb_, void* data,
-                                            bool force) {
+ASP<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force) {
     std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
-    const auto                  T = m_vTimers.emplace_back(std::make_shared<CTimer>(timeout, cb_, data, force));
+    const auto                  T = m_vTimers.emplace_back(makeAtomicShared<CTimer>(timeout, cb_, data, force));
     m_sLoopState.timerEvent       = true;
     m_sLoopState.timerCV.notify_all();
     return T;
 }
 
-std::vector<std::shared_ptr<CTimer>> CHyprlock::getTimers() {
+std::vector<ASP<CTimer>> CHyprlock::getTimers() {
     return m_vTimers;
 }
 
 void CHyprlock::enqueueForceUpdateTimers() {
     addTimer(
         std::chrono::milliseconds(1),
-        [](std::shared_ptr<CTimer> self, void* data) {
+        [](ASP<CTimer> self, void* data) {
             for (auto& t : g_pHyprlock->getTimers()) {
                 if (t->canForceUpdate()) {
                     t->call(t);
