@@ -382,6 +382,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             if (CURRDOTS > MAXDOTS)
                 xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eye.margin - eyeSize.x) / 2.0;
 
+            if (eye.placement == "left") {
+                xstart += eyeSize.x + eye.margin;
+            }
+
             if (dots.rounding == -1)
                 dots.rounding = passSize.x / 2.0;
             else if (dots.rounding == -2)
@@ -417,11 +421,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
             if (password.asset) {
-                auto     passSize = password.asset->texture.m_vSize;
-                auto     eyeSize  = eye.openAsset->texture.m_vSize;
-                double   padding  = (inputFieldBox.h - passSize.y) / 2.0;
+                auto   passSize = password.asset->texture.m_vSize;
+                auto   eyeSize  = eye.openAsset->texture.m_vSize;
+                double padding  = (inputFieldBox.h - passSize.y) / 2.0;
 
-                double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeSize.x + eye.margin) / 2.0 : padding;
+                double xstart = 0;
+                if (eye.placement == "right") {
+                    xstart = password.center ? (inputFieldBox.w - passSize.x - eyeSize.x - eye.margin) / 2.0 : padding;
+                } else if (eye.placement == "left") {
+                    xstart = password.center ? (inputFieldBox.w - passSize.x + eyeSize.x + eye.margin) / 2.0 : eye.margin + eyeSize.x + padding;
+                }
 
                 Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
                 CBox     box{passwordPosition, passSize};
@@ -434,7 +443,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         if (passwordLength != 0) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
-            auto eyePosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - eyeSize.x - padding, (inputFieldBox.h - eyeSize.y) / 2};
+            auto eyePosition = inputFieldBox.pos() + (eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
             CBox box         = {eyePosition, eyeSize};
             g_pRenderer->renderTexture(box, eyeAsset->texture, fontCol.a);
         }
