@@ -226,7 +226,7 @@ void CPasswordInputField::updatePassword() {
         offset    = (inputFieldBox.h - assetSize.y) / 2.0;
 
         // It can be safely assumed that the eye asset is always available
-        if (!eye.asset || assetSize.x <= (inputFieldBox.w - offset * 2 - eye.margin - eye.asset->texture.m_vSize.x)) {
+        if (!eye.openAsset || assetSize.x <= (inputFieldBox.w - offset * 2 - eye.margin - eye.openAsset->texture.m_vSize.x)) {
             break;
         }
 
@@ -255,17 +255,22 @@ void CPasswordInputField::renderPasswordUpdate() {
 }
 
 void CPasswordInputField::updateEye() {
+    // TODO: embed these images
+    std::string                             eyeOpenImagePath   = "/home/felix/Projects/hyprlock/src/renderer/widgets/icons/eye-open.png";
+    std::string                             eyeClosedImagePath = "/home/felix/Projects/hyprlock/src/renderer/widgets/icons/eye-closed.png";
     CAsyncResourceGatherer::SPreloadRequest request;
 
-    std::string                             textResourceID = std::format("eye:{}", (uintptr_t)this);
-    request.id                                             = textResourceID;
-    request.asset                                          = "👁";
-    request.type                                           = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"]                           = fontFamily;
-    request.props["color"]                                 = colorConfig.font;
-    request.props["font_size"]                             = (int)(std::nearbyint(configSize.y * eye.size * 0.5f) * 2.f);
+    eye.openRescourceID = std::format("eye-open:{}", (uintptr_t)this);
+    request.id          = eye.openRescourceID;
+    request.asset       = eyeOpenImagePath;
+    request.type        = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
 
-    eye.resourceID = textResourceID;
+    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+
+    eye.closedRescourceID = std::format("eye-closed:{}", (uintptr_t)this);
+    request.id            = eye.closedRescourceID;
+    request.asset         = eyeClosedImagePath;
+    request.type          = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
@@ -333,9 +338,16 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     const int ROUND = roundingForBox(inputFieldBox, rounding);
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
-    eye.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.resourceID);
-    if (!hiddenInputState.enabled && eye.asset) {
-        Vector2D eyeSize = eye.asset->texture.m_vSize;
+    eye.openAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.openRescourceID);
+    if (!hiddenInputState.enabled) {
+        if (!eye.openAsset)
+            eye.openAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.openRescourceID);
+        if (!eye.closedAsset)
+            eye.closedAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.closedRescourceID);
+
+        auto   eyeAsset  = showPassword ? eye.closedAsset : eye.openAsset;
+        double eyeHeight = (int)(std::nearbyint(configSize.y * eye.size * 0.5f) * 2.f);
+        auto   eyeSize   = Vector2D{eyeHeight, eyeHeight};
 
         if (!showPassword) {
             const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
@@ -406,7 +418,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
             if (password.asset) {
                 auto     passSize = password.asset->texture.m_vSize;
-                auto     eyeSize  = eye.asset->texture.m_vSize;
+                auto     eyeSize  = eye.openAsset->texture.m_vSize;
                 double   padding  = (inputFieldBox.h - passSize.y) / 2.0;
 
                 double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeSize.x + eye.margin) / 2.0 : padding;
@@ -424,7 +436,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
             auto eyePosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - eyeSize.x - padding, (inputFieldBox.h - eyeSize.y) / 2};
             CBox box         = {eyePosition, eyeSize};
-            g_pRenderer->renderTexture(box, eye.asset->texture, fontCol.a);
+            g_pRenderer->renderTexture(box, eyeAsset->texture, fontCol.a);
         }
     }
 
@@ -614,11 +626,11 @@ void CPasswordInputField::onHover(const Vector2D& pos) {
 
 void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& pos) {
 
-    if (!password.asset || !eye.asset || !down)
+    if (!password.asset || !eye.openAsset || !down)
         return;
 
     CBox     inputFieldBox = getBoundingBoxWl();
-    auto     eyeSize       = eye.asset->texture.m_vSize;
+    auto     eyeSize       = eye.openAsset->texture.m_vSize;
     auto     passwordSize  = password.asset->texture.m_vSize;
     double   offset        = (inputFieldBox.h - passwordSize.y) / 2.0;
 
