@@ -206,6 +206,7 @@ void CPasswordInputField::updatePassword() {
     double                                  offset;
     CBox                                    inputFieldBox = {pos, size->value()};
 
+    // Loops and trims the password until it's length is less than the available space
     while (true) {
         std::string trimmedContent = passwordContent;
 
@@ -227,7 +228,7 @@ void CPasswordInputField::updatePassword() {
         assetSize = g_pRenderer->asyncResourceGatherer->getTextAssetSize(request);
         offset    = (inputFieldBox.h - assetSize.y) / 2.0;
 
-        // It can be safely assumed that the eye asset is always available
+        // It can be safely assumed that the eye asset is always available because the user can't type fast enough
         if (!eye.openAsset || assetSize.x <= (inputFieldBox.w - offset * 2 - eye.margin - eye.openAsset->texture.m_vSize.x)) {
             break;
         }
