@@ -79,6 +79,16 @@ static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::pat
     return image.cairoSurface();
 }
 
+static SP<CCairoSurface> getCairoSurfaceFromImageBuffer(const unsigned char* data, size_t size, ImageFormat format) {
+    auto image = CImage(data, size, format);
+    if (!image.success()) {
+        Debug::log(ERR, "Image could not be loaded: {}", image.getError());
+        return nullptr;
+    }
+
+    return image.cairoSurface();
+}
+
 void CAsyncResourceGatherer::gather() {
     const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
@@ -180,8 +190,13 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     target.type = TARGET_IMAGE;
     target.id   = rq.id;
 
-    std::filesystem::path ABSOLUTEPATH(absolutePath(rq.asset, ""));
-    const auto            CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH);
+    CSharedPointer<CCairoSurface> CAIROISURFACE;
+    if (rq.type == TARGET_IMAGE) {
+        std::filesystem::path ABSOLUTEPATH(absolutePath(rq.asset, ""));
+        CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH);
+    } else if (rq.type == TARGET_EMBEDDED_IMAGE) {
+        CAIROISURFACE = getCairoSurfaceFromImageBuffer(rq.image_buffer, rq.image_size, ImageFormat::PNG);
+    }
 
     if (!CAIROISURFACE) {
         Debug::log(ERR, "renderImage: No cairo surface!");
@@ -333,7 +348,7 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
 
             if (r.type == TARGET_TEXT) {
                 renderText(r);
-            } else if (r.type == TARGET_IMAGE) {
+            } else if (r.type == TARGET_IMAGE || r.type == TARGET_EMBEDDED_IMAGE) {
                 renderImage(r);
             } else {
                 Debug::log(ERR, "Unsupported async preload type {}??", (int)r.type);

@@ -1,4 +1,6 @@
 #include "PasswordInputField.hpp"
+#include "icons/eye-open.hpp"
+#include "icons/eye-closed.hpp"
 #include "../Renderer.hpp"
 #include "../AsyncResourceGatherer.hpp"
 #include "../../core/hyprlock.hpp"
@@ -255,22 +257,21 @@ void CPasswordInputField::renderPasswordUpdate() {
 }
 
 void CPasswordInputField::updateEye() {
-    // TODO: embed these images
-    std::string                             eyeOpenImagePath   = "/home/felix/Projects/hyprlock/src/renderer/widgets/icons/eye-open.png";
-    std::string                             eyeClosedImagePath = "/home/felix/Projects/hyprlock/src/renderer/widgets/icons/eye-closed.png";
     CAsyncResourceGatherer::SPreloadRequest request;
 
-    eye.openRescourceID = std::format("eye-open:{}", (uintptr_t)this);
-    request.id          = eye.openRescourceID;
-    request.asset       = eyeOpenImagePath;
-    request.type        = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
+    eye.openRescourceID  = std::format("eye-open:{}", (uintptr_t)this);
+    request.id           = eye.openRescourceID;
+    request.image_buffer = eye_open_png;
+    request.image_size   = eye_open_png_len;
+    request.type         = CAsyncResourceGatherer::eTargetType::TARGET_EMBEDDED_IMAGE;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
     eye.closedRescourceID = std::format("eye-closed:{}", (uintptr_t)this);
     request.id            = eye.closedRescourceID;
-    request.asset         = eyeClosedImagePath;
-    request.type          = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
+    request.image_buffer  = eye_closed_png;
+    request.image_size    = eye_closed_png_len;
+    request.type          = CAsyncResourceGatherer::eTargetType::TARGET_EMBEDDED_IMAGE;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }

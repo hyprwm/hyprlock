@@ -27,6 +27,7 @@ class CAsyncResourceGatherer {
 
     enum eTargetType {
         TARGET_IMAGE = 0,
+        TARGET_EMBEDDED_IMAGE,
         TARGET_TEXT
     };
 
@@ -34,6 +35,9 @@ class CAsyncResourceGatherer {
         eTargetType                               type;
         std::string                               asset;
         std::string                               id;
+
+        unsigned char*                            image_buffer;
+        size_t                                    image_size;
 
         std::unordered_map<std::string, std::any> props;
 
