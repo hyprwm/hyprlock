@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cairo/cairo.h>
 #include <filesystem>
+#include <span>
 #include <pango/pangocairo.h>
 #include <sys/eventfd.h>
 #include <hyprgraphics/image/Image.hpp>
@@ -79,8 +80,8 @@ static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::pat
     return image.cairoSurface();
 }
 
-static SP<CCairoSurface> getCairoSurfaceFromImageBuffer(const unsigned char* data, size_t size, ImageFormat format) {
-    auto image = CImage(data, size, format);
+static SP<CCairoSurface> getCairoSurfaceFromImageBuffer(const std::span<uint8_t>& data, eImageFormat format) {
+    auto image = CImage(data, format);
     if (!image.success()) {
         Debug::log(ERR, "Image could not be loaded: {}", image.getError());
         return nullptr;
@@ -195,7 +196,8 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
         std::filesystem::path ABSOLUTEPATH(absolutePath(rq.asset, ""));
         CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH);
     } else if (rq.type == TARGET_EMBEDDED_IMAGE) {
-        CAIROISURFACE = getCairoSurfaceFromImageBuffer(rq.image_buffer, rq.image_size, ImageFormat::PNG);
+        std::span<uint8_t> span(reinterpret_cast<uint8_t*>(rq.image_buffer), rq.image_size);
+        CAIROISURFACE = getCairoSurfaceFromImageBuffer(span, eImageFormat::IMAGE_FORMAT_PNG);
     }
 
     if (!CAIROISURFACE) {
