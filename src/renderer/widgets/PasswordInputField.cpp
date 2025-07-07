@@ -65,6 +65,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         colorConfig.invertNum    = std::any_cast<Hyprlang::INT>(props.at("invert_numlock"));
         colorConfig.swapFont     = std::any_cast<Hyprlang::INT>(props.at("swap_font_color"));
         colorConfig.hiddenBase   = std::any_cast<Hyprlang::INT>(props.at("hide_input_base_color"));
+        password.allowToggle     = std::any_cast<Hyprlang::INT>(props.at("password:toggle_password_visibility"));
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CPasswordInputField: {}", e.what()); //
     } catch (const std::out_of_range& e) {
@@ -105,11 +106,13 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
 
     // request the inital placeholder asset
     updatePlaceholder();
-    updateEye();
+
+    if (password.allowToggle)
+        updateEye();
 }
 
 void CPasswordInputField::reset() {
-    if (fade.fadeOutTimer.get()) {
+    if (fade.fadeOutTimer) {
         fade.fadeOutTimer->cancel();
         fade.fadeOutTimer.reset();
     }
@@ -162,7 +165,7 @@ void CPasswordInputField::updateFade() {
         if (fade.allowFadeOut || fadeTimeoutMs == 0) {
             *fade.a           = 0.0;
             fade.allowFadeOut = false;
-        } else if (!fade.fadeOutTimer.get())
+        } else if (!fade.fadeOutTimer)
             fade.fadeOutTimer = g_pHyprlock->addTimer(std::chrono::milliseconds(fadeTimeoutMs), [REF = m_self](auto, auto) { fadeOutCallback(REF); }, nullptr);
 
     } else if (INPUTUSED && fade.a->goal() != 1.0)
@@ -291,13 +294,15 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     checkWaiting      = g_pAuth->checkWaiting();
     displayFail       = g_pAuth->m_bDisplayFailText;
 
-    updatePassword();
     updateFade();
     updateDots();
     updateColors();
     updatePlaceholder();
     updateWidth();
     updateHiddenInputState();
+
+    if (password.allowToggle)
+        updatePassword();
 
     CBox        inputFieldBox = {pos, size->value()};
     CBox        outerBox      = {pos - Vector2D{outThick, outThick}, size->value() + Vector2D{outThick * 2, outThick * 2}};
@@ -340,18 +345,21 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     const int ROUND = roundingForBox(inputFieldBox, rounding);
     g_pRenderer->renderRect(inputFieldBox, innerCol, ROUND);
 
-    eye.openAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.openRescourceID);
     if (!hiddenInputState.enabled) {
         if (!eye.openAsset)
             eye.openAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.openRescourceID);
         if (!eye.closedAsset)
             eye.closedAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(eye.closedRescourceID);
 
+        int    eyeOffset = 0;
         auto   eyeAsset  = showPassword ? eye.closedAsset : eye.openAsset;
         double eyeHeight = (int)(std::nearbyint(configSize.y * eye.size * 0.5f) * 2.f);
         auto   eyeSize   = Vector2D{eyeHeight, eyeHeight};
+        if (password.allowToggle) {
+            eyeOffset = eyeSize.x + eye.margin;
+        }
 
-        if (!showPassword) {
+        if (!showPassword || !password.allowToggle) {
             const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * dots.size * 0.5f) * 2.f;
             Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
             int       passSpacing = std::floor(passSize.x * dots.spacing);
@@ -370,7 +378,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
             const auto   CURRDOTS     = dots.currentAmount->value();
             const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
-            const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2) - eye.margin - eyeSize.x;
+            const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2) - eyeOffset;
             const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
             const int    DOTFLOORED   = std::floor(CURRDOTS);
             const auto   DOTALPHA     = fontCol.a;
@@ -382,10 +390,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             double xstart = dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
 
             if (CURRDOTS > MAXDOTS)
-                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eye.margin - eyeSize.x) / 2.0;
+                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eyeOffset) / 2.0;
 
-            if (eye.placement == "left") {
-                xstart += eyeSize.x + eye.margin;
+            if (eye.placement == "left" && password.allowToggle) {
+                xstart += eyeOffset;
             }
 
             if (dots.rounding == -1)
@@ -418,7 +426,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
                 fontCol.a = DOTALPHA;
             }
-        } else if (passwordLength != 0) {
+        } else if (passwordLength != 0 && password.allowToggle) {
             if (!password.asset)
                 password.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.resourceID);
 
@@ -427,11 +435,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 auto   eyeSize  = eye.openAsset->texture.m_vSize;
                 double padding  = (inputFieldBox.h - passSize.y) / 2.0;
 
-                double xstart = 0;
-                if (eye.placement == "right") {
-                    xstart = password.center ? (inputFieldBox.w - passSize.x - eyeSize.x - eye.margin) / 2.0 : padding;
-                } else if (eye.placement == "left") {
-                    xstart = password.center ? (inputFieldBox.w - passSize.x + eyeSize.x + eye.margin) / 2.0 : eye.margin + eyeSize.x + padding;
+                double xstart = password.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
+                if (eye.placement == "left") {
+                    xstart += eyeOffset;
                 }
 
                 Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
@@ -443,7 +449,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             }
         }
 
-        if (passwordLength != 0) {
+        if (passwordLength != 0 && password.allowToggle) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
             auto eyePosition = inputFieldBox.pos() + (eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
             CBox box         = {eyePosition, eyeSize};

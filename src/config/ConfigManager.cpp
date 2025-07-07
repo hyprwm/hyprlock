@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
-#include <mutex>
 
 using namespace Hyprutils::String;
 using namespace Hyprutils::Animation;
@@ -311,6 +310,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "invert_numlock", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "swap_font_color", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "zindex", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("input-field", "password:toggle_password_visibility", Hyprlang::INT{0});
     SHADOWABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
@@ -495,6 +495,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"invert_numlock", m_config.getSpecialConfigValue("input-field", "invert_numlock", k.c_str())},
                 {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("input-field", "zindex", k.c_str())},
+                {"password:toggle_password_visibility", m_config.getSpecialConfigValue("input-field", "password:toggle_password_visibility", k.c_str())},
                 SHADOWABLE("input-field"),
             }
         });
