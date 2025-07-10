@@ -85,19 +85,18 @@ class CPasswordInputField : public IWidget {
             std::string       resourceID = "";
             SPreloadedAsset*  asset      = nullptr;
         } dots;
+
+        struct {
+            int              margin    = 8;
+            double           size      = 0.25;
+            std::string      placement = "right";
+
+            std::string      openRescourceID   = "";
+            SPreloadedAsset* openAsset         = nullptr;
+            std::string      closedRescourceID = "";
+            SPreloadedAsset* closedAsset       = nullptr;
+        } eye;
     } password;
-
-    struct {
-        int              margin    = 8;
-        double           size      = 0.25;
-        std::string      placement = "right";
-
-        std::string      openRescourceID = "";
-        SPreloadedAsset* openAsset       = nullptr;
-
-        std::string      closedRescourceID = "";
-        SPreloadedAsset* closedAsset       = nullptr;
-    } eye;
 
     struct {
         PHLANIMVAR<float> a;
