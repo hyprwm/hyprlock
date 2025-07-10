@@ -64,26 +64,27 @@ class CPasswordInputField : public IWidget {
     int                      outThick, rounding;
 
     struct {
-        PHLANIMVAR<float> currentAmount;
-        bool              center     = false;
-        float             size       = 0;
-        float             spacing    = 0;
-        int               rounding   = 0;
-        std::string       textFormat = "";
-        std::string       textResourceID;
-        SPreloadedAsset*  textAsset = nullptr;
-    } dots;
+        bool  allowToggle = false;
+        bool  center      = false;
+        float size        = 0.25;
 
-    struct {
-        bool             allowToggle       = false;
-        bool             center            = false;
-        float            size              = 0.25;
-        std::string      content           = "";
-        std::string      resourceID        = "";
-        std::string      pendingResourceID = "";
-        SPreloadedAsset* asset             = nullptr;
-        SPreloadedAsset* previousAsset     = nullptr;
-        int              trim              = 0;
+        struct {
+            std::string      content           = "";
+            std::string      resourceID        = "";
+            std::string      pendingResourceID = "";
+            SPreloadedAsset* asset             = nullptr;
+            SPreloadedAsset* previousAsset     = nullptr;
+            int              trim              = 0;
+        } text;
+
+        struct {
+            PHLANIMVAR<float> currentAmount;
+            float             spacing    = 0;
+            int               rounding   = 0;
+            std::string       format     = "";
+            std::string       resourceID = "";
+            SPreloadedAsset*  asset      = nullptr;
+        } dots;
     } password;
 
     struct {
