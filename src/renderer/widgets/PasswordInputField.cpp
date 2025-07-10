@@ -40,11 +40,11 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
-        password.dots.spacing    = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
-        password.dots.rounding   = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
-        password.dots.format     = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
-        password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password_size"));
-        password.center          = std::any_cast<Hyprlang::INT>(props.at("password_center"));
+        password.dots.spacing    = std::any_cast<Hyprlang::FLOAT>(props.at("password:dots_spacing"));
+        password.dots.rounding   = std::any_cast<Hyprlang::INT>(props.at("password:dots_rounding"));
+        password.dots.format     = std::any_cast<Hyprlang::STRING>(props.at("password:dots_format"));
+        password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password:size"));
+        password.center          = std::any_cast<Hyprlang::INT>(props.at("password:center"));
         password.allowToggle     = std::any_cast<Hyprlang::INT>(props.at("password:toggle_password_visibility"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
