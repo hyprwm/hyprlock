@@ -89,7 +89,7 @@ class CPasswordInputField : public IWidget {
         } dots;
 
         struct {
-            int              margin    = 8;
+            int              margin    = 16;
             double           size      = 0.25;
             std::string      placement = "right";
             bool             hide      = false;

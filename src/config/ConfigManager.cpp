@@ -290,7 +290,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "password:center", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "password:toggle_password_visibility", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "password:hide_eye", Hyprlang::INT{0});
-    m_config.addSpecialConfigValue("input-field", "password:eye_margin", Hyprlang::INT{8});
+    m_config.addSpecialConfigValue("input-field", "password:eye_margin", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("input-field", "password:eye_size", Hyprlang::FLOAT{0.25});
     m_config.addSpecialConfigValue("input-field", "password:eye_placement", Hyprlang::STRING{"right"});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
