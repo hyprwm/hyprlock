@@ -533,13 +533,14 @@ void CHyprlock::unlock() {
         return;
     }
 
+    m_unlockCalled = true;
     g_pRenderer->startFadeOut(true);
 
     renderAllOutputs();
 }
 
-bool CHyprlock::isUnlocked() {
-    return !m_bLocked;
+bool CHyprlock::terminating() {
+    return m_unlockCalled || m_bTerminate;
 }
 
 void CHyprlock::clearPasswordBuffer() {
@@ -603,7 +604,7 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
-    if (isUnlocked())
+    if (terminating())
         return;
 
     if (down && std::chrono::system_clock::now() < m_tGraceEnds) {
@@ -701,7 +702,10 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
 }
 
 void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
-    if (!m_focusedOutput.lock())
+    if (terminating())
+        return;
+
+    if (m_focusedOutput.expired())
         return;
 
     // TODO: add the UNLIKELY marco from Hyprland
@@ -717,7 +721,10 @@ void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
 }
 
 void CHyprlock::onHover(const Vector2D& pos) {
-    if (!m_focusedOutput.lock())
+    if (terminating())
+        return;
+
+    if (m_focusedOutput.expired())
         return;
 
     if (!m_focusedOutput->m_sessionLockSurface)
