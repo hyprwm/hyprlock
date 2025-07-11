@@ -10,7 +10,7 @@
 
 using namespace Hyprutils::String;
 
-#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 190100
+#if defined(_LIBCPP_VERSION)
 #pragma comment(lib, "date-tz")
 #include <date/tz.h>
 namespace std {
