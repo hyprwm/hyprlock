@@ -639,8 +639,20 @@ CBox CPasswordInputField::getBoundingBoxWl() const {
     };
 }
 
+CBox CPasswordInputField::getEyeBox() {
+    double eyeHeight = (int)(std::nearbyint(configSize.y * password.eye.size * 0.5f) * 2.f);
+    auto   eyeSize   = Vector2D{eyeHeight, eyeHeight};
+
+    CBox   inputFieldBox = getBoundingBoxWl();
+    auto   padding       = (inputFieldBox.h - eyeSize.y) / 2.0;
+    auto   eyePosition =
+        inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - password.eye.margin - padding, padding} : Vector2D{padding, padding});
+
+    return {eyePosition, eyeSize};
+}
+
 void CPasswordInputField::onHover(const Vector2D& pos) {
-    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
 }
 
 void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& pos) {
@@ -648,15 +660,9 @@ void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& po
     if (!password.text.asset || !password.eye.openAsset || !down)
         return;
 
-    CBox     inputFieldBox = getBoundingBoxWl();
-    auto     eyeSize       = password.eye.openAsset->texture.m_vSize;
-    auto     passwordSize  = password.text.asset->texture.m_vSize;
-    double   offset        = (inputFieldBox.h - passwordSize.y) / 2.0;
+    CBox eyeBox = getEyeBox();
 
-    Vector2D dotPosition = inputFieldBox.pos() + Vector2D{inputFieldBox.w - offset - password.eye.margin - eyeSize.x, offset};
-    inputFieldBox        = {dotPosition, eyeSize};
-
-    if (inputFieldBox.containsPoint(pos)) {
+    if (eyeBox.containsPoint(pos)) {
         g_pHyprlock->togglePasswordShow();
     }
 }

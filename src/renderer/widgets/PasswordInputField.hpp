@@ -45,6 +45,8 @@ class CPasswordInputField : public IWidget {
     void                     updateInputState();
     void                     updateColors();
 
+    CBox                     getEyeBox();
+
     bool                     firstRender  = true;
     bool                     redrawShadow = false;
     bool                     checkWaiting = false;
