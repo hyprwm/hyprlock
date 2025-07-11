@@ -38,8 +38,8 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds, const bool greetdLogin,
-                     const std::vector<SLoginSessionConfig>& loginSessions) : m_bGreetdLogin(greetdLogin), m_greetdSessionDirs(sessionDirs) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds, const bool greetdLogin, const std::string& sessionDirs) :
+    m_bGreetdLogin(greetdLogin), m_greetdSessionDirs(sessionDirs) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());

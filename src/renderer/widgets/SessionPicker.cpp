@@ -9,14 +9,14 @@
 #include <hyprutils/math/Vector2D.hpp>
 #include <stdexcept>
 
-void CSessionPicker::registerSelf(const SP<CSessionPicker>& self) {
+void CSessionPicker::registerSelf(const ASP<CSessionPicker>& self) {
     m_self = self;
 }
 
 void CSessionPicker::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     m_viewport = pOutput->getViewport();
 
-    m_shadow.configure(m_self.lock(), props, m_viewport);
+    m_shadow.configure(m_self, props, m_viewport);
 
     try {
         m_configPos                  = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(m_viewport);

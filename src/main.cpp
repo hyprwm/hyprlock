@@ -143,7 +143,7 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediate, immediateRender, greetdLogin, sessionDirs);
+        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds, greetdLogin, sessionDirs);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Debug::log(CRIT, "Hyprlock threw: {}", ex.what());

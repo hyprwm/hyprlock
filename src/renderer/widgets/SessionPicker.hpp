@@ -23,7 +23,7 @@ class CSessionPicker : public IWidget {
     CSessionPicker()  = default;
     ~CSessionPicker() = default;
 
-    void         registerSelf(const SP<CSessionPicker>& self);
+    void         registerSelf(const ASP<CSessionPicker>& self);
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
@@ -33,7 +33,7 @@ class CSessionPicker : public IWidget {
   private:
     void                       setupSessionEntryTexts();
 
-    WP<CSessionPicker>         m_self;
+    AWP<CSessionPicker>        m_self;
     std::vector<SSessionAsset> m_loginSessions;
 
     Vector2D                   m_viewport;
