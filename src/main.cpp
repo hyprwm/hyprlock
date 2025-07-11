@@ -45,8 +45,8 @@ int main(int argc, char** argv, char** envp) {
     std::string              wlDisplay;
     bool                     immediateRender = false;
     bool                     noFadeIn        = false;
-    int                      graceSeconds    = 0;
     bool                     greetdLogin     = false;
+    int                      graceSeconds    = 0;
 
     std::vector<std::string> args(argv, argv + argc);
 

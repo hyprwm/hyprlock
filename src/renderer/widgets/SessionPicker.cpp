@@ -4,6 +4,8 @@
 #include "../../helpers/Color.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../config/LoginSessionManager.hpp"
+#include "../../core/Seat.hpp"
+#include "../../core/hyprlock.hpp"
 #include <algorithm>
 #include <hyprlang.hpp>
 #include <hyprutils/math/Vector2D.hpp>
@@ -44,13 +46,13 @@ bool CSessionPicker::draw(const SRenderData& data) {
 
     const double   PAD = std::abs((m_size.y - m_biggestEntryAssetSize.y) / 2);
     const Vector2D SIZE{std::max(m_size.x, m_biggestEntryAssetSize.x + PAD), m_size.y};
-    const CBox     RECTBOX{
+    m_box = CBox{
         posFromHVAlign(m_viewport, SIZE, m_configPos, m_halign, m_valign),
         SIZE,
     };
 
-    const auto ENTRYHEIGHT = RECTBOX.h / (m_loginSessions.size() + 1);
-    const auto TOPLEFT     = RECTBOX.pos() + Vector2D{0.0, RECTBOX.h};
+    const auto ENTRYHEIGHT = m_box.h / (m_loginSessions.size() + 1);
+    const auto TOPLEFT     = m_box.pos() + Vector2D{0.0, m_box.h};
 
     for (size_t i = 0; i < m_loginSessions.size(); ++i) {
         auto&      sessionEntry = m_loginSessions[i];
@@ -58,7 +60,7 @@ bool CSessionPicker::draw(const SRenderData& data) {
         const CBox ENTRYBOX{
             TOPLEFT.x,
             TOPLEFT.y - ENTRYHEIGHT - (i * (ENTRYHEIGHT + m_entrySpacing)),
-            RECTBOX.w,
+            m_box.w,
             ENTRYHEIGHT,
         };
 
@@ -120,4 +122,24 @@ void CSessionPicker::setupSessionEntryTexts() {
             .m_textResourceID = LOGINSESSIONRESOURCEIDS[i],
         };
     };
+}
+
+CBox CSessionPicker::getBoundingBoxWl() const {
+    return {
+        Vector2D{m_box.pos().x, m_viewport.y - m_box.pos().y - m_box.size().y},
+        m_box.size(),
+    };
+}
+
+void CSessionPicker::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    const auto   DIFFERENTIAL   = pos.y - (m_viewport.y - m_box.pos().y - m_box.size().y);
+    const auto   HEIGHTPERENTRY = m_box.size().y / m_loginSessions.size();
+    const size_t SELECTEDENTRY  = std::floor(DIFFERENTIAL / HEIGHTPERENTRY);
+    g_pLoginSessionManager->selectSession(SELECTEDENTRY);
+    Debug::log(LOG, "clicked on entry: DIFF {} H/E {} SEL {}", DIFFERENTIAL, HEIGHTPERENTRY, SELECTEDENTRY);
+    g_pHyprlock->renderAllOutputs();
+}
+
+void CSessionPicker::onHover(const Vector2D& pos) {
+    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
 }

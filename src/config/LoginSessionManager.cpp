@@ -42,7 +42,7 @@ static bool parseDesktopFile(SLoginSessionConfig& sessionConfig) {
     return true;
 }
 
-static std::vector<SLoginSessionConfig> gatherSessions(const std::vector<std::string>& searchPaths) {
+static std::vector<SLoginSessionConfig> gatherSessionsInPaths(const std::vector<std::string>& searchPaths) {
     std::vector<SLoginSessionConfig> sessions;
 
     for (const auto& DIR : searchPaths) {
@@ -66,16 +66,19 @@ static std::vector<SLoginSessionConfig> gatherSessions(const std::vector<std::st
     return sessions;
 }
 
-CLoginSessionManager::CLoginSessionManager(const std::string& sessionDirs) {
+void CLoginSessionManager::gather(const std::string& sessionDirs) {
     const auto LOGINDEFAULTSESSION = g_pConfigManager->getValue<Hyprlang::STRING>("login:default_session");
 
     Debug::log(LOG, "LoginSessions: Default session: {}, Search directories: {}", std::string{*LOGINDEFAULTSESSION}, sessionDirs);
 
     Hyprutils::String::CVarList sessionDirPaths{sessionDirs, 0, ':', true};
-    m_loginSessions              = gatherSessions(std::vector<std::string>{sessionDirPaths.begin(), sessionDirPaths.end()});
+    m_loginSessions = gatherSessionsInPaths(std::vector<std::string>{sessionDirPaths.begin(), sessionDirPaths.end()});
+
     const auto CONFIGUEDSESSIONS = g_pConfigManager->getLoginSessionConfigs();
     m_loginSessions.insert(m_loginSessions.end(), CONFIGUEDSESSIONS.begin(), CONFIGUEDSESSIONS.end());
 
+    // Handle different possiblites for the default_session option.
+    // It can either be a path to a .desktop file, or the display name.
     if (const std::string DEFAULTSESSIONSTRING{*LOGINDEFAULTSESSION}; !DEFAULTSESSIONSTRING.empty()) {
         bool       found   = false;
         const auto ABSPATH = absolutePath(DEFAULTSESSIONSTRING, "/");
@@ -154,6 +157,11 @@ void CLoginSessionManager::handleKeyDown() {
         if (m_selectedLoginSession >= m_loginSessions.size())
             m_selectedLoginSession = 0;
     }
+}
+
+void CLoginSessionManager::selectSession(size_t index) {
+    if (index < m_loginSessions.size())
+        m_selectedLoginSession = index;
 }
 
 void CLoginSessionManager::onGotLoginSessionAssetCallback() {

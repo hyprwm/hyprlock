@@ -27,6 +27,9 @@ class CSessionPicker : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual CBox getBoundingBoxWl() const;
+    virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
+    virtual void onHover(const Vector2D& pos);
 
     void         onGotSessionEntryAsset(const std::string& sessionName);
 
@@ -47,6 +50,8 @@ class CSessionPicker : public IWidget {
     int                        m_entrySpacing = -1;
 
     Vector2D                   m_biggestEntryAssetSize;
+
+    CBox                       m_box;
 
     struct {
         CHyprColor         inner;

@@ -39,7 +39,7 @@ static void setMallocThreshold() {
 }
 
 CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds, const bool greetdLogin, const std::string& sessionDirs) :
-    m_bGreetdLogin(greetdLogin), m_greetdSessionDirs(sessionDirs) {
+    m_greetdLogin(greetdLogin), m_greetdSessionDirs(sessionDirs) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -314,9 +314,12 @@ void CHyprlock::run() {
     wl_display_roundtrip(m_sWaylandState.display);
 
     g_pRenderer            = makeUnique<CRenderer>();
-    g_pLoginSessionManager = makeUnique<CLoginSessionManager>(m_greetdSessionDirs);
-    g_pAuth                = makeUnique<CAuth>(m_bGreetdLogin);
+    g_pLoginSessionManager = makeUnique<CLoginSessionManager>();
+    g_pAuth                = makeUnique<CAuth>(m_greetdLogin);
     g_pAuth->start();
+
+    if (m_greetdLogin)
+        g_pLoginSessionManager->gather(m_greetdSessionDirs);
 
     Debug::log(LOG, "Running on {}", m_currentDesktop);
 
@@ -697,9 +700,9 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
         m_bCapsLock = !m_bCapsLock;
     else if (SYM == XKB_KEY_Num_Lock)
         m_bNumLock = !m_bNumLock;
-    else if (SYM == XKB_KEY_Up)
+    else if (SYM == XKB_KEY_Up && m_greetdLogin)
         g_pLoginSessionManager->handleKeyUp();
-    else if (SYM == XKB_KEY_Down)
+    else if (SYM == XKB_KEY_Down && m_greetdLogin)
         g_pLoginSessionManager->handleKeyDown();
     else {
         char buf[16] = {0};

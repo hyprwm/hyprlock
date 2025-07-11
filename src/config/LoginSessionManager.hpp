@@ -7,15 +7,17 @@
 
 class CLoginSessionManager {
   public:
-    CLoginSessionManager(const std::string& sessionDirs);
+    CLoginSessionManager()  = default;
     ~CLoginSessionManager() = default;
 
     CLoginSessionManager(const CLoginSessionManager&)            = delete;
     CLoginSessionManager& operator=(const CLoginSessionManager&) = delete;
     CLoginSessionManager(CLoginSessionManager&&) noexcept        = delete;
 
+    void                                    gather(const std::string& sessionDirs);
     void                                    handleKeyUp();
     void                                    handleKeyDown();
+    void                                    selectSession(size_t index);
     void                                    onGotLoginSessionAssetCallback();
 
     const SLoginSessionConfig&              getSelectedLoginSession() const;

@@ -89,7 +89,7 @@ class CHyprlock {
 
     bool                             m_bImmediateRender = false;
 
-    bool                             m_bGreetdLogin = false;
+    bool                             m_greetdLogin = false;
 
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
