@@ -738,7 +738,10 @@ void CHyprlock::onHover(const Vector2D& pos) {
             if (!HOVERED) {
                 widget->setHover(true);
                 widget->onHover(pos);
+                widget->onPointerMove(pos);
                 outputNeedsRedraw = true;
+            } else {
+                outputNeedsRedraw |= widget->onPointerMove(pos);
             }
 
             if (!cursorChanged)

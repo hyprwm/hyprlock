@@ -275,6 +275,10 @@ bool IWidget::isHovered() const {
     return hovered;
 }
 
+bool IWidget::onPointerMove(const Vector2D& pos) {
+    return false;
+}
+
 bool IWidget::containsPoint(const Vector2D& pos) const {
     return getBoundingBoxWl().containsPoint(pos);
 }

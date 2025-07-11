@@ -645,14 +645,26 @@ CBox CPasswordInputField::getEyeBox() {
 
     CBox   inputFieldBox = getBoundingBoxWl();
     auto   padding       = (inputFieldBox.h - eyeSize.y) / 2.0;
-    auto   eyePosition =
-        inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - password.eye.margin - padding, padding} : Vector2D{padding, padding});
+    auto   eyePosition   = inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
 
     return {eyePosition, eyeSize};
 }
 
 void CPasswordInputField::onHover(const Vector2D& pos) {
-    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
+    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+}
+
+bool CPasswordInputField::onPointerMove(const Vector2D& pos) {
+    CBox eyeBox = getEyeBox();
+
+    if (eyeBox.containsPoint(pos)) {
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
+        return true;
+    } else {
+        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+    }
+
+    return false;
 }
 
 void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& pos) {
