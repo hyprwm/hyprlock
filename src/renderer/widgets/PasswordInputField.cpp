@@ -196,50 +196,21 @@ void CPasswordInputField::updatePassword() {
         return;
     }
 
-    if (password.text.content.length() == 0) {
-        password.text.trim = 0;
-    }
-
-    if (password.text.content.length() > passwordContent.length() && password.text.trim > 0) {
-        password.text.trim -= 1;
-    }
-
     password.text.content = passwordContent;
 
     CAsyncResourceGatherer::SPreloadRequest request;
-    Vector2D                                assetSize;
-    double                                  offset;
-    CBox                                    inputFieldBox = {pos, size->value()};
 
     // Loops and trims the password until it's length is less than the available space
-    while (true) {
-        std::string trimmedContent = passwordContent;
+    std::string textResourceID   = std::format("password:{}-{}", (uintptr_t)this, password.text.content);
+    request.id                   = textResourceID;
+    request.asset                = password.text.content;
+    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
+    request.props["font_family"] = fontFamily;
+    request.props["color"]       = colorConfig.font;
+    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
+    request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
 
-        if (password.text.trim) {
-            trimmedContent.erase(0, password.text.trim);
-        }
-
-        std::string textResourceID   = std::format("password:{}-{}", (uintptr_t)this, trimmedContent);
-        request.id                   = textResourceID;
-        request.asset                = trimmedContent;
-        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = fontFamily;
-        request.props["color"]       = colorConfig.font;
-        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
-        request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
-
-        password.text.pendingResourceID = textResourceID;
-
-        assetSize = g_pRenderer->asyncResourceGatherer->getTextAssetSize(request);
-        offset    = (inputFieldBox.h - assetSize.y) / 2.0;
-
-        // It can be safely assumed that the eye asset is always available because the user can't type fast enough
-        if (!password.eye.openAsset || assetSize.x <= (inputFieldBox.w - offset * 2 - password.eye.margin - password.eye.openAsset->texture.m_vSize.x)) {
-            break;
-        }
-
-        password.text.trim += 1;
-    }
+    password.text.pendingResourceID = textResourceID;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 }
@@ -433,11 +404,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 password.text.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.text.resourceID);
 
             if (password.text.asset) {
-                auto   passSize = password.text.asset->texture.m_vSize;
-                auto   eyeSize  = password.eye.openAsset->texture.m_vSize;
-                double padding  = (inputFieldBox.h - passSize.y) / 2.0;
+                Vector2D passSize  = password.text.asset->texture.m_vSize;
+                double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
+                double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
 
-                double xstart = password.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
+                double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
+                if (passSize.x > areaWidth) {
+                    xstart -= (passSize.x - areaWidth) / 2.0;
+                }
                 if (password.eye.placement == "left") {
                     xstart += eyeOffset;
                 }
@@ -445,7 +419,11 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
                 CBox     box{passwordPosition, passSize};
 
+                glEnable(GL_SCISSOR_TEST);
+                glScissor(inputFieldBox.x + padding + (password.eye.placement == "left" ? eyeOffset : 0), inputFieldBox.y, areaWidth, inputFieldBox.h);
                 g_pRenderer->renderTexture(box, password.text.asset->texture, fontCol.a);
+                glScissor(0, 0, viewport.x, viewport.y);
+                glDisable(GL_SCISSOR_TEST);
             } else {
                 forceReload = true;
             }

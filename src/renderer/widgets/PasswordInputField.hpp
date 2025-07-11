@@ -77,7 +77,6 @@ class CPasswordInputField : public IWidget {
             std::string      pendingResourceID = "";
             SPreloadedAsset* asset             = nullptr;
             SPreloadedAsset* previousAsset     = nullptr;
-            int              trim              = 0;
         } text;
 
         struct {
