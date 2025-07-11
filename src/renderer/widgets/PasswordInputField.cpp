@@ -351,8 +351,7 @@ void CPasswordInputField::updatePlaceholder() {
     if (!ALLOWCOLORSWAP && newText == placeholder.currentText)
         return;
 
-    const auto NEWRESOURCEID =
-        std::format("placeholder:{}{}{}{}{}{}", placeholder.currentText, (uintptr_t)this, colorState.font.r, colorState.font.g, colorState.font.b, colorState.font.a);
+    const auto NEWRESOURCEID = std::format("placeholder:{}{}{}{}{}{}", newText, (uintptr_t)this, colorState.font.r, colorState.font.g, colorState.font.b, colorState.font.a);
 
     if (placeholder.resourceID == NEWRESOURCEID)
         return;
