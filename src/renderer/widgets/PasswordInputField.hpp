@@ -90,6 +90,7 @@ class CPasswordInputField : public IWidget {
             int              margin    = 8;
             double           size      = 0.25;
             std::string      placement = "right";
+            bool             hide      = false;
 
             std::string      openRescourceID   = "";
             SPreloadedAsset* openAsset         = nullptr;

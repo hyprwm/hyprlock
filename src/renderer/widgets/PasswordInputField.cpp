@@ -46,6 +46,10 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password:size"));
         password.center          = std::any_cast<Hyprlang::INT>(props.at("password:center"));
         password.allowToggle     = std::any_cast<Hyprlang::INT>(props.at("password:toggle_password_visibility"));
+        password.eye.hide        = std::any_cast<Hyprlang::INT>(props.at("password:hide_eye"));
+        password.eye.margin      = std::any_cast<Hyprlang::INT>(props.at("password:eye_margin"));
+        password.eye.size        = std::any_cast<Hyprlang::FLOAT>(props.at("password:eye_size"));
+        password.eye.placement   = std::any_cast<Hyprlang::STRING>(props.at("password:eye_placement"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -353,7 +357,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         auto   eyeAsset  = showPassword ? password.eye.closedAsset : password.eye.openAsset;
         double eyeHeight = (int)(std::nearbyint(configSize.y * password.eye.size * 0.5f) * 2.f);
         auto   eyeSize   = Vector2D{eyeHeight, eyeHeight};
-        if (password.allowToggle) {
+        if (password.allowToggle && !password.eye.hide) {
             eyeOffset = eyeSize.x + password.eye.margin;
         }
 
@@ -447,7 +451,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             }
         }
 
-        if (passwordLength != 0 && password.allowToggle) {
+        if (passwordLength != 0 && password.allowToggle && !password.eye.hide) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
             auto eyePosition = inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
             CBox box         = {eyePosition, eyeSize};
