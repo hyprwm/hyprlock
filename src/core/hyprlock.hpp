@@ -80,8 +80,9 @@ class CHyprlock {
 
     bool                             m_bTerminate = false;
 
-    bool                             m_lockAquired = false;
-    bool                             m_bLocked     = false;
+    bool                             m_lockAquired  = false;
+    bool                             m_bLocked      = false;
+    bool                             m_unlockCalled = false;
 
     bool                             m_bCapsLock = false;
     bool                             m_bNumLock  = false;

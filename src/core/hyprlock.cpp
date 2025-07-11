@@ -806,6 +806,9 @@ void CHyprlock::releaseSessionLock() {
         return;
     }
 
+    if (g_pSeatManager->m_pCursorShape)
+        g_pSeatManager->m_pCursorShape->restoreCursor();
+
     m_sLockState.lock->sendUnlockAndDestroy();
     m_sLockState.lock = nullptr;
 
