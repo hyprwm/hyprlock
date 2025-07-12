@@ -350,6 +350,10 @@ std::optional<std::string> CGreetdLogin::getLastPrompt() {
 }
 
 void CGreetdLogin::terminate() {
+    m_state.inputSubmittedCondition.notify_all();
+    if (m_thread.joinable())
+        m_thread.join();
+
     if (m_socketFD > 0)
         close(m_socketFD);
 
