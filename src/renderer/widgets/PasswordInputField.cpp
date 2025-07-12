@@ -647,7 +647,7 @@ bool CPasswordInputField::onPointerMove(const Vector2D& pos) {
 
 void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& pos) {
 
-    if (!password.text.asset || !password.eye.openAsset || !down)
+    if (!password.text.asset || !password.allowToggle || password.eye.hide || !down)
         return;
 
     CBox eyeBox = getEyeBox();
