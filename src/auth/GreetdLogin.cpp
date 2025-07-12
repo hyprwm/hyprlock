@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-static constexpr std::string getErrorString(eRequestError error) {
+static const char* getErrorString(eRequestError error) {
     switch (error) {
         case GREETD_REQUEST_ERROR_SEND: return "Failed to send payload to greetd";
         case GREETD_REQUEST_ERROR_READ: return "Failed to read response from greetd";
@@ -140,7 +140,7 @@ void CGreetdLogin::init() {
     m_loginUserName      = *LOGINUSER;
 
     if (m_loginUserName.empty()) {
-        Debug::log(ERR, "[GreetdLogin] No user specified");
+        Debug::log(CRIT, "[GreetdLogin] No user specified");
         m_ok = false;
         return;
     } else
@@ -242,7 +242,7 @@ void CGreetdLogin::cancelSession() {
     const auto           RESPONSE = request(REQUEST);
 
     if (!RESPONSE.has_value()) {
-        Debug::log(ERR, "Failed to cancel session: {}", getErrorString(RESPONSE.error()));
+        Debug::log(ERR, "[GreetdLogin] Failed to cancel session: {}", getErrorString(RESPONSE.error()));
         return;
     }
 
@@ -256,7 +256,7 @@ void CGreetdLogin::createSession() {
     if (m_state.authMessageType != GREETD_INITIAL && m_state.errorType != GREETD_ERROR_AUTH)
         Debug::log(WARN, "[GreetdLogin] Trying to create a session, but last one still active?");
 
-    Debug::log(LOG, "Creating session for user {}", m_loginUserName);
+    Debug::log(LOG, "[GreetdLogin] Creating session for user {}", m_loginUserName);
 
     SGreetdCreateSession createSession;
     createSession.username = m_loginUserName;
@@ -265,7 +265,7 @@ void CGreetdLogin::createSession() {
     const auto RESPONSE = request(REQUEST);
 
     if (!RESPONSE.has_value()) {
-        Debug::log(ERR, "Failed to create session: {}", getErrorString(RESPONSE.error()));
+        Debug::log(ERR, "[GreetdLogin] Failed to create session: {}", getErrorString(RESPONSE.error()));
         return;
     }
 
@@ -289,16 +289,16 @@ void CGreetdLogin::processInput() {
         const auto                     RESPONSE = request(REQUEST);
 
         if (!RESPONSE.has_value()) {
-            Debug::log(ERR, "Failed to create session: {}", getErrorString(RESPONSE.error()));
+            Debug::log(ERR, "[GreetdLogin] No response after empty response: {}", getErrorString(RESPONSE.error()));
             return;
         }
 
         handleResponse(REQUEST, RESPONSE.value());
     }
 
-    if (m_state.errorType != GREETD_OK) {
-        // TODO: this error message is not good
-        Debug::log(LOG, "Empty response to a info message failed!");
+    if (m_state.errorType != GREETD_OK || (m_state.authMessageType != GREETD_AUTH_SECRET && m_state.authMessageType != GREETD_AUTH_VISIBLE)) {
+        Debug::log(ERR, "[GreetdLogin] Didn't successfully get a promt from greetd!");
+        g_pAuth->enqueueFail("No greetd prompt", AUTH_IMPL_GREETD);
         return;
     }
 
@@ -309,7 +309,8 @@ void CGreetdLogin::processInput() {
     const auto RESPONSE = request(REQUEST);
 
     if (!RESPONSE.has_value()) {
-        Debug::log(ERR, "Failed to send auth response: {}", getErrorString(RESPONSE.error()));
+        Debug::log(ERR, "[GreetdLogin] Failed to send auth response: {}", getErrorString(RESPONSE.error()));
+        g_pAuth->enqueueFail("Failed to send auth response", AUTH_IMPL_GREETD);
         return;
     }
 

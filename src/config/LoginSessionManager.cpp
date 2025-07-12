@@ -66,39 +66,25 @@ static std::vector<SLoginSessionConfig> gatherSessionsInPaths(const std::vector<
     return sessions;
 }
 
-void CLoginSessionManager::gather(const std::string& sessionDirs) {
-    const auto LOGINDEFAULTSESSION = g_pConfigManager->getValue<Hyprlang::STRING>("login:default_session");
+void CLoginSessionManager::selectDefaultSession() {
+    const auto        PDEFAULTSESSION = g_pConfigManager->getValue<Hyprlang::STRING>("login:default_session");
+    const std::string DEFAULTSESSION{*PDEFAULTSESSION};
+    if (DEFAULTSESSION.empty())
+        return;
 
-    Debug::log(LOG, "LoginSessions: Default session: {}, Search directories: {}", std::string{*LOGINDEFAULTSESSION}, sessionDirs);
+    Debug::log(LOG, "Selecting default session: {}", DEFAULTSESSION);
 
-    Hyprutils::String::CVarList sessionDirPaths{sessionDirs, 0, ':', true};
-    m_loginSessions = gatherSessionsInPaths(std::vector<std::string>{sessionDirPaths.begin(), sessionDirPaths.end()});
+    bool found = false;
 
-    const auto CONFIGUEDSESSIONS = g_pConfigManager->getLoginSessionConfigs();
-    m_loginSessions.insert(m_loginSessions.end(), CONFIGUEDSESSIONS.begin(), CONFIGUEDSESSIONS.end());
+    if (DEFAULTSESSION.contains(".desktop")) {
+        // default session is a path, check if we already have it parsed.
 
-    // Handle different possiblites for the default_session option.
-    // It can either be a path to a .desktop file, or the display name.
-    if (const std::string DEFAULTSESSIONSTRING{*LOGINDEFAULTSESSION}; !DEFAULTSESSIONSTRING.empty()) {
-        bool       found   = false;
-        const auto ABSPATH = absolutePath(DEFAULTSESSIONSTRING, "/");
-        // default session is a name
+        const auto ABSPATH = absolutePath(DEFAULTSESSION, "/");
         for (size_t i = 0; i < m_loginSessions.size(); i++) {
-            if (m_loginSessions[i].name == DEFAULTSESSIONSTRING) {
+            if (m_loginSessions[i].desktopFilePath == ABSPATH) {
                 m_selectedLoginSession = i;
                 found                  = true;
                 break;
-            }
-        }
-
-        if (!found) {
-            // default session is a path
-            for (size_t i = 0; i < m_loginSessions.size(); i++) {
-                if (m_loginSessions[i].desktopFilePath == ABSPATH) {
-                    m_selectedLoginSession = i;
-                    found                  = true;
-                    break;
-                }
             }
         }
 
@@ -112,14 +98,35 @@ void CLoginSessionManager::gather(const std::string& sessionDirs) {
                 found                  = true;
             }
         }
-
-        if (!found)
-            Debug::log(WARN, "[LoginSessionManager] Default session {} not found", DEFAULTSESSIONSTRING);
+    } else {
+        // default session is a name
+        for (size_t i = 0; i < m_loginSessions.size(); i++) {
+            if (m_loginSessions[i].name == DEFAULTSESSION) {
+                m_selectedLoginSession = i;
+                found                  = true;
+                break;
+            }
+        }
     }
+
+    if (!found)
+        Debug::log(WARN, "[GreetdLogin] Default session {} not found", DEFAULTSESSION);
+}
+
+void CLoginSessionManager::gather(const std::string& sessionDirs) {
+    Debug::log(LOG, "[GreetdLogin] Search directories: {}", sessionDirs);
+
+    Hyprutils::String::CVarList sessionDirPaths{sessionDirs, 0, ':', true};
+    m_loginSessions = gatherSessionsInPaths(std::vector<std::string>{sessionDirPaths.begin(), sessionDirPaths.end()});
+
+    const auto CONFIGUEDSESSIONS = g_pConfigManager->getLoginSessionConfigs();
+    m_loginSessions.insert(m_loginSessions.end(), CONFIGUEDSESSIONS.begin(), CONFIGUEDSESSIONS.end());
+
+    selectDefaultSession();
 
     if (m_loginSessions.empty()) {
         Debug::log(CRIT,
-                   "Hyprlock did not find any wayland sessions.\n"
+                   "[GreetdLogin] Hyprlock did not find any wayland sessions.\n"
                    "By default, hyprlock searches /usr/share/wayland-sessions and /usr/local/share/wayland-sessions.\n"
                    "You can specify the directories hyprlock searches in with the --session-dirs argument followed by a comma seperated list of directories.\n"
                    "Alternatively, you can specify a session with the login-session hyprlock keyword. Read the wiki for more info\n");

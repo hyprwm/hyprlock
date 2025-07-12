@@ -34,6 +34,7 @@ class CLoginSessionManager {
     bool                             m_fixedDefault = false;
 
     void                             requestSessionPickerAssets();
+    void                             selectDefaultSession();
 };
 
 inline UP<CLoginSessionManager> g_pLoginSessionManager;

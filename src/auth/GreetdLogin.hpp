@@ -50,7 +50,6 @@ class CGreetdLogin : public IAuthImplementation {
     //
     void        createSession();
     void        cancelSession();
-    void        recreateSession();
     void        startSessionAfterSuccess();
 
     void        handleResponse(const VGreetdRequest& request, const VGreetdResponse& response);
