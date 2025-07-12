@@ -732,22 +732,19 @@ void CHyprlock::onHover(const Vector2D& pos) {
     const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
     for (const auto& widget : widgets) {
         const bool CONTAINSPOINT = widget->containsPoint(SCALEDPOS);
-        const bool HOVERED       = widget->isHovered();
+        const bool SHOULDHOVER   = !widget->staticHover() || !widget->isHovered();
 
         if (CONTAINSPOINT) {
-            if (!HOVERED) {
+            if (SHOULDHOVER) {
                 widget->setHover(true);
                 widget->onHover(pos);
-                widget->onPointerMove(pos);
                 outputNeedsRedraw = true;
-            } else {
-                outputNeedsRedraw |= widget->onPointerMove(pos);
             }
 
             if (!cursorChanged)
                 cursorChanged = true;
 
-        } else if (HOVERED) {
+        } else if (widget->isHovered()) {
             widget->setHover(false);
             outputNeedsRedraw = true;
         }

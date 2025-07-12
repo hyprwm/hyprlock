@@ -629,19 +629,16 @@ CBox CPasswordInputField::getEyeBox() {
 }
 
 void CPasswordInputField::onHover(const Vector2D& pos) {
-    g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
-}
-
-bool CPasswordInputField::onPointerMove(const Vector2D& pos) {
     CBox eyeBox = getEyeBox();
 
     if (eyeBox.containsPoint(pos)) {
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
-        return true;
     } else {
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
     }
+}
 
+bool CPasswordInputField::staticHover() const {
     return false;
 }
 

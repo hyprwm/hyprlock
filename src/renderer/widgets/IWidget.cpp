@@ -275,8 +275,8 @@ bool IWidget::isHovered() const {
     return hovered;
 }
 
-bool IWidget::onPointerMove(const Vector2D& pos) {
-    return false;
+bool IWidget::staticHover() const {
+    return true;
 }
 
 bool IWidget::containsPoint(const Vector2D& pos) const {
