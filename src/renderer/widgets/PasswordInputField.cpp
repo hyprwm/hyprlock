@@ -654,5 +654,7 @@ void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& po
 
     if (eyeBox.containsPoint(pos)) {
         g_pHyprlock->togglePasswordShow();
+
+        g_pHyprlock->renderOutput(outputStringPort);
     }
 }
