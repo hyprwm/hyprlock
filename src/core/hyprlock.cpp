@@ -686,6 +686,8 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
                 m_sPasswordState.passBuffer.pop_back();
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
+    } else if (SYM == XKB_KEY_Tab) {
+        m_sPasswordState.show = !m_sPasswordState.show;
     } else if (SYM == XKB_KEY_Caps_Lock) {
         m_bCapsLock = !m_bCapsLock;
     } else if (SYM == XKB_KEY_Num_Lock) {
@@ -736,7 +738,10 @@ void CHyprlock::onHover(const Vector2D& pos) {
             if (!HOVERED) {
                 widget->setHover(true);
                 widget->onHover(pos);
+                widget->onPointerMove(pos);
                 outputNeedsRedraw = true;
+            } else {
+                outputNeedsRedraw |= widget->onPointerMove(pos);
             }
 
             if (!cursorChanged)
@@ -869,6 +874,18 @@ SP<CCWpViewporter> CHyprlock::getViewporter() {
 
 size_t CHyprlock::getPasswordBufferLen() {
     return m_sPasswordState.passBuffer.length();
+}
+
+std::string CHyprlock::getPasswordBuffer() {
+    return m_sPasswordState.passBuffer;
+}
+
+bool CHyprlock::getPasswordShow() {
+    return m_sPasswordState.show;
+}
+
+void CHyprlock::togglePasswordShow() {
+    m_sPasswordState.show = !m_sPasswordState.show;
 }
 
 size_t CHyprlock::getPasswordBufferDisplayLen() {
