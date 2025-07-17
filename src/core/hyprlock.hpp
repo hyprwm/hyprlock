@@ -63,6 +63,10 @@ class CHyprlock {
 
     size_t                     getPasswordBufferLen();
     size_t                     getPasswordBufferDisplayLen();
+    std::string                getPasswordBuffer();
+    bool                       getPasswordShow();
+
+    void                       togglePasswordShow();
 
     SP<CCExtSessionLockManagerV1>    getSessionLockMgr();
     SP<CCExtSessionLockV1>           getSessionLock();
@@ -137,6 +141,7 @@ class CHyprlock {
     } m_sLockState;
 
     struct {
+        bool        show            = false;
         std::string passBuffer      = "";
         size_t      failedAttempts  = 0;
         bool        displayFailText = false;
