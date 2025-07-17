@@ -27,8 +27,8 @@ class ICustomConfigValueData {
 
 class CLayoutValueData : public ICustomConfigValueData {
   public:
-    CLayoutValueData() = default;
-    virtual ~CLayoutValueData() {};
+    CLayoutValueData()          = default;
+    virtual ~CLayoutValueData() = default;
 
     virtual eConfigValueDataTypes getDataType() {
         return CVD_TYPE_LAYOUT;
@@ -61,12 +61,12 @@ class CLayoutValueData : public ICustomConfigValueData {
 
 class CGradientValueData : public ICustomConfigValueData {
   public:
-    CGradientValueData() {};
+    CGradientValueData() = default;
     CGradientValueData(CHyprColor col) {
         m_vColors.push_back(col);
         updateColorsOk();
     };
-    virtual ~CGradientValueData() {};
+    virtual ~CGradientValueData() = default;
 
     virtual eConfigValueDataTypes getDataType() {
         return CVD_TYPE_GRADIENT;
@@ -130,4 +130,10 @@ class CGradientValueData : public ICustomConfigValueData {
         RASSERT(P, "Empty config value");
         return P;
     }
+};
+
+struct SLoginSessionConfig {
+    std::string name            = "";
+    std::string exec            = "";
+    std::string desktopFilePath = "";
 };

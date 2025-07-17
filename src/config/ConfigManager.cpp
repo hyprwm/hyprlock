@@ -3,6 +3,8 @@
 #include "../helpers/MiscFunctions.hpp"
 #include "../helpers/Log.hpp"
 #include "../core/AnimationManager.hpp"
+#include "../config/LoginSessionManager.hpp"
+#include <algorithm>
 #include <hyprlang.hpp>
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/path/Path.hpp>
@@ -229,6 +231,12 @@ void CConfigManager::init() {
 
     m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});
 
+    m_config.addConfigValue("login:user", Hyprlang::STRING{"max"});
+    m_config.addConfigValue("login:default_session", Hyprlang::STRING{""});
+    m_config.addSpecialCategory("login-session", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("login-session", "name", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("login-session", "exec", Hyprlang::STRING{""});
+
     m_config.addSpecialCategory("background", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("background", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "path", Hyprlang::STRING{""});
@@ -325,6 +333,22 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "zindex", Hyprlang::INT{0});
     SHADOWABLE("label");
     CLICKABLE("label");
+
+    m_config.addSpecialCategory("session-picker", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("session-picker", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("session-picker", "position", LAYOUTCONFIG("0,0"));
+    m_config.addSpecialConfigValue("session-picker", "size", LAYOUTCONFIG("10%,10%"));
+    m_config.addSpecialConfigValue("session-picker", "rounding", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("session-picker", "border_size", Hyprlang::INT{3});
+    m_config.addSpecialConfigValue("session-picker", "entry_spacing", Hyprlang::FLOAT{10});
+    m_config.addSpecialConfigValue("session-picker", "inner_color", Hyprlang::INT{0x00DDDDDD});
+    m_config.addSpecialConfigValue("session-picker", "selected_color", Hyprlang::INT{0xFFA5A5A5});
+    m_config.addSpecialConfigValue("session-picker", "border_color", GRADIENTCONFIG("0x00000000"));
+    m_config.addSpecialConfigValue("session-picker", "selected_border_color", GRADIENTCONFIG("0xff6633ee"));
+    m_config.addSpecialConfigValue("session-picker", "halign", Hyprlang::STRING{"none"});
+    m_config.addSpecialConfigValue("session-picker", "valign", Hyprlang::STRING{"none"});
+    m_config.addSpecialConfigValue("session-picker", "zindex", Hyprlang::INT{0});
+    SHADOWABLE("session-picker");
 
     m_config.registerHandler(&::handleSource, "source", {.allowFlags = false});
     m_config.registerHandler(&::handleBezier, "bezier", {.allowFlags = false});
@@ -521,7 +545,52 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
         // clang-format on
     }
 
+    keys = m_config.listKeysForSpecialCategory("session-picker");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type="session-picker",
+            .monitor=std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("session-picker", "monitor", k.c_str())),
+            .values={
+                {"position", m_config.getSpecialConfigValue("session-picker", "position", k.c_str())},
+                {"size", m_config.getSpecialConfigValue("session-picker", "size", k.c_str())},
+                {"rounding", m_config.getSpecialConfigValue("session-picker", "rounding", k.c_str())},
+                {"border_size", m_config.getSpecialConfigValue("session-picker", "border_size", k.c_str())},
+                {"entry_spacing", m_config.getSpecialConfigValue("session-picker", "entry_spacing", k.c_str())},
+                {"inner_color", m_config.getSpecialConfigValue("session-picker", "inner_color", k.c_str())},
+                {"selected_color", m_config.getSpecialConfigValue("session-picker", "selected_color", k.c_str())},
+                {"border_color", m_config.getSpecialConfigValue("session-picker", "border_color", k.c_str())},
+                {"selected_border_color", m_config.getSpecialConfigValue("session-picker", "selected_border_color", k.c_str())},
+                {"halign", m_config.getSpecialConfigValue("session-picker", "halign", k.c_str())},
+                {"valign", m_config.getSpecialConfigValue("session-picker", "valign", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("session-picker", "zindex", k.c_str())},
+                SHADOWABLE("session-picker"),
+            }
+        });
+        // clang-format on
+    }
+
     return result;
+}
+
+std::vector<SLoginSessionConfig> CConfigManager::getLoginSessionConfigs() {
+    std::vector<SLoginSessionConfig> result;
+
+    //
+    auto keys = m_config.listKeysForSpecialCategory("login-session");
+    result.reserve(keys.size());
+    for (auto& k : keys) {
+        result.push_back(SLoginSessionConfig{
+            .name = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("login-session", "name", k.c_str())),
+            .exec = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("login-session", "exec", k.c_str())),
+        });
+    }
+
+    return result;
+}
+
+bool CConfigManager::widgetsContainSessionPicker() {
+    return !m_config.listKeysForSpecialCategory("session-picker").empty();
 }
 
 std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
