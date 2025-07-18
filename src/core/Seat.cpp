@@ -30,14 +30,13 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
             static const auto HIDECURSOR = g_pConfigManager->getValue<Hyprlang::INT>("general:hide_cursor");
             m_pPointer->setMotion([](CCWlPointer* r, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
                 g_pHyprlock->m_vMouseLocation = {wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)};
-
                 if (!*HIDECURSOR)
                     g_pHyprlock->onHover(g_pHyprlock->m_vMouseLocation);
 
                 if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
                     return;
 
-                if (!g_pHyprlock->isUnlocked() && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
+                if (g_pHyprlock->m_bLocked && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
                     Debug::log(LOG, "In grace and cursor moved more than 5px, unlocking!");
                     g_pHyprlock->unlock();
                 }
@@ -50,7 +49,7 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
                 m_pCursorShape->lastCursorSerial = serial;
 
                 if (*HIDECURSOR)
-                    m_pCursorShape->hideCursor();
+                    m_pCursorShape->hideCursor(surf, surface_x, surface_y);
                 else
                     m_pCursorShape->setShape(wpCursorShapeDeviceV1Shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
 

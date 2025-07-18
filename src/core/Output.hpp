@@ -12,7 +12,6 @@ class COutput {
     void                    create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t name);
 
     OUTPUTID                m_ID      = 0;
-    bool                    focused   = false;
     bool                    done      = false;
     wl_output_transform     transform = WL_OUTPUT_TRANSFORM_NORMAL;
     Vector2D                size;
