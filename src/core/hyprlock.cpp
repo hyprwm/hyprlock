@@ -713,6 +713,9 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
 }
 
 void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (!down)
+        return;
+
     if (!m_focusedOutput.lock())
         return;
 
