@@ -15,6 +15,7 @@ void CCursorShape::setShape(const wpCursorShapeDeviceV1Shape shape) {
     if (!dev)
         dev = makeShared<CCWpCursorShapeDeviceV1>(mgr->sendGetPointer(g_pSeatManager->m_pPointer->resource()));
 
+    shapeChanged = true;
     dev->sendSetShape(lastCursorSerial, shape);
 }
 
