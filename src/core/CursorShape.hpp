@@ -11,6 +11,7 @@ class CCursorShape {
     void     hideCursor();
 
     uint32_t lastCursorSerial = 0;
+    bool     shapeChanged     = false;
 
   private:
     SP<CCWpCursorShapeManagerV1> mgr = nullptr;

@@ -8,6 +8,9 @@
 #include <linux/input-event-codes.h>
 
 CSeatManager::~CSeatManager() {
+    if (m_pCursorShape && m_pCursorShape->shapeChanged)
+        m_pCursorShape->setShape(wpCursorShapeDeviceV1Shape::WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+
     if (m_pXKBState)
         xkb_state_unref(m_pXKBState);
     if (m_pXKBKeymap)
