@@ -29,16 +29,23 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
 }
 
 void CAsyncResourceGatherer::enqueueScreencopyFrames() {
-    const auto FADEINCFG    = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
-    const auto FADEOUTCFG   = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
+    static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
+
+    const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
+    const auto        FADEOUTCFG = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
+
+    const bool        FADENEEDSSC = *ANIMATIONSENABLED &&
+        ((FADEINCFG->pValues && FADEINCFG->pValues->internalEnabled) || // fadeIn or fadeOut enabled
+         (FADEOUTCFG->pValues && FADEOUTCFG->pValues->internalEnabled));
+
     const auto BGSCREENSHOT = std::ranges::any_of(g_pConfigManager->getWidgetConfigs(), [](const auto& w) { //
         return w.type == "background" && std::string{std::any_cast<Hyprlang::STRING>(w.values.at("path"))} == "screenshot";
     });
 
-    // No screenshot background AND no fade in AND no fade out -> we don't need screencopy
-    if (!BGSCREENSHOT && (!FADEINCFG->pValues || !FADEINCFG->pValues->internalEnabled) && //
-        (!FADEOUTCFG->pValues || !FADEOUTCFG->pValues->internalEnabled))
+    if (!BGSCREENSHOT && !FADENEEDSSC) {
+        Debug::log(LOG, "Skipping screencopy");
         return;
+    }
 
     for (const auto& MON : g_pHyprlock->m_vOutputs) {
         scframes.emplace_back(makeUnique<CScreencopyFrame>(MON));
