@@ -29,6 +29,7 @@ class IWidget {
     };
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos) {}
     virtual void onHover(const Vector2D& pos) {}
+    virtual bool staticHover() const;
     bool         containsPoint(const Vector2D& pos) const;
 
     struct SFormatResult {
@@ -43,6 +44,8 @@ class IWidget {
 
     void                 setHover(bool hover);
     bool                 isHovered() const;
+
+    std::string          type;
 
   private:
     bool hovered = false;
