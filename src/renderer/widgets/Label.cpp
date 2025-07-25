@@ -14,6 +14,8 @@ CLabel::~CLabel() {
 
 void CLabel::registerSelf(const ASP<CLabel>& self) {
     m_self = self;
+
+    type = "label";
 }
 
 static void onTimer(AWP<CLabel> ref) {
