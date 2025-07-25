@@ -2,9 +2,11 @@
 #include "AnimationManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
+#include "../config/LoginSessionManager.hpp"
 #include "../renderer/Renderer.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
+#include "../auth/GreetdLogin.hpp"
 #include "Egl.hpp"
 #include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
@@ -36,7 +38,8 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds) {
+CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds, const bool greetdLogin, const std::string& sessionDirs) :
+    m_greetdLogin(greetdLogin), m_greetdSessionDirs(sessionDirs) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
@@ -54,7 +57,10 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, c
 
     const auto CURRENTDESKTOP = getenv("XDG_CURRENT_DESKTOP");
     const auto SZCURRENTD     = std::string{CURRENTDESKTOP ? CURRENTDESKTOP : ""};
-    m_sCurrentDesktop         = SZCURRENTD;
+    m_currentDesktop          = SZCURRENTD;
+
+    if (greetdLogin && m_greetdSessionDirs.empty())
+        m_greetdSessionDirs = "/usr/share/wayland-sessions:/usr/local/share/wayland-sessions";
 }
 
 CHyprlock::~CHyprlock() {
@@ -307,11 +313,15 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer = makeUnique<CRenderer>();
-    g_pAuth     = makeUnique<CAuth>();
+    g_pRenderer            = makeUnique<CRenderer>();
+    g_pLoginSessionManager = makeUnique<CLoginSessionManager>();
+    g_pAuth                = makeUnique<CAuth>(m_greetdLogin);
     g_pAuth->start();
 
-    Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
+    if (m_greetdLogin)
+        g_pLoginSessionManager->gather(m_greetdSessionDirs);
+
+    Debug::log(LOG, "Running on {}", m_currentDesktop);
 
     if (!g_pHyprlock->m_bImmediateRender) {
         // Gather background resources and screencopy frames before locking the screen.
@@ -686,11 +696,15 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
                 m_sPasswordState.passBuffer.pop_back();
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
-    } else if (SYM == XKB_KEY_Caps_Lock) {
+    } else if (SYM == XKB_KEY_Caps_Lock)
         m_bCapsLock = !m_bCapsLock;
-    } else if (SYM == XKB_KEY_Num_Lock) {
+    else if (SYM == XKB_KEY_Num_Lock)
         m_bNumLock = !m_bNumLock;
-    } else {
+    else if (SYM == XKB_KEY_Up && m_greetdLogin)
+        g_pLoginSessionManager->handleKeyUp();
+    else if (SYM == XKB_KEY_Down && m_greetdLogin)
+        g_pLoginSessionManager->handleKeyDown();
+    else {
         char buf[16] = {0};
         int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
                                     xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* already includes a nullbyte */;
