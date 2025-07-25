@@ -631,7 +631,7 @@ CBox CPasswordInputField::getEyeBox() {
 void CPasswordInputField::onHover(const Vector2D& pos) {
     CBox eyeBox = getEyeBox();
 
-    if (eyeBox.containsPoint(pos)) {
+    if (eyeBox.containsPoint(pos) && password.allowToggle && !password.eye.hide) {
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
     } else {
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
@@ -643,8 +643,7 @@ bool CPasswordInputField::staticHover() const {
 }
 
 void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& pos) {
-
-    if (!password.text.asset || !password.allowToggle || password.eye.hide || !down)
+    if (!password.allowToggle || password.eye.hide || !down)
         return;
 
     CBox eyeBox = getEyeBox();
