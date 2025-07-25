@@ -198,7 +198,7 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 
     fb.bind();
 
-    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, applyTransform ? transform : HYPRUTILS_TRANSFORM_FLIPPED_180);
+    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, applyTransform ? transform : HYPRUTILS_TRANSFORM_NORMAL);
 
     if (blurPasses > 0)
         g_pRenderer->blurFB(fb,
