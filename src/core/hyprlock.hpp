@@ -141,7 +141,6 @@ class CHyprlock {
     } m_sLockState;
 
     struct {
-        bool        show            = false;
         std::string passBuffer      = "";
         size_t      failedAttempts  = 0;
         bool        displayFailText = false;
