@@ -63,7 +63,7 @@ class CHyprlock {
 
     size_t                     getPasswordBufferLen();
     size_t                     getPasswordBufferDisplayLen();
-    std::string                getPasswordBuffer();
+    std::string&               getPasswordBuffer();
     bool                       getPasswordShow();
 
     void                       togglePasswordShow();

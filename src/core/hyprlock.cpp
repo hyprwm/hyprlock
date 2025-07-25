@@ -883,7 +883,7 @@ size_t CHyprlock::getPasswordBufferLen() {
     return m_sPasswordState.passBuffer.length();
 }
 
-std::string CHyprlock::getPasswordBuffer() {
+std::string& CHyprlock::getPasswordBuffer() {
     return m_sPasswordState.passBuffer;
 }
 

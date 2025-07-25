@@ -10,6 +10,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../helpers/Color.hpp"
+#include <functional>
 #include <cmath>
 #include <hyprutils/math/Vector2D.hpp>
 #include <hyprutils/string/String.hpp>
@@ -193,8 +194,10 @@ void CPasswordInputField::updateDots() {
 }
 
 void CPasswordInputField::updatePassword() {
-    std::string passwordContent = g_pHyprlock->getPasswordBuffer();
-    if (passwordContent == password.text.content || checkWaiting) {
+    std::string& passwordContent = g_pHyprlock->getPasswordBuffer();
+    std::string  textResourceID  = std::format("password:{}-{}", (uintptr_t)this, std::hash<std::string>{}(passwordContent));
+
+    if (passwordContent == password.text.content || checkWaiting || g_pRenderer->asyncResourceGatherer->getAssetByID(textResourceID)) {
         return;
     }
 
@@ -202,8 +205,6 @@ void CPasswordInputField::updatePassword() {
 
     CAsyncResourceGatherer::SPreloadRequest request;
 
-    // Loops and trims the password until it's length is less than the available space
-    std::string textResourceID   = std::format("password:{}-{}", (uintptr_t)this, password.text.content);
     request.id                   = textResourceID;
     request.asset                = password.text.content;
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
@@ -264,6 +265,11 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
+    if (passwordLength != g_pHyprlock->getPasswordBufferDisplayLen() && password.show) {
+        g_pRenderer->asyncResourceGatherer->unloadAsset(password.text.asset);
+        password.show = false;
+    }
+
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
     checkWaiting   = g_pAuth->checkWaiting();
     displayFail    = g_pAuth->m_bDisplayFailText;
@@ -274,9 +280,6 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     updatePlaceholder();
     updateWidth();
     updateHiddenInputState();
-
-    if (password.allowToggle)
-        updatePassword();
 
     CBox        inputFieldBox = {pos, size->value()};
     CBox        outerBox      = {pos - Vector2D{outThick, outThick}, size->value() + Vector2D{outThick * 2, outThick * 2}};
@@ -613,6 +616,9 @@ void CPasswordInputField::updateColors() {
 
 void CPasswordInputField::togglePassword() {
     password.show = !password.show;
+
+    if (password.show)
+        updatePassword();
 
     g_pHyprlock->renderOutput(outputStringPort);
 }
