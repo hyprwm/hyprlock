@@ -192,7 +192,7 @@ void CPasswordInputField::updateDots() {
 
 void CPasswordInputField::updatePassword() {
     std::string passwordContent = g_pHyprlock->getPasswordBuffer();
-    if (passwordContent == password.text.content) {
+    if (passwordContent == password.text.content || checkWaiting) {
         return;
     }
 
@@ -399,7 +399,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
                 fontCol.a = DOTALPHA;
             }
-        } else if (passwordLength != 0 && password.allowToggle) {
+        } else if (password.allowToggle) {
             if (!password.text.asset)
                 password.text.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.text.resourceID);
 
@@ -429,7 +429,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             }
         }
 
-        if (passwordLength != 0 && password.allowToggle && !password.eye.hide) {
+        if (password.allowToggle && !password.eye.hide && (passwordLength != 0 || checkWaiting)) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
             auto eyePosition = inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
             CBox box         = {eyePosition, eyeSize};
