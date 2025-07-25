@@ -33,6 +33,8 @@ class CPasswordInputField : public IWidget {
 
     void         renderPasswordUpdate();
 
+    void         togglePassword();
+
   private:
     AWP<CPasswordInputField> m_self;
 
@@ -70,6 +72,7 @@ class CPasswordInputField : public IWidget {
         bool  allowToggle = false;
         bool  center      = false;
         float size        = 0.25;
+        bool  show        = false;
 
         struct {
             std::string      content           = "";

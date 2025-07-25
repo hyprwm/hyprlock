@@ -45,6 +45,8 @@ class IWidget {
     void                 setHover(bool hover);
     bool                 isHovered() const;
 
+    std::string          type;
+
   private:
     bool hovered = false;
 };

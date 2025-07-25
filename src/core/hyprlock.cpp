@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
+#include "../renderer/widgets/PasswordInputField.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
@@ -687,7 +688,16 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
     } else if (SYM == XKB_KEY_Tab) {
-        m_sPasswordState.show = !m_sPasswordState.show;
+        for (auto& o : m_vOutputs) {
+            const auto widgets = g_pRenderer->getOrCreateWidgetsFor(*o->m_sessionLockSurface);
+
+            for (auto& w : widgets) {
+                if (w->type == "password-input") {
+                    auto password_field = reinterpret_cast<CPasswordInputField*>(w.get());
+                    password_field->togglePassword();
+                }
+            }
+        }
     } else if (SYM == XKB_KEY_Caps_Lock) {
         m_bCapsLock = !m_bCapsLock;
     } else if (SYM == XKB_KEY_Num_Lock) {
@@ -875,14 +885,6 @@ size_t CHyprlock::getPasswordBufferLen() {
 
 std::string CHyprlock::getPasswordBuffer() {
     return m_sPasswordState.passBuffer;
-}
-
-bool CHyprlock::getPasswordShow() {
-    return m_sPasswordState.show;
-}
-
-void CHyprlock::togglePasswordShow() {
-    m_sPasswordState.show = !m_sPasswordState.show;
 }
 
 size_t CHyprlock::getPasswordBufferDisplayLen() {

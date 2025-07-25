@@ -24,6 +24,8 @@ CPasswordInputField::~CPasswordInputField() {
 
 void CPasswordInputField::registerSelf(const ASP<CPasswordInputField>& self) {
     m_self = self;
+
+    type = "password-input";
 }
 
 void CPasswordInputField::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
@@ -262,10 +264,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool forceReload = false;
 
-    bool showPassword = g_pHyprlock->getPasswordShow();
-    passwordLength    = g_pHyprlock->getPasswordBufferDisplayLen();
-    checkWaiting      = g_pAuth->checkWaiting();
-    displayFail       = g_pAuth->m_bDisplayFailText;
+    passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
+    checkWaiting   = g_pAuth->checkWaiting();
+    displayFail    = g_pAuth->m_bDisplayFailText;
 
     updateFade();
     updateDots();
@@ -325,14 +326,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             password.eye.closedAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.eye.closedRescourceID);
 
         int    eyeOffset = 0;
-        auto   eyeAsset  = showPassword ? password.eye.closedAsset : password.eye.openAsset;
+        auto   eyeAsset  = password.show ? password.eye.closedAsset : password.eye.openAsset;
         double eyeHeight = (int)(std::nearbyint(configSize.y * password.eye.size * 0.5f) * 2.f);
         auto   eyeSize   = Vector2D{eyeHeight, eyeHeight};
         if (password.allowToggle && !password.eye.hide) {
             eyeOffset = eyeSize.x + password.eye.margin;
         }
 
-        if (!showPassword || !password.allowToggle) {
+        if (!password.show || !password.allowToggle) {
             const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * password.size * 0.5f) * 2.f;
             Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
             int       passSpacing = std::floor(passSize.x * password.dots.spacing);
@@ -610,6 +611,12 @@ void CPasswordInputField::updateColors() {
     colorState.font = fontTarget;
 }
 
+void CPasswordInputField::togglePassword() {
+    password.show = !password.show;
+
+    g_pHyprlock->renderOutput(outputStringPort);
+}
+
 CBox CPasswordInputField::getBoundingBoxWl() const {
     return {
         Vector2D{pos.x, viewport.y - pos.y - size->value().y},
@@ -649,7 +656,7 @@ void CPasswordInputField::onClick(uint32_t button, bool down, const Vector2D& po
     CBox eyeBox = getEyeBox();
 
     if (eyeBox.containsPoint(pos)) {
-        g_pHyprlock->togglePasswordShow();
+        togglePassword();
 
         g_pHyprlock->renderOutput(outputStringPort);
     }
