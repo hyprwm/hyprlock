@@ -619,8 +619,6 @@ void CPasswordInputField::togglePassword() {
 
     if (password.show)
         updatePassword();
-
-    g_pHyprlock->renderOutput(outputStringPort);
 }
 
 CBox CPasswordInputField::getBoundingBoxWl() const {
