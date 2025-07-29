@@ -43,16 +43,18 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         halign                   = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign                   = std::any_cast<Hyprlang::STRING>(props.at("valign"));
         outThick                 = std::any_cast<Hyprlang::INT>(props.at("outline_thickness"));
-        password.dots.spacing    = std::any_cast<Hyprlang::FLOAT>(props.at("password-appearance:dots_spacing"));
-        password.dots.rounding   = std::any_cast<Hyprlang::INT>(props.at("password-appearance:dots_rounding"));
-        password.dots.format     = std::any_cast<Hyprlang::STRING>(props.at("password-appearance:dots_format"));
-        password.size            = std::any_cast<Hyprlang::FLOAT>(props.at("password-appearance:size"));
-        password.center          = std::any_cast<Hyprlang::INT>(props.at("password-appearance:center"));
-        password.allowToggle     = std::any_cast<Hyprlang::INT>(props.at("password-appearance:toggle_password_visibility"));
-        password.eye.hide        = std::any_cast<Hyprlang::INT>(props.at("password-appearance:hide_eye"));
-        password.eye.margin      = std::any_cast<Hyprlang::INT>(props.at("password-appearance:eye_margin"));
-        password.eye.size        = std::any_cast<Hyprlang::FLOAT>(props.at("password-appearance:eye_size"));
-        password.eye.placement   = std::any_cast<Hyprlang::STRING>(props.at("password-appearance:eye_placement"));
+        password.dots.size       = std::any_cast<Hyprlang::FLOAT>(props.at("dots_size"));
+        password.dots.center     = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
+        password.dots.spacing    = std::any_cast<Hyprlang::FLOAT>(props.at("dots_spacing"));
+        password.dots.rounding   = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
+        password.dots.format     = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
+        password.text.size       = std::any_cast<Hyprlang::FLOAT>(props.at("password_size"));
+        password.text.center     = std::any_cast<Hyprlang::INT>(props.at("password_center"));
+        password.allowToggle     = std::any_cast<Hyprlang::INT>(props.at("toggle_password_visibility"));
+        password.eye.hide        = std::any_cast<Hyprlang::INT>(props.at("hide_eye"));
+        password.eye.margin      = std::any_cast<Hyprlang::INT>(props.at("eye_margin"));
+        password.eye.size        = std::any_cast<Hyprlang::FLOAT>(props.at("eye_size"));
+        password.eye.placement   = std::any_cast<Hyprlang::STRING>(props.at("eye_placement"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -77,11 +79,14 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         RASSERT(false, "Missing property for CPasswordInputField: {}", e.what()); //
     }
 
+    Debug::log(LOG, "allow toggle: {}", password.text.size);
+
     configPos       = pos;
     colorState.font = colorConfig.font;
 
     pos                   = posFromHVAlign(viewport, configSize, pos, halign, valign);
-    password.size         = std::clamp(password.size, 0.2f, 0.8f);
+    password.dots.size    = std::clamp(password.dots.size, 0.2f, 0.8f);
+    password.text.size    = std::clamp(password.text.size, 0.2f, 0.8f);
     password.dots.spacing = std::clamp(password.dots.spacing, -1.f, 1.f);
 
     colorConfig.caps = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
@@ -104,7 +109,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
         request.props["font_family"] = fontFamily;
         request.props["color"]       = colorConfig.font;
-        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
+        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.text.size * 0.5f) * 2.f);
 
         g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
     }
@@ -210,7 +215,7 @@ void CPasswordInputField::updatePassword() {
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
     request.props["font_family"] = fontFamily;
     request.props["color"]       = colorConfig.font;
-    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.size * 0.5f) * 2.f);
+    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.text.size * 0.5f) * 2.f);
     request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
 
     password.text.pendingResourceID = textResourceID;
@@ -345,7 +350,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
                 double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
                 double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
 
-                double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
+                double   xstart = password.text.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
                 if (passSize.x > areaWidth)
                     xstart -= (passSize.x - areaWidth) / 2.0;
                 if (password.eye.placement == "left")
@@ -362,7 +367,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             } else
                 forceReload = true;
         } else {
-            const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * password.size * 0.5f) * 2.f;
+            const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * password.dots.size * 0.5f) * 2.f;
             Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
             int       passSpacing = std::floor(passSize.x * password.dots.spacing);
 
@@ -389,7 +394,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
 
             // Calculate starting x-position to ensure dots stay centered within the input field
-            double xstart = password.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
+            double xstart = password.dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
 
             if (CURRDOTS > MAXDOTS)
                 xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eyeOffset) / 2.0;
@@ -401,7 +406,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             if (password.dots.rounding == -1)
                 password.dots.rounding = passSize.x / 2.0;
             else if (password.dots.rounding == -2)
-                password.dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * password.size;
+                password.dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * password.dots.size;
 
             for (int i = 0; i < CURRDOTS; ++i) {
                 if (i < DOTFLOORED - MAXDOTS)

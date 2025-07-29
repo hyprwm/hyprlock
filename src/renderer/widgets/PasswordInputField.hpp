@@ -2,7 +2,6 @@
 
 #include "IWidget.hpp"
 #include "../../helpers/Color.hpp"
-#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
 #include "../../config/ConfigDataValues.hpp"
@@ -69,12 +68,12 @@ class CPasswordInputField : public IWidget {
     int                      outThick, rounding;
 
     struct {
-        bool  allowToggle = false;
-        bool  center      = false;
-        float size        = 0.25;
-        bool  show        = false;
+        bool allowToggle = false;
+        bool show        = false;
 
         struct {
+            float            size              = 0.25;
+            bool             center            = false;
             std::string      content           = "";
             std::string      resourceID        = "";
             std::string      pendingResourceID = "";
@@ -84,6 +83,8 @@ class CPasswordInputField : public IWidget {
 
         struct {
             PHLANIMVAR<float> currentAmount;
+            float             size       = 0.25;
+            bool              center     = false;
             float             spacing    = 0;
             int               rounding   = 0;
             std::string       format     = "";
