@@ -267,7 +267,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     if (passwordLength != g_pHyprlock->getPasswordBufferDisplayLen() && password.show) {
         g_pRenderer->asyncResourceGatherer->unloadAsset(password.text.asset);
-        password.show = false;
+        password.text.asset = nullptr;
+        password.show       = false;
     }
 
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
