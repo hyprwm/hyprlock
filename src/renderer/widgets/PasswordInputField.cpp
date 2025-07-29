@@ -333,11 +333,35 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         auto   eyeAsset  = password.show ? password.eye.closedAsset : password.eye.openAsset;
         double eyeHeight = (int)(std::nearbyint(configSize.y * password.eye.size * 0.5f) * 2.f);
         auto   eyeSize   = Vector2D{eyeHeight, eyeHeight};
-        if (password.allowToggle && !password.eye.hide) {
+        if (password.allowToggle && !password.eye.hide)
             eyeOffset = eyeSize.x + password.eye.margin;
-        }
 
-        if (!password.show || !password.allowToggle) {
+        if (password.allowToggle && password.show) {
+            if (!password.text.asset)
+                password.text.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.text.resourceID);
+
+            if (password.text.asset) {
+                Vector2D passSize  = password.text.asset->texture.m_vSize;
+                double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
+                double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
+
+                double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
+                if (passSize.x > areaWidth)
+                    xstart -= (passSize.x - areaWidth) / 2.0;
+                if (password.eye.placement == "left")
+                    xstart += eyeOffset;
+
+                Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
+                CBox     box{passwordPosition, passSize};
+
+                glEnable(GL_SCISSOR_TEST);
+                glScissor(inputFieldBox.x + padding + (password.eye.placement == "left" ? eyeOffset : 0), inputFieldBox.y, areaWidth, inputFieldBox.h);
+                g_pRenderer->renderTexture(box, password.text.asset->texture, fontCol.a);
+                glScissor(0, 0, viewport.x, viewport.y);
+                glDisable(GL_SCISSOR_TEST);
+            } else
+                forceReload = true;
+        } else {
             const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * password.size * 0.5f) * 2.f;
             Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
             int       passSpacing = std::floor(passSize.x * password.dots.spacing);
@@ -404,37 +428,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
                 fontCol.a = DOTALPHA;
             }
-        } else if (password.allowToggle) {
-            if (!password.text.asset)
-                password.text.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(password.text.resourceID);
-
-            if (password.text.asset) {
-                Vector2D passSize  = password.text.asset->texture.m_vSize;
-                double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
-                double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
-
-                double   xstart = password.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
-                if (passSize.x > areaWidth) {
-                    xstart -= (passSize.x - areaWidth) / 2.0;
-                }
-                if (password.eye.placement == "left") {
-                    xstart += eyeOffset;
-                }
-
-                Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
-                CBox     box{passwordPosition, passSize};
-
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(inputFieldBox.x + padding + (password.eye.placement == "left" ? eyeOffset : 0), inputFieldBox.y, areaWidth, inputFieldBox.h);
-                g_pRenderer->renderTexture(box, password.text.asset->texture, fontCol.a);
-                glScissor(0, 0, viewport.x, viewport.y);
-                glDisable(GL_SCISSOR_TEST);
-            } else {
-                forceReload = true;
-            }
         }
 
-        if (password.allowToggle && !password.eye.hide && (passwordLength != 0 || checkWaiting)) {
+        if ((passwordLength > 0 || checkWaiting) && password.allowToggle && !password.eye.hide) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
             auto eyePosition = inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
             CBox box         = {eyePosition, eyeSize};
@@ -643,11 +639,10 @@ CBox CPasswordInputField::getEyeBox() {
 void CPasswordInputField::onHover(const Vector2D& pos) {
     CBox eyeBox = getEyeBox();
 
-    if (eyeBox.containsPoint(pos) && password.allowToggle && !password.eye.hide) {
+    if (eyeBox.containsPoint(pos) && password.allowToggle && !password.eye.hide)
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
-    } else {
+    else
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
-    }
 }
 
 bool CPasswordInputField::staticHover() const {
