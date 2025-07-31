@@ -14,6 +14,8 @@ CImage::~CImage() {
 
 void CImage::registerSelf(const ASP<CImage>& self) {
     m_self = self;
+
+    type = "image";
 }
 
 static void onTimer(AWP<CImage> ref) {

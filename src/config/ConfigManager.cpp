@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
-#include <mutex>
 
 using namespace Hyprutils::String;
 using namespace Hyprutils::Animation;
@@ -289,6 +288,13 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "dots_spacing", Hyprlang::FLOAT{0.2});
     m_config.addSpecialConfigValue("input-field", "dots_rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "dots_text_format", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("input-field", "password_size", Hyprlang::FLOAT{0.4});
+    m_config.addSpecialConfigValue("input-field", "password_center", Hyprlang::INT{1});
+    m_config.addSpecialConfigValue("input-field", "toggle_password_visibility", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("input-field", "hide_eye", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("input-field", "eye_margin", Hyprlang::INT{16});
+    m_config.addSpecialConfigValue("input-field", "eye_size", Hyprlang::FLOAT{0.25});
+    m_config.addSpecialConfigValue("input-field", "eye_placement", Hyprlang::STRING{"right"});
     m_config.addSpecialConfigValue("input-field", "fade_on_empty", Hyprlang::INT{1});
     m_config.addSpecialConfigValue("input-field", "fade_timeout", Hyprlang::INT{2000});
     m_config.addSpecialConfigValue("input-field", "font_color", Hyprlang::INT{0xFF000000});
@@ -467,10 +473,17 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"outer_color", m_config.getSpecialConfigValue("input-field", "outer_color", k.c_str())},
                 {"outline_thickness", m_config.getSpecialConfigValue("input-field", "outline_thickness", k.c_str())},
                 {"dots_size", m_config.getSpecialConfigValue("input-field", "dots_size", k.c_str())},
-                {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
                 {"dots_center", m_config.getSpecialConfigValue("input-field", "dots_center", k.c_str())},
+                {"dots_spacing", m_config.getSpecialConfigValue("input-field", "dots_spacing", k.c_str())},
                 {"dots_rounding", m_config.getSpecialConfigValue("input-field", "dots_rounding", k.c_str())},
                 {"dots_text_format", m_config.getSpecialConfigValue("input-field", "dots_text_format", k.c_str())},
+                {"password_size", m_config.getSpecialConfigValue("input-field", "password_size", k.c_str())},
+                {"password_center", m_config.getSpecialConfigValue("input-field", "password_center", k.c_str())},
+                {"toggle_password_visibility", m_config.getSpecialConfigValue("input-field", "toggle_password_visibility", k.c_str())},
+                {"hide_eye", m_config.getSpecialConfigValue("input-field", "hide_eye", k.c_str())},
+                {"eye_margin", m_config.getSpecialConfigValue("input-field", "eye_margin", k.c_str())},
+                {"eye_size", m_config.getSpecialConfigValue("input-field", "eye_size", k.c_str())},
+                {"eye_placement", m_config.getSpecialConfigValue("input-field", "eye_placement", k.c_str())},
                 {"fade_on_empty", m_config.getSpecialConfigValue("input-field", "fade_on_empty", k.c_str())},
                 {"fade_timeout", m_config.getSpecialConfigValue("input-field", "fade_timeout", k.c_str())},
                 {"font_color", m_config.getSpecialConfigValue("input-field", "font_color", k.c_str())},
