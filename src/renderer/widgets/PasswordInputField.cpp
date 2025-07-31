@@ -644,7 +644,7 @@ CBox CPasswordInputField::getEyeBox() {
 void CPasswordInputField::onHover(const Vector2D& pos) {
     CBox eyeBox = getEyeBox();
 
-    if (eyeBox.containsPoint(pos) && password.allowToggle && !password.eye.hide)
+    if (eyeBox.containsPoint(pos) && password.allowToggle && !password.eye.hide && (passwordLength > 0 || checkWaiting))
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
     else
         g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
