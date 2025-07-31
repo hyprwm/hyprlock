@@ -29,7 +29,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int gracePeriod);
+    CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds, const bool greetdLogin, const std::string& sessionDirs);
     ~CHyprlock();
 
     void                       run();
@@ -89,7 +89,7 @@ class CHyprlock {
 
     bool                             m_bImmediateRender = false;
 
-    std::string                      m_sCurrentDesktop = "";
+    bool                             m_greetdLogin = false;
 
     //
     std::chrono::system_clock::time_point m_tGraceEnds;
@@ -117,6 +117,9 @@ class CHyprlock {
         std::vector<SDMABUFModifier>   dmabufMods;
     } dma;
     gbm_device* createGBMDevice(drmDevice* dev);
+
+    std::string m_greetdSessionDirs = "";
+    std::string m_currentDesktop    = "";
 
   private:
     struct {

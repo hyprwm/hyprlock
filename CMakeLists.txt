@@ -72,6 +72,7 @@ find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED COMPONENTS EGL GLES3)
 find_package(hyprwayland-scanner 0.4.4 REQUIRED)
+find_package(glaze REQUIRED)
 pkg_check_modules(
   deps
   REQUIRED
@@ -94,7 +95,7 @@ pkg_check_modules(
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
 target_link_libraries(hyprlock PRIVATE pam rt Threads::Threads PkgConfig::deps
-                                       OpenGL::EGL OpenGL::GLES3)
+                                       OpenGL::EGL OpenGL::GLES3 glaze::glaze)
 
 # protocols
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
@@ -129,7 +130,7 @@ function(protocolWayland)
 endfunction()
 
 make_directory(${CMAKE_SOURCE_DIR}/protocols) # we don't ship any custom ones so
-                                              # the dir won't be there
+# the dir won't be there
 
 protocolwayland()
 
