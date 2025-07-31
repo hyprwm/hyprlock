@@ -6,6 +6,7 @@
 #include "Shadowable.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
+#include "cursor-shape-v1.hpp"
 #include <hyprutils/math/Vector2D.hpp>
 #include <vector>
 #include <any>
@@ -23,6 +24,7 @@ class CPasswordInputField : public IWidget {
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
     virtual void onHover(const Vector2D& pos);
+    virtual void setCursorShape(wpCursorShapeDeviceV1Shape shape);
     virtual bool staticHover() const;
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
     virtual CBox getBoundingBoxWl() const;
@@ -35,37 +37,39 @@ class CPasswordInputField : public IWidget {
     void         togglePassword();
 
   private:
-    AWP<CPasswordInputField> m_self;
+    AWP<CPasswordInputField>   m_self;
 
-    void                     updatePassword();
-    void                     updateEye();
-    void                     updateDots();
-    void                     updateFade();
-    void                     updatePlaceholder();
-    void                     updateWidth();
-    void                     updateHiddenInputState();
-    void                     updateInputState();
-    void                     updateColors();
+    void                       updatePassword();
+    void                       updateEye();
+    void                       updateDots();
+    void                       updateFade();
+    void                       updatePlaceholder();
+    void                       updateWidth();
+    void                       updateHiddenInputState();
+    void                       updateInputState();
+    void                       updateColors();
 
-    CBox                     getEyeBox();
+    CBox                       getEyeBox();
 
-    bool                     firstRender  = true;
-    bool                     redrawShadow = false;
-    bool                     checkWaiting = false;
-    bool                     displayFail  = false;
+    bool                       firstRender  = true;
+    bool                       redrawShadow = false;
+    bool                       checkWaiting = false;
+    bool                       displayFail  = false;
 
-    size_t                   passwordLength = 0;
+    size_t                     passwordLength = 0;
 
-    PHLANIMVAR<Vector2D>     size;
-    Vector2D                 pos;
-    Vector2D                 viewport;
-    Vector2D                 configPos;
-    Vector2D                 configSize;
+    PHLANIMVAR<Vector2D>       size;
+    Vector2D                   pos;
+    Vector2D                   viewport;
+    Vector2D                   configPos;
+    Vector2D                   configSize;
 
-    std::string              halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
-    uint64_t                 configFailTimeoutMs = 2000;
+    std::string                halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
+    uint64_t                   configFailTimeoutMs = 2000;
 
-    int                      outThick, rounding;
+    int                        outThick, rounding;
+
+    wpCursorShapeDeviceV1Shape cursorShape;
 
     struct {
         bool allowToggle = false;

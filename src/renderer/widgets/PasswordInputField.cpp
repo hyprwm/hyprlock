@@ -645,9 +645,18 @@ void CPasswordInputField::onHover(const Vector2D& pos) {
     CBox eyeBox = getEyeBox();
 
     if (eyeBox.containsPoint(pos) && password.allowToggle && !password.eye.hide && (passwordLength > 0 || checkWaiting))
-        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
+        setCursorShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER);
     else
-        g_pSeatManager->m_pCursorShape->setShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+        setCursorShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+}
+
+void CPasswordInputField::setCursorShape(wpCursorShapeDeviceV1Shape shape) {
+    if (cursorShape == shape)
+        return;
+
+    cursorShape = shape;
+
+    g_pSeatManager->m_pCursorShape->setShape(cursorShape);
 }
 
 bool CPasswordInputField::staticHover() const {
