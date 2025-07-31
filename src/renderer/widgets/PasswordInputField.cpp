@@ -463,6 +463,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             glDisable(GL_SCISSOR_TEST);
         } else
             forceReload = true;
+
+        setCursorShape(WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
     }
 
     return redrawShadow || forceReload;
