@@ -86,14 +86,25 @@ pkg_check_modules(
   pangocairo
   libdrm
   gbm
-  pam
   hyprutils>=0.8.0
   sdbus-c++>=2.0.0
   hyprgraphics)
+find_library(PAM_FOUND pam)
+if(PAM_FOUND)
+  message(STATUS "Found pam")
+  set(PAM_LIB ${PAM_FOUND})
+else()
+  pkg_check_modules(PAM IMPORTED_TARGET pam)
+  if(PAM_FOUND)
+    set(PAM_LIB PkgConfig::PAM)
+  else()
+    message(FATAL_ERROR "The required library libpam was not found.")
+  endif()
+endif()
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
-target_link_libraries(hyprlock PRIVATE pam rt Threads::Threads PkgConfig::deps
+target_link_libraries(hyprlock PRIVATE ${PAM_LIB} rt Threads::Threads PkgConfig::deps
                                        OpenGL::EGL OpenGL::GLES3)
 
 # protocols
