@@ -27,7 +27,15 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
         Debug::log(ERR, "Failed to create eventfd: {}", strerror(errno));
 }
 
+CAsyncResourceGatherer::~CAsyncResourceGatherer() {
+    notify();
+    await();
+}
+
 void CAsyncResourceGatherer::enqueueScreencopyFrames() {
+    if (g_pHyprlock->m_vOutputs.empty())
+        return;
+
     static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
 
     const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
