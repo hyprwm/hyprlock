@@ -10,7 +10,6 @@
 #include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
-#include <memory>
 #include <GLES3/gl32.h>
 
 CBackground::CBackground() {
@@ -60,7 +59,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 
     // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
     // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-    if (g_pRenderer->asyncResourceGatherer->gathered && !g_pRenderer->asyncResourceGatherer->getAssetByID(scResourceID)) {
+    if (g_pAsyncResourceGatherer->gathered && !g_pAsyncResourceGatherer->getAssetByID(scResourceID)) {
         Debug::log(LOG, "Missing screenshot for output {}", outputPort);
         scResourceID = "";
     }
@@ -98,7 +97,7 @@ void CBackground::updatePrimaryAsset() {
     if (asset || resourceID.empty())
         return;
 
-    asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
+    asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
     if (!asset)
         return;
 
@@ -121,7 +120,7 @@ void CBackground::updateScAsset() {
         return;
 
     // path=screenshot -> scAsset = asset
-    scAsset = (asset && isScreenshot) ? asset : g_pRenderer->asyncResourceGatherer->getAssetByID(scResourceID);
+    scAsset = (asset && isScreenshot) ? asset : g_pAsyncResourceGatherer->getAssetByID(scResourceID);
     if (!scAsset)
         return;
 
@@ -221,7 +220,7 @@ bool CBackground::draw(const SRenderData& data) {
     updateScAsset();
 
     if (asset && asset->texture.m_iType == TEXTURE_INVALID) {
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        g_pAsyncResourceGatherer->unloadAsset(asset);
         resourceID = "";
         renderRect(color);
         return false;
@@ -307,14 +306,14 @@ void CBackground::onReloadTimerUpdate() {
 
     request.callback = [REF = m_self]() { onAssetCallback(REF); };
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CBackground::startCrossFade() {
-    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
         if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-            g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
+            g_pAsyncResourceGatherer->unloadAsset(newAsset);
             Debug::log(ERR, "New asset had an invalid texture!");
             pendingResourceID = "";
         } else if (resourceID != pendingResourceID) {
@@ -327,7 +326,7 @@ void CBackground::startCrossFade() {
                     if (const auto PSELF = REF.lock()) {
                         PSELF->asset        = PSELF->pendingAsset;
                         PSELF->pendingAsset = nullptr;
-                        g_pRenderer->asyncResourceGatherer->unloadAsset(PSELF->pendingAsset);
+                        g_pAsyncResourceGatherer->unloadAsset(PSELF->pendingAsset);
                         PSELF->resourceID        = PSELF->pendingResourceID;
                         PSELF->pendingResourceID = "";
 

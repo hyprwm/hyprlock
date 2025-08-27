@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
+#include "../renderer/AsyncResourceGatherer.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
@@ -307,6 +308,16 @@ void CHyprlock::run() {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
             m_vOutputs.erase(outputIt);
         }
+
+        // TODO: Recreating the rendering context like this fixes an issue with nvidia graphics when reconnecting monitors.
+        // It only happens when there are no monitors left.
+        // This is either an nvidia bug (i think in egl-wayland) or we are can fix it in another way in which case this should be removed!
+        if (m_vOutputs.empty()) {
+            g_pEGL.reset();
+            g_pRenderer.reset();
+            g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
+            g_pRenderer = makeUnique<CRenderer>();
+        }
     });
 
     wl_display_roundtrip(m_sWaylandState.display);
@@ -319,8 +330,9 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer = makeUnique<CRenderer>();
-    g_pAuth     = makeUnique<CAuth>();
+    g_pRenderer              = makeUnique<CRenderer>();
+    g_pAsyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
+    g_pAuth                  = makeUnique<CAuth>();
     g_pAuth->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
@@ -339,16 +351,16 @@ void CHyprlock::run() {
             .events = POLLIN,
         };
 
-        if (g_pRenderer->asyncResourceGatherer->gatheredEventfd.isValid()) {
+        if (g_pAsyncResourceGatherer->gatheredEventfd.isValid()) {
             pollfds[1] = {
-                .fd     = g_pRenderer->asyncResourceGatherer->gatheredEventfd.get(),
+                .fd     = g_pAsyncResourceGatherer->gatheredEventfd.get(),
                 .events = POLLIN,
             };
 
             fdcount++;
         }
 
-        while (!g_pRenderer->asyncResourceGatherer->gathered) {
+        while (!g_pAsyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
                 if (poll(pollfds, fdcount, /* 100ms timeout */ 100) < 0) {
@@ -377,8 +389,6 @@ void CHyprlock::run() {
     if (!acquireSessionLock()) {
         m_sLoopState.timerEvent = true;
         m_sLoopState.timerCV.notify_all();
-        g_pRenderer->asyncResourceGatherer->notify();
-        g_pRenderer->asyncResourceGatherer->await();
         g_pAuth->terminate();
         exit(1);
     }
@@ -516,15 +526,14 @@ void CHyprlock::run() {
 
     m_sLoopState.timerEvent = true;
     m_sLoopState.timerCV.notify_all();
-    g_pRenderer->asyncResourceGatherer->notify();
-    g_pRenderer->asyncResourceGatherer->await();
     m_sWaylandState = {};
     dma             = {};
 
     m_vOutputs.clear();
-    g_pEGL.reset();
-    g_pRenderer.reset();
     g_pSeatManager.reset();
+    g_pAsyncResourceGatherer.reset();
+    g_pRenderer.reset();
+    g_pEGL.reset();
 
     wl_display_disconnect(DPY);
 

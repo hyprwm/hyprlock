@@ -65,7 +65,7 @@ void CImage::onTimerUpdate() {
     request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
     request.callback  = [REF = m_self]() { onAssetCallback(REF); };
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CImage::plantTimer() {
@@ -128,7 +128,7 @@ void CImage::reset() {
     imageFB.destroyBuffer();
 
     if (asset && reloadTime > -1) // Don't unload asset if it's a static image
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        g_pAsyncResourceGatherer->unloadAsset(asset);
 
     asset             = nullptr;
     pendingResourceID = "";
@@ -141,13 +141,13 @@ bool CImage::draw(const SRenderData& data) {
         return false;
 
     if (!asset)
-        asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
+        asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
 
     if (!asset)
         return true;
 
     if (asset->texture.m_iType == TEXTURE_INVALID) {
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        g_pAsyncResourceGatherer->unloadAsset(asset);
         resourceID = "";
         return false;
     }
@@ -211,12 +211,12 @@ bool CImage::draw(const SRenderData& data) {
 }
 
 void CImage::renderUpdate() {
-    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
         if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-            g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
+            g_pAsyncResourceGatherer->unloadAsset(newAsset);
         } else if (resourceID != pendingResourceID) {
-            g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+            g_pAsyncResourceGatherer->unloadAsset(asset);
             imageFB.destroyBuffer();
 
             asset       = newAsset;
