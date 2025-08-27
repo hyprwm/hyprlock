@@ -102,9 +102,10 @@ void CBackground::updatePrimaryAsset() {
     if (!asset)
         return;
 
-    const bool NEEDFB = (isScreenshot || blurPasses > 0 || asset->texture.m_vSize != viewport) && (!blurredFB->isAllocated() || firstRender);
+    const bool NEEDFB =
+        (isScreenshot || blurPasses > 0 || asset->texture.m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
     if (NEEDFB)
-        renderToFB(asset->texture, *blurredFB, blurPasses);
+        renderToFB(asset->texture, *blurredFB, blurPasses, isScreenshot);
 }
 
 void CBackground::updatePendingAsset() {
@@ -251,7 +252,7 @@ bool CBackground::draw(const SRenderData& data) {
         const auto& PENDINGTEX = getPendingAssetTex();
         g_pRenderer->renderTextureMix(TEXBOX, TEX, PENDINGTEX, 1.0, crossFadeProgress->value(), 0);
     } else
-        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0);
 
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
 }
