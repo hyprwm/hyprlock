@@ -238,6 +238,18 @@ void CHyprlock::addDmabufListener() {
     });
 }
 
+void CHyprlock::removeDmabufListener() {
+    if (dma.linuxDmabufFeedback) {
+        dma.linuxDmabufFeedback->sendDestroy();
+        dma.linuxDmabufFeedback.reset();
+    }
+
+    if (dma.linuxDmabuf) {
+        dma.linuxDmabuf->sendDestroy();
+        dma.linuxDmabuf.reset();
+    }
+}
+
 void CHyprlock::run() {
     m_sWaylandState.registry = makeShared<CCWlRegistry>((wl_proxy*)wl_display_get_registry(m_sWaylandState.display));
     m_sWaylandState.registry->setGlobal([this](CCWlRegistry* r, uint32_t name, const char* interface, uint32_t version) {
