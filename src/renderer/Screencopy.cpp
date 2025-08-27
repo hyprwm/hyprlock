@@ -80,9 +80,19 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
     if (!glEGLImageTargetTexture2DOES) {
         glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
         if (!glEGLImageTargetTexture2DOES) {
-            Debug::log(ERR, "No glEGLImageTargetTexture2DOES??");
+            Debug::log(ERR, "[sc] No glEGLImageTargetTexture2DOES??");
             return;
         }
+    }
+
+    if (!g_pHyprlock->dma.linuxDmabuf) {
+        Debug::log(ERR, "[sc] No DMABUF support?");
+        return;
+    }
+
+    if (!g_pHyprlock->dma.gbmDevice) {
+        Debug::log(ERR, "[sc] No gbmDevice for DMABUF was created?");
+        return;
     }
 
     if (!eglQueryDmaBufModifiersEXT)

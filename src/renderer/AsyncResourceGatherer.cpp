@@ -124,9 +124,14 @@ void CAsyncResourceGatherer::gather() {
         }
     }
 
+    // TODO: Wake this thread when all scframes are done instead of busy waiting.
     while (!g_pHyprlock->m_bTerminate && std::ranges::any_of(scframes, [](const auto& d) { return !d->m_asset.ready; })) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
+    // We are done with screencopy.
+    Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
+    g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->removeDmabufListener(); }, nullptr);
 
     gathered = true;
     // wake hyprlock from poll
