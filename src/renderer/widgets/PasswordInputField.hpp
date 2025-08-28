@@ -2,11 +2,11 @@
 
 #include "IWidget.hpp"
 #include "../../helpers/Color.hpp"
-#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
+#include "cursor-shape-v1.hpp"
 #include <hyprutils/math/Vector2D.hpp>
 #include <vector>
 #include <any>
@@ -24,50 +24,90 @@ class CPasswordInputField : public IWidget {
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
     virtual void onHover(const Vector2D& pos);
+    virtual void setCursorShape(wpCursorShapeDeviceV1Shape shape);
+    virtual bool staticHover() const;
+    virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
     virtual CBox getBoundingBoxWl() const;
 
     void         reset();
     void         onFadeOutTimer();
 
+    void         renderPasswordUpdate();
+
+    void         togglePassword();
+
   private:
-    AWP<CPasswordInputField> m_self;
+    AWP<CPasswordInputField>   m_self;
 
-    void                     updateDots();
-    void                     updateFade();
-    void                     updatePlaceholder();
-    void                     updateWidth();
-    void                     updateHiddenInputState();
-    void                     updateInputState();
-    void                     updateColors();
+    void                       updatePassword();
+    void                       updateEye();
+    void                       updateDots();
+    void                       updateFade();
+    void                       updatePlaceholder();
+    void                       updateWidth();
+    void                       updateHiddenInputState();
+    void                       updateInputState();
+    void                       updateColors();
 
-    bool                     firstRender  = true;
-    bool                     redrawShadow = false;
-    bool                     checkWaiting = false;
-    bool                     displayFail  = false;
+    CBox                       getEyeBox();
 
-    size_t                   passwordLength = 0;
+    bool                       firstRender  = true;
+    bool                       redrawShadow = false;
+    bool                       checkWaiting = false;
+    bool                       displayFail  = false;
 
-    PHLANIMVAR<Vector2D>     size;
-    Vector2D                 pos;
-    Vector2D                 viewport;
-    Vector2D                 configPos;
-    Vector2D                 configSize;
+    size_t                     passwordLength = 0;
 
-    std::string              halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
-    uint64_t                 configFailTimeoutMs = 2000;
+    PHLANIMVAR<Vector2D>       size;
+    Vector2D                   pos;
+    Vector2D                   viewport;
+    Vector2D                   configPos;
+    Vector2D                   configSize;
 
-    int                      outThick, rounding;
+    std::string                halign, valign, configFailText, outputStringPort, configPlaceholderText, fontFamily;
+    uint64_t                   configFailTimeoutMs = 2000;
+
+    int                        outThick, rounding;
+
+    wpCursorShapeDeviceV1Shape cursorShape;
 
     struct {
-        PHLANIMVAR<float> currentAmount;
-        bool              center     = false;
-        float             size       = 0;
-        float             spacing    = 0;
-        int               rounding   = 0;
-        std::string       textFormat = "";
-        std::string       textResourceID;
-        SPreloadedAsset*  textAsset = nullptr;
-    } dots;
+        bool allowToggle = false;
+        bool show        = false;
+
+        struct {
+            float            size              = 0.25;
+            bool             center            = false;
+            std::string      content           = "";
+            std::string      resourceID        = "";
+            std::string      pendingResourceID = "";
+            SPreloadedAsset* asset             = nullptr;
+            SPreloadedAsset* previousAsset     = nullptr;
+        } text;
+
+        struct {
+            PHLANIMVAR<float> currentAmount;
+            float             size       = 0.25;
+            bool              center     = false;
+            float             spacing    = 0;
+            int               rounding   = 0;
+            std::string       format     = "";
+            std::string       resourceID = "";
+            SPreloadedAsset*  asset      = nullptr;
+        } dots;
+
+        struct {
+            int              margin    = 16;
+            double           size      = 0.25;
+            std::string      placement = "right";
+            bool             hide      = false;
+
+            std::string      openRescourceID   = "";
+            SPreloadedAsset* openAsset         = nullptr;
+            std::string      closedRescourceID = "";
+            SPreloadedAsset* closedAsset       = nullptr;
+        } eye;
+    } password;
 
     struct {
         PHLANIMVAR<float> a;

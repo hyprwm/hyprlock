@@ -3,6 +3,7 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
+#include "../renderer/widgets/PasswordInputField.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
@@ -698,6 +699,17 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
                 m_sPasswordState.passBuffer.pop_back();
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
+    } else if (SYM == XKB_KEY_Tab) {
+        for (auto& o : m_vOutputs) {
+            const auto widgets = g_pRenderer->getOrCreateWidgetsFor(*o->m_sessionLockSurface);
+
+            for (auto& w : widgets) {
+                if (w->type == "password-input") {
+                    auto password_field = reinterpret_cast<CPasswordInputField*>(w.get());
+                    password_field->togglePassword();
+                }
+            }
+        }
     } else if (SYM == XKB_KEY_Caps_Lock) {
         m_bCapsLock = !m_bCapsLock;
     } else if (SYM == XKB_KEY_Num_Lock) {
@@ -745,10 +757,10 @@ void CHyprlock::onHover(const Vector2D& pos) {
     const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
     for (const auto& widget : widgets) {
         const bool CONTAINSPOINT = widget->containsPoint(SCALEDPOS);
-        const bool HOVERED       = widget->isHovered();
+        const bool SHOULDHOVER   = !widget->staticHover() || !widget->isHovered();
 
         if (CONTAINSPOINT) {
-            if (!HOVERED) {
+            if (SHOULDHOVER) {
                 widget->setHover(true);
                 widget->onHover(pos);
                 outputNeedsRedraw = true;
@@ -757,7 +769,7 @@ void CHyprlock::onHover(const Vector2D& pos) {
             if (!cursorChanged)
                 cursorChanged = true;
 
-        } else if (HOVERED) {
+        } else if (widget->isHovered()) {
             widget->setHover(false);
             outputNeedsRedraw = true;
         }
@@ -884,6 +896,10 @@ SP<CCWpViewporter> CHyprlock::getViewporter() {
 
 size_t CHyprlock::getPasswordBufferLen() {
     return m_sPasswordState.passBuffer.length();
+}
+
+std::string& CHyprlock::getPasswordBuffer() {
+    return m_sPasswordState.passBuffer;
 }
 
 size_t CHyprlock::getPasswordBufferDisplayLen() {
