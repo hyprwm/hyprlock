@@ -54,7 +54,7 @@ void CLabel::onTimerUpdate() {
 
     request.callback = [REF = m_self]() { onAssetCallback(REF); };
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CLabel::plantTimer() {
@@ -109,7 +109,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 
     pos = configPos; // Label size not known yet
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 
     plantTimer();
 }
@@ -124,7 +124,7 @@ void CLabel::reset() {
         return;
 
     if (asset)
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        g_pAsyncResourceGatherer->unloadAsset(asset);
 
     asset = nullptr;
     pendingResourceID.clear();
@@ -133,7 +133,7 @@ void CLabel::reset() {
 
 bool CLabel::draw(const SRenderData& data) {
     if (!asset) {
-        asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
+        asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
 
         if (!asset)
             return true;
@@ -157,10 +157,10 @@ bool CLabel::draw(const SRenderData& data) {
 }
 
 void CLabel::renderUpdate() {
-    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
         // new asset is ready :D
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        g_pAsyncResourceGatherer->unloadAsset(asset);
         asset             = newAsset;
         resourceID        = pendingResourceID;
         pendingResourceID = "";

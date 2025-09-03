@@ -25,7 +25,7 @@ inline const float fullVerts[] = {
     0, 1, // bottom left
 };
 
-GLuint compileShader(const GLuint& type, std::string src) {
+static GLuint compileShader(const GLuint& type, std::string src) {
     auto shader = glCreateShader(type);
 
     auto shaderSource = src.c_str();
@@ -41,7 +41,7 @@ GLuint compileShader(const GLuint& type, std::string src) {
     return shader;
 }
 
-GLuint createProgram(const std::string& vert, const std::string& frag) {
+static GLuint createProgram(const std::string& vert, const std::string& frag) {
     auto vertCompiled = compileShader(GL_VERTEX_SHADER, vert);
 
     RASSERT(vertCompiled, "Compiling shader failed. VERTEX NULL! Shader source:\n\n{}", vert);
@@ -194,8 +194,6 @@ CRenderer::CRenderer() {
     borderShader.gradientLerp          = glGetUniformLocation(prog, "gradientLerp");
     borderShader.alpha                 = glGetUniformLocation(prog, "alpha");
 
-    asyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
-
     g_pAnimationManager->createAnimation(0.f, opacity, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 }
 
@@ -217,7 +215,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
-    const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !asyncResourceGatherer->gathered;
+    const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !g_pAsyncResourceGatherer->gathered;
 
     if (!WAITFORASSETS) {
         // render widgets
@@ -227,7 +225,7 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
         }
     }
 
-    feedback.needsFrame = feedback.needsFrame || !asyncResourceGatherer->gathered;
+    feedback.needsFrame = feedback.needsFrame || !g_pAsyncResourceGatherer->gathered;
 
     glDisable(GL_BLEND);
 
