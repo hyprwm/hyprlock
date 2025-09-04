@@ -17,6 +17,8 @@ class CEGL {
     PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC eglCreatePlatformWindowSurfaceEXT;
 
     void                                     makeCurrent(EGLSurface surf);
+
+    bool                                     m_isNvidia = false;
 };
 
 inline UP<CEGL> g_pEGL;

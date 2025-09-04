@@ -1,5 +1,4 @@
 #include "hyprlock.hpp"
-#include "AnimationManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
@@ -18,8 +17,6 @@
 #include <cassert>
 #include <cstring>
 #include <xf86drm.h>
-#include <filesystem>
-#include <fstream>
 #include <algorithm>
 #include <sdbus-c++/sdbus-c++.h>
 #include <hyprutils/os/Process.hpp>
@@ -307,6 +304,18 @@ void CHyprlock::run() {
         if (outputIt != m_vOutputs.end()) {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
             m_vOutputs.erase(outputIt);
+        }
+
+        // TODO: Recreating the rendering context like this fixes an issue with nvidia graphics when reconnecting monitors.
+        // It only happens when there are no monitors left.
+        // This is either an nvidia bug (probably egl-wayland) or it is a hyprlock bug. In any case, the goal is to remove this at some point!
+        if (g_pEGL->m_isNvidia && m_vOutputs.empty()) {
+            Debug::log(LOG, "NVIDIA Workaround: destroying rendering context to avoid crash on reconnect!");
+
+            g_pEGL.reset();
+            g_pRenderer.reset();
+            g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
+            g_pRenderer = makeUnique<CRenderer>();
         }
     });
 
