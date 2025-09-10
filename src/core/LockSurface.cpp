@@ -15,12 +15,6 @@ CSessionLockSurface::~CSessionLockSurface() {
 
     if (eglWindow)
         wl_egl_window_destroy(eglWindow);
-
-    if (lockSurface)
-        lockSurface->sendDestroy();
-
-    if (surface)
-        surface->sendDestroy();
 }
 
 CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputRef(pOutput), m_outputID(pOutput->m_ID) {
