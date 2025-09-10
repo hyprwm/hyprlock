@@ -6,8 +6,8 @@
 
 class COutput {
   public:
-    COutput()  = default;
-    ~COutput() = default;
+    COutput() = default;
+    ~COutput();
 
     void                    create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t name);
 

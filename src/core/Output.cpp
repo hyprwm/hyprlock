@@ -2,6 +2,11 @@
 #include "../helpers/Log.hpp"
 #include "hyprlock.hpp"
 
+COutput::~COutput() {
+    if (m_wlOutput)
+        m_wlOutput->sendRelease();
+}
+
 void COutput::create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t _name) {
     m_ID       = _name;
     m_wlOutput = pWlOutput;
