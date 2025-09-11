@@ -1,8 +1,8 @@
 #include "hyprlock.hpp"
-#include "AnimationManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
+#include "../renderer/AsyncResourceGatherer.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
@@ -17,8 +17,6 @@
 #include <cassert>
 #include <cstring>
 #include <xf86drm.h>
-#include <filesystem>
-#include <fstream>
 #include <algorithm>
 #include <sdbus-c++/sdbus-c++.h>
 #include <hyprutils/os/Process.hpp>
@@ -238,6 +236,18 @@ void CHyprlock::addDmabufListener() {
     });
 }
 
+void CHyprlock::removeDmabufListener() {
+    if (dma.linuxDmabufFeedback) {
+        dma.linuxDmabufFeedback->sendDestroy();
+        dma.linuxDmabufFeedback.reset();
+    }
+
+    if (dma.linuxDmabuf) {
+        dma.linuxDmabuf->sendDestroy();
+        dma.linuxDmabuf.reset();
+    }
+}
+
 void CHyprlock::run() {
     m_sWaylandState.registry = makeShared<CCWlRegistry>((wl_proxy*)wl_display_get_registry(m_sWaylandState.display));
     m_sWaylandState.registry->setGlobal([this](CCWlRegistry* r, uint32_t name, const char* interface, uint32_t version) {
@@ -295,6 +305,18 @@ void CHyprlock::run() {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
             m_vOutputs.erase(outputIt);
         }
+
+        // TODO: Recreating the rendering context like this fixes an issue with nvidia graphics when reconnecting monitors.
+        // It only happens when there are no monitors left.
+        // This is either an nvidia bug (probably egl-wayland) or it is a hyprlock bug. In any case, the goal is to remove this at some point!
+        if (g_pEGL->m_isNvidia && m_vOutputs.empty()) {
+            Debug::log(LOG, "NVIDIA Workaround: destroying rendering context to avoid crash on reconnect!");
+
+            g_pEGL.reset();
+            g_pRenderer.reset();
+            g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
+            g_pRenderer = makeUnique<CRenderer>();
+        }
     });
 
     wl_display_roundtrip(m_sWaylandState.display);
@@ -307,8 +329,9 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer = makeUnique<CRenderer>();
-    g_pAuth     = makeUnique<CAuth>();
+    g_pRenderer              = makeUnique<CRenderer>();
+    g_pAsyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
+    g_pAuth                  = makeUnique<CAuth>();
     g_pAuth->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
@@ -327,16 +350,16 @@ void CHyprlock::run() {
             .events = POLLIN,
         };
 
-        if (g_pRenderer->asyncResourceGatherer->gatheredEventfd.isValid()) {
+        if (g_pAsyncResourceGatherer->gatheredEventfd.isValid()) {
             pollfds[1] = {
-                .fd     = g_pRenderer->asyncResourceGatherer->gatheredEventfd.get(),
+                .fd     = g_pAsyncResourceGatherer->gatheredEventfd.get(),
                 .events = POLLIN,
             };
 
             fdcount++;
         }
 
-        while (!g_pRenderer->asyncResourceGatherer->gathered) {
+        while (!g_pAsyncResourceGatherer->gathered) {
             wl_display_flush(m_sWaylandState.display);
             if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
                 if (poll(pollfds, fdcount, /* 100ms timeout */ 100) < 0) {
@@ -365,8 +388,6 @@ void CHyprlock::run() {
     if (!acquireSessionLock()) {
         m_sLoopState.timerEvent = true;
         m_sLoopState.timerCV.notify_all();
-        g_pRenderer->asyncResourceGatherer->notify();
-        g_pRenderer->asyncResourceGatherer->await();
         g_pAuth->terminate();
         exit(1);
     }
@@ -504,15 +525,14 @@ void CHyprlock::run() {
 
     m_sLoopState.timerEvent = true;
     m_sLoopState.timerCV.notify_all();
-    g_pRenderer->asyncResourceGatherer->notify();
-    g_pRenderer->asyncResourceGatherer->await();
     m_sWaylandState = {};
     dma             = {};
 
     m_vOutputs.clear();
-    g_pEGL.reset();
-    g_pRenderer.reset();
     g_pSeatManager.reset();
+    g_pAsyncResourceGatherer.reset();
+    g_pRenderer.reset();
+    g_pEGL.reset();
 
     wl_display_disconnect(DPY);
 
@@ -664,7 +684,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     const auto SYM = sym;
 
-    if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace))) {
+    if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_a))) {
         Debug::log(LOG, "Clearing password buffer");
 
         m_sPasswordState.passBuffer = "";
@@ -701,6 +721,9 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
 }
 
 void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
+    if (!down)
+        return;
+
     if (!m_focusedOutput.lock())
         return;
 

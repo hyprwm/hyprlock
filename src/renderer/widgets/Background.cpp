@@ -10,12 +10,12 @@
 #include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
-#include <memory>
 #include <GLES3/gl32.h>
 
 CBackground::CBackground() {
     blurredFB        = makeUnique<CFramebuffer>();
     pendingBlurredFB = makeUnique<CFramebuffer>();
+    transformedScFB  = makeUnique<CFramebuffer>();
 }
 
 CBackground::~CBackground() {
@@ -52,25 +52,25 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 
     viewport     = pOutput->getViewport();
     outputPort   = pOutput->stringPort;
-    transform    = isScreenshot ? wlTransformToHyprutils(invertTransform(pOutput->transform)) : HYPRUTILS_TRANSFORM_NORMAL;
+    transform    = wlTransformToHyprutils(invertTransform(pOutput->transform));
     scResourceID = CScreencopyFrame::getResourceId(pOutput);
 
     g_pAnimationManager->createAnimation(0.f, crossFadeProgress, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 
+    // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
+    // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
+    if (g_pAsyncResourceGatherer->gathered && !g_pAsyncResourceGatherer->getAssetByID(scResourceID)) {
+        Debug::log(LOG, "Missing screenshot for output {}", outputPort);
+        scResourceID = "";
+    }
+
     if (isScreenshot) {
-        resourceID = scResourceID;
-        // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
-        // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-        if (g_pRenderer->asyncResourceGatherer->gathered) {
-            if (!g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID))
-                resourceID = ""; // Fallback to solid color (background:color)
-        }
+        resourceID = scResourceID; // Fallback to solid background:color when scResourceID==""
 
         if (!g_pHyprlock->getScreencopy()) {
             Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
             resourceID = "";
         }
-
     } else if (!path.empty())
         resourceID = "background:" + path;
 
@@ -93,6 +93,58 @@ void CBackground::reset() {
     pendingBlurredFB->destroyBuffer();
 }
 
+void CBackground::updatePrimaryAsset() {
+    if (asset || resourceID.empty())
+        return;
+
+    asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
+    if (!asset)
+        return;
+
+    const bool NEEDFB =
+        (isScreenshot || blurPasses > 0 || asset->texture.m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
+    if (NEEDFB)
+        renderToFB(asset->texture, *blurredFB, blurPasses, isScreenshot);
+}
+
+void CBackground::updatePendingAsset() {
+    // For crossfading a new asset
+    if (!pendingAsset || blurPasses == 0 || pendingBlurredFB->isAllocated())
+        return;
+
+    renderToFB(pendingAsset->texture, *pendingBlurredFB, blurPasses);
+}
+
+void CBackground::updateScAsset() {
+    if (scAsset || scResourceID.empty())
+        return;
+
+    // path=screenshot -> scAsset = asset
+    scAsset = (asset && isScreenshot) ? asset : g_pAsyncResourceGatherer->getAssetByID(scResourceID);
+    if (!scAsset)
+        return;
+
+    const bool NEEDSCTRANSFORM = transform != HYPRUTILS_TRANSFORM_NORMAL;
+    if (NEEDSCTRANSFORM)
+        renderToFB(scAsset->texture, *transformedScFB, 0, true);
+}
+
+const CTexture& CBackground::getPrimaryAssetTex() const {
+    // This case is only for background:path=screenshot with blurPasses=0
+    if (isScreenshot && blurPasses == 0 && transformedScFB->isAllocated())
+        return transformedScFB->m_cTex;
+
+    return (blurredFB->isAllocated()) ? blurredFB->m_cTex : asset->texture;
+}
+
+const CTexture& CBackground::getPendingAssetTex() const {
+    return (pendingBlurredFB->isAllocated()) ? pendingBlurredFB->m_cTex : pendingAsset->texture;
+}
+
+const CTexture& CBackground::getScAssetTex() const {
+    return (transformedScFB->isAllocated()) ? transformedScFB->m_cTex : scAsset->texture;
+}
+
 void CBackground::renderRect(CHyprColor color) {
     CBox monbox = {0, 0, viewport.x, viewport.y};
     g_pRenderer->renderRect(monbox, color, 0);
@@ -110,17 +162,7 @@ static void onAssetCallback(AWP<CBackground> ref) {
         PBG->startCrossFade();
 }
 
-void CBackground::renderBlur(const CTexture& tex, CFramebuffer& fb) {
-    if (firstRender)
-        firstRender = false;
-
-    // make it brah
-    Vector2D size = asset->texture.m_vSize;
-    if (transform % 2 == 1 && isScreenshot) {
-        size.x = asset->texture.m_vSize.y;
-        size.y = asset->texture.m_vSize.x;
-    }
-
+static CBox getScaledBoxForTextureSize(const Vector2D& size, const Vector2D& viewport) {
     CBox  texbox = {{}, size};
 
     float scaleX = viewport.x / size.x;
@@ -135,57 +177,61 @@ void CBackground::renderBlur(const CTexture& tex, CFramebuffer& fb) {
         texbox.x = -(texbox.w - viewport.x) / 2.f;
     texbox.round();
 
+    return texbox;
+}
+
+void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, bool applyTransform) {
+    if (firstRender)
+        firstRender = false;
+
+    // make it brah
+    Vector2D size = tex.m_vSize;
+    if (applyTransform && transform % 2 == 1) {
+        size.x = tex.m_vSize.y;
+        size.y = tex.m_vSize.x;
+    }
+
+    const auto TEXBOX = getScaledBoxForTextureSize(size, viewport);
+
     if (!fb.isAllocated())
         fb.alloc(viewport.x, viewport.y); // TODO 10 bit
 
     fb.bind();
 
-    g_pRenderer->renderTexture(texbox, tex, 1.0, 0, transform);
+    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, applyTransform ? transform : HYPRUTILS_TRANSFORM_NORMAL);
 
     if (blurPasses > 0)
         g_pRenderer->blurFB(fb,
-                            CRenderer::SBlurParams{.size              = blurSize,
-                                                   .passes            = blurPasses,
-                                                   .noise             = noise,
-                                                   .contrast          = contrast,
-                                                   .brightness        = brightness,
-                                                   .vibrancy          = vibrancy,
-                                                   .vibrancy_darkness = vibrancy_darkness});
+                            CRenderer::SBlurParams{
+                                .size              = blurSize,
+                                .passes            = passes,
+                                .noise             = noise,
+                                .contrast          = contrast,
+                                .brightness        = brightness,
+                                .vibrancy          = vibrancy,
+                                .vibrancy_darkness = vibrancy_darkness,
+                            });
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
-static CBox getScaledBoxForTexture(const CTexture& tex, const Vector2D& viewport) {
-    CBox     texbox = {{}, tex.m_vSize};
-
-    Vector2D size   = tex.m_vSize;
-    float    scaleX = viewport.x / tex.m_vSize.x;
-    float    scaleY = viewport.y / tex.m_vSize.y;
-
-    texbox.w *= std::max(scaleX, scaleY);
-    texbox.h *= std::max(scaleX, scaleY);
-
-    if (scaleX > scaleY)
-        texbox.y = -(texbox.h - viewport.y) / 2.f;
-    else
-        texbox.x = -(texbox.w - viewport.x) / 2.f;
-    texbox.round();
-
-    return texbox;
-}
-
 bool CBackground::draw(const SRenderData& data) {
-    if (!asset && !resourceID.empty())
-        asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
+    updatePrimaryAsset();
+    updatePendingAsset();
+    updateScAsset();
 
-    // path=screenshot -> scAsset = asset
-    if (!scAsset)
-        scAsset = (asset && isScreenshot) ? asset : g_pRenderer->asyncResourceGatherer->getAssetByID(scResourceID);
+    if (asset && asset->texture.m_iType == TEXTURE_INVALID) {
+        g_pAsyncResourceGatherer->unloadAsset(asset);
+        resourceID = "";
+        renderRect(color);
+        return false;
+    }
 
     if (!asset || resourceID.empty()) {
         // fade in/out with a solid color
         if (data.opacity < 1.0 && scAsset) {
-            const auto SCTEXBOX = getScaledBoxForTexture(scAsset->texture, viewport);
-            g_pRenderer->renderTexture(SCTEXBOX, scAsset->texture, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+            const auto& SCTEX    = getScAssetTex();
+            const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+            g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
             CHyprColor col = color;
             col.a *= data.opacity;
             renderRect(col);
@@ -196,30 +242,16 @@ bool CBackground::draw(const SRenderData& data) {
         return !asset && !resourceID.empty(); // resource not ready
     }
 
-    if (asset->texture.m_iType == TEXTURE_INVALID) {
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
-        resourceID = "";
-        renderRect(color);
-        return false;
-    }
-
-    if (asset && (blurPasses > 0 || isScreenshot) && (!blurredFB->isAllocated() || firstRender))
-        renderBlur(asset->texture, *blurredFB);
-
-    // For crossfading a new asset
-    if (pendingAsset && blurPasses > 0 && !pendingBlurredFB->isAllocated())
-        renderBlur(pendingAsset->texture, *pendingBlurredFB);
-
-    const auto& TEX    = blurredFB->isAllocated() ? blurredFB->m_cTex : asset->texture;
-    const auto  TEXBOX = getScaledBoxForTexture(TEX, viewport);
-
-    if (data.opacity < 1.0 && scAsset)
-        g_pRenderer->renderTextureMix(TEXBOX, scAsset->texture, TEX, 1.0, data.opacity, 0);
-    else if (crossFadeProgress->isBeingAnimated()) {
-        const auto& PENDINGTEX = pendingBlurredFB->isAllocated() ? pendingBlurredFB->m_cTex : pendingAsset->texture;
+    const auto& TEX    = getPrimaryAssetTex();
+    const auto  TEXBOX = getScaledBoxForTextureSize(TEX.m_vSize, viewport);
+    if (data.opacity < 1.0 && scAsset) {
+        const auto& SCTEX = getScAssetTex();
+        g_pRenderer->renderTextureMix(TEXBOX, SCTEX, TEX, 1.0, data.opacity, 0);
+    } else if (crossFadeProgress->isBeingAnimated()) {
+        const auto& PENDINGTEX = getPendingAssetTex();
         g_pRenderer->renderTextureMix(TEXBOX, TEX, PENDINGTEX, 1.0, crossFadeProgress->value(), 0);
     } else
-        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0);
 
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
 }
@@ -274,14 +306,14 @@ void CBackground::onReloadTimerUpdate() {
 
     request.callback = [REF = m_self]() { onAssetCallback(REF); };
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CBackground::startCrossFade() {
-    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
         if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-            g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
+            g_pAsyncResourceGatherer->unloadAsset(newAsset);
             Debug::log(ERR, "New asset had an invalid texture!");
             pendingResourceID = "";
         } else if (resourceID != pendingResourceID) {
@@ -293,7 +325,7 @@ void CBackground::startCrossFade() {
                 [REF = m_self](auto) {
                     if (const auto PSELF = REF.lock()) {
                         if (PSELF->asset)
-                            g_pRenderer->asyncResourceGatherer->unloadAsset(PSELF->asset);
+                            g_pAsyncResourceGatherer->unloadAsset(PSELF->asset);
                         PSELF->asset             = PSELF->pendingAsset;
                         PSELF->pendingAsset      = nullptr;
                         PSELF->resourceID        = PSELF->pendingResourceID;

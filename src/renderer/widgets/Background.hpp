@@ -7,6 +7,7 @@
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
 #include "../AsyncResourceGatherer.hpp"
+#include <cstdint>
 #include <hyprutils/math/Misc.hpp>
 #include <string>
 #include <unordered_map>
@@ -22,20 +23,27 @@ class CBackground : public IWidget {
     CBackground();
     ~CBackground();
 
-    void         registerSelf(const ASP<CBackground>& self);
+    void            registerSelf(const ASP<CBackground>& self);
 
-    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
-    virtual bool draw(const SRenderData& data);
+    virtual void    configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
+    virtual bool    draw(const SRenderData& data);
 
-    void         reset(); // Unload assets, remove timers, etc.
+    void            reset(); // Unload assets, remove timers, etc.
 
-    void         renderRect(CHyprColor color);
+    void            updatePrimaryAsset();
+    void            updatePendingAsset();
+    void            updateScAsset();
 
-    void         renderBlur(const CTexture& text, CFramebuffer& fb);
+    const CTexture& getPrimaryAssetTex() const;
+    const CTexture& getPendingAssetTex() const;
+    const CTexture& getScAssetTex() const;
 
-    void         onReloadTimerUpdate();
-    void         plantReloadTimer();
-    void         startCrossFade();
+    void            renderRect(CHyprColor color);
+    void            renderToFB(const CTexture& text, CFramebuffer& fb, int passes, bool applyTransform = false);
+
+    void            onReloadTimerUpdate();
+    void            plantReloadTimer();
+    void            startCrossFade();
 
   private:
     AWP<CBackground> m_self;
@@ -43,6 +51,7 @@ class CBackground : public IWidget {
     // if needed
     UP<CFramebuffer>                        blurredFB;
     UP<CFramebuffer>                        pendingBlurredFB;
+    UP<CFramebuffer>                        transformedScFB;
 
     int                                     blurSize          = 10;
     int                                     blurPasses        = 3;

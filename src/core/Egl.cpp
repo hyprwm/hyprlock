@@ -38,8 +38,9 @@ CEGL::CEGL(wl_display* display) {
     if (eglCreatePlatformWindowSurfaceEXT == nullptr)
         throw std::runtime_error("Failed to get eglCreatePlatformWindowSurfaceEXT");
 
-    eglDisplay     = eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
-    EGLint matched = 0;
+    const char* vendorString = nullptr;
+    eglDisplay               = eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
+    EGLint matched           = 0;
     if (eglDisplay == EGL_NO_DISPLAY) {
         Debug::log(CRIT, "Failed to create EGL display");
         goto error;
@@ -64,6 +65,9 @@ CEGL::CEGL(wl_display* display) {
         Debug::log(CRIT, "Failed to create EGL context");
         goto error;
     }
+
+    vendorString = eglQueryString(eglDisplay, EGL_VENDOR);
+    m_isNvidia   = (vendorString) ? std::string{vendorString}.contains("NVIDIA") : false;
 
     return;
 

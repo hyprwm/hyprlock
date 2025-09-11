@@ -95,7 +95,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         request.props["color"]       = colorConfig.font;
         request.props["font_size"]   = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
 
-        g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+        g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
     }
 
     // request the inital placeholder asset
@@ -112,7 +112,7 @@ void CPasswordInputField::reset() {
         return;
 
     if (placeholder.asset)
-        g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.asset);
+        g_pAsyncResourceGatherer->unloadAsset(placeholder.asset);
 
     placeholder.asset = nullptr;
     placeholder.resourceID.clear();
@@ -242,7 +242,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         if (!dots.textFormat.empty()) {
             if (!dots.textAsset)
-                dots.textAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(dots.textResourceID);
+                dots.textAsset = g_pAsyncResourceGatherer->getAssetByID(dots.textResourceID);
 
             if (!dots.textAsset)
                 forceReload = true;
@@ -305,7 +305,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         std::shared_ptr<SPreloadedAsset> currAsset = nullptr;
 
         if (!placeholder.asset)
-            placeholder.asset = g_pRenderer->asyncResourceGatherer->getAssetByID(placeholder.resourceID);
+            placeholder.asset = g_pAsyncResourceGatherer->getAssetByID(placeholder.resourceID);
 
         currAsset = placeholder.asset;
 
@@ -330,7 +330,7 @@ void CPasswordInputField::updatePlaceholder() {
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
             std::erase(placeholder.registeredResourceIDs, placeholder.resourceID);
-            g_pRenderer->asyncResourceGatherer->unloadAsset(placeholder.asset);
+            g_pAsyncResourceGatherer->unloadAsset(placeholder.asset);
             placeholder.asset      = nullptr;
             placeholder.resourceID = "";
             redrawShadow           = true;
@@ -379,7 +379,7 @@ void CPasswordInputField::updatePlaceholder() {
         if (const auto SELF = REF.lock(); SELF)
             g_pHyprlock->renderOutput(SELF->outputStringPort);
     };
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CPasswordInputField::updateWidth() {

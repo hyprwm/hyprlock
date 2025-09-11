@@ -14,6 +14,7 @@
 class CAsyncResourceGatherer {
   public:
     CAsyncResourceGatherer();
+    ~CAsyncResourceGatherer();
     std::atomic<bool>              gathered = false;
     Hyprutils::OS::CFileDescriptor gatheredEventfd;
 
@@ -44,10 +45,11 @@ class CAsyncResourceGatherer {
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
     void unloadAsset(std::shared_ptr<SPreloadedAsset> asset);
-    void notify();
-    void await();
 
   private:
+    void        notify();
+    void        await();
+
     std::thread asyncLoopThread;
     std::thread initialGatherThread;
 
@@ -86,3 +88,5 @@ class CAsyncResourceGatherer {
     void                                                              gather();
     void                                                              enqueueScreencopyFrames();
 };
+
+inline UP<CAsyncResourceGatherer> g_pAsyncResourceGatherer;

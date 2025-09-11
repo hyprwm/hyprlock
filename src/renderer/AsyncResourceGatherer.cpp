@@ -27,17 +27,32 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
         Debug::log(ERR, "Failed to create eventfd: {}", strerror(errno));
 }
 
+CAsyncResourceGatherer::~CAsyncResourceGatherer() {
+    notify();
+    await();
+}
+
 void CAsyncResourceGatherer::enqueueScreencopyFrames() {
-    const auto FADEINCFG    = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
-    const auto FADEOUTCFG   = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
+    if (g_pHyprlock->m_vOutputs.empty())
+        return;
+
+    static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
+
+    const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
+    const auto        FADEOUTCFG = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
+
+    const bool        FADENEEDSSC = *ANIMATIONSENABLED &&
+        ((FADEINCFG->pValues && FADEINCFG->pValues->internalEnabled) || // fadeIn or fadeOut enabled
+         (FADEOUTCFG->pValues && FADEOUTCFG->pValues->internalEnabled));
+
     const auto BGSCREENSHOT = std::ranges::any_of(g_pConfigManager->getWidgetConfigs(), [](const auto& w) { //
         return w.type == "background" && std::string{std::any_cast<Hyprlang::STRING>(w.values.at("path"))} == "screenshot";
     });
 
-    // No screenshot background AND no fade in AND no fade out -> we don't need screencopy
-    if (!BGSCREENSHOT && (!FADEINCFG->pValues || !FADEINCFG->pValues->internalEnabled) && //
-        (!FADEOUTCFG->pValues || !FADEOUTCFG->pValues->internalEnabled))
+    if (!BGSCREENSHOT && !FADENEEDSSC) {
+        Debug::log(LOG, "Skipping screencopy");
         return;
+    }
 
     for (const auto& MON : g_pHyprlock->m_vOutputs) {
         scframes.emplace_back(makeUnique<CScreencopyFrame>(MON));
@@ -117,9 +132,14 @@ void CAsyncResourceGatherer::gather() {
         }
     }
 
+    // TODO: Wake this thread when all scframes are done instead of busy waiting.
     while (!g_pHyprlock->m_bTerminate && std::ranges::any_of(scframes, [](const auto& d) { return !d->m_asset->ready; })) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
+    // We are done with screencopy.
+    Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
+    g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->removeDmabufListener(); }, nullptr);
 
     gathered = true;
     // wake hyprlock from poll
