@@ -28,6 +28,7 @@ std::string CScreencopyFrame::getResourceId(SP<COutput> pOutput) {
 }
 
 CScreencopyFrame::CScreencopyFrame(SP<COutput> pOutput) : m_outputRef(pOutput) {
+    m_asset = std::make_shared<SPreloadedAsset>();
     captureOutput();
 
     static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
@@ -191,7 +192,7 @@ bool CSCDMAFrame::onBufferDone() {
     return true;
 }
 
-bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
+bool CSCDMAFrame::onBufferReady(std::shared_ptr<SPreloadedAsset> asset) {
     static constexpr struct {
         EGLAttrib fd;
         EGLAttrib offset;
@@ -245,9 +246,9 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
         return false;
     }
 
-    asset.texture.allocate();
-    asset.texture.m_vSize = {m_w, m_h};
-    glBindTexture(GL_TEXTURE_2D, asset.texture.m_iTexID);
+    asset->texture.allocate();
+    asset->texture.m_vSize = {m_w, m_h};
+    glBindTexture(GL_TEXTURE_2D, asset->texture.m_iTexID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -255,9 +256,9 @@ bool CSCDMAFrame::onBufferReady(SPreloadedAsset& asset) {
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "Got dma frame with size {}", asset.texture.m_vSize);
+    Debug::log(LOG, "Got dma frame with size {}", asset->texture.m_vSize);
 
-    asset.ready = true;
+    asset->ready = true;
 
     return true;
 }
@@ -449,14 +450,14 @@ void CSCSHMFrame::convertBuffer() {
     }
 }
 
-bool CSCSHMFrame::onBufferReady(SPreloadedAsset& asset) {
+bool CSCSHMFrame::onBufferReady(std::shared_ptr<SPreloadedAsset> asset) {
     convertBuffer();
 
-    asset.texture.allocate();
-    asset.texture.m_vSize.x = m_w;
-    asset.texture.m_vSize.y = m_h;
+    asset->texture.allocate();
+    asset->texture.m_vSize.x = m_w;
+    asset->texture.m_vSize.y = m_h;
 
-    glBindTexture(GL_TEXTURE_2D, asset.texture.m_iTexID);
+    glBindTexture(GL_TEXTURE_2D, asset->texture.m_iTexID);
 
     void* buffer = m_convBuffer ? m_convBuffer : m_shmData;
 
@@ -467,9 +468,9 @@ bool CSCSHMFrame::onBufferReady(SPreloadedAsset& asset) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_w, m_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "[sc] [shm] Got screenshot with size {}", asset.texture.m_vSize);
+    Debug::log(LOG, "[sc] [shm] Got screenshot with size {}", asset->texture.m_vSize);
 
-    asset.ready = true;
+    asset->ready = true;
 
     return true;
 }

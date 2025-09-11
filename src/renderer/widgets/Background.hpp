@@ -64,9 +64,9 @@ class CBackground : public IWidget {
     PHLANIMVAR<float>                       crossFadeProgress;
 
     CHyprColor                              color;
-    SPreloadedAsset*                        asset        = nullptr;
-    SPreloadedAsset*                        scAsset      = nullptr;
-    SPreloadedAsset*                        pendingAsset = nullptr;
+    std::shared_ptr<SPreloadedAsset>        asset        = nullptr;
+    std::shared_ptr<SPreloadedAsset>        scAsset      = nullptr;
+    std::shared_ptr<SPreloadedAsset>        pendingAsset = nullptr;
     bool                                    isScreenshot = false;
     bool                                    firstRender  = true;
 

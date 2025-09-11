@@ -64,6 +64,6 @@ class CImage : public IWidget {
 
     std::string                             resourceID;
     std::string                             pendingResourceID; // if reloading image
-    SPreloadedAsset*                        asset = nullptr;
+    std::shared_ptr<SPreloadedAsset>        asset = nullptr;
     CShadowable                             shadow;
 };

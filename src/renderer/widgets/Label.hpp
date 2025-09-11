@@ -47,7 +47,7 @@ class CLabel : public IWidget {
     std::string                             pendingResourceID; // if dynamic label
     std::string                             halign, valign;
     std::string                             onclickCommand;
-    SPreloadedAsset*                        asset = nullptr;
+    std::shared_ptr<SPreloadedAsset>        asset = nullptr;
 
     std::string                             outputStringPort;
 
