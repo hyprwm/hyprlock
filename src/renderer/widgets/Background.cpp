@@ -324,9 +324,10 @@ void CBackground::startCrossFade() {
             crossFadeProgress->setCallbackOnEnd(
                 [REF = m_self](auto) {
                     if (const auto PSELF = REF.lock()) {
-                        PSELF->asset        = PSELF->pendingAsset;
-                        PSELF->pendingAsset = nullptr;
-                        g_pAsyncResourceGatherer->unloadAsset(PSELF->pendingAsset);
+                        if (PSELF->asset)
+                            g_pAsyncResourceGatherer->unloadAsset(PSELF->asset);
+                        PSELF->asset             = PSELF->pendingAsset;
+                        PSELF->pendingAsset      = nullptr;
                         PSELF->resourceID        = PSELF->pendingResourceID;
                         PSELF->pendingResourceID = "";
 

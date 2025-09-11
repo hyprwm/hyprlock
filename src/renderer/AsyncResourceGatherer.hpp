@@ -21,9 +21,9 @@ class CAsyncResourceGatherer {
     std::atomic<float>             progress = 0;
 
     /* only call from ogl thread */
-    SPreloadedAsset* getAssetByID(const std::string& id);
+    std::shared_ptr<SPreloadedAsset> getAssetByID(const std::string& id);
 
-    bool             apply();
+    bool                             apply();
 
     enum eTargetType {
         TARGET_IMAGE = 0,
@@ -44,7 +44,7 @@ class CAsyncResourceGatherer {
     };
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
-    void unloadAsset(SPreloadedAsset* asset);
+    void unloadAsset(std::shared_ptr<SPreloadedAsset> asset);
 
   private:
     void        notify();
@@ -78,15 +78,15 @@ class CAsyncResourceGatherer {
         Vector2D                        size;
     };
 
-    std::vector<UP<CScreencopyFrame>>                scframes;
+    std::vector<UP<CScreencopyFrame>>                                 scframes;
 
-    std::vector<SPreloadTarget>                      preloadTargets;
-    std::mutex                                       preloadTargetsMutex;
+    std::vector<SPreloadTarget>                                       preloadTargets;
+    std::mutex                                                        preloadTargetsMutex;
 
-    std::unordered_map<std::string, SPreloadedAsset> assets;
+    std::unordered_map<std::string, std::shared_ptr<SPreloadedAsset>> assets;
 
-    void                                             gather();
-    void                                             enqueueScreencopyFrames();
+    void                                                              gather();
+    void                                                              enqueueScreencopyFrames();
 };
 
 inline UP<CAsyncResourceGatherer> g_pAsyncResourceGatherer;
