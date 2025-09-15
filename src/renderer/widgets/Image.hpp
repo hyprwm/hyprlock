@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../defines.hpp"
 #include "IWidget.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../helpers/Math.hpp"
@@ -64,6 +65,6 @@ class CImage : public IWidget {
 
     std::string                             resourceID;
     std::string                             pendingResourceID; // if reloading image
-    SPreloadedAsset*                        asset = nullptr;
+    ASP<SPreloadedAsset>                    asset = nullptr;
     CShadowable                             shadow;
 };

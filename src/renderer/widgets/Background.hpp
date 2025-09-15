@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../defines.hpp"
 #include "IWidget.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
 #include "../../helpers/Color.hpp"
@@ -73,9 +74,9 @@ class CBackground : public IWidget {
     PHLANIMVAR<float>                       crossFadeProgress;
 
     CHyprColor                              color;
-    SPreloadedAsset*                        asset        = nullptr;
-    SPreloadedAsset*                        scAsset      = nullptr;
-    SPreloadedAsset*                        pendingAsset = nullptr;
+    ASP<SPreloadedAsset>                    asset        = nullptr;
+    ASP<SPreloadedAsset>                    scAsset      = nullptr;
+    ASP<SPreloadedAsset>                    pendingAsset = nullptr;
     bool                                    isScreenshot = false;
     bool                                    firstRender  = true;
 

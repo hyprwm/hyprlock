@@ -302,7 +302,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     }
 
     if (passwordLength == 0 && !checkWaiting && !placeholder.resourceID.empty()) {
-        SPreloadedAsset* currAsset = nullptr;
+        ASP<SPreloadedAsset> currAsset = nullptr;
 
         if (!placeholder.asset)
             placeholder.asset = g_pAsyncResourceGatherer->getAssetByID(placeholder.resourceID);

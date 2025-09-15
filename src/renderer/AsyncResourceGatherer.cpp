@@ -59,11 +59,11 @@ void CAsyncResourceGatherer::enqueueScreencopyFrames() {
     }
 }
 
-SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
+ASP<SPreloadedAsset> CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     if (id.contains(CScreencopyFrame::RESOURCEIDPREFIX)) {
         for (auto& frame : scframes) {
             if (id == frame->m_resourceID)
-                return frame->m_asset.ready ? &frame->m_asset : nullptr;
+                return frame->m_asset->ready ? frame->m_asset : nullptr;
         }
 
         return nullptr;
@@ -71,13 +71,13 @@ SPreloadedAsset* CAsyncResourceGatherer::getAssetByID(const std::string& id) {
 
     for (auto& a : assets) {
         if (a.first == id)
-            return &a.second;
+            return a.second;
     }
 
     if (apply()) {
         for (auto& a : assets) {
             if (a.first == id)
-                return &a.second;
+                return a.second;
         }
     };
 
@@ -133,7 +133,7 @@ void CAsyncResourceGatherer::gather() {
     }
 
     // TODO: Wake this thread when all scframes are done instead of busy waiting.
-    while (!g_pHyprlock->m_bTerminate && std::ranges::any_of(scframes, [](const auto& d) { return !d->m_asset.ready; })) {
+    while (!g_pHyprlock->m_bTerminate && std::ranges::any_of(scframes, [](const auto& d) { return !d->m_asset->ready; })) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -161,7 +161,10 @@ bool CAsyncResourceGatherer::apply() {
 
     for (auto& t : currentPreloadTargets) {
         if (t.type == TARGET_IMAGE) {
-            const auto           ASSET = &assets[t.id];
+            if (!assets.contains(t.id)) {
+                assets[t.id] = makeAtomicShared<SPreloadedAsset>();
+            }
+            const auto           ASSET = assets[t.id];
 
             const cairo_status_t SURFACESTATUS = (cairo_status_t)t.cairosurface->status();
             const auto           CAIROFORMAT   = cairo_image_surface_get_format(t.cairosurface->cairo());
@@ -362,8 +365,8 @@ void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& req
     asyncLoopState.requestsCV.notify_all();
 }
 
-void CAsyncResourceGatherer::unloadAsset(SPreloadedAsset* asset) {
-    std::erase_if(assets, [asset](const auto& a) { return &a.second == asset; });
+void CAsyncResourceGatherer::unloadAsset(ASP<SPreloadedAsset> asset) {
+    std::erase_if(assets, [asset](const auto& a) { return a.second == asset; });
 }
 
 void CAsyncResourceGatherer::notify() {
