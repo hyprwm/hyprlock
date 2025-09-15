@@ -28,7 +28,7 @@ std::string CScreencopyFrame::getResourceId(SP<COutput> pOutput) {
 }
 
 CScreencopyFrame::CScreencopyFrame(SP<COutput> pOutput) : m_outputRef(pOutput) {
-    m_asset = std::make_shared<SPreloadedAsset>();
+    m_asset = makeAtomicShared<SPreloadedAsset>();
     captureOutput();
 
     static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
@@ -202,7 +202,7 @@ bool CSCDMAFrame::onBufferDone() {
     return true;
 }
 
-bool CSCDMAFrame::onBufferReady(std::shared_ptr<SPreloadedAsset> asset) {
+bool CSCDMAFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
     static constexpr struct {
         EGLAttrib fd;
         EGLAttrib offset;
@@ -460,7 +460,7 @@ void CSCSHMFrame::convertBuffer() {
     }
 }
 
-bool CSCSHMFrame::onBufferReady(std::shared_ptr<SPreloadedAsset> asset) {
+bool CSCSHMFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
     convertBuffer();
 
     asset->texture.allocate();

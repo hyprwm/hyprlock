@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IWidget.hpp"
+#include "../../defines.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
@@ -59,14 +60,14 @@ class CPasswordInputField : public IWidget {
     int                      outThick, rounding;
 
     struct {
-        PHLANIMVAR<float>                currentAmount;
-        bool                             center     = false;
-        float                            size       = 0;
-        float                            spacing    = 0;
-        int                              rounding   = 0;
-        std::string                      textFormat = "";
-        std::string                      textResourceID;
-        std::shared_ptr<SPreloadedAsset> textAsset = nullptr;
+        PHLANIMVAR<float>    currentAmount;
+        bool                 center     = false;
+        float                size       = 0;
+        float                spacing    = 0;
+        int                  rounding   = 0;
+        std::string          textFormat = "";
+        std::string          textResourceID;
+        ASP<SPreloadedAsset> textAsset = nullptr;
     } dots;
 
     struct {
@@ -77,13 +78,13 @@ class CPasswordInputField : public IWidget {
     } fade;
 
     struct {
-        std::string                      resourceID = "";
-        std::shared_ptr<SPreloadedAsset> asset      = nullptr;
+        std::string              resourceID = "";
+        ASP<SPreloadedAsset>     asset      = nullptr;
 
-        std::string                      currentText    = "";
-        size_t                           failedAttempts = 0;
+        std::string              currentText    = "";
+        size_t                   failedAttempts = 0;
 
-        std::vector<std::string>         registeredResourceIDs;
+        std::vector<std::string> registeredResourceIDs;
     } placeholder;
 
     struct {

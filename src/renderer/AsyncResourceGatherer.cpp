@@ -59,7 +59,7 @@ void CAsyncResourceGatherer::enqueueScreencopyFrames() {
     }
 }
 
-std::shared_ptr<SPreloadedAsset> CAsyncResourceGatherer::getAssetByID(const std::string& id) {
+ASP<SPreloadedAsset> CAsyncResourceGatherer::getAssetByID(const std::string& id) {
     if (id.contains(CScreencopyFrame::RESOURCEIDPREFIX)) {
         for (auto& frame : scframes) {
             if (id == frame->m_resourceID)
@@ -162,7 +162,7 @@ bool CAsyncResourceGatherer::apply() {
     for (auto& t : currentPreloadTargets) {
         if (t.type == TARGET_IMAGE) {
             if (!assets.contains(t.id)) {
-                assets[t.id] = std::make_shared<SPreloadedAsset>();
+                assets[t.id] = makeAtomicShared<SPreloadedAsset>();
             }
             const auto           ASSET = assets[t.id];
 
@@ -365,7 +365,7 @@ void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& req
     asyncLoopState.requestsCV.notify_all();
 }
 
-void CAsyncResourceGatherer::unloadAsset(std::shared_ptr<SPreloadedAsset> asset) {
+void CAsyncResourceGatherer::unloadAsset(ASP<SPreloadedAsset> asset) {
     std::erase_if(assets, [asset](const auto& a) { return a.second == asset; });
 }
 

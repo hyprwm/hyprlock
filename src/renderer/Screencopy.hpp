@@ -14,8 +14,8 @@ class ISCFrame {
     ISCFrame()          = default;
     virtual ~ISCFrame() = default;
 
-    virtual bool   onBufferDone()                                        = 0;
-    virtual bool   onBufferReady(std::shared_ptr<SPreloadedAsset> asset) = 0;
+    virtual bool   onBufferDone()                            = 0;
+    virtual bool   onBufferReady(ASP<SPreloadedAsset> asset) = 0;
 
     SP<CCWlBuffer> m_wlBuffer = nullptr;
 };
@@ -28,12 +28,12 @@ class CScreencopyFrame {
     CScreencopyFrame(SP<COutput> pOutput);
     ~CScreencopyFrame() = default;
 
-    void                             captureOutput();
+    void                        captureOutput();
 
-    SP<CCZwlrScreencopyFrameV1>      m_sc = nullptr;
+    SP<CCZwlrScreencopyFrameV1> m_sc = nullptr;
 
-    std::string                      m_resourceID;
-    std::shared_ptr<SPreloadedAsset> m_asset;
+    std::string                 m_resourceID;
+    ASP<SPreloadedAsset>        m_asset;
 
   private:
     WP<COutput>  m_outputRef;
@@ -48,7 +48,7 @@ class CSCDMAFrame : public ISCFrame {
     CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc);
     virtual ~CSCDMAFrame();
 
-    virtual bool onBufferReady(std::shared_ptr<SPreloadedAsset> asset);
+    virtual bool onBufferReady(ASP<SPreloadedAsset> asset);
     virtual bool onBufferDone();
 
   private:
@@ -78,7 +78,7 @@ class CSCSHMFrame : public ISCFrame {
     virtual bool onBufferDone() {
         return m_ok;
     }
-    virtual bool onBufferReady(std::shared_ptr<SPreloadedAsset> asset);
+    virtual bool onBufferReady(ASP<SPreloadedAsset> asset);
     void         convertBuffer();
 
   private:
