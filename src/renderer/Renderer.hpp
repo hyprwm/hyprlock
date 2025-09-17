@@ -47,6 +47,7 @@ class CRenderer {
 
     void                                  startFadeIn();
     void                                  startFadeOut(bool unlock = false);
+    void                                  warpOpacity(float warpOpacity);
     std::vector<ASP<IWidget>>&            getOrCreateWidgetsFor(const CSessionLockSurface& surf);
 
   private:
