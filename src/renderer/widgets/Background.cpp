@@ -7,6 +7,7 @@
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../config/ConfigManager.hpp"
+#include "src/renderer/AsyncResourceGatherer.hpp"
 #include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
@@ -88,6 +89,9 @@ void CBackground::reset() {
         reloadTimer->cancel();
         reloadTimer.reset();
     }
+
+    if (g_pAsyncResourceGatherer && scAsset)
+        g_pAsyncResourceGatherer->unloadAsset(scAsset);
 
     blurredFB->destroyBuffer();
     pendingBlurredFB->destroyBuffer();
