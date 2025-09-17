@@ -617,3 +617,7 @@ void CRenderer::startFadeOut(bool unlock) {
     if (unlock)
         opacity->setCallbackOnEnd([](auto) { g_pHyprlock->releaseSessionLock(); }, true);
 }
+
+void CRenderer::warpOpacity(float newOpacity) {
+    opacity->setValueAndWarp(newOpacity);
+}

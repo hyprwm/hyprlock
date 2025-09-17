@@ -316,6 +316,7 @@ void CHyprlock::run() {
             g_pRenderer.reset();
             g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
             g_pRenderer = makeUnique<CRenderer>();
+            g_pRenderer->warpOpacity(1.0);
         }
     });
 
