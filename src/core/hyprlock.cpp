@@ -3,6 +3,7 @@
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
 #include "../renderer/AsyncResourceGatherer.hpp"
+#include "../renderer/AsyncResourceManager.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
@@ -331,7 +332,8 @@ void CHyprlock::run() {
     wl_display_roundtrip(m_sWaylandState.display);
 
     g_pRenderer              = makeUnique<CRenderer>();
-    g_pAsyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
+    g_pAsyncResourceGatherer = makeUnique<CAsyncResourceGatherer_>();
+    g_asyncResourceManager   = makeUnique<CAsyncResourceManager>();
     g_pAuth                  = makeUnique<CAuth>();
     g_pAuth->start();
 

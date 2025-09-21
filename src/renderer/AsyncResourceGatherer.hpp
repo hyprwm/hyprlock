@@ -12,10 +12,10 @@
 #include <hyprgraphics/cairo/CairoSurface.hpp>
 #include <hyprutils/os/FileDescriptor.hpp>
 
-class CAsyncResourceGatherer {
+class CAsyncResourceGatherer_ {
   public:
-    CAsyncResourceGatherer();
-    ~CAsyncResourceGatherer();
+    CAsyncResourceGatherer_();
+    ~CAsyncResourceGatherer_();
     std::atomic<bool>              gathered = false;
     Hyprutils::OS::CFileDescriptor gatheredEventfd;
 
@@ -90,4 +90,4 @@ class CAsyncResourceGatherer {
     void                                                  enqueueScreencopyFrames();
 };
 
-inline UP<CAsyncResourceGatherer> g_pAsyncResourceGatherer;
+inline UP<CAsyncResourceGatherer_> g_pAsyncResourceGatherer;

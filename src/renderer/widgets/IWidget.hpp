@@ -2,6 +2,7 @@
 
 #include "../../defines.hpp"
 #include "../../helpers/Math.hpp"
+#include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>
@@ -23,8 +24,9 @@ class IWidget {
                                    const double& ang = 0);
     static int      roundingForBox(const CBox& box, int roundingConfig);
     static int      roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness);
+    static Hyprgraphics::CTextResource::eTextAlignmentMode parseTextAlignment(const std::string& alignment);
 
-    virtual CBox    getBoundingBoxWl() const {
+    virtual CBox                                           getBoundingBoxWl() const {
         return CBox();
     };
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos) {}

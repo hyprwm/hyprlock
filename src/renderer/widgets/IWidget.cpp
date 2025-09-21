@@ -3,6 +3,7 @@
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
 #include <chrono>
+#include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <unistd.h>
 #include <pwd.h>
 #include <hyprutils/string/String.hpp>
@@ -74,6 +75,16 @@ int IWidget::roundingForBorderBox(const CBox& borderBox, int roundingConfig, int
         return 0;
 
     return std::clamp(roundingConfig + thickness, 0, MINHALFBORDER);
+}
+
+Hyprgraphics::CTextResource::eTextAlignmentMode IWidget::parseTextAlignment(const std::string& alignment) {
+    Hyprgraphics::CTextResource::eTextAlignmentMode align = Hyprgraphics::CTextResource::TEXT_ALIGN_LEFT;
+    if (alignment == "center")
+        align = Hyprgraphics::CTextResource::TEXT_ALIGN_CENTER;
+    else if (alignment == "right")
+        align = Hyprgraphics::CTextResource::TEXT_ALIGN_RIGHT;
+
+    return align;
 }
 
 static void replaceAllAttempts(std::string& str) {

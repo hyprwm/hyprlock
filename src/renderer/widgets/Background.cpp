@@ -302,7 +302,7 @@ void CBackground::onReloadTimerUpdate() {
     request.id        = std::string{"background:"} + path + ",time:" + std::to_string((uint64_t)modificationTime.time_since_epoch().count());
     pendingResourceID = request.id;
     request.asset     = path;
-    request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
+    request.type      = CAsyncResourceGatherer_::eTargetType::TARGET_IMAGE;
 
     request.callback = [REF = m_self]() { onAssetCallback(REF); };
 

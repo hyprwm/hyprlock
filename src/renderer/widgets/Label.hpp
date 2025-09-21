@@ -3,9 +3,10 @@
 #include "../../defines.hpp"
 #include "IWidget.hpp"
 #include "Shadowable.hpp"
-#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "../AsyncResourceGatherer.hpp"
+#include <hyprgraphics/resource/resources/AsyncResource.hpp>
+#include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>
@@ -33,29 +34,29 @@ class CLabel : public IWidget {
     void         plantTimer();
 
   private:
-    AWP<CLabel>                             m_self;
+    AWP<CLabel>                                    m_self;
 
-    std::string                             getUniqueResourceId();
+    std::string                                    getUniqueResourceId();
 
-    std::string                             labelPreFormat;
-    IWidget::SFormatResult                  label;
+    std::string                                    labelPreFormat;
+    IWidget::SFormatResult                         label;
 
-    Vector2D                                viewport;
-    Vector2D                                pos;
-    Vector2D                                configPos;
-    double                                  angle;
-    std::string                             resourceID;
-    std::string                             pendingResourceID; // if dynamic label
-    std::string                             halign, valign;
-    std::string                             onclickCommand;
-    ASP<SPreloadedAsset>                    asset = nullptr;
+    Vector2D                                       viewport;
+    Vector2D                                       pos;
+    Vector2D                                       configPos;
+    double                                         angle;
+    size_t                                         resourceID        = 0;
+    size_t                                         pendingResourceID = 0; // if dynamic label
+    std::string                                    halign, valign;
+    std::string                                    onclickCommand;
+    ASP<CTexture>                                  asset = nullptr;
 
-    std::string                             outputStringPort;
+    std::string                                    outputStringPort;
 
-    CAsyncResourceGatherer::SPreloadRequest request;
+    Hyprgraphics::CTextResource::STextResourceData request;
 
-    ASP<CTimer>                             labelTimer = nullptr;
+    ASP<CTimer>                                    labelTimer = nullptr;
 
-    CShadowable                             shadow;
-    bool                                    updateShadow = true;
+    CShadowable                                    shadow;
+    bool                                           updateShadow = true;
 };

@@ -15,7 +15,7 @@
 using namespace Hyprgraphics;
 using namespace Hyprutils::OS;
 
-CAsyncResourceGatherer::CAsyncResourceGatherer() {
+CAsyncResourceGatherer_::CAsyncResourceGatherer_() {
     if (g_pHyprlock->getScreencopy())
         enqueueScreencopyFrames();
 
@@ -27,12 +27,12 @@ CAsyncResourceGatherer::CAsyncResourceGatherer() {
         Debug::log(ERR, "Failed to create eventfd: {}", strerror(errno));
 }
 
-CAsyncResourceGatherer::~CAsyncResourceGatherer() {
+CAsyncResourceGatherer_::~CAsyncResourceGatherer_() {
     notify();
     await();
 }
 
-void CAsyncResourceGatherer::enqueueScreencopyFrames() {
+void CAsyncResourceGatherer_::enqueueScreencopyFrames() {
     if (g_pHyprlock->m_vOutputs.empty())
         return;
 
@@ -59,7 +59,7 @@ void CAsyncResourceGatherer::enqueueScreencopyFrames() {
     }
 }
 
-ASP<SPreloadedAsset> CAsyncResourceGatherer::getAssetByID(const std::string& id) {
+ASP<SPreloadedAsset> CAsyncResourceGatherer_::getAssetByID(const std::string& id) {
     if (id.contains(CScreencopyFrame::RESOURCEIDPREFIX)) {
         for (auto& frame : scframes) {
             if (id == frame->m_resourceID)
@@ -94,7 +94,7 @@ static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::pat
     return image.cairoSurface();
 }
 
-void CAsyncResourceGatherer::gather() {
+void CAsyncResourceGatherer_::gather() {
     const auto CWIDGETS = g_pConfigManager->getWidgetConfigs();
 
     g_pEGL->makeCurrent(nullptr);
@@ -123,8 +123,8 @@ void CAsyncResourceGatherer::gather() {
             std::string id = (c.type == "background" ? std::string{"background:"} : std::string{"image:"}) + path;
 
             // render the image directly, since we are in a seperate thread
-            CAsyncResourceGatherer::SPreloadRequest rq;
-            rq.type  = CAsyncResourceGatherer::TARGET_IMAGE;
+            CAsyncResourceGatherer_::SPreloadRequest rq;
+            rq.type  = CAsyncResourceGatherer_::TARGET_IMAGE;
             rq.asset = path;
             rq.id    = id;
 
@@ -147,7 +147,7 @@ void CAsyncResourceGatherer::gather() {
         eventfd_write(gatheredEventfd.get(), 1);
 }
 
-bool CAsyncResourceGatherer::apply() {
+bool CAsyncResourceGatherer_::apply() {
     preloadTargetsMutex.lock();
 
     if (preloadTargets.empty()) {
@@ -198,7 +198,7 @@ bool CAsyncResourceGatherer::apply() {
     return true;
 }
 
-void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
+void CAsyncResourceGatherer_::renderImage(const SPreloadRequest& rq) {
     SPreloadTarget target;
     target.type = TARGET_IMAGE;
     target.id   = rq.id;
@@ -223,7 +223,7 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     preloadTargets.push_back(target);
 }
 
-void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
+void CAsyncResourceGatherer_::renderText(const SPreloadRequest& rq) {
     SPreloadTarget target;
     target.type = TARGET_IMAGE; /* text is just an image lol */
     target.id   = rq.id;
@@ -317,7 +317,7 @@ void CAsyncResourceGatherer::renderText(const SPreloadRequest& rq) {
     preloadTargets.push_back(target);
 }
 
-void CAsyncResourceGatherer::asyncAssetSpinLock() {
+void CAsyncResourceGatherer_::asyncAssetSpinLock() {
     while (!g_pHyprlock->m_bTerminate) {
 
         std::unique_lock lk(asyncLoopState.requestsMutex);
@@ -356,7 +356,7 @@ void CAsyncResourceGatherer::asyncAssetSpinLock() {
     }
 }
 
-void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& request) {
+void CAsyncResourceGatherer_::requestAsyncAssetPreload(const SPreloadRequest& request) {
     Debug::log(TRACE, "Requesting label resource {}", request.id);
 
     std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
@@ -365,18 +365,18 @@ void CAsyncResourceGatherer::requestAsyncAssetPreload(const SPreloadRequest& req
     asyncLoopState.requestsCV.notify_all();
 }
 
-void CAsyncResourceGatherer::unloadAsset(ASP<SPreloadedAsset> asset) {
+void CAsyncResourceGatherer_::unloadAsset(ASP<SPreloadedAsset> asset) {
     std::erase_if(assets, [asset](const auto& a) { return a.second == asset; });
 }
 
-void CAsyncResourceGatherer::notify() {
+void CAsyncResourceGatherer_::notify() {
     std::lock_guard<std::mutex> lg(asyncLoopState.requestsMutex);
     asyncLoopState.requests.clear();
     asyncLoopState.pending = true;
     asyncLoopState.requestsCV.notify_all();
 }
 
-void CAsyncResourceGatherer::await() {
+void CAsyncResourceGatherer_::await() {
     if (initialGatherThread.joinable())
         initialGatherThread.join();
     if (asyncLoopThread.joinable())
