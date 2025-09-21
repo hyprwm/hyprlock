@@ -4,6 +4,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
+#include "src/renderer/AsyncResourceManager.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
 #include <hyprutils/math/Vector2D.hpp>
@@ -56,16 +57,10 @@ void CImage::onTimerUpdate() {
         return;
     }
 
-    if (!pendingResourceID.empty())
+    if (pendingResourceID > 0)
         return;
 
-    request.id        = std::string{"image:"} + path + ",time:" + std::to_string((uint64_t)modificationTime.time_since_epoch().count());
-    pendingResourceID = request.id;
-    request.asset     = path;
-    request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
-    request.callback  = [REF = m_self]() { onAssetCallback(REF); };
-
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
+    pendingResourceID = g_asyncResourceManager->requestImage(path, [REF = m_self]() { onAssetCallback(REF); });
 }
 
 void CImage::plantTimer() {
@@ -104,7 +99,7 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
         RASSERT(false, "Missing propperty for CImage: {}", e.what()); //
     }
 
-    resourceID = "image:" + path;
+    resourceID = g_asyncResourceManager->requestImage(path, [REF = m_self]() { onAssetCallback(REF); });
     angle      = angle * M_PI / 180.0;
 
     if (reloadTime > -1) {
@@ -128,27 +123,27 @@ void CImage::reset() {
     imageFB.destroyBuffer();
 
     if (asset && reloadTime > -1) // Don't unload asset if it's a static image
-        g_pAsyncResourceGatherer->unloadAsset(asset);
+        g_asyncResourceManager->unload(asset);
 
     asset             = nullptr;
-    pendingResourceID = "";
-    resourceID        = "";
+    pendingResourceID = 0;
+    resourceID        = 0;
 }
 
 bool CImage::draw(const SRenderData& data) {
 
-    if (resourceID.empty())
+    if (resourceID == 0)
         return false;
 
     if (!asset)
-        asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
+        asset = g_asyncResourceManager->getAssetById(resourceID);
 
     if (!asset)
         return true;
 
-    if (asset->texture.m_iType == TEXTURE_INVALID) {
-        g_pAsyncResourceGatherer->unloadAsset(asset);
-        resourceID = "";
+    if (asset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(asset);
+        resourceID = 0;
         return false;
     }
 
@@ -156,7 +151,7 @@ bool CImage::draw(const SRenderData& data) {
 
         const Vector2D IMAGEPOS  = {border, border};
         const Vector2D BORDERPOS = {0.0, 0.0};
-        const Vector2D TEXSIZE   = asset->texture.m_vSize;
+        const Vector2D TEXSIZE   = asset->m_vSize;
         const float    SCALEX    = size / TEXSIZE.x;
         const float    SCALEY    = size / TEXSIZE.y;
 
@@ -184,7 +179,7 @@ bool CImage::draw(const SRenderData& data) {
             g_pRenderer->renderBorder(borderBox, color, border, BORDERROUND, 1.0);
 
         texbox.round();
-        g_pRenderer->renderTexture(texbox, asset->texture, 1.0, ROUND, HYPRUTILS_TRANSFORM_NORMAL);
+        g_pRenderer->renderTexture(texbox, *asset, 1.0, ROUND, HYPRUTILS_TRANSFORM_NORMAL);
         g_pRenderer->popFb();
     }
 
@@ -211,23 +206,21 @@ bool CImage::draw(const SRenderData& data) {
 }
 
 void CImage::renderUpdate() {
-    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
+    auto newAsset = g_asyncResourceManager->getAssetById(pendingResourceID);
     if (newAsset) {
-        if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-            g_pAsyncResourceGatherer->unloadAsset(newAsset);
+        if (newAsset->m_iType == TEXTURE_INVALID) {
+            g_asyncResourceManager->unload(newAsset);
         } else if (resourceID != pendingResourceID) {
-            g_pAsyncResourceGatherer->unloadAsset(asset);
+            g_asyncResourceManager->unload(asset);
             imageFB.destroyBuffer();
 
             asset       = newAsset;
             resourceID  = pendingResourceID;
             firstRender = true;
         }
-        pendingResourceID = "";
-    } else if (!pendingResourceID.empty()) {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-        pendingResourceID = "";
-    } else if (!pendingResourceID.empty()) {
+        pendingResourceID = 0;
+
+    } else if (pendingResourceID > 0) {
         Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
 
         g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);

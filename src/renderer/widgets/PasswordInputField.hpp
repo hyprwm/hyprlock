@@ -60,14 +60,14 @@ class CPasswordInputField : public IWidget {
     int                      outThick, rounding;
 
     struct {
-        PHLANIMVAR<float>    currentAmount;
-        bool                 center     = false;
-        float                size       = 0;
-        float                spacing    = 0;
-        int                  rounding   = 0;
-        std::string          textFormat = "";
-        std::string          textResourceID;
-        ASP<SPreloadedAsset> textAsset = nullptr;
+        PHLANIMVAR<float> currentAmount;
+        bool              center         = false;
+        float             size           = 0;
+        float             spacing        = 0;
+        int               rounding       = 0;
+        size_t            textResourceID = 0;
+        std::string       textFormat     = "";
+        ASP<CTexture>     textAsset      = nullptr;
     } dots;
 
     struct {
@@ -78,13 +78,13 @@ class CPasswordInputField : public IWidget {
     } fade;
 
     struct {
-        std::string              resourceID = "";
-        ASP<SPreloadedAsset>     asset      = nullptr;
+        size_t              resourceID = 0;
+        ASP<CTexture>       asset      = nullptr;
 
-        std::string              currentText    = "";
-        size_t                   failedAttempts = 0;
+        std::string         currentText    = "";
+        size_t              failedAttempts = 0;
 
-        std::vector<std::string> registeredResourceIDs;
+        std::vector<size_t> registeredResourceIDs;
     } placeholder;
 
     struct {
