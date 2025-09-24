@@ -9,7 +9,6 @@
 #include "viewporter.hpp"
 #include "Output.hpp"
 #include "Timer.hpp"
-#include "../renderer/Screencopy.hpp"
 #include <vector>
 #include <condition_variable>
 #include <optional>

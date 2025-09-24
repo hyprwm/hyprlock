@@ -104,6 +104,11 @@ bool CShape::draw(const SRenderData& data) {
 
     return data.opacity < 1.0;
 }
+
+void CShape::onAssetUpdate(ASP<CTexture> newAsset) {
+    ;
+}
+
 CBox CShape::getBoundingBoxWl() const {
     return {
         Vector2D{pos.x, viewport.y - pos.y - size.y},

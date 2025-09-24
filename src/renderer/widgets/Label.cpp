@@ -26,15 +26,6 @@ static void onTimer(AWP<CLabel> ref) {
     }
 }
 
-static void onAssetCallback(AWP<CLabel> ref) {
-    if (auto PLABEL = ref.lock(); PLABEL)
-        PLABEL->renderUpdate();
-}
-
-std::string CLabel::getUniqueResourceId() {
-    return std::string{"label:"} + std::to_string((uintptr_t)this) + ",time:" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-}
-
 void CLabel::onTimerUpdate() {
     std::string oldFormatted = label.formatted;
 
@@ -49,9 +40,10 @@ void CLabel::onTimerUpdate() {
     }
 
     // request new
-    request.text      = label.formatted;
-    pendingResourceID = (label.cmd) ? g_asyncResourceManager->requestTextCmd(request, [REF = m_self]() { onAssetCallback(REF); }) :
-                                      g_asyncResourceManager->requestText(request, [REF = m_self]() { onAssetCallback(REF); });
+    request.text = label.formatted;
+
+    AWP<IWidget> widget(m_self);
+    pendingResourceID = (label.cmd) ? g_asyncResourceManager->requestTextCmd(request, widget.lock()) : g_asyncResourceManager->requestText(request, widget.lock());
 }
 
 void CLabel::plantTimer() {
@@ -102,7 +94,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 
     pos = configPos; // Label size not known yet
 
-    resourceID = (label.cmd) ? g_asyncResourceManager->requestTextCmd(request, []() {}) : g_asyncResourceManager->requestText(request, []() {});
+    resourceID = (label.cmd) ? g_asyncResourceManager->requestTextCmd(request, nullptr) : g_asyncResourceManager->requestText(request, nullptr);
 
     plantTimer();
 }
@@ -149,23 +141,23 @@ bool CLabel::draw(const SRenderData& data) {
     return false;
 }
 
-void CLabel::renderUpdate() {
-    auto newAsset = g_asyncResourceManager->getAssetByID(pendingResourceID);
-    if (newAsset) {
+void CLabel::onAssetUpdate(ASP<CTexture> newAsset) {
+    pendingResourceID = 0;
+
+    if (!newAsset)
+        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", pendingResourceID);
+    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(newAsset);
+        Debug::log(ERR, "New image asset has an invalid texture!");
+    } else {
         // new asset is ready :D
         g_asyncResourceManager->unload(asset);
-        asset             = newAsset;
-        resourceID        = pendingResourceID;
-        pendingResourceID = 0;
-        updateShadow      = true;
-    } else {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
+        asset        = newAsset;
+        resourceID   = pendingResourceID;
+        updateShadow = true;
 
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
-        return;
+        g_pHyprlock->renderOutput(outputStringPort);
     }
-
-    g_pHyprlock->renderOutput(outputStringPort);
 }
 
 CBox CLabel::getBoundingBoxWl() const {

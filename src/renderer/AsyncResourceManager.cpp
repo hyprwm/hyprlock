@@ -7,6 +7,7 @@
 #include "../config/ConfigManager.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
@@ -14,125 +15,74 @@
 using namespace Hyprgraphics;
 using namespace Hyprutils::OS;
 
-template <>
-struct std::hash<CTextResource::STextResourceData> {
-    std::size_t operator()(CTextResource::STextResourceData const& s) const noexcept {
-        const auto H1 = std::hash<std::string>{}(s.text);
-        const auto H2 = std::hash<double>{}(s.color.asRgb().r);
-        const auto H3 = std::hash<double>{}(s.color.asRgb().g);
-        const auto H4 = std::hash<double>{}(s.color.asRgb().b);
+static inline ResourceID scopeResourceID(uint8_t scope, size_t in) {
+    return (in & ~0xff) | scope;
+}
 
-        return H1 ^ H2 ^ H3 ^ H4;
-    }
-};
+ResourceID CAsyncResourceManager::resourceIDForTextRequest(const CTextResource::STextResourceData& s) {
+    // TODO: Currently ignores the font string and resulting distribution is probably not perfect.
+    const auto H1 = std::hash<std::string>{}(s.text);
+    const auto H2 = std::hash<double>{}(s.color.asRgb().r);
+    const auto H3 = std::hash<double>{}(s.color.asRgb().g) + s.fontSize;
+    const auto H4 = std::hash<double>{}(s.color.asRgb().b) + s.align;
 
-size_t CAsyncResourceManager::requestText(const CTextResource::STextResourceData& request, std::function<void()> callback) {
-    const auto RESOURCEID = std::hash<CTextResource::STextResourceData>{}(request);
-    if (m_assets.contains(RESOURCEID)) {
-        Debug::log(TRACE, "Text resource text:\"{}\" (resourceID: {}) already requested, incrementing refcount!", request.text, RESOURCEID);
-        m_assets[RESOURCEID].refs++;
+    return scopeResourceID(1, H1 ^ (H2 << 1) ^ (H3 << 2) ^ (H4 << 3));
+}
+
+ResourceID CAsyncResourceManager::resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s) {
+    return scopeResourceID(2, resourceIDForTextRequest(s) ^ std::hash<size_t>{}(std::chrono::system_clock::now().time_since_epoch().count()));
+}
+
+ResourceID CAsyncResourceManager::resourceIDForImageRequest(const std::string& path, size_t revision) {
+    return scopeResourceID(3, std::hash<std::string>{}(path) ^ std::hash<size_t>{}(revision));
+}
+
+ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& port) {
+    return scopeResourceID(4, std::hash<std::string>{}(port));
+}
+
+size_t CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
+    const auto RESOURCEID = resourceIDForTextRequest(params);
+    if (request(RESOURCEID, widget)) {
+        Debug::log(TRACE, "Text resource \"{}\" (resourceID: {}) already requested!", params.text, RESOURCEID);
         return RESOURCEID;
-    } else
-        m_assets.emplace(RESOURCEID, SPreloadedTexture{.texture = nullptr, .refs = 1});
+    }
 
-    auto                                 resource = makeAtomicShared<CTextResource>(CTextResource::STextResourceData{request});
+    auto                                 resource = makeAtomicShared<CTextResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    m_gatherer.enqueue(resourceGeneric);
-
-    m_resourcesMutex.lock();
-    if (m_resources.contains(RESOURCEID)) {
-        m_resourcesMutex.unlock();
-        return RESOURCEID;
-    }
-    m_resources[RESOURCEID] = std::move(resourceGeneric);
-    m_resourcesMutex.unlock();
-
-    resource->m_events.finished.listenStatic([RESOURCEID, callback]() {
-        g_pHyprlock->addTimer(
-            std::chrono::milliseconds(0),
-            [RESOURCEID, callback](auto, auto) {
-                g_asyncResourceManager->resourceToAsset(RESOURCEID);
-                callback();
-            },
-            nullptr);
-    });
-
-    Debug::log(TRACE, "Enqueued text:\"{}\" (resourceID: {}) successfully.", request.text, RESOURCEID);
-
+    Debug::log(LOG, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID);
+    enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
 
-size_t CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& request, std::function<void()> callback) {
-    const auto RESOURCEID = std::hash<CTextResource::STextResourceData>{}(request);
-    if (m_assets.contains(RESOURCEID)) {
-        Debug::log(TRACE, "Text cmd resource text:\"{}\" (resourceID: {}) already requested, incrementing refcount!", request.text, RESOURCEID);
-        m_assets[RESOURCEID].refs++;
+size_t CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
+    const auto RESOURCEID = resourceIDForTextCmdRequest(params);
+    if (request(RESOURCEID, widget)) {
+        Debug::log(TRACE, "Text cmd resource \"{}\" (resourceID: {}) already requested!", params.text, RESOURCEID);
         return RESOURCEID;
-    } else
-        m_assets.emplace(RESOURCEID, SPreloadedTexture{.texture = nullptr, .refs = 1});
+    }
 
-    auto                                 resource = makeAtomicShared<CTextCmdResource>(CTextResource::STextResourceData{request});
+    auto                                 resource = makeAtomicShared<CTextCmdResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    m_gatherer.enqueue(resourceGeneric);
-
-    m_resourcesMutex.lock();
-    if (m_resources.contains(RESOURCEID))
-        Debug::log(ERR, "Resource already enqueued! This is a bug.");
-
-    m_resources[RESOURCEID] = std::move(resourceGeneric);
-    m_resourcesMutex.unlock();
-
-    resource->m_events.finished.listenStatic([RESOURCEID, callback]() {
-        g_pHyprlock->addTimer(
-            std::chrono::milliseconds(0),
-            [RESOURCEID, callback](auto, auto) {
-                g_asyncResourceManager->resourceToAsset(RESOURCEID);
-                callback();
-            },
-            nullptr);
-    });
-
-    Debug::log(TRACE, "Enqueued text cmd:\"{}\" (resourceID: {}) successfully.", request.text, RESOURCEID);
-
+    Debug::log(LOG, "Enqueued text cmd resource `{}` (resourceID: {})", params.text, RESOURCEID);
+    enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
 
-size_t CAsyncResourceManager::requestImage(const std::string& path, std::function<void()> callback) {
-    const auto RESOURCEID = std::hash<std::string>{}(absolutePath(path, ""));
-    if (m_assets.contains(RESOURCEID)) {
-        Debug::log(TRACE, "Image resource image:\"{}\" (resourceID: {}) already requested, incrementing refcount!", path, RESOURCEID);
-        m_assets[RESOURCEID].refs++;
+size_t CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
+    const auto RESOURCEID = resourceIDForImageRequest(path, revision);
+    if (request(RESOURCEID, widget)) {
+        Debug::log(TRACE, "Image resource {} revision {} (resourceID: {}) already requested!", path, revision, RESOURCEID);
         return RESOURCEID;
-    } else
-        m_assets.emplace(RESOURCEID, SPreloadedTexture{.texture = nullptr, .refs = 1});
+    }
 
     auto                                 resource = makeAtomicShared<CImageResource>(absolutePath(path, ""));
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    m_gatherer.enqueue(resourceGeneric);
-
-    m_resourcesMutex.lock();
-    if (m_resources.contains(RESOURCEID))
-        Debug::log(ERR, "Resource already enqueued! This is a bug.");
-
-    m_resources[RESOURCEID] = std::move(resourceGeneric);
-    m_resourcesMutex.unlock();
-
-    resource->m_events.finished.listenStatic([RESOURCEID, callback]() {
-        g_pHyprlock->addTimer(
-            std::chrono::milliseconds(0),
-            [RESOURCEID, callback](auto, auto) {
-                Debug::log(LOG, "CALLBACK!!!");
-                g_asyncResourceManager->resourceToAsset(RESOURCEID);
-                callback();
-            },
-            nullptr);
-    });
-
-    Debug::log(TRACE, "Enqueued image:\"{}\" (resourceID: {}) successfully.", path, RESOURCEID);
-
+    Debug::log(LOG, "Image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID);
+    enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
 
@@ -153,12 +103,7 @@ void CAsyncResourceManager::enqueueStaticAssets() {
             if (path.empty() || path == "screenshot")
                 continue;
 
-            requestImage(path, [this]() {
-                if (!g_pHyprlock->m_bImmediateRender && m_resources.empty()) {
-                    if (m_gatheredEventfd.isValid())
-                        eventfd_write(m_gatheredEventfd.get(), 1);
-                }
-            });
+            requestImage(path, 0, nullptr);
         }
     }
 }
@@ -193,16 +138,19 @@ void CAsyncResourceManager::enqueueScreencopyFrames() {
     }
 }
 
-void CAsyncResourceManager::onScreencopyDone() {
-    // We are done with screencopy.
-    Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
-    g_pHyprlock->removeDmabufListener();
+void CAsyncResourceManager::screencopyToTexture(const CScreencopyFrame& scFrame) {
+    RASSERT(scFrame.m_ready && m_assets.contains(scFrame.m_resourceID), "Logic error in screencopy gathering.");
+    m_assets[scFrame.m_resourceID].texture = scFrame.m_asset;
+
+    Debug::log(TRACE, "Done sc frame {}", scFrame.m_resourceID);
+
+    std::erase_if(m_scFrames, [&scFrame](const auto& f) { return f.get() == &scFrame; });
+
+    if (m_scFrames.empty())
+        onScreencopyDone();
 }
 
 void CAsyncResourceManager::gatherInitialResources(wl_display* display) {
-    // Gather background resources and screencopy frames before locking the screen.
-    // We need to do this because as soon as we lock the screen, workspaces frames can no longer be captured. It either won't work at all, or we will capture hyprlock itself.
-    // Bypass with --immediate-render (can cause the background first rendering a solid color and missing or inaccurate screencopy frames)
     const auto MAXDELAYMS    = 2000; // 2 Seconds
     const auto STARTGATHERTP = std::chrono::system_clock::now();
 
@@ -253,39 +201,101 @@ void CAsyncResourceManager::gatherInitialResources(wl_display* display) {
     Debug::log(LOG, "Resources gathered after {} milliseconds", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
 }
 
+bool CAsyncResourceManager::checkIdPresent(ResourceID id) {
+    return m_assets.contains(id);
+}
+
 void CAsyncResourceManager::unload(ASP<CTexture> texture) {
     auto preload = std::ranges::find_if(m_assets, [texture](const auto& a) { return a.second.texture == texture; });
     if (preload == m_assets.end())
         return;
 
     preload->second.refs--;
-    if (preload->second.refs == 0)
+
+    if (preload->second.refs == 0) {
+        Debug::log(TRACE, "Releasing resourceID: {}!", preload->first);
         m_assets.erase(preload->first);
+    }
 }
 
-void CAsyncResourceManager::unloadById(size_t id) {
+void CAsyncResourceManager::unloadById(ResourceID id) {
     if (!m_assets.contains(id))
         return;
 
-    m_assets.erase(id);
     m_assets[id].refs--;
-    if (m_assets[id].refs == 0)
+
+    if (m_assets[id].refs == 0) {
+        Debug::log(TRACE, "Releasing resourceID: {}!", id);
         m_assets.erase(id);
+    }
 }
 
-void CAsyncResourceManager::resourceToAsset(size_t id) {
-    if (!m_resources.contains(id))
-        return;
+bool CAsyncResourceManager::request(ResourceID id, const AWP<IWidget>& widget) {
+    if (!m_assets.contains(id)) {
+        // New asset!!
+        m_assets.emplace(id, SPreloadedTexture{.texture = nullptr, .refs = 1});
+        return false;
+    }
+
+    m_assets[id].refs++;
+
+    if (m_assets[id].texture) {
+        // Asset already present. Dispatch the asset callback function.
+        const auto& TEXTURE = m_assets[id].texture;
+        if (widget)
+            g_pHyprlock->addTimer(
+                std::chrono::milliseconds(0),
+                [widget, TEXTURE](auto, auto) {
+                    if (const auto WIDGET = widget.lock(); WIDGET)
+                        WIDGET->onAssetUpdate(TEXTURE);
+                },
+                nullptr);
+    } else if (widget) {
+        // Asset currently in-flight. Add the widget reference to in order for the callback to get dispatched later.
+        m_resourcesMutex.lock();
+        if (!m_resources.contains(id)) {
+            Debug::log(ERR, "In-flight resourceID: {} not found! This is a bug.", id);
+            m_resourcesMutex.unlock();
+            return true;
+        }
+        m_resources[id].second.emplace_back(widget);
+        m_resourcesMutex.unlock();
+    }
+
+    return true;
+}
+
+void CAsyncResourceManager::enqueue(ResourceID resourceID, const ASP<IAsyncResource>& resource, const AWP<IWidget>& widget) {
+    m_gatherer.enqueue(resource);
 
     m_resourcesMutex.lock();
-    const auto RESOURCE = m_resources[id];
+    if (m_resources.contains(resourceID))
+        Debug::log(ERR, "Resource already enqueued! This is a bug.");
+
+    m_resources[resourceID] = {resource, {widget}};
+    m_resourcesMutex.unlock();
+
+    resource->m_events.finished.listenStatic([resourceID]() {
+        g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, void* resourceID) { g_asyncResourceManager->onResourceFinished((size_t)resourceID); }, (void*)resourceID);
+    });
+}
+
+void CAsyncResourceManager::onResourceFinished(ResourceID id) {
+    m_resourcesMutex.lock();
+    if (!m_resources.contains(id)) {
+        m_resourcesMutex.unlock();
+        return;
+    }
+
+    const auto RESOURCE = m_resources[id].first;
+    const auto WIDGETS  = m_resources[id].second;
     m_resources.erase(id);
     m_resourcesMutex.unlock();
 
     if (!RESOURCE || !RESOURCE->m_asset.cairoSurface)
         return;
 
-    Debug::log(TRACE, "Resource to texture id:{}", id);
+    //Debug::log(TRACE, "Resource to texture id:{}", id);
 
     const auto           texture = makeAtomicShared<CTexture>();
 
@@ -296,7 +306,7 @@ void CAsyncResourceManager::resourceToAsset(size_t id) {
     const GLint          glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
     if (SURFACESTATUS != CAIRO_STATUS_SUCCESS) {
-        Debug::log(ERR, "RESOURCE {} invalid ({})", id, cairo_status_to_string(SURFACESTATUS));
+        Debug::log(ERR, "resourceID: {} invalid ({})", id, cairo_status_to_string(SURFACESTATUS));
         texture->m_iType = TEXTURE_INVALID;
     }
 
@@ -313,15 +323,27 @@ void CAsyncResourceManager::resourceToAsset(size_t id) {
     glTexImage2D(GL_TEXTURE_2D, 0, glIFormat, texture->m_vSize.x, texture->m_vSize.y, 0, glFormat, glType, RESOURCE->m_asset.cairoSurface->data());
 
     m_assets[id].texture = texture;
+
+    for (const auto& widget : WIDGETS) {
+        if (widget)
+            widget->onAssetUpdate(texture);
+    }
+
+    if (!m_gathered && !g_pHyprlock->m_bImmediateRender) {
+        m_resourcesMutex.lock();
+        if (m_resources.empty()) {
+            m_gathered = true;
+            if (m_gatheredEventfd.isValid())
+                eventfd_write(m_gatheredEventfd.get(), 1);
+
+            m_gatheredEventfd.reset();
+        }
+        m_resourcesMutex.unlock();
+    }
 }
 
-void CAsyncResourceManager::screencopyToTexture(const CScreencopyFrame& scFrame) {
-    RASSERT(scFrame.m_ready && m_assets.contains(scFrame.m_resourceID), "Logic error in screencopy gathering.");
-    m_assets[scFrame.m_resourceID].texture = scFrame.m_asset;
-
-    std::erase_if(m_scFrames, [&scFrame](const auto& f) { return f.get() == &scFrame; });
-
-    Debug::log(LOG, "Done sc frame {}", scFrame.m_resourceID);
-    if (m_scFrames.empty())
-        onScreencopyDone();
+void CAsyncResourceManager::onScreencopyDone() {
+    // We are done with screencopy.
+    //Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
+    g_pHyprlock->removeDmabufListener();
 }

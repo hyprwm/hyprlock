@@ -24,6 +24,8 @@ class CPasswordInputField : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual void onAssetUpdate(ASP<CTexture> newAsset);
+
     virtual void onHover(const Vector2D& pos);
     virtual CBox getBoundingBoxWl() const;
 
@@ -78,13 +80,11 @@ class CPasswordInputField : public IWidget {
     } fade;
 
     struct {
-        size_t              resourceID = 0;
-        ASP<CTexture>       asset      = nullptr;
+        size_t        resourceID = 0;
+        ASP<CTexture> asset      = nullptr;
 
-        std::string         currentText    = "";
-        size_t              failedAttempts = 0;
-
-        std::vector<size_t> registeredResourceIDs;
+        std::string   currentText    = "";
+        size_t        failedAttempts = 0;
     } placeholder;
 
     struct {

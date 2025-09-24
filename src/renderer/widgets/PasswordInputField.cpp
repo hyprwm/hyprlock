@@ -8,6 +8,7 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../helpers/Color.hpp"
+#include "src/renderer/widgets/IWidget.hpp"
 #include <cmath>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <hyprutils/math/Vector2D.hpp>
@@ -93,7 +94,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         request.font        = fontFamily;
         request.color       = colorConfig.font.asRGB();
         request.fontSize    = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
-        dots.textResourceID = g_asyncResourceManager->requestText(request, []() {});
+        dots.textResourceID = g_asyncResourceManager->requestText(request, nullptr);
     }
 
     // request the inital placeholder asset
@@ -327,7 +328,6 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 void CPasswordInputField::updatePlaceholder() {
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
-            std::erase(placeholder.registeredResourceIDs, placeholder.resourceID);
             g_asyncResourceManager->unload(placeholder.asset);
             placeholder.asset      = nullptr;
             placeholder.resourceID = 0;
@@ -349,21 +349,9 @@ void CPasswordInputField::updatePlaceholder() {
     if (!ALLOWCOLORSWAP && newText == placeholder.currentText)
         return;
 
-    // TODO: detect same text via resource manager
-    //const auto NEWRESOURCEID = std::format("placeholder:{}{}{}{}{}{}", newText, (uintptr_t)this, colorState.font.r, colorState.font.g, colorState.font.b, colorState.font.a);
-
-    //if (placeholder.resourceID == NEWRESOURCEID)
-    //    return;
-
-    Debug::log(TRACE, "Updating placeholder text: {}", newText);
+    Debug::log(LOG, "Updating placeholder text: {}", newText);
     placeholder.currentText = newText;
     placeholder.asset       = nullptr;
-
-    //if (std::ranges::find(placeholder.registeredResourceIDs, placeholder.resourceID) != placeholder.registeredResourceIDs.end())
-    //    return;
-
-    Debug::log(TRACE, "Requesting new placeholder asset: {}", placeholder.resourceID);
-    placeholder.registeredResourceIDs.push_back(placeholder.resourceID);
 
     // query
     Hyprgraphics::CTextResource::STextResourceData request;
@@ -372,10 +360,12 @@ void CPasswordInputField::updatePlaceholder() {
     request.color    = colorState.font.asRGB();
     request.fontSize = (int)size->value().y / 4;
 
-    placeholder.resourceID = g_asyncResourceManager->requestText(request, [REF = m_self] {
-        if (const auto SELF = REF.lock(); SELF)
-            g_pHyprlock->renderOutput(SELF->outputStringPort);
-    });
+    AWP<IWidget> widget(m_self);
+    placeholder.resourceID = g_asyncResourceManager->requestText(request, widget);
+}
+
+void CPasswordInputField::onAssetUpdate(ASP<CTexture> newAsset) {
+    g_pHyprlock->renderOutput(outputStringPort);
 }
 
 void CPasswordInputField::updateWidth() {

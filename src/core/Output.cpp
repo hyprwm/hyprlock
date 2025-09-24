@@ -67,7 +67,3 @@ void COutput::createSessionLockSurface() {
 Vector2D COutput::getViewport() const {
     return (m_sessionLockSurface) ? m_sessionLockSurface->size : size;
 }
-
-size_t COutput::getScreencopyResourceID() const {
-    return (size_t)this;
-}
