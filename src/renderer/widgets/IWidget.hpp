@@ -2,6 +2,7 @@
 
 #include "../../defines.hpp"
 #include "../../helpers/Math.hpp"
+#include "../../core/Seat.hpp"
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>
 #include <unordered_map>

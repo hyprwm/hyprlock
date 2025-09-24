@@ -126,7 +126,7 @@ void CLabel::reset() {
 
 bool CLabel::draw(const SRenderData& data) {
     if (!asset) {
-        asset = g_asyncResourceManager->getAssetById(resourceID);
+        asset = g_asyncResourceManager->getAssetByID(resourceID);
 
         if (!asset)
             return true;
@@ -150,7 +150,7 @@ bool CLabel::draw(const SRenderData& data) {
 }
 
 void CLabel::renderUpdate() {
-    auto newAsset = g_asyncResourceManager->getAssetById(pendingResourceID);
+    auto newAsset = g_asyncResourceManager->getAssetByID(pendingResourceID);
     if (newAsset) {
         // new asset is ready :D
         g_asyncResourceManager->unload(asset);

@@ -1,10 +1,10 @@
 #include "Image.hpp"
 #include "../Renderer.hpp"
+#include "../AsyncResourceManager.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
-#include "src/renderer/AsyncResourceManager.hpp"
 #include <cmath>
 #include <hyprlang.hpp>
 #include <hyprutils/math/Vector2D.hpp>
@@ -136,7 +136,7 @@ bool CImage::draw(const SRenderData& data) {
         return false;
 
     if (!asset)
-        asset = g_asyncResourceManager->getAssetById(resourceID);
+        asset = g_asyncResourceManager->getAssetByID(resourceID);
 
     if (!asset)
         return true;
@@ -206,7 +206,7 @@ bool CImage::draw(const SRenderData& data) {
 }
 
 void CImage::renderUpdate() {
-    auto newAsset = g_asyncResourceManager->getAssetById(pendingResourceID);
+    auto newAsset = g_asyncResourceManager->getAssetByID(pendingResourceID);
     if (newAsset) {
         if (newAsset->m_iType == TEXTURE_INVALID) {
             g_asyncResourceManager->unload(newAsset);
