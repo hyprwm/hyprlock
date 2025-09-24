@@ -14,7 +14,7 @@ class CAsyncResourceManager {
   public:
     // Notes on resource lifetimes:
     // Resources id's are the result of hashing the requested resource parameters.
-    // When a new request is made, adding a new entry to the m_textures map is done immediatly
+    // When a new request is made, adding a new entry to the m_assets map is done immediatly
     // within a critical section. Subsequent passes through this section with the same resource id
     // will increment the texture's references. The manager will release the resource when refs reaches 0,
     // while the resource itelf may outlife it's reference in the manager.
@@ -48,11 +48,10 @@ class CAsyncResourceManager {
     void          gatherInitialResources(wl_display* display);
 
   private:
-    void resourceToTexture(size_t id);
+    void resourceToAsset(size_t id);
     void onScreencopyDone();
 
-    //std::mutex                                                    m_wakeupMutex;
-    //std::condition_variable                                       m_wakeup;
+    // for polling when using gatherInitialResources
     Hyprutils::OS::CFileDescriptor m_gatheredEventfd;
 
     bool                           m_exit = false;
@@ -60,7 +59,7 @@ class CAsyncResourceManager {
     int                            m_loadedAssets = 0;
 
     // not shared between threads
-    std::unordered_map<size_t, SPreloadedTexture> m_textures;
+    std::unordered_map<size_t, SPreloadedTexture> m_assets;
     std::vector<UP<CScreencopyFrame>>             m_scFrames;
     // shared between threads
     std::mutex                                                    m_resourcesMutex;

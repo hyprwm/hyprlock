@@ -36,6 +36,7 @@ class CHyprlock {
     bool                       isUnlocked();
 
     ASP<CTimer>                addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force = false);
+    void                       processTimers();
 
     void                       enqueueForceUpdateTimers();
 

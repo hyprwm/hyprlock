@@ -460,28 +460,7 @@ void CHyprlock::run() {
             }
         }
 
-        // do timers
-        m_sLoopState.timersMutex.lock();
-        auto timerscpy = m_vTimers;
-        m_sLoopState.timersMutex.unlock();
-
-        std::vector<ASP<CTimer>> passed;
-
-        for (auto& t : timerscpy) {
-            if (t->passed() && !t->cancelled()) {
-                t->call(t);
-                passed.push_back(t);
-            }
-
-            if (t->cancelled())
-                passed.push_back(t);
-        }
-
-        m_sLoopState.timersMutex.lock();
-        std::erase_if(m_vTimers, [passed](const auto& timer) { return std::find(passed.begin(), passed.end(), timer) != passed.end(); });
-        m_sLoopState.timersMutex.unlock();
-
-        passed.clear();
+        processTimers();
     }
 
     const auto DPY = m_sWaylandState.display;
@@ -867,6 +846,31 @@ ASP<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeo
     m_sLoopState.timerEvent       = true;
     m_sLoopState.timerCV.notify_all();
     return T;
+}
+
+void CHyprlock::processTimers() {
+    // do timers
+    m_sLoopState.timersMutex.lock();
+    auto timerscpy = m_vTimers;
+    m_sLoopState.timersMutex.unlock();
+
+    std::vector<ASP<CTimer>> passed;
+
+    for (auto& t : timerscpy) {
+        if (t->passed() && !t->cancelled()) {
+            t->call(t);
+            passed.push_back(t);
+        }
+
+        if (t->cancelled())
+            passed.push_back(t);
+    }
+
+    m_sLoopState.timersMutex.lock();
+    std::erase_if(m_vTimers, [passed](const auto& timer) { return std::find(passed.begin(), passed.end(), timer) != passed.end(); });
+    m_sLoopState.timersMutex.unlock();
+
+    passed.clear();
 }
 
 std::vector<ASP<CTimer>> CHyprlock::getTimers() {
