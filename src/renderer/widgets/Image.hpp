@@ -24,6 +24,8 @@ class CImage : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual void onAssetUpdate(ASP<CTexture> newAsset);
+
     virtual CBox getBoundingBoxWl() const;
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
     virtual void onHover(const Vector2D& pos);
@@ -39,10 +41,10 @@ class CImage : public IWidget {
 
     CFramebuffer                    imageFB;
 
-    int                             size;
-    int                             rounding;
-    double                          border;
-    double                          angle;
+    int                             size     = 0;
+    int                             rounding = 0;
+    double                          border   = 0;
+    double                          angle    = 0;
     CGradientValueData              color;
     Vector2D                        pos;
     Vector2D                        configPos;
@@ -56,13 +58,16 @@ class CImage : public IWidget {
     std::string                     onclickCommand;
 
     std::filesystem::file_time_type modificationTime;
+    size_t                          m_imageRevision = 0;
+
     ASP<CTimer>                     imageTimer;
 
     Vector2D                        viewport;
     std::string                     stringPort;
 
-    size_t                          resourceID;
-    size_t                          pendingResourceID; // if reloading image
+    ResourceID                      resourceID        = 0;
+    ResourceID                      pendingResourceID = 0;
+
     ASP<CTexture>                   asset = nullptr;
     CShadowable                     shadow;
 };

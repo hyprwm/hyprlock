@@ -3,6 +3,7 @@
 #include "../defines.hpp"
 #include "./Texture.hpp"
 #include "./Screencopy.hpp"
+#include "./widgets/IWidget.hpp"
 
 #include <hyprgraphics/resource/AsyncResourceGatherer.hpp>
 #include <hyprgraphics/resource/resources/AsyncResource.hpp>
@@ -11,6 +12,7 @@
 #include <hyprutils/os/FileDescriptor.hpp>
 
 class CAsyncResourceManager {
+
   public:
     // Notes on resource lifetimes:
     // Resources id's are the result of hashing the requested resource parameters.
@@ -23,6 +25,14 @@ class CAsyncResourceManager {
     // Not only when actually retrieving the asset with `getAssetById`.
     // Also, this way a resource is static as long as it is not unloaded by all instances that requested it.
     // TODO:: Make a wrapper object that contains the resource id and unload with RAII.
+
+    // Those are hash functions that return the id for a requested resource.
+    static ResourceID resourceIDForTextRequest(const CTextResource::STextResourceData& s);
+    static ResourceID resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s);
+    // image paths may be file system links, thus this function supports a revision parameter that gets factored into the resource id.
+    static ResourceID resourceIDForImageRequest(const std::string& path, size_t revision);
+    static ResourceID resourceIDForScreencopy(const std::string& port);
+
     struct SPreloadedTexture {
         ASP<CTexture> texture;
         size_t        refs = 0;
@@ -32,26 +42,35 @@ class CAsyncResourceManager {
     ~CAsyncResourceManager() = default;
 
     // requesting an asset returns a unique id used to retrieve it later
-    size_t requestText(const CTextResource::STextResourceData& request, std::function<void()> callback);
+    ResourceID requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget);
     // same as requestText but substitute the text with what launching sh -c request.text returns
-    size_t        requestTextCmd(const CTextResource::STextResourceData& request, std::function<void()> callback);
-    size_t        requestImage(const std::string& path, std::function<void()> callback);
+    ResourceID    requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget);
+    ResourceID    requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget);
 
-    ASP<CTexture> getAssetByID(size_t id);
+    ASP<CTexture> getAssetByID(ResourceID id);
 
     void          unload(ASP<CTexture> resource);
-    void          unloadById(size_t id);
+    void          unloadById(ResourceID id);
 
     void          enqueueStaticAssets();
     void          enqueueScreencopyFrames();
     void          screencopyToTexture(const CScreencopyFrame& scFrame);
     void          gatherInitialResources(wl_display* display);
 
+    bool          checkIdPresent(ResourceID id);
+
   private:
-    void resourceToAsset(size_t id);
+    // returns whether or not the id was already requested
+    // makes sure the widgets onAssetCallback function gets called
+    bool request(ResourceID id, const AWP<IWidget>& widget);
+    // adds a new resource to m_resources and passes it to m_gatherer
+    void enqueue(ResourceID resourceID, const ASP<IAsyncResource>& resource, const AWP<IWidget>& widget);
+
+    void onResourceFinished(ResourceID id);
     void onScreencopyDone();
 
     // for polling when using gatherInitialResources
+    bool                           m_gathered = false;
     Hyprutils::OS::CFileDescriptor m_gatheredEventfd;
 
     bool                           m_exit = false;
@@ -59,13 +78,13 @@ class CAsyncResourceManager {
     int                            m_loadedAssets = 0;
 
     // not shared between threads
-    std::unordered_map<size_t, SPreloadedTexture> m_assets;
-    std::vector<UP<CScreencopyFrame>>             m_scFrames;
+    std::unordered_map<ResourceID, SPreloadedTexture> m_assets;
+    std::vector<UP<CScreencopyFrame>>                 m_scFrames;
     // shared between threads
-    std::mutex                                                    m_resourcesMutex;
-    std::unordered_map<size_t, ASP<Hyprgraphics::IAsyncResource>> m_resources;
+    std::mutex                                                                                              m_resourcesMutex;
+    std::unordered_map<ResourceID, std::pair<ASP<Hyprgraphics::IAsyncResource>, std::vector<AWP<IWidget>>>> m_resources;
 
-    Hyprgraphics::CAsyncResourceGatherer                          m_gatherer;
+    Hyprgraphics::CAsyncResourceGatherer                                                                    m_gatherer;
 };
 
 inline UP<CAsyncResourceManager> g_asyncResourceManager;

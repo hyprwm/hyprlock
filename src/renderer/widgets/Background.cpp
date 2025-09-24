@@ -53,13 +53,13 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
     viewport     = pOutput->getViewport();
     outputPort   = pOutput->stringPort;
     transform    = wlTransformToHyprutils(invertTransform(pOutput->transform));
-    scResourceID = pOutput->getScreencopyResourceID();
+    scResourceID = CAsyncResourceManager::resourceIDForScreencopy(pOutput->stringPort);
 
     g_pAnimationManager->createAnimation(0.f, crossFadeProgress, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 
     // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
     // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-    if (!g_asyncResourceManager->getAssetByID(scResourceID)) {
+    if (!g_asyncResourceManager->checkIdPresent(scResourceID)) {
         Debug::log(LOG, "Missing screenshot for output {}", outputPort);
         scResourceID = 0;
     }
@@ -72,7 +72,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             resourceID = 0;
         }
     } else if (!path.empty())
-        resourceID = 0;
+        resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
 
     if (!isScreenshot && reloadTime > -1) {
         try {
@@ -154,11 +154,6 @@ static void onReloadTimer(AWP<CBackground> ref) {
         PBG->onReloadTimerUpdate();
         PBG->plantReloadTimer();
     }
-}
-
-static void onAssetCallback(AWP<CBackground> ref) {
-    if (auto PBG = ref.lock(); PBG)
-        PBG->startCrossFade();
 }
 
 static CBox getScaledBoxForTextureSize(const Vector2D& size, const Vector2D& viewport) {
@@ -255,6 +250,39 @@ bool CBackground::draw(const SRenderData& data) {
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
 }
 
+void CBackground::onAssetUpdate(ASP<CTexture> newAsset) {
+    pendingResourceID = 0;
+
+    if (!newAsset)
+        Debug::log(ERR, "Background asset update failed, resourceID: {} not available on update!", pendingResourceID);
+    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(newAsset);
+        Debug::log(ERR, "New background asset has an invalid texture!");
+    } else {
+        pendingAsset = newAsset;
+        crossFadeProgress->setValueAndWarp(0);
+        *crossFadeProgress = 1.0;
+
+        crossFadeProgress->setCallbackOnEnd(
+            [REF = m_self](auto) {
+                if (const auto PSELF = REF.lock()) {
+                    if (PSELF->asset)
+                        g_asyncResourceManager->unload(PSELF->asset);
+                    PSELF->asset             = PSELF->pendingAsset;
+                    PSELF->pendingAsset      = nullptr;
+                    PSELF->resourceID        = PSELF->pendingResourceID;
+                    PSELF->pendingResourceID = 0;
+
+                    PSELF->blurredFB->destroyBuffer();
+                    PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
+                }
+            },
+            true);
+
+        g_pHyprlock->renderOutput(outputPort);
+    }
+}
+
 void CBackground::plantReloadTimer() {
 
     if (reloadTime == 0)
@@ -287,6 +315,10 @@ void CBackground::onReloadTimerUpdate() {
             return;
 
         modificationTime = MTIME;
+        if (OLDPATH == path)
+            m_imageRevision++;
+        else
+            m_imageRevision = 0;
     } catch (std::exception& e) {
         path = OLDPATH;
         Debug::log(ERR, "{}", e.what());
@@ -297,41 +329,6 @@ void CBackground::onReloadTimerUpdate() {
         return;
 
     // Issue the next request
-    pendingResourceID = g_asyncResourceManager->requestImage(path, [REF = m_self]() { onAssetCallback(REF); });
-}
-
-void CBackground::startCrossFade() {
-    auto newAsset = g_asyncResourceManager->getAssetByID(pendingResourceID);
-    if (newAsset) {
-        if (newAsset->m_iType == TEXTURE_INVALID) {
-            g_asyncResourceManager->unload(newAsset);
-            Debug::log(ERR, "New asset had an invalid texture!");
-            pendingResourceID = 0;
-        } else if (resourceID != pendingResourceID) {
-            pendingAsset = newAsset;
-            crossFadeProgress->setValueAndWarp(0);
-            *crossFadeProgress = 1.0;
-
-            crossFadeProgress->setCallbackOnEnd(
-                [REF = m_self](auto) {
-                    if (const auto PSELF = REF.lock()) {
-                        if (PSELF->asset)
-                            g_asyncResourceManager->unload(PSELF->asset);
-                        PSELF->asset             = PSELF->pendingAsset;
-                        PSELF->pendingAsset      = nullptr;
-                        PSELF->resourceID        = PSELF->pendingResourceID;
-                        PSELF->pendingResourceID = 0;
-
-                        PSELF->blurredFB->destroyBuffer();
-                        PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
-                    }
-                },
-                true);
-
-            g_pHyprlock->renderOutput(outputPort);
-        }
-    } else if (pendingResourceID > 0) {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
-    }
+    AWP<IWidget> widget(m_self);
+    pendingResourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }

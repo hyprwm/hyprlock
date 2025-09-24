@@ -24,6 +24,7 @@ class CBackground : public IWidget {
 
     virtual void    configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool    draw(const SRenderData& data);
+    virtual void    onAssetUpdate(ASP<CTexture> newAsset);
 
     void            reset(); // Unload assets, remove timers, etc.
 
@@ -63,9 +64,9 @@ class CBackground : public IWidget {
     std::string                     outputPort;
     Hyprutils::Math::eTransform     transform;
 
-    size_t                          resourceID;
-    size_t                          scResourceID;
-    size_t                          pendingResourceID;
+    ResourceID                      resourceID        = 0;
+    ResourceID                      scResourceID      = 0;
+    ResourceID                      pendingResourceID = 0;
 
     PHLANIMVAR<float>               crossFadeProgress;
 
@@ -80,4 +81,5 @@ class CBackground : public IWidget {
     std::string                     reloadCommand;
     ASP<CTimer>                     reloadTimer;
     std::filesystem::file_time_type modificationTime;
+    size_t                          m_imageRevision = 0;
 };

@@ -30,5 +30,4 @@ class COutput {
     void                    createSessionLockSurface();
 
     Vector2D                getViewport() const;
-    size_t                  getScreencopyResourceID() const;
 };

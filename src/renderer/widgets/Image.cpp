@@ -24,11 +24,6 @@ static void onTimer(AWP<CImage> ref) {
     }
 }
 
-static void onAssetCallback(AWP<CImage> ref) {
-    if (auto PIMAGE = ref.lock(); PIMAGE)
-        PIMAGE->renderUpdate();
-}
-
 void CImage::onTimerUpdate() {
     const std::string OLDPATH = path;
 
@@ -51,6 +46,10 @@ void CImage::onTimerUpdate() {
             return;
 
         modificationTime = MTIME;
+        if (OLDPATH == path)
+            m_imageRevision++;
+        else
+            m_imageRevision = 0;
     } catch (std::exception& e) {
         path = OLDPATH;
         Debug::log(ERR, "{}", e.what());
@@ -60,7 +59,8 @@ void CImage::onTimerUpdate() {
     if (pendingResourceID > 0)
         return;
 
-    pendingResourceID = g_asyncResourceManager->requestImage(path, [REF = m_self]() { onAssetCallback(REF); });
+    AWP<IWidget> widget(m_self);
+    pendingResourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }
 
 void CImage::plantTimer() {
@@ -99,7 +99,7 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
         RASSERT(false, "Missing propperty for CImage: {}", e.what()); //
     }
 
-    resourceID = g_asyncResourceManager->requestImage(path, [REF = m_self]() { onAssetCallback(REF); });
+    resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
     angle      = angle * M_PI / 180.0;
 
     if (reloadTime > -1) {
@@ -205,28 +205,24 @@ bool CImage::draw(const SRenderData& data) {
     return data.opacity < 1.0;
 }
 
-void CImage::renderUpdate() {
-    auto newAsset = g_asyncResourceManager->getAssetByID(pendingResourceID);
-    if (newAsset) {
-        if (newAsset->m_iType == TEXTURE_INVALID) {
-            g_asyncResourceManager->unload(newAsset);
-        } else if (resourceID != pendingResourceID) {
-            g_asyncResourceManager->unload(asset);
-            imageFB.destroyBuffer();
+void CImage::onAssetUpdate(ASP<CTexture> newAsset) {
+    pendingResourceID = 0;
 
-            asset       = newAsset;
-            resourceID  = pendingResourceID;
-            firstRender = true;
-        }
-        pendingResourceID = 0;
+    if (!newAsset)
+        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", pendingResourceID);
+    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(newAsset);
+        Debug::log(ERR, "New image asset has an invalid texture!");
+    } else {
+        g_asyncResourceManager->unload(asset);
+        imageFB.destroyBuffer();
 
-    } else if (pendingResourceID > 0) {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
+        asset       = newAsset;
+        resourceID  = pendingResourceID;
+        firstRender = true;
 
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
+        g_pHyprlock->renderOutput(stringPort);
     }
-
-    g_pHyprlock->renderOutput(stringPort);
 }
 
 CBox CImage::getBoundingBoxWl() const {

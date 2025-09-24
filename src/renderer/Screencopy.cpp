@@ -30,7 +30,7 @@ void CScreencopyFrame::capture(SP<COutput> pOutput) {
     static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
 
     m_asset      = makeAtomicShared<CTexture>();
-    m_resourceID = (size_t)pOutput.get();
+    m_resourceID = CAsyncResourceManager::resourceIDForScreencopy(pOutput->stringPort);
 
     m_sc = makeShared<CCZwlrScreencopyFrameV1>(g_pHyprlock->getScreencopy()->sendCaptureOutput(false, pOutput->m_wlOutput->resource()));
 
@@ -112,6 +112,9 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
 CSCDMAFrame::~CSCDMAFrame() {
     if (g_pEGL)
         eglDestroyImage(g_pEGL->eglDisplay, m_image);
+
+    if (m_bo)
+        gbm_bo_destroy(m_bo);
 
     // leaks bo and stuff but lives throughout so for now who cares
 }
