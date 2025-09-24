@@ -4,7 +4,6 @@
 #include "IWidget.hpp"
 #include "Shadowable.hpp"
 #include "../../core/Timer.hpp"
-#include "../AsyncResourceGatherer.hpp"
 #include <hyprgraphics/resource/resources/AsyncResource.hpp>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>

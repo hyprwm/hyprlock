@@ -2,11 +2,11 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
-#include "../renderer/AsyncResourceGatherer.hpp"
 #include "../renderer/AsyncResourceManager.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
-#include "Egl.hpp"
+#include "./Egl.hpp"
+#include "./Seat.hpp"
 #include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>
@@ -331,61 +331,21 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer              = makeUnique<CRenderer>();
-    g_pAsyncResourceGatherer = makeUnique<CAsyncResourceGatherer_>();
-    g_asyncResourceManager   = makeUnique<CAsyncResourceManager>();
-    g_pAuth                  = makeUnique<CAuth>();
+    g_pRenderer            = makeUnique<CRenderer>();
+    g_asyncResourceManager = makeUnique<CAsyncResourceManager>();
+    g_pAuth                = makeUnique<CAuth>();
     g_pAuth->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
-    if (!g_pHyprlock->m_bImmediateRender) {
+    g_asyncResourceManager->enqueueStaticAssets();
+    g_asyncResourceManager->enqueueScreencopyFrames();
+
+    if (!g_pHyprlock->m_bImmediateRender)
         // Gather background resources and screencopy frames before locking the screen.
         // We need to do this because as soon as we lock the screen, workspaces frames can no longer be captured. It either won't work at all, or we will capture hyprlock itself.
         // Bypass with --immediate-render (can cause the background first rendering a solid color and missing or inaccurate screencopy frames)
-        const auto MAXDELAYMS    = 2000; // 2 Seconds
-        const auto STARTGATHERTP = std::chrono::system_clock::now();
-
-        int        fdcount = 1;
-        pollfd     pollfds[2];
-        pollfds[0] = {
-            .fd     = wl_display_get_fd(m_sWaylandState.display),
-            .events = POLLIN,
-        };
-
-        if (g_pAsyncResourceGatherer->gatheredEventfd.isValid()) {
-            pollfds[1] = {
-                .fd     = g_pAsyncResourceGatherer->gatheredEventfd.get(),
-                .events = POLLIN,
-            };
-
-            fdcount++;
-        }
-
-        while (!g_pAsyncResourceGatherer->gathered) {
-            wl_display_flush(m_sWaylandState.display);
-            if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
-                if (poll(pollfds, fdcount, /* 100ms timeout */ 100) < 0) {
-                    RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
-                    wl_display_cancel_read(m_sWaylandState.display);
-                    continue;
-                }
-                wl_display_read_events(m_sWaylandState.display);
-                wl_display_dispatch_pending(m_sWaylandState.display);
-            } else {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                wl_display_dispatch(m_sWaylandState.display);
-            }
-
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count() > MAXDELAYMS) {
-                Debug::log(WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
-                break;
-            }
-        }
-
-        Debug::log(LOG, "Resources gathered after {} milliseconds",
-                   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
-    }
+        g_asyncResourceManager->gatherInitialResources(m_sWaylandState.display);
 
     // Failed to lock the session
     if (!acquireSessionLock()) {
@@ -533,7 +493,6 @@ void CHyprlock::run() {
 
     m_vOutputs.clear();
     g_pSeatManager.reset();
-    g_pAsyncResourceGatherer.reset();
     g_pRenderer.reset();
     g_pEGL.reset();
 

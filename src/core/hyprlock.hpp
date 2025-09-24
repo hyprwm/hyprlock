@@ -8,10 +8,8 @@
 #include "linux-dmabuf-v1.hpp"
 #include "viewporter.hpp"
 #include "Output.hpp"
-#include "Seat.hpp"
-#include "CursorShape.hpp"
 #include "Timer.hpp"
-#include <memory>
+#include "../renderer/Screencopy.hpp"
 #include <vector>
 #include <condition_variable>
 #include <optional>

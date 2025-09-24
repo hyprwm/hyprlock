@@ -240,7 +240,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         if (!dots.textFormat.empty()) {
             if (!dots.textAsset)
-                dots.textAsset = g_asyncResourceManager->getAssetById(dots.textResourceID);
+                dots.textAsset = g_asyncResourceManager->getAssetByID(dots.textResourceID);
 
             if (!dots.textAsset)
                 forceReload = true;
@@ -303,7 +303,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         ASP<CTexture> currAsset = nullptr;
 
         if (!placeholder.asset)
-            placeholder.asset = g_asyncResourceManager->getAssetById(placeholder.resourceID);
+            placeholder.asset = g_asyncResourceManager->getAssetByID(placeholder.resourceID);
 
         currAsset = placeholder.asset;
 

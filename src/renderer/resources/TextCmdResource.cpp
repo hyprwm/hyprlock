@@ -1,8 +1,8 @@
 
 #include "TextCmdResource.hpp"
 
-#include "../config/ConfigManager.hpp"
-#include "../helpers/MiscFunctions.hpp"
+#include "../../config/ConfigManager.hpp"
+#include "../../helpers/MiscFunctions.hpp"
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 
 using namespace Hyprgraphics;

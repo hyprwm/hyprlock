@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../../defines.hpp"
 #include "IWidget.hpp"
+#include "../../defines.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../helpers/Math.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../core/Timer.hpp"
-#include "../AsyncResourceGatherer.hpp"
 #include "Shadowable.hpp"
 #include <string>
 #include <filesystem>
@@ -36,35 +35,34 @@ class CImage : public IWidget {
     void         plantTimer();
 
   private:
-    AWP<CImage>                              m_self;
+    AWP<CImage>                     m_self;
 
-    CFramebuffer                             imageFB;
+    CFramebuffer                    imageFB;
 
-    int                                      size;
-    int                                      rounding;
-    double                                   border;
-    double                                   angle;
-    CGradientValueData                       color;
-    Vector2D                                 pos;
-    Vector2D                                 configPos;
+    int                             size;
+    int                             rounding;
+    double                          border;
+    double                          angle;
+    CGradientValueData              color;
+    Vector2D                        pos;
+    Vector2D                        configPos;
 
-    std::string                              halign, valign, path;
+    std::string                     halign, valign, path;
 
-    bool                                     firstRender = true;
+    bool                            firstRender = true;
 
-    int                                      reloadTime;
-    std::string                              reloadCommand;
-    std::string                              onclickCommand;
+    int                             reloadTime;
+    std::string                     reloadCommand;
+    std::string                     onclickCommand;
 
-    std::filesystem::file_time_type          modificationTime;
-    ASP<CTimer>                              imageTimer;
-    CAsyncResourceGatherer_::SPreloadRequest request;
+    std::filesystem::file_time_type modificationTime;
+    ASP<CTimer>                     imageTimer;
 
-    Vector2D                                 viewport;
-    std::string                              stringPort;
+    Vector2D                        viewport;
+    std::string                     stringPort;
 
-    size_t                                   resourceID;
-    size_t                                   pendingResourceID; // if reloading image
-    ASP<CTexture>                            asset = nullptr;
-    CShadowable                              shadow;
+    size_t                          resourceID;
+    size_t                          pendingResourceID; // if reloading image
+    ASP<CTexture>                   asset = nullptr;
+    CShadowable                     shadow;
 };
