@@ -8,7 +8,6 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../helpers/Color.hpp"
-#include "src/renderer/widgets/IWidget.hpp"
 #include <cmath>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <hyprutils/math/Vector2D.hpp>
