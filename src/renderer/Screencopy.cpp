@@ -1,10 +1,10 @@
 #include "Screencopy.hpp"
+#include "./AsyncResourceManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../core/hyprlock.hpp"
 #include "../core/Egl.hpp"
 #include "../config/ConfigManager.hpp"
-#include "src/renderer/AsyncResourceManager.hpp"
 #include "wlr-screencopy-unstable-v1.hpp"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -112,9 +112,6 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
 CSCDMAFrame::~CSCDMAFrame() {
     if (g_pEGL)
         eglDestroyImage(g_pEGL->eglDisplay, m_image);
-
-    if (m_bo)
-        gbm_bo_destroy(m_bo);
 
     // leaks bo and stuff but lives throughout so for now who cares
 }

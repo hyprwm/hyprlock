@@ -88,7 +88,7 @@ pkg_check_modules(
   gbm
   hyprutils>=0.8.0
   sdbus-c++>=2.0.0
-  hyprgraphics)
+  hyprgraphics>=0.1.6)
 find_library(PAM_FOUND pam)
 if(PAM_FOUND)
   message(STATUS "Found pam")

@@ -41,7 +41,7 @@ ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& por
     return scopeResourceID(4, std::hash<std::string>{}(port));
 }
 
-size_t CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
+ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextRequest(params);
     if (request(RESOURCEID, widget)) {
         Debug::log(TRACE, "Text resource \"{}\" (resourceID: {}) already requested!", params.text, RESOURCEID);
@@ -56,7 +56,7 @@ size_t CAsyncResourceManager::requestText(const CTextResource::STextResourceData
     return RESOURCEID;
 }
 
-size_t CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
+ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextCmdRequest(params);
     if (request(RESOURCEID, widget)) {
         Debug::log(TRACE, "Text cmd resource \"{}\" (resourceID: {}) already requested!", params.text, RESOURCEID);
@@ -71,7 +71,7 @@ size_t CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceD
     return RESOURCEID;
 }
 
-size_t CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
+ResourceID CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForImageRequest(path, revision);
     if (request(RESOURCEID, widget)) {
         Debug::log(TRACE, "Image resource {} revision {} (resourceID: {}) already requested!", path, revision, RESOURCEID);
