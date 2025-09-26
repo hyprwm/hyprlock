@@ -66,7 +66,7 @@ class CAsyncResourceManager {
     bool request(ResourceID id, const AWP<IWidget>& widget);
     // adds a new resource to m_resources and passes it to m_gatherer
     void enqueue(ResourceID resourceID, const ASP<IAsyncResource>& resource, const AWP<IWidget>& widget);
-    // callback for finished resoruces.
+    // callback for finished resources.
     // copies the resources cairo surface to a GL_TEXTURE_2D and sets it in the asset map.
     // removes the entry in m_resources.
     // call onAssetUpdate for all stored widget references.
