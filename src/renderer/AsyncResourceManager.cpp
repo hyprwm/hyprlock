@@ -146,8 +146,10 @@ void CAsyncResourceManager::screencopyToTexture(const CScreencopyFrame& scFrame)
 
     std::erase_if(m_scFrames, [&scFrame](const auto& f) { return f.get() == &scFrame; });
 
-    if (m_scFrames.empty())
-        onScreencopyDone();
+    if (m_scFrames.empty()) {
+        Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
+        g_pHyprlock->removeDmabufListener();
+    }
 }
 
 void CAsyncResourceManager::gatherInitialResources(wl_display* display) {
@@ -292,10 +294,13 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
     m_resources.erase(id);
     m_resourcesMutex.unlock();
 
+    if (!m_assets.contains(id) || m_assets[id].refs == 0) // Not referenced? Drop it
+        return;
+
     if (!RESOURCE || !RESOURCE->m_asset.cairoSurface)
         return;
 
-    //Debug::log(TRACE, "Resource to texture id:{}", id);
+    Debug::log(TRACE, "Resource to texture id:{}", id);
 
     const auto           texture = makeAtomicShared<CTexture>();
 
@@ -340,10 +345,4 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
         }
         m_resourcesMutex.unlock();
     }
-}
-
-void CAsyncResourceManager::onScreencopyDone() {
-    // We are done with screencopy.
-    //Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
-    g_pHyprlock->removeDmabufListener();
 }
