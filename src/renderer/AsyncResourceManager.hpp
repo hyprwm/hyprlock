@@ -23,8 +23,9 @@ class CAsyncResourceManager {
     // Why not use ASP/AWP for this?
     // The problem is that we want to to increment the reference as soon as requesting the resource id.
     // Not only when actually retrieving the asset with `getAssetById`.
-    // Also, this way a resource is static as long as it is not unloaded by all instances that requested it.
-    // TODO:: Make a wrapper object that contains the resource id and unload with RAII.
+    // Managing the ref count here also allows for having an asset outlife it's original reference.
+    //
+    // Improvement idea: Make a wrapper object that contains the resource id and unload with RAII.
 
     // Those are hash functions that return the id for a requested resource.
     static ResourceID resourceIDForTextRequest(const CTextResource::STextResourceData& s);
@@ -65,9 +66,11 @@ class CAsyncResourceManager {
     bool request(ResourceID id, const AWP<IWidget>& widget);
     // adds a new resource to m_resources and passes it to m_gatherer
     void enqueue(ResourceID resourceID, const ASP<IAsyncResource>& resource, const AWP<IWidget>& widget);
-
+    // callback for finished resoruces.
+    // copies the resources cairo surface to a GL_TEXTURE_2D and sets it in the asset map.
+    // removes the entry in m_resources.
+    // call onAssetUpdate for all stored widget references.
     void onResourceFinished(ResourceID id);
-    void onScreencopyDone();
 
     // for polling when using gatherInitialResources
     bool                           m_gathered = false;
