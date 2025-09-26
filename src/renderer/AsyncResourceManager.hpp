@@ -16,21 +16,19 @@ class CAsyncResourceManager {
   public:
     // Notes on resource lifetimes:
     // Resources id's are the result of hashing the requested resource parameters.
-    // When a new request is made, adding a new entry to the m_assets map is done immediatly
-    // within a critical section. Subsequent passes through this section with the same resource id
-    // will increment the texture's references. The manager will release the resource when refs reaches 0,
-    // while the resource itelf may outlife it's reference in the manager.
+    // When a new request is made, adding a new entry to the m_assets map is done immediatly.
+    // Subsequent calls through this section with the same resource id will increment the texture's references.
+    // The manager will release the resource when refs reaches 0, while the resource itelf may outlife it's reference in the manager.
     // Why not use ASP/AWP for this?
     // The problem is that we want to to increment the reference as soon as requesting the resource id.
     // Not only when actually retrieving the asset with `getAssetById`.
-    // Managing the ref count here also allows for having an asset outlife it's original reference.
     //
-    // Improvement idea: Make a wrapper object that contains the resource id and unload with RAII.
+    // Improvement idea: Make a wrapper object that is returned when requesting and contains the resource id. Then we can unload with RAII.
 
     // Those are hash functions that return the id for a requested resource.
     static ResourceID resourceIDForTextRequest(const CTextResource::STextResourceData& s);
     static ResourceID resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s);
-    // image paths may be file system links, thus this function supports a revision parameter that gets factored into the resource id.
+    // Image paths may be file system links, thus this function supports a revision parameter that gets factored into the resource id.
     static ResourceID resourceIDForImageRequest(const std::string& path, size_t revision);
     static ResourceID resourceIDForScreencopy(const std::string& port);
 
@@ -42,9 +40,8 @@ class CAsyncResourceManager {
     CAsyncResourceManager()  = default;
     ~CAsyncResourceManager() = default;
 
-    // requesting an asset returns a unique id used to retrieve it later
     ResourceID requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget);
-    // same as requestText but substitute the text with what launching sh -c request.text returns
+    // Same as requestText but substitute the text with what launching sh -c request.text returns.
     ResourceID    requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget);
     ResourceID    requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget);
 
@@ -61,18 +58,18 @@ class CAsyncResourceManager {
     bool          checkIdPresent(ResourceID id);
 
   private:
-    // returns whether or not the id was already requested
-    // makes sure the widgets onAssetCallback function gets called
+    // Returns whether or not the id was already requested.
+    // Makes sure the widgets onAssetCallback function gets called.
     bool request(ResourceID id, const AWP<IWidget>& widget);
-    // adds a new resource to m_resources and passes it to m_gatherer
+    // Adds a new resource to m_resources and passes it to m_gatherer.
     void enqueue(ResourceID resourceID, const ASP<IAsyncResource>& resource, const AWP<IWidget>& widget);
-    // callback for finished resources.
-    // copies the resources cairo surface to a GL_TEXTURE_2D and sets it in the asset map.
-    // removes the entry in m_resources.
-    // call onAssetUpdate for all stored widget references.
+    // Callback for finished resources.
+    // Copies the resources cairo surface to a GL_TEXTURE_2D and sets it in the asset map.
+    // Removes the entry in m_resources.
+    // Call onAssetUpdate for all stored widget references.
     void onResourceFinished(ResourceID id);
 
-    // for polling when using gatherInitialResources
+    // For polling when using gatherInitialResources.
     bool                           m_gathered = false;
     Hyprutils::OS::CFileDescriptor m_gatheredEventfd;
 
