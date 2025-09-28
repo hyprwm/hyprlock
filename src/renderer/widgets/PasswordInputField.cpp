@@ -79,8 +79,6 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         RASSERT(false, "Missing property for CPasswordInputField: {}", e.what()); //
     }
 
-    Debug::log(LOG, "allow toggle: {}", password.text.size);
-
     configPos       = pos;
     colorState.font = colorConfig.font;
 
@@ -144,7 +142,7 @@ static void fadeOutCallback(AWP<CPasswordInputField> ref) {
 }
 
 static void assetReadyCallback(AWP<CPasswordInputField> ref) {
-    if (auto PINPUT = ref.lock(); PINPUT)
+    if (const auto& PINPUT = ref; PINPUT)
         PINPUT->renderPasswordUpdate();
 }
 
@@ -202,9 +200,8 @@ void CPasswordInputField::updatePassword() {
     std::string& passwordContent = g_pHyprlock->getPasswordBuffer();
     std::string  textResourceID  = std::format("password:{}-{}", (uintptr_t)this, std::hash<std::string>{}(passwordContent));
 
-    if (passwordContent == password.text.content || checkWaiting || g_pRenderer->asyncResourceGatherer->getAssetByID(textResourceID)) {
+    if (passwordContent == password.text.content || checkWaiting || g_pRenderer->asyncResourceGatherer->getAssetByID(textResourceID))
         return;
-    }
 
     password.text.content = passwordContent;
 
@@ -399,9 +396,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             if (CURRDOTS > MAXDOTS)
                 xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eyeOffset) / 2.0;
 
-            if (password.eye.placement == "left" && password.allowToggle) {
+            if (password.eye.placement == "left" && password.allowToggle)
                 xstart += eyeOffset;
-            }
 
             if (password.dots.rounding == -1)
                 password.dots.rounding = passSize.x / 2.0;
