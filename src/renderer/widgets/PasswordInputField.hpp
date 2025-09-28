@@ -69,7 +69,7 @@ class CPasswordInputField : public IWidget {
 
     int                        outThick, rounding;
 
-    wpCursorShapeDeviceV1Shape cursorShape;
+    wpCursorShapeDeviceV1Shape cursorShape = WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT;
 
     struct {
         bool allowToggle = false;
