@@ -122,6 +122,9 @@ class CHyprlock {
     } dma;
     gbm_device* createGBMDevice(drmDevice* dev);
 
+    void        addDmabufListener();
+    void        removeDmabufListener();
+
   private:
     struct {
         wl_display*                      display     = nullptr;
@@ -133,8 +136,6 @@ class CHyprlock {
         SP<CCZwlrScreencopyManagerV1>    screencopy  = nullptr;
         SP<CCWlShm>                      shm         = nullptr;
     } m_sWaylandState;
-
-    void addDmabufListener();
 
     struct {
         SP<CCExtSessionLockV1> lock = nullptr;

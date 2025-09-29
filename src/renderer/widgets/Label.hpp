@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../defines.hpp"
 #include "IWidget.hpp"
 #include "Shadowable.hpp"
 #include "../../helpers/Math.hpp"
@@ -48,7 +49,7 @@ class CLabel : public IWidget {
     std::string                             pendingResourceID; // if dynamic label
     std::string                             halign, valign;
     std::string                             onclickCommand;
-    SPreloadedAsset*                        asset = nullptr;
+    ASP<SPreloadedAsset>                    asset = nullptr;
 
     std::string                             outputStringPort;
 

@@ -7,6 +7,12 @@
 #include "../renderer/Renderer.hpp"
 
 CSessionLockSurface::~CSessionLockSurface() {
+    if (frameCallback)
+        frameCallback.reset();
+
+    if (eglSurface)
+        eglDestroySurface(g_pEGL->eglDisplay, eglSurface);
+
     if (eglWindow)
         wl_egl_window_destroy(eglWindow);
 }

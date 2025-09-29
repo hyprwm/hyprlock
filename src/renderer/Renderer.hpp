@@ -37,7 +37,6 @@ class CRenderer {
     void renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a = 1.0, float mixFactor = 0.0, int rounding = 0, std::optional<eTransform> tr = {});
     void blurFB(const CFramebuffer& outfb, SBlurParams params);
 
-    UP<CAsyncResourceGatherer>            asyncResourceGatherer;
     std::chrono::system_clock::time_point firstFullFrameTime;
 
     void                                  pushFb(GLint fb);
@@ -48,6 +47,7 @@ class CRenderer {
 
     void                                  startFadeIn();
     void                                  startFadeOut(bool unlock = false);
+    void                                  warpOpacity(float warpOpacity);
     std::vector<ASP<IWidget>>&            getOrCreateWidgetsFor(const CSessionLockSurface& surf);
 
   private:

@@ -10,7 +10,6 @@
 #include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
-#include <memory>
 #include <GLES3/gl32.h>
 
 CBackground::CBackground() {
@@ -64,7 +63,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 
     // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
     // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-    if (g_pRenderer->asyncResourceGatherer->gathered && !g_pRenderer->asyncResourceGatherer->getAssetByID(scResourceID)) {
+    if (g_pAsyncResourceGatherer->gathered && !g_pAsyncResourceGatherer->getAssetByID(scResourceID)) {
         Debug::log(LOG, "Missing screenshot for output {}", outputPort);
         scResourceID = "";
     }
@@ -102,13 +101,14 @@ void CBackground::updatePrimaryAsset() {
     if (asset || resourceID.empty())
         return;
 
-    asset = g_pRenderer->asyncResourceGatherer->getAssetByID(resourceID);
+    asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
     if (!asset)
         return;
 
-    const bool NEEDFB = (isScreenshot || blurPasses > 0 || asset->texture.m_vSize != viewport) && (!blurredFB->isAllocated() || firstRender);
+    const bool NEEDFB =
+        (isScreenshot || blurPasses > 0 || asset->texture.m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
     if (NEEDFB)
-        renderToFB(asset->texture, *blurredFB, blurPasses);
+        renderToFB(asset->texture, *blurredFB, blurPasses, isScreenshot);
 }
 
 void CBackground::updatePendingAsset() {
@@ -124,7 +124,7 @@ void CBackground::updateScAsset() {
         return;
 
     // path=screenshot -> scAsset = asset
-    scAsset = (asset && isScreenshot) ? asset : g_pRenderer->asyncResourceGatherer->getAssetByID(scResourceID);
+    scAsset = (asset && isScreenshot) ? asset : g_pAsyncResourceGatherer->getAssetByID(scResourceID);
     if (!scAsset)
         return;
 
@@ -224,7 +224,8 @@ bool CBackground::draw(const SRenderData& data) {
     updateScAsset();
 
     if (asset && asset->texture.m_iType == TEXTURE_INVALID) {
-        g_pRenderer->asyncResourceGatherer->unloadAsset(asset);
+        g_pAsyncResourceGatherer->unloadAsset(asset);
+
         resourceID = "";
         renderRect(color);
         return false;
@@ -255,7 +256,7 @@ bool CBackground::draw(const SRenderData& data) {
         const auto& PENDINGTEX = getPendingAssetTex();
         g_pRenderer->renderTextureMix(TEXBOX, TEX, PENDINGTEX, 1.0, crossFadeProgress->value(), 0);
     } else
-        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0);
 
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
 }
@@ -310,14 +311,14 @@ void CBackground::onReloadTimerUpdate() {
 
     request.callback = [REF = m_self]() { onAssetCallback(REF); };
 
-    g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
+    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
 
 void CBackground::startCrossFade() {
-    auto newAsset = g_pRenderer->asyncResourceGatherer->getAssetByID(pendingResourceID);
+    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
     if (newAsset) {
         if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-            g_pRenderer->asyncResourceGatherer->unloadAsset(newAsset);
+            g_pAsyncResourceGatherer->unloadAsset(newAsset);
             Debug::log(ERR, "New asset had an invalid texture!");
             pendingResourceID = "";
         } else if (resourceID != pendingResourceID) {
@@ -328,9 +329,10 @@ void CBackground::startCrossFade() {
             crossFadeProgress->setCallbackOnEnd(
                 [REF = m_self](auto) {
                     if (const auto PSELF = REF.lock()) {
-                        PSELF->asset        = PSELF->pendingAsset;
-                        PSELF->pendingAsset = nullptr;
-                        g_pRenderer->asyncResourceGatherer->unloadAsset(PSELF->pendingAsset);
+                        if (PSELF->asset)
+                            g_pAsyncResourceGatherer->unloadAsset(PSELF->asset);
+                        PSELF->asset             = PSELF->pendingAsset;
+                        PSELF->pendingAsset      = nullptr;
                         PSELF->resourceID        = PSELF->pendingResourceID;
                         PSELF->pendingResourceID = "";
 

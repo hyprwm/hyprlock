@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IWidget.hpp"
+#include "../../defines.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../core/Timer.hpp"
 #include "Shadowable.hpp"
@@ -77,36 +78,36 @@ class CPasswordInputField : public IWidget {
         bool show        = false;
 
         struct {
-            float            size              = 0.25;
-            bool             center            = false;
-            std::string      content           = "";
-            std::string      resourceID        = "";
-            std::string      pendingResourceID = "";
-            SPreloadedAsset* asset             = nullptr;
-            SPreloadedAsset* previousAsset     = nullptr;
+            float                size              = 0.25;
+            bool                 center            = false;
+            std::string          content           = "";
+            std::string          resourceID        = "";
+            std::string          pendingResourceID = "";
+            ASP<SPreloadedAsset> asset             = nullptr;
+            ASP<SPreloadedAsset> previousAsset     = nullptr;
         } text;
 
         struct {
-            PHLANIMVAR<float> currentAmount;
-            float             size       = 0.25;
-            bool              center     = false;
-            float             spacing    = 0;
-            int               rounding   = 0;
-            std::string       format     = "";
-            std::string       resourceID = "";
-            SPreloadedAsset*  asset      = nullptr;
+            PHLANIMVAR<float>    currentAmount;
+            float                size       = 0.25;
+            bool                 center     = false;
+            float                spacing    = 0;
+            int                  rounding   = 0;
+            std::string          format     = "";
+            std::string          resourceID = "";
+            ASP<SPreloadedAsset> asset      = nullptr;
         } dots;
 
         struct {
-            int              margin    = 16;
-            double           size      = 0.25;
-            std::string      placement = "right";
-            bool             hide      = false;
+            int                  margin    = 16;
+            double               size      = 0.25;
+            std::string          placement = "right";
+            bool                 hide      = false;
 
-            std::string      openRescourceID   = "";
-            SPreloadedAsset* openAsset         = nullptr;
-            std::string      closedRescourceID = "";
-            SPreloadedAsset* closedAsset       = nullptr;
+            std::string          openRescourceID   = "";
+            ASP<SPreloadedAsset> openAsset         = nullptr;
+            std::string          closedRescourceID = "";
+            ASP<SPreloadedAsset> closedAsset       = nullptr;
         } eye;
     } password;
 
@@ -119,7 +120,7 @@ class CPasswordInputField : public IWidget {
 
     struct {
         std::string              resourceID = "";
-        SPreloadedAsset*         asset      = nullptr;
+        ASP<SPreloadedAsset>     asset      = nullptr;
 
         std::string              currentText    = "";
         size_t                   failedAttempts = 0;
