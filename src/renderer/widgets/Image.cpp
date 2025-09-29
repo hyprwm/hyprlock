@@ -14,8 +14,10 @@ CImage::~CImage() {
 
 void CImage::registerSelf(const ASP<CImage>& self) {
     m_self = self;
+}
 
-    type = "image";
+eWidgetType CImage::getType() const {
+    return eWidgetType::WIDGET_IMAGE;
 }
 
 static void onTimer(AWP<CImage> ref) {

@@ -14,8 +14,10 @@ CLabel::~CLabel() {
 
 void CLabel::registerSelf(const ASP<CLabel>& self) {
     m_self = self;
+}
 
-    type = "label";
+eWidgetType CLabel::getType() const {
+    return eWidgetType::WIDGET_LABEL;
 }
 
 static void onTimer(AWP<CLabel> ref) {

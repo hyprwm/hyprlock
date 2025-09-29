@@ -7,6 +7,7 @@
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
+#include "src/renderer/widgets/IWidget.hpp"
 #include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>
@@ -692,7 +693,7 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
             const auto widgets = g_pRenderer->getOrCreateWidgetsFor(*o->m_sessionLockSurface);
 
             for (auto& w : widgets) {
-                if (w->type == "password-input") {
+                if (w->getType() == WIDGET_PASSWORD_INPUT) {
                     auto password_field = reinterpret_cast<CPasswordInputField*>(w.get());
                     password_field->togglePassword();
                 }

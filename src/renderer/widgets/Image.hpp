@@ -21,6 +21,7 @@ class CImage : public IWidget {
     ~CImage();
 
     void         registerSelf(const ASP<CImage>& self);
+    eWidgetType  getType() const;
 
     virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);

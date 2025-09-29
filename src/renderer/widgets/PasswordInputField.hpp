@@ -20,6 +20,7 @@ class CPasswordInputField : public IWidget {
     virtual ~CPasswordInputField();
 
     void         registerSelf(const ASP<CPasswordInputField>& self);
+    eWidgetType  getType() const;
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);

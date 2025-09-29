@@ -30,8 +30,10 @@ CPasswordInputField::~CPasswordInputField() {
 
 void CPasswordInputField::registerSelf(const ASP<CPasswordInputField>& self) {
     m_self = self;
+}
 
-    type = "password-input";
+eWidgetType CPasswordInputField::getType() const {
+    return eWidgetType::WIDGET_PASSWORD_INPUT;
 }
 
 void CPasswordInputField::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {

@@ -9,8 +9,10 @@
 
 void CShape::registerSelf(const ASP<CShape>& self) {
     m_self = self;
+}
 
-    type = "shape";
+eWidgetType CShape::getType() const {
+    return eWidgetType::WIDGET_SHAPE;
 }
 
 void CShape::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {

@@ -8,6 +8,14 @@
 
 class COutput;
 
+enum eWidgetType : uint8_t {
+    WIDGET_PASSWORD_INPUT,
+    WIDGET_BACKGROUND,
+    WIDGET_IMAGE,
+    WIDGET_LABEL,
+    WIDGET_SHAPE,
+};
+
 class IWidget {
   public:
     struct SRenderData {
@@ -45,7 +53,7 @@ class IWidget {
     void                 setHover(bool hover);
     bool                 isHovered() const;
 
-    std::string          type;
+    virtual eWidgetType  getType() const = 0;
 
   private:
     bool hovered = false;
