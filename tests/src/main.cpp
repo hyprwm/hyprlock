@@ -11,8 +11,9 @@ static int runTest(const std::string& binaryPath, const std::string& configPath)
     NLog::log("Running lock test (clientPath={}, configPath={})...", binaryPath, configPath);
 
     SSesssionLockTest test = {
-        .m_clientPath = binaryPath,
-        .m_configPath = configPath,
+        .m_clientPath     = binaryPath,
+        .m_configPath     = configPath,
+        .m_unlockWithUSR1 = false,
     };
 
     auto testResult = run(test);
@@ -104,6 +105,5 @@ int main(int argc, char** argv) {
 
         return 1;
     }
-    int ret = runTest(binaryPath, configPath);
-    return ret;
+    return runTest(binaryPath, configPath);
 }

@@ -47,12 +47,18 @@
           overlays = with self.overlays; [hyprlock-with-deps];
         }
     );
+    pkgsDebugFor = eachSystem (system:
+      import nixpkgs {
+        localSystem = system;
+        overlays = with self.overlays; [hyprlock-debug hyprlock-with-deps];
+      });
   in {
     overlays = import ./nix/overlays.nix {inherit inputs lib self;};
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hyprlock;
       inherit (pkgsFor.${system}) hyprlock;
+      inherit (pkgsDebugFor.${system}) hyprlock-debug;
       inherit (pkgsFor.${system}) lock_tester;
     });
 

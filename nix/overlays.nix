@@ -18,8 +18,8 @@ in {
     inputs.hyprlang.overlays.default
     inputs.hyprutils.overlays.default
     inputs.hyprwayland-scanner.overlays.default
-    inputs.self.overlays.hyprlock
-    inputs.self.overlays.lock_tester
+    self.overlays.hyprlock
+    self.overlays.lock_tester
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
         stdenv = prev.gcc15Stdenv;
@@ -42,6 +42,15 @@ in {
       shortRev = self.sourceInfo.shortRev or "dirty";
     };
   };
+
+  hyprlock-debug = lib.composeManyExtensions [
+    self.overlays.hyprlock
+    # Dependencies
+    (final: prev: {
+      hyprutils = prev.hyprutils.override {debug = true;};
+      hyprlock-debug = prev.hyprlock.override {debug = true;};
+    })
+  ];
 
   lock_tester = final: prev: {
     lock_tester = prev.callPackage ./tester.nix {
