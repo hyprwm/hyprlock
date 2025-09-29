@@ -1,6 +1,4 @@
 #include "PasswordInputField.hpp"
-#include "icons/eye-open.hpp"
-#include "icons/eye-closed.hpp"
 #include "../Renderer.hpp"
 #include "../AsyncResourceGatherer.hpp"
 #include "../../core/hyprlock.hpp"
@@ -16,6 +14,13 @@
 #include <hyprutils/string/String.hpp>
 #include <algorithm>
 #include <hyprlang.hpp>
+
+static unsigned char eye_closed_png[] = {
+#embed "icons/eye-closed.png"
+};
+static unsigned char eye_open_png[] = {
+#embed "icons/eye-open.png"
+};
 
 using namespace Hyprutils::String;
 
@@ -243,16 +248,14 @@ void CPasswordInputField::updateEye() {
 
     password.eye.openRescourceID = std::format("eye-open:{}", (uintptr_t)this);
     request.id                   = password.eye.openRescourceID;
-    request.image_buffer         = eye_open_png;
-    request.image_size           = eye_open_png_len;
+    request.image_buffer         = std::span(eye_open_png);
     request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_EMBEDDED_IMAGE;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);
 
     password.eye.closedRescourceID = std::format("eye-closed:{}", (uintptr_t)this);
     request.id                     = password.eye.closedRescourceID;
-    request.image_buffer           = eye_closed_png;
-    request.image_size             = eye_closed_png_len;
+    request.image_buffer           = std::span(eye_closed_png);
     request.type                   = CAsyncResourceGatherer::eTargetType::TARGET_EMBEDDED_IMAGE;
 
     g_pRenderer->asyncResourceGatherer->requestAsyncAssetPreload(request);

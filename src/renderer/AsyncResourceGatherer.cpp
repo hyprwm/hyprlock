@@ -203,8 +203,7 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
         std::filesystem::path ABSOLUTEPATH(absolutePath(rq.asset, ""));
         CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH);
     } else if (rq.type == TARGET_EMBEDDED_IMAGE) {
-        std::span<uint8_t> span(reinterpret_cast<uint8_t*>(rq.image_buffer), rq.image_size);
-        CAIROISURFACE = getCairoSurfaceFromImageBuffer(span, eImageFormat::IMAGE_FORMAT_PNG);
+        CAIROISURFACE = getCairoSurfaceFromImageBuffer(rq.image_buffer, eImageFormat::IMAGE_FORMAT_PNG);
     }
 
     if (!CAIROISURFACE) {

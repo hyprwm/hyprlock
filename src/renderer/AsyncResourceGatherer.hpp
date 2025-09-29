@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Screencopy.hpp"
+#include <cstdint>
 #include <pango/pangocairo.h>
 #include <thread>
 #include <atomic>
@@ -25,7 +26,7 @@ class CAsyncResourceGatherer {
 
     bool             apply();
 
-    enum eTargetType {
+    enum eTargetType : uint8_t {
         TARGET_IMAGE = 0,
         TARGET_EMBEDDED_IMAGE,
         TARGET_TEXT
@@ -36,8 +37,7 @@ class CAsyncResourceGatherer {
         std::string                               asset;
         std::string                               id;
 
-        unsigned char*                            image_buffer;
-        size_t                                    image_size;
+        std::span<uint8_t>                        image_buffer;
 
         std::unordered_map<std::string, std::any> props;
 
