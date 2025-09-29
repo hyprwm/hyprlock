@@ -51,15 +51,15 @@ class CAsyncResourceGatherer {
 
     Vector2D getTextAssetSize(const SPreloadRequest& request);
 
-    void     requestAsyncAssetPreload(const SPreloadRequest& request);
-    void     unloadAsset(ASP<SPreloadedAsset> asset);
+    void requestAsyncAssetPreload(const SPreloadRequest& request);
+    void unloadAsset(ASP<SPreloadedAsset> asset);
 
   private:
-    void         notify();
-    void         await();
+    void        notify();
+    void        await();
 
-    std::thread  asyncLoopThread;
-    std::thread  initialGatherThread;
+    std::thread asyncLoopThread;
+    std::thread initialGatherThread;
 
     PangoLayout* getPangoLayout(const SPreloadRequest& rq);
 
