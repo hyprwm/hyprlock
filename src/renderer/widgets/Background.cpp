@@ -57,15 +57,13 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 
     g_pAnimationManager->createAnimation(0.f, crossFadeProgress, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 
-    // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
-    // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
     if (!g_asyncResourceManager->checkIdPresent(scResourceID)) {
         Debug::log(LOG, "Missing screenshot for output {}", outputPort);
         scResourceID = 0;
     }
 
     if (isScreenshot) {
-        resourceID = scResourceID; // Fallback to solid background:color when scResourceID==""
+        resourceID = scResourceID; // Fallback to solid background:color when scResourceID==0
 
         if (!g_pHyprlock->getScreencopy()) {
             Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
