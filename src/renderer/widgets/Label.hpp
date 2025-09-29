@@ -51,6 +51,8 @@ class CLabel : public IWidget {
     ResourceID                                     resourceID        = 0;
     ResourceID                                     pendingResourceID = 0;
 
+    size_t                                         m_dynamicRevision = 0;
+
     ASP<CTexture>                                  asset = nullptr;
 
     std::string                                    outputStringPort;

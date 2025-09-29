@@ -43,7 +43,12 @@ void CLabel::onTimerUpdate() {
     request.text = label.formatted;
 
     AWP<IWidget> widget(m_self);
-    pendingResourceID = (label.cmd) ? g_asyncResourceManager->requestTextCmd(request, widget.lock()) : g_asyncResourceManager->requestText(request, widget.lock());
+    if (label.cmd) {
+        // Don't increment by one to avoid clashes with multiple widget using the same label command.
+        m_dynamicRevision += label.updateEveryMs;
+        pendingResourceID = g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, widget.lock());
+    } else
+        pendingResourceID = g_asyncResourceManager->requestText(request, widget.lock());
 }
 
 void CLabel::plantTimer() {
@@ -94,7 +99,10 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 
     pos = configPos; // Label size not known yet
 
-    resourceID = (label.cmd) ? g_asyncResourceManager->requestTextCmd(request, nullptr) : g_asyncResourceManager->requestText(request, nullptr);
+    if (label.cmd) {
+        resourceID = g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, nullptr);
+    } else
+        resourceID = g_asyncResourceManager->requestText(request, nullptr);
 
     plantTimer();
 }
