@@ -64,9 +64,9 @@ class CBackground : public IWidget {
     std::string                     outputPort;
     Hyprutils::Math::eTransform     transform;
 
-    ResourceID                      resourceID        = 0;
-    ResourceID                      scResourceID      = 0;
-    ResourceID                      pendingResourceID = 0;
+    ResourceID                      resourceID      = 0;
+    ResourceID                      scResourceID    = 0;
+    bool                            pendingResource = false;
 
     PHLANIMVAR<float>               crossFadeProgress;
 

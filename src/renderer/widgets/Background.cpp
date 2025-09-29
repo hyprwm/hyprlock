@@ -251,10 +251,10 @@ bool CBackground::draw(const SRenderData& data) {
 }
 
 void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    pendingResourceID = 0;
+    pendingResource = false;
 
     if (!newAsset)
-        Debug::log(ERR, "Background asset update failed, resourceID: {} not available on update!", pendingResourceID);
+        Debug::log(ERR, "Background asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
         Debug::log(ERR, "New background asset has an invalid texture!");
@@ -264,14 +264,13 @@ void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
         *crossFadeProgress = 1.0;
 
         crossFadeProgress->setCallbackOnEnd(
-            [REF = m_self](auto) {
+            [REF = m_self, id](auto) {
                 if (const auto PSELF = REF.lock()) {
                     if (PSELF->asset)
                         g_asyncResourceManager->unload(PSELF->asset);
-                    PSELF->asset             = PSELF->pendingAsset;
-                    PSELF->pendingAsset      = nullptr;
-                    PSELF->resourceID        = PSELF->pendingResourceID;
-                    PSELF->pendingResourceID = 0;
+                    PSELF->asset        = PSELF->pendingAsset;
+                    PSELF->pendingAsset = nullptr;
+                    PSELF->resourceID   = id;
 
                     PSELF->blurredFB->destroyBuffer();
                     PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
@@ -323,10 +322,12 @@ void CBackground::onReloadTimerUpdate() {
         return;
     }
 
-    if (pendingResourceID > 0)
+    if (pendingResource)
         return;
+
+    pendingResource = true;
 
     // Issue the next request
     AWP<IWidget> widget(m_self);
-    pendingResourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
+    g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }
