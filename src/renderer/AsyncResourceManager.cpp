@@ -44,14 +44,14 @@ ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& por
 ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextRequest(params);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Reusing text resource \"{}\" (resourceID: {}, widget: 0x{})", params.text, RESOURCEID, (uintptr_t)widget.get());
+        Debug::log(TRACE, "Reusing text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(TRACE, "Requesting text resource \"{}\" (resourceID: {}, widget: 0x{})", params.text, RESOURCEID, (uintptr_t)widget.get());
+    Debug::log(TRACE, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -59,14 +59,14 @@ ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResource
 ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextCmdRequest(params, revision);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {}, widget: 0x{})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
+        Debug::log(TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextCmdResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {}, widget: 0x{})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
+    Debug::log(TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -74,14 +74,14 @@ ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResou
 ResourceID CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForImageRequest(path, revision);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Reusing image resource {} revision {} (resourceID: {}, widget: 0x{})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+        Debug::log(TRACE, "Reusing image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CImageResource>(absolutePath(path, ""));
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(TRACE, "Requesting image resource {} revision {} (resourceID: {}, widget: 0x{})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+    Debug::log(TRACE, "Requesting image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -248,14 +248,12 @@ bool CAsyncResourceManager::request(ResourceID id, const AWP<IWidget>& widget) {
     if (m_assets[id].texture) {
         // Asset already present. Dispatch the asset callback function.
         const auto& TEXTURE = m_assets[id].texture;
+        Debug::log(LOG, "onAssetUpdate {}", id);
         if (widget)
-            g_pHyprlock->addTimer(
-                std::chrono::milliseconds(0),
-                [widget, TEXTURE](auto, auto) {
-                    if (const auto WIDGET = widget.lock(); WIDGET)
-                        WIDGET->onAssetUpdate(TEXTURE);
-                },
-                nullptr);
+            widget->onAssetUpdate(id, TEXTURE);
+
+        // TODO: add a centalized mechanism to render in one place in the event loop to avoid duplicate render calls
+        g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->renderAllOutputs(); }, nullptr);
     } else if (widget) {
         // Asset currently in-flight. Add the widget reference to in order for the callback to get dispatched later.
         m_resourcesMutex.lock();
@@ -335,8 +333,10 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
 
     for (const auto& widget : WIDGETS) {
         if (widget)
-            widget->onAssetUpdate(texture);
+            widget->onAssetUpdate(id, texture);
     }
+
+    g_pHyprlock->renderAllOutputs();
 
     if (!m_gathered && !g_pHyprlock->m_bImmediateRender) {
         m_resourcesMutex.lock();

@@ -6,6 +6,7 @@
 #include "../../helpers/Color.hpp"
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
+#include "src/defines.hpp"
 #include <hyprlang.hpp>
 #include <stdexcept>
 
@@ -27,6 +28,11 @@ static void onTimer(AWP<CLabel> ref) {
 }
 
 void CLabel::onTimerUpdate() {
+    if (m_pendingResource) {
+        Debug::log(WARN, "Trying to update label, but a resource is still pending! Skipping update.");
+        return;
+    }
+
     std::string oldFormatted = label.formatted;
 
     label = formatString(labelPreFormat);
@@ -34,21 +40,17 @@ void CLabel::onTimerUpdate() {
     if (label.formatted == oldFormatted && !label.alwaysUpdate)
         return;
 
-    if (pendingResourceID > 0) {
-        Debug::log(WARN, "Trying to update label, but resource {} is still pending! Skipping update.", pendingResourceID);
-        return;
-    }
-
     // request new
-    request.text = label.formatted;
+    request.text      = label.formatted;
+    m_pendingResource = true;
 
     AWP<IWidget> widget(m_self);
     if (label.cmd) {
         // Don't increment by one to avoid clashes with multiple widget using the same label command.
         m_dynamicRevision += label.updateEveryMs;
-        pendingResourceID = g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, widget.lock());
+        g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, widget.lock());
     } else
-        pendingResourceID = g_asyncResourceManager->requestText(request, widget.lock());
+        g_asyncResourceManager->requestText(request, widget.lock());
 }
 
 void CLabel::plantTimer() {
@@ -120,7 +122,7 @@ void CLabel::reset() {
         g_asyncResourceManager->unload(asset);
 
     asset             = nullptr;
-    pendingResourceID = 0;
+    m_pendingResource = false;
     resourceID        = 0;
 }
 
@@ -149,11 +151,12 @@ bool CLabel::draw(const SRenderData& data) {
     return false;
 }
 
-void CLabel::onAssetUpdate(ASP<CTexture> newAsset) {
-    pendingResourceID = 0;
+void CLabel::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
+    Debug::log(LOG, "Label update for resourceID {}", id);
+    m_pendingResource = false;
 
     if (!newAsset)
-        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", pendingResourceID);
+        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
         Debug::log(ERR, "New image asset has an invalid texture!");
@@ -161,10 +164,8 @@ void CLabel::onAssetUpdate(ASP<CTexture> newAsset) {
         // new asset is ready :D
         g_asyncResourceManager->unload(asset);
         asset        = newAsset;
-        resourceID   = pendingResourceID;
+        resourceID   = id;
         updateShadow = true;
-
-        g_pHyprlock->renderOutput(outputStringPort);
     }
 }
 

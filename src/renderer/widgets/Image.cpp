@@ -25,6 +25,11 @@ static void onTimer(AWP<CImage> ref) {
 }
 
 void CImage::onTimerUpdate() {
+    if (m_pendingResource) {
+        Debug::log(WARN, "Trying to update image, but a resource is still pending! Skipping update.");
+        return;
+    }
+
     const std::string OLDPATH = path;
 
     if (!reloadCommand.empty()) {
@@ -56,11 +61,10 @@ void CImage::onTimerUpdate() {
         return;
     }
 
-    if (pendingResourceID > 0)
-        return;
+    m_pendingResource = true;
 
     AWP<IWidget> widget(m_self);
-    pendingResourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
+    g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }
 
 void CImage::plantTimer() {
@@ -126,7 +130,7 @@ void CImage::reset() {
         g_asyncResourceManager->unload(asset);
 
     asset             = nullptr;
-    pendingResourceID = 0;
+    m_pendingResource = false;
     resourceID        = 0;
 }
 
@@ -205,11 +209,11 @@ bool CImage::draw(const SRenderData& data) {
     return data.opacity < 1.0;
 }
 
-void CImage::onAssetUpdate(ASP<CTexture> newAsset) {
-    pendingResourceID = 0;
+void CImage::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
+    m_pendingResource = false;
 
     if (!newAsset)
-        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", pendingResourceID);
+        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
         Debug::log(ERR, "New image asset has an invalid texture!");
@@ -218,10 +222,8 @@ void CImage::onAssetUpdate(ASP<CTexture> newAsset) {
         imageFB.destroyBuffer();
 
         asset       = newAsset;
-        resourceID  = pendingResourceID;
+        resourceID  = id;
         firstRender = true;
-
-        g_pHyprlock->renderOutput(stringPort);
     }
 }
 

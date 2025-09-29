@@ -18,7 +18,7 @@ class CShape : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
-    virtual void onAssetUpdate(ASP<CTexture> newAsset);
+    virtual void onAssetUpdate(ResourceID id, ASP<CTexture> newAsset);
 
     virtual CBox getBoundingBoxWl() const;
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
