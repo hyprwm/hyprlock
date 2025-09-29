@@ -728,7 +728,7 @@ void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
     const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
     for (const auto& widget : widgets) {
         if (widget->containsPoint(SCALEDPOS))
-            widget->onClick(button, down, pos);
+            widget->onClick(button, down, SCALEDPOS);
     }
 }
 
@@ -751,7 +751,7 @@ void CHyprlock::onHover(const Vector2D& pos) {
         if (CONTAINSPOINT) {
             if (SHOULDHOVER) {
                 widget->setHover(true);
-                widget->onHover(pos);
+                widget->onHover(SCALEDPOS);
                 outputNeedsRedraw = true;
             }
 
