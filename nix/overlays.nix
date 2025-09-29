@@ -30,6 +30,15 @@ in {
     })
   ];
 
+  hyprlock-debug = lib.composeManyExtensions [
+    self.overlays.hyprlock
+    # Dependencies
+    (final: prev: {
+      hyprutils = prev.hyprutils.override {debug = true;};
+      hyprlock-debug = prev.hyprlock.override {debug = true;};
+    })
+  ];
+
   lock_tester = final: prev: {
     lock_tester = prev.callPackage ./tester.nix {
       stdenv = prev.gcc14Stdenv;

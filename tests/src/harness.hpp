@@ -16,6 +16,7 @@ namespace NTestSessionLock {
         PREMATURE_UNLOCK,
         LOCK_TIMEOUT,
         UNLOCK_TIMEOUT,
+        BAD_EXITCODE,
         CRASH,
     };
 
@@ -23,7 +24,9 @@ namespace NTestSessionLock {
         std::string m_clientPath = "";
         std::string m_configPath = "";
 
-        uint32_t    m_timeoutMs = 10000;
+        bool        m_unlockWithUSR1 = false;
+
+        uint32_t    m_timeoutMs = 60000; // 1 minute
     };
 
     struct SSessionLockState {

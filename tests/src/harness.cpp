@@ -1,8 +1,10 @@
 #include "harness.hpp"
 
 #include <chrono>
+#include <fstream>
 #include <print>
 #include <hyprutils/os/Process.hpp>
+#include <sys/wait.h>
 #include <thread>
 
 using namespace NTestSessionLock;
@@ -14,7 +16,9 @@ const char* NTestSessionLock::testResultString(eTestResult res) {
         case eTestResult::OK: return "OK"; break;
         case eTestResult::BAD_ENVIRONMENT: return "BAD_ENVIRONMENT"; break;
         case eTestResult::PREMATURE_UNLOCK: return "PREMATURE_UNLOCK"; break;
-        case eTestResult::UNLOCK_TIMEOUT: return "LOCK_TIMEOUT"; break;
+        case eTestResult::LOCK_TIMEOUT: return "LOCK_TIMEOUT"; break;
+        case eTestResult::UNLOCK_TIMEOUT: return "UNLOCK_TIMEOUT"; break;
+        case eTestResult::BAD_EXITCODE: return "BAD_EXITCODE"; break;
         case eTestResult::CRASH: return "CRASH"; break;
         default: return "???";
     }
@@ -85,10 +89,18 @@ eTestResult NTestSessionLock::run(const SSesssionLockTest& test) {
         return eTestResult::PREMATURE_UNLOCK;
     }
 
-    CProcess unlockClient("/bin/sh", {"-c", "kill -USR1 " + std::to_string(client.pid())});
-    if (!unlockClient.runSync()) {
-        std::print(stderr, "Failed to unlock client process\n");
-        return eTestResult::BAD_ENVIRONMENT;
+    if (test.m_unlockWithUSR1) {
+        CProcess unlockClient("/bin/sh", {"-c", "kill -USR1 " + std::to_string(client.pid())});
+        if (!unlockClient.runSync()) {
+            std::print(stderr, "Failed to unlock client process\n");
+            return eTestResult::BAD_ENVIRONMENT;
+        }
+    } else {
+        // This is used by the qemu driver to send the unlock password
+        std::ofstream lockedNotifyFile("/tmp/.session-locked");
+        if (lockedNotifyFile.is_open())
+            lockedNotifyFile << "locked!";
+        lockedNotifyFile.close();
     }
 
     while (!state->m_didUnlock) {
@@ -104,6 +116,12 @@ eTestResult NTestSessionLock::run(const SSesssionLockTest& test) {
             return eTestResult::UNLOCK_TIMEOUT;
         }
     }
+
+    int status = -1;
+    waitpid(client.pid(), &status, 0);
+
+    if (status != 0)
+        return eTestResult::BAD_EXITCODE;
 
     return eTestResult::OK;
 }

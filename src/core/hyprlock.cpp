@@ -618,7 +618,7 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
 
         m_sPasswordState.passBuffer = "";
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-        Debug::log(LOG, "Authenticating");
+        Debug::log(LOG, "Authenticating {}", m_sPasswordState.passBuffer);
 
         static const auto IGNOREEMPTY = g_pConfigManager->getValue<Hyprlang::INT>("general:ignore_empty_input");
 

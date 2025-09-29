@@ -49,7 +49,7 @@ target_sources(lock_tester PRIVATE ${CMAKE_SOURCE_DIR}/protocols/hyprland-lock-n
 
 install(TARGETS lock_tester)
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/hyprland_test.conf
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/hyprland.conf
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/hypr)
 
 file(GLOB_RECURSE TESTCONFIGS CONFIGURE_DEPENDS "configs/*.conf")
