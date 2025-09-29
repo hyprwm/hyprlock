@@ -27,7 +27,8 @@ class CAsyncResourceManager {
 
     // Those are hash functions that return the id for a requested resource.
     static ResourceID resourceIDForTextRequest(const CTextResource::STextResourceData& s);
-    static ResourceID resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s);
+    // Consumer needs to increment the revision parameter to get a new command evaluation.
+    static ResourceID resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s, size_t revision);
     // Image paths may be file system links, thus this function supports a revision parameter that gets factored into the resource id.
     static ResourceID resourceIDForImageRequest(const std::string& path, size_t revision);
     static ResourceID resourceIDForScreencopy(const std::string& port);
@@ -42,7 +43,7 @@ class CAsyncResourceManager {
 
     ResourceID requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget);
     // Same as requestText but substitute the text with what launching sh -c request.text returns.
-    ResourceID    requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget);
+    ResourceID    requestTextCmd(const CTextResource::STextResourceData& params, size_t revision, const AWP<IWidget>& widget);
     ResourceID    requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget);
 
     ASP<CTexture> getAssetByID(ResourceID id);

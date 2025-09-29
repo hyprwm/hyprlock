@@ -29,12 +29,12 @@ ResourceID CAsyncResourceManager::resourceIDForTextRequest(const CTextResource::
     return scopeResourceID(1, H1 ^ (H2 << 1) ^ (H3 << 2) ^ (H4 << 3));
 }
 
-ResourceID CAsyncResourceManager::resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s) {
-    return scopeResourceID(2, resourceIDForTextRequest(s) ^ std::hash<size_t>{}(std::chrono::system_clock::now().time_since_epoch().count()));
+ResourceID CAsyncResourceManager::resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s, size_t revision) {
+    return scopeResourceID(2, resourceIDForTextRequest(s) ^ (revision << 32));
 }
 
 ResourceID CAsyncResourceManager::resourceIDForImageRequest(const std::string& path, size_t revision) {
-    return scopeResourceID(3, std::hash<std::string>{}(path) ^ std::hash<size_t>{}(revision));
+    return scopeResourceID(3, std::hash<std::string>{}(path) ^ (revision << 32));
 }
 
 ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& port) {
@@ -44,29 +44,29 @@ ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& por
 ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextRequest(params);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Text resource \"{}\" (resourceID: {}) already requested!", params.text, RESOURCEID);
+        Debug::log(TRACE, "Reusing text resource \"{}\" (resourceID: {}, widget: 0x{})", params.text, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(LOG, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID);
+    Debug::log(TRACE, "Requesting text resource \"{}\" (resourceID: {}, widget: 0x{})", params.text, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
 
-ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
-    const auto RESOURCEID = resourceIDForTextCmdRequest(params);
+ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, size_t revision, const AWP<IWidget>& widget) {
+    const auto RESOURCEID = resourceIDForTextCmdRequest(params, revision);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Text cmd resource \"{}\" (resourceID: {}) already requested!", params.text, RESOURCEID);
+        Debug::log(TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {}, widget: 0x{})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextCmdResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(LOG, "Enqueued text cmd resource `{}` (resourceID: {})", params.text, RESOURCEID);
+    Debug::log(TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {}, widget: 0x{})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -74,14 +74,14 @@ ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResou
 ResourceID CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForImageRequest(path, revision);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Image resource {} revision {} (resourceID: {}) already requested!", path, revision, RESOURCEID);
+        Debug::log(TRACE, "Reusing image resource {} revision {} (resourceID: {}, widget: 0x{})", path, revision, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CImageResource>(absolutePath(path, ""));
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(LOG, "Image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID);
+    Debug::log(TRACE, "Requesting image resource {} revision {} (resourceID: {}, widget: 0x{})", path, revision, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -139,7 +139,11 @@ void CAsyncResourceManager::enqueueScreencopyFrames() {
 }
 
 void CAsyncResourceManager::screencopyToTexture(const CScreencopyFrame& scFrame) {
-    RASSERT(scFrame.m_ready && m_assets.contains(scFrame.m_resourceID), "Logic error in screencopy gathering.");
+    if (!scFrame.m_ready || !m_assets.contains(scFrame.m_resourceID)) {
+        Debug::log(ERR, "Bogus call to CAsyncResourceManager::screencopyToTexture. This is a bug!");
+        return;
+    }
+
     m_assets[scFrame.m_resourceID].texture = scFrame.m_asset;
 
     Debug::log(TRACE, "Done sc frame {}", scFrame.m_resourceID);
@@ -147,7 +151,7 @@ void CAsyncResourceManager::screencopyToTexture(const CScreencopyFrame& scFrame)
     std::erase_if(m_scFrames, [&scFrame](const auto& f) { return f.get() == &scFrame; });
 
     if (m_scFrames.empty()) {
-        Debug::log(TRACE, "Gathered all screencopy frames - removing dmabuf listeners");
+        Debug::log(LOG, "Gathered all screencopy frames - removing dmabuf listeners");
         g_pHyprlock->removeDmabufListener();
     }
 }
