@@ -20,9 +20,10 @@ class IWidget {
 
     virtual ~IWidget() = default;
 
-    virtual void    configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) = 0;
-    virtual bool    draw(const SRenderData& data)                                                                = 0;
-    virtual void    onAssetUpdate(ASP<CTexture> newAsset)                                                        = 0;
+    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) = 0;
+    virtual bool draw(const SRenderData& data)                                                                = 0;
+    // Never render within onAssetUpdate!
+    virtual void    onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) = 0;
 
     static Vector2D posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign,
                                    const double& ang = 0);

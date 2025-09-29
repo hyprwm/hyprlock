@@ -24,7 +24,7 @@ class CBackground : public IWidget {
 
     virtual void    configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool    draw(const SRenderData& data);
-    virtual void    onAssetUpdate(ASP<CTexture> newAsset);
+    virtual void    onAssetUpdate(ResourceID id, ASP<CTexture> newAsset);
 
     void            reset(); // Unload assets, remove timers, etc.
 

@@ -250,7 +250,7 @@ bool CBackground::draw(const SRenderData& data) {
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
 }
 
-void CBackground::onAssetUpdate(ASP<CTexture> newAsset) {
+void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
     pendingResourceID = 0;
 
     if (!newAsset)
@@ -278,8 +278,6 @@ void CBackground::onAssetUpdate(ASP<CTexture> newAsset) {
                 }
             },
             true);
-
-        g_pHyprlock->renderOutput(outputPort);
     }
 }
 

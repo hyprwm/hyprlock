@@ -105,7 +105,7 @@ bool CShape::draw(const SRenderData& data) {
     return data.opacity < 1.0;
 }
 
-void CShape::onAssetUpdate(ASP<CTexture> newAsset) {
+void CShape::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
     ;
 }
 

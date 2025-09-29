@@ -363,8 +363,8 @@ void CPasswordInputField::updatePlaceholder() {
     placeholder.resourceID = g_asyncResourceManager->requestText(request, widget);
 }
 
-void CPasswordInputField::onAssetUpdate(ASP<CTexture> newAsset) {
-    g_pHyprlock->renderOutput(outputStringPort);
+void CPasswordInputField::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
+    ;
 }
 
 void CPasswordInputField::updateWidth() {
