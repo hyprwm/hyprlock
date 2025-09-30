@@ -152,7 +152,7 @@ bool CLabel::draw(const SRenderData& data) {
 }
 
 void CLabel::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    Debug::log(LOG, "Label update for resourceID {}", id);
+    Debug::log(TRACE, "Label update for resourceID {}", id);
     m_pendingResource = false;
 
     if (!newAsset)
