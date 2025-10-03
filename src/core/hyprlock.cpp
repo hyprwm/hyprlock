@@ -312,8 +312,8 @@ void CHyprlock::run() {
         if (g_pEGL->m_isNvidia && m_vOutputs.empty()) {
             Debug::log(LOG, "NVIDIA Workaround: destroying rendering context to avoid crash on reconnect!");
 
-            g_pEGL.reset();
             g_pRenderer.reset();
+            g_pEGL.reset();
             g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
             g_pRenderer = makeUnique<CRenderer>();
             g_pRenderer->warpOpacity(1.0);
