@@ -26,6 +26,10 @@ void CBackground::registerSelf(const ASP<CBackground>& self) {
     m_self = self;
 }
 
+eWidgetType CBackground::getType() const {
+    return eWidgetType::WIDGET_BACKGROUND;
+}
+
 void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
 
@@ -221,6 +225,7 @@ bool CBackground::draw(const SRenderData& data) {
 
     if (asset && asset->texture.m_iType == TEXTURE_INVALID) {
         g_pAsyncResourceGatherer->unloadAsset(asset);
+
         resourceID = "";
         renderRect(color);
         return false;

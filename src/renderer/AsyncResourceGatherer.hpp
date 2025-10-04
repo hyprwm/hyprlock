@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Screencopy.hpp"
+#include <cstdint>
+#include <pango/pangocairo.h>
 #include "../defines.hpp"
 #include <thread>
 #include <atomic>
@@ -26,8 +28,9 @@ class CAsyncResourceGatherer {
 
     bool                 apply();
 
-    enum eTargetType {
+    enum eTargetType : uint8_t {
         TARGET_IMAGE = 0,
+        TARGET_EMBEDDED_IMAGE,
         TARGET_TEXT
     };
 
@@ -36,6 +39,8 @@ class CAsyncResourceGatherer {
         std::string                               asset;
         std::string                               id;
 
+        std::span<uint8_t>                        image_buffer;
+
         std::unordered_map<std::string, std::any> props;
 
         // optional. Callbacks will be dispatched from the main thread,
@@ -43,6 +48,8 @@ class CAsyncResourceGatherer {
         // will fire once the resource is fully loaded and ready.
         std::function<void()> callback = nullptr;
     };
+
+    Vector2D getTextAssetSize(const SPreloadRequest& request);
 
     void requestAsyncAssetPreload(const SPreloadRequest& request);
     void unloadAsset(ASP<SPreloadedAsset> asset);
@@ -54,9 +61,11 @@ class CAsyncResourceGatherer {
     std::thread asyncLoopThread;
     std::thread initialGatherThread;
 
-    void        asyncAssetSpinLock();
-    void        renderText(const SPreloadRequest& rq);
-    void        renderImage(const SPreloadRequest& rq);
+    PangoLayout* getPangoLayout(const SPreloadRequest& rq);
+
+    void         asyncAssetSpinLock();
+    void         renderText(const SPreloadRequest& rq);
+    void         renderImage(const SPreloadRequest& rq);
 
     struct {
         std::condition_variable      requestsCV;

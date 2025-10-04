@@ -4,7 +4,6 @@
 #include "IWidget.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
 #include "../../helpers/Color.hpp"
-#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
 #include "../AsyncResourceGatherer.hpp"
@@ -13,7 +12,6 @@
 #include <string>
 #include <unordered_map>
 #include <any>
-#include <chrono>
 #include <filesystem>
 
 struct SPreloadedAsset;
@@ -25,6 +23,7 @@ class CBackground : public IWidget {
     ~CBackground();
 
     void            registerSelf(const ASP<CBackground>& self);
+    eWidgetType     getType() const;
 
     virtual void    configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool    draw(const SRenderData& data);

@@ -16,6 +16,10 @@ void CImage::registerSelf(const ASP<CImage>& self) {
     m_self = self;
 }
 
+eWidgetType CImage::getType() const {
+    return eWidgetType::WIDGET_IMAGE;
+}
+
 static void onTimer(AWP<CImage> ref) {
     if (auto PIMAGE = ref.lock(); PIMAGE) {
         PIMAGE->onTimerUpdate();
