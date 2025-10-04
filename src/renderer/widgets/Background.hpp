@@ -1,19 +1,15 @@
 #pragma once
 
-#include "../../defines.hpp"
 #include "IWidget.hpp"
+#include "../../defines.hpp"
 #include "../../helpers/AnimatedVariable.hpp"
 #include "../../helpers/Color.hpp"
-#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
-#include "../AsyncResourceGatherer.hpp"
-#include <cstdint>
 #include <hyprutils/math/Misc.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>
-#include <chrono>
 #include <filesystem>
 
 struct SPreloadedAsset;
@@ -28,6 +24,7 @@ class CBackground : public IWidget {
 
     virtual void    configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool    draw(const SRenderData& data);
+    virtual void    onAssetUpdate(ResourceID id, ASP<CTexture> newAsset);
 
     void            reset(); // Unload assets, remove timers, etc.
 
@@ -50,39 +47,39 @@ class CBackground : public IWidget {
     AWP<CBackground> m_self;
 
     // if needed
-    UP<CFramebuffer>                        blurredFB;
-    UP<CFramebuffer>                        pendingBlurredFB;
-    UP<CFramebuffer>                        transformedScFB;
+    UP<CFramebuffer>                blurredFB;
+    UP<CFramebuffer>                pendingBlurredFB;
+    UP<CFramebuffer>                transformedScFB;
 
-    int                                     blurSize          = 10;
-    int                                     blurPasses        = 3;
-    float                                   noise             = 0.0117;
-    float                                   contrast          = 0.8916;
-    float                                   brightness        = 0.8172;
-    float                                   vibrancy          = 0.1696;
-    float                                   vibrancy_darkness = 0.0;
-    Vector2D                                viewport;
-    std::string                             path = "";
+    int                             blurSize          = 10;
+    int                             blurPasses        = 3;
+    float                           noise             = 0.0117;
+    float                           contrast          = 0.8916;
+    float                           brightness        = 0.8172;
+    float                           vibrancy          = 0.1696;
+    float                           vibrancy_darkness = 0.0;
+    Vector2D                        viewport;
+    std::string                     path = "";
 
-    std::string                             outputPort;
-    Hyprutils::Math::eTransform             transform;
+    std::string                     outputPort;
+    Hyprutils::Math::eTransform     transform;
 
-    std::string                             resourceID;
-    std::string                             scResourceID;
-    std::string                             pendingResourceID;
+    ResourceID                      resourceID      = 0;
+    ResourceID                      scResourceID    = 0;
+    bool                            pendingResource = false;
 
-    PHLANIMVAR<float>                       crossFadeProgress;
+    PHLANIMVAR<float>               crossFadeProgress;
 
-    CHyprColor                              color;
-    ASP<SPreloadedAsset>                    asset        = nullptr;
-    ASP<SPreloadedAsset>                    scAsset      = nullptr;
-    ASP<SPreloadedAsset>                    pendingAsset = nullptr;
-    bool                                    isScreenshot = false;
-    bool                                    firstRender  = true;
+    CHyprColor                      color;
+    ASP<CTexture>                   asset        = nullptr;
+    ASP<CTexture>                   scAsset      = nullptr;
+    ASP<CTexture>                   pendingAsset = nullptr;
+    bool                            isScreenshot = false;
+    bool                            firstRender  = true;
 
-    int                                     reloadTime = -1;
-    std::string                             reloadCommand;
-    CAsyncResourceGatherer::SPreloadRequest request;
-    ASP<CTimer>                             reloadTimer;
-    std::filesystem::file_time_type         modificationTime;
+    int                             reloadTime = -1;
+    std::string                     reloadCommand;
+    ASP<CTimer>                     reloadTimer;
+    std::filesystem::file_time_type modificationTime;
+    size_t                          m_imageRevision = 0;
 };

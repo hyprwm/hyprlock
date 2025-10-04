@@ -2,10 +2,9 @@
 
 #include "../defines.hpp"
 #include "../core/Output.hpp"
+#include "../renderer/Texture.hpp"
 #include <cstdint>
 #include <gbm.h>
-#include <memory>
-#include "Shared.hpp"
 #include "linux-dmabuf-v1.hpp"
 #include "wlr-screencopy-unstable-v1.hpp"
 
@@ -14,29 +13,27 @@ class ISCFrame {
     ISCFrame()          = default;
     virtual ~ISCFrame() = default;
 
-    virtual bool   onBufferDone()                            = 0;
-    virtual bool   onBufferReady(ASP<SPreloadedAsset> asset) = 0;
+    virtual bool   onBufferDone()                     = 0;
+    virtual bool   onBufferReady(ASP<CTexture> asset) = 0;
 
     SP<CCWlBuffer> m_wlBuffer = nullptr;
 };
 
 class CScreencopyFrame {
   public:
-    static std::string                 getResourceId(SP<COutput> pOutput);
-    static constexpr const std::string RESOURCEIDPREFIX = "screencopy";
-
-    CScreencopyFrame(SP<COutput> pOutput);
+    CScreencopyFrame()  = default;
     ~CScreencopyFrame() = default;
 
-    void                        captureOutput();
+    void                        capture(SP<COutput> pOutput);
 
     SP<CCZwlrScreencopyFrameV1> m_sc = nullptr;
 
-    std::string                 m_resourceID;
-    ASP<SPreloadedAsset>        m_asset;
+    size_t                      m_resourceID;
+    ASP<CTexture>               m_asset;
+
+    bool                        m_ready = false;
 
   private:
-    WP<COutput>  m_outputRef;
     UP<ISCFrame> m_frame = nullptr;
 
     bool         m_dmaFailed = false;
@@ -48,7 +45,7 @@ class CSCDMAFrame : public ISCFrame {
     CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc);
     virtual ~CSCDMAFrame();
 
-    virtual bool onBufferReady(ASP<SPreloadedAsset> asset);
+    virtual bool onBufferReady(ASP<CTexture> asset);
     virtual bool onBufferDone();
 
   private:
@@ -78,7 +75,7 @@ class CSCSHMFrame : public ISCFrame {
     virtual bool onBufferDone() {
         return m_ok;
     }
-    virtual bool onBufferReady(ASP<SPreloadedAsset> asset);
+    virtual bool onBufferReady(ASP<CTexture> texture);
     void         convertBuffer();
 
   private:

@@ -3,9 +3,9 @@
 #include "../../defines.hpp"
 #include "IWidget.hpp"
 #include "Shadowable.hpp"
-#include "../../helpers/Math.hpp"
 #include "../../core/Timer.hpp"
-#include "../AsyncResourceGatherer.hpp"
+#include <hyprgraphics/resource/resources/AsyncResource.hpp>
+#include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>
@@ -22,6 +22,8 @@ class CLabel : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual void onAssetUpdate(ResourceID id, ASP<CTexture> newAsset);
+
     virtual CBox getBoundingBoxWl() const;
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos);
     virtual void onHover(const Vector2D& pos);
@@ -33,29 +35,32 @@ class CLabel : public IWidget {
     void         plantTimer();
 
   private:
-    AWP<CLabel>                             m_self;
+    AWP<CLabel>                                    m_self;
 
-    std::string                             getUniqueResourceId();
+    std::string                                    labelPreFormat;
+    IWidget::SFormatResult                         label;
 
-    std::string                             labelPreFormat;
-    IWidget::SFormatResult                  label;
+    std::string                                    halign, valign;
+    std::string                                    onclickCommand;
 
-    Vector2D                                viewport;
-    Vector2D                                pos;
-    Vector2D                                configPos;
-    double                                  angle;
-    std::string                             resourceID;
-    std::string                             pendingResourceID; // if dynamic label
-    std::string                             halign, valign;
-    std::string                             onclickCommand;
-    ASP<SPreloadedAsset>                    asset = nullptr;
+    Vector2D                                       viewport;
+    Vector2D                                       pos;
+    Vector2D                                       configPos;
+    double                                         angle;
 
-    std::string                             outputStringPort;
+    ResourceID                                     resourceID        = 0;
+    bool                                           m_pendingResource = false;
 
-    CAsyncResourceGatherer::SPreloadRequest request;
+    size_t                                         m_dynamicRevision = 0;
 
-    ASP<CTimer>                             labelTimer = nullptr;
+    ASP<CTexture>                                  asset = nullptr;
 
-    CShadowable                             shadow;
-    bool                                    updateShadow = true;
+    std::string                                    outputStringPort;
+
+    Hyprgraphics::CTextResource::STextResourceData request;
+
+    ASP<CTimer>                                    labelTimer = nullptr;
+
+    CShadowable                                    shadow;
+    bool                                           updateShadow = true;
 };

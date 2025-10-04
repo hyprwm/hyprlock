@@ -1,4 +1,5 @@
 #include "Screencopy.hpp"
+#include "./AsyncResourceManager.hpp"
 #include "../helpers/Log.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../core/hyprlock.hpp"
@@ -23,28 +24,20 @@ static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullpt
 static PFNEGLQUERYDMABUFMODIFIERSEXTPROC   eglQueryDmaBufModifiersEXT   = nullptr;
 
 //
-std::string CScreencopyFrame::getResourceId(SP<COutput> pOutput) {
-    return RESOURCEIDPREFIX + std::format(":{}-{}x{}", pOutput->stringPort, pOutput->size.x, pOutput->size.y);
-}
-
-CScreencopyFrame::CScreencopyFrame(SP<COutput> pOutput) : m_outputRef(pOutput) {
-    m_asset = makeAtomicShared<SPreloadedAsset>();
-    captureOutput();
+void CScreencopyFrame::capture(SP<COutput> pOutput) {
+    RASSERT(pOutput, "Screencopy, but no valid output");
 
     static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
+
+    m_asset      = makeAtomicShared<CTexture>();
+    m_resourceID = CAsyncResourceManager::resourceIDForScreencopy(pOutput->stringPort);
+
+    m_sc = makeShared<CCZwlrScreencopyFrameV1>(g_pHyprlock->getScreencopy()->sendCaptureOutput(false, pOutput->m_wlOutput->resource()));
+
     if (*SCMODE == 1)
         m_frame = makeUnique<CSCSHMFrame>(m_sc);
     else
         m_frame = makeUnique<CSCDMAFrame>(m_sc);
-}
-
-void CScreencopyFrame::captureOutput() {
-    const auto POUTPUT = m_outputRef.lock();
-    RASSERT(POUTPUT, "Screencopy, but no valid output");
-
-    m_resourceID = getResourceId(POUTPUT);
-
-    m_sc = makeShared<CCZwlrScreencopyFrameV1>(g_pHyprlock->getScreencopy()->sendCaptureOutput(false, POUTPUT->m_wlOutput->resource()));
 
     m_sc->setBufferDone([this](CCZwlrScreencopyFrameV1* r) {
         Debug::log(TRACE, "[sc] wlrOnBufferDone for {}", (void*)this);
@@ -74,6 +67,8 @@ void CScreencopyFrame::captureOutput() {
         }
 
         m_sc.reset();
+        m_ready = true;
+        g_asyncResourceManager->screencopyToTexture(*this);
     });
 }
 
@@ -202,7 +197,7 @@ bool CSCDMAFrame::onBufferDone() {
     return true;
 }
 
-bool CSCDMAFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
+bool CSCDMAFrame::onBufferReady(ASP<CTexture> texture) {
     static constexpr struct {
         EGLAttrib fd;
         EGLAttrib offset;
@@ -256,9 +251,9 @@ bool CSCDMAFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
         return false;
     }
 
-    asset->texture.allocate();
-    asset->texture.m_vSize = {m_w, m_h};
-    glBindTexture(GL_TEXTURE_2D, asset->texture.m_iTexID);
+    texture->allocate();
+    texture->m_vSize = {m_w, m_h};
+    glBindTexture(GL_TEXTURE_2D, texture->m_iTexID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -266,9 +261,7 @@ bool CSCDMAFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "Got dma frame with size {}", asset->texture.m_vSize);
-
-    asset->ready = true;
+    Debug::log(LOG, "Got dma frame with size {}", texture->m_vSize);
 
     return true;
 }
@@ -460,14 +453,14 @@ void CSCSHMFrame::convertBuffer() {
     }
 }
 
-bool CSCSHMFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
+bool CSCSHMFrame::onBufferReady(ASP<CTexture> texture) {
     convertBuffer();
 
-    asset->texture.allocate();
-    asset->texture.m_vSize.x = m_w;
-    asset->texture.m_vSize.y = m_h;
+    texture->allocate();
+    texture->m_vSize.x = m_w;
+    texture->m_vSize.y = m_h;
 
-    glBindTexture(GL_TEXTURE_2D, asset->texture.m_iTexID);
+    glBindTexture(GL_TEXTURE_2D, texture->m_iTexID);
 
     void* buffer = m_convBuffer ? m_convBuffer : m_shmData;
 
@@ -478,9 +471,7 @@ bool CSCSHMFrame::onBufferReady(ASP<SPreloadedAsset> asset) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_w, m_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "[sc] [shm] Got screenshot with size {}", asset->texture.m_vSize);
-
-    asset->ready = true;
+    Debug::log(LOG, "[sc] [shm] Got screenshot with size {}", texture->m_vSize);
 
     return true;
 }

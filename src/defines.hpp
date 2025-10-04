@@ -7,6 +7,9 @@
 
 using namespace Hyprutils::Memory;
 using namespace Hyprgraphics;
+
+using ResourceID = size_t;
+
 #define SP CSharedPointer
 #define WP CWeakPointer
 #define UP CUniquePointer
