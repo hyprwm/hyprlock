@@ -32,7 +32,6 @@ You need the following dependencies
 
 - cairo
 - hyprgraphics
-- hyprland-protocols
 - hyprlang
 - hyprutils
 - hyprwayland-scanner
