@@ -472,6 +472,7 @@ void CHyprlock::run() {
 
     m_vOutputs.clear();
     g_pSeatManager.reset();
+    g_asyncResourceManager.reset();
     g_pRenderer.reset();
     g_pEGL.reset();
 
