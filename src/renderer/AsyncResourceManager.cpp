@@ -16,7 +16,7 @@ using namespace Hyprgraphics;
 using namespace Hyprutils::OS;
 
 static inline ResourceID scopeResourceID(uint8_t scope, size_t in) {
-    return (in & ~0xff) | scope;
+    return (in & ~0x0f) | scope;
 }
 
 ResourceID CAsyncResourceManager::resourceIDForTextRequest(const CTextResource::STextResourceData& s) {
