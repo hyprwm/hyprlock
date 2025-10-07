@@ -51,6 +51,9 @@ class CPasswordInputField : public IWidget {
     void                       updateInputState();
     void                       updateColors();
 
+    void                       drawPasswordText(int eyeOffset, CHyprColor fontCol);
+    bool                       drawPasswordDots(int eyeOffset, CHyprColor fontCol, const SRenderData& data);
+
     CBox                       getEyeBox();
 
     bool                       firstRender  = true;

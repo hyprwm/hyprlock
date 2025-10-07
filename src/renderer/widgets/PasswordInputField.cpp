@@ -347,93 +347,22 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             if (!password.text.asset)
                 password.text.asset = g_pAsyncResourceGatherer->getAssetByID(password.text.resourceID);
 
-            if (password.text.asset) {
-                Vector2D passSize  = password.text.asset->texture.m_vSize;
-                double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
-                double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
-
-                double   xstart = password.text.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
-                if (passSize.x > areaWidth)
-                    xstart -= (passSize.x - areaWidth) / 2.0;
-                if (password.eye.placement == "left")
-                    xstart += eyeOffset;
-
-                Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
-                CBox     box{passwordPosition, passSize};
-
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(inputFieldBox.x + padding + (password.eye.placement == "left" ? eyeOffset : 0), inputFieldBox.y, areaWidth, inputFieldBox.h);
-                g_pRenderer->renderTexture(box, password.text.asset->texture, fontCol.a);
-                glScissor(0, 0, viewport.x, viewport.y);
-                glDisable(GL_SCISSOR_TEST);
-            } else
+            if (password.text.asset)
+                drawPasswordText(eyeOffset, fontCol);
+            else
                 forceReload = true;
         } else {
-            const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * password.dots.size * 0.5f) * 2.f;
-            Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
-            int       passSpacing = std::floor(passSize.x * password.dots.spacing);
-
             if (!password.dots.format.empty()) {
                 if (!password.dots.asset)
                     password.dots.asset = g_pAsyncResourceGatherer->getAssetByID(password.dots.resourceID);
 
-                if (!password.dots.asset)
+                if (password.dots.asset)
+                    drawPasswordDots(eyeOffset, fontCol, data);
+                else
                     forceReload = true;
-                else {
-                    passSize    = password.dots.asset->texture.m_vSize;
-                    passSpacing = std::floor(passSize.x * password.dots.spacing);
-                }
-            }
 
-            const auto   CURRDOTS     = password.dots.currentAmount->value();
-            const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
-            const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2) - eyeOffset;
-            const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
-            const int    DOTFLOORED   = std::floor(CURRDOTS);
-            const auto   DOTALPHA     = fontCol.a;
-
-            // Calculate the total width required for all dots including spaces between them
-            const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
-
-            // Calculate starting x-position to ensure dots stay centered within the input field
-            double xstart = password.dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
-
-            if (CURRDOTS > MAXDOTS)
-                xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eyeOffset) / 2.0;
-
-            if (password.eye.placement == "left" && password.allowToggle)
-                xstart += eyeOffset;
-
-            if (password.dots.rounding == -1)
-                password.dots.rounding = passSize.x / 2.0;
-            else if (password.dots.rounding == -2)
-                password.dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * password.dots.size;
-
-            for (int i = 0; i < CURRDOTS; ++i) {
-                if (i < DOTFLOORED - MAXDOTS)
-                    continue;
-
-                if (CURRDOTS != DOTFLOORED) {
-                    if (i == DOTFLOORED)
-                        fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
-                    else if (i == DOTFLOORED - MAXDOTS)
-                        fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
-                }
-
-                Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
-                CBox     box{dotPosition, passSize};
-                if (!password.dots.format.empty()) {
-                    if (!password.dots.asset) {
-                        fontCol.a = DOTALPHA;
-                        break;
-                    }
-
-                    g_pRenderer->renderTexture(box, password.dots.asset->texture, fontCol.a, password.dots.rounding);
-                } else
-                    g_pRenderer->renderRect(box, fontCol, password.dots.rounding);
-
-                fontCol.a = DOTALPHA;
-            }
+            } else
+                drawPasswordDots(eyeOffset, fontCol, data);
         }
 
         if ((passwordLength > 0 || checkWaiting) && password.allowToggle && !password.eye.hide) {
@@ -469,6 +398,94 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     }
 
     return redrawShadow || forceReload;
+}
+
+void CPasswordInputField::drawPasswordText(int eyeOffset, CHyprColor fontCol) {
+    CBox     inputFieldBox = {pos, size->value()};
+
+    Vector2D passSize  = password.text.asset->texture.m_vSize;
+    double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
+    double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
+
+    double   xstart = password.text.center ? (inputFieldBox.w - passSize.x - eyeOffset) / 2.0 : padding;
+    if (passSize.x > areaWidth)
+        xstart -= (passSize.x - areaWidth) / 2.0;
+    if (password.eye.placement == "left")
+        xstart += eyeOffset;
+
+    Vector2D passwordPosition = inputFieldBox.pos() + Vector2D{xstart, padding};
+    CBox     box{passwordPosition, passSize};
+
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(inputFieldBox.x + padding + (password.eye.placement == "left" ? eyeOffset : 0), inputFieldBox.y, areaWidth, inputFieldBox.h);
+    g_pRenderer->renderTexture(box, password.text.asset->texture, fontCol.a);
+    glScissor(0, 0, viewport.x, viewport.y);
+    glDisable(GL_SCISSOR_TEST);
+}
+
+bool CPasswordInputField::drawPasswordDots(int eyeOffset, CHyprColor fontCol, const SRenderData& data) {
+    CBox      inputFieldBox = {pos, size->value()};
+
+    const int RECTPASSSIZE = std::nearbyint(inputFieldBox.h * password.dots.size * 0.5f) * 2.f;
+    Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
+    int       passSpacing = std::floor(passSize.x * password.dots.spacing);
+
+    if (!password.dots.format.empty()) {
+        passSize    = password.dots.asset->texture.m_vSize;
+        passSpacing = std::floor(passSize.x * password.dots.spacing);
+    }
+
+    const auto   CURRDOTS     = password.dots.currentAmount->value();
+    const double DOTPAD       = (inputFieldBox.h - passSize.y) / 2.0;
+    const double DOTAREAWIDTH = inputFieldBox.w - (DOTPAD * 2) - eyeOffset;
+    const int    MAXDOTS      = std::round(DOTAREAWIDTH * 1.0 / (passSize.x + passSpacing));
+    const int    DOTFLOORED   = std::floor(CURRDOTS);
+    const auto   DOTALPHA     = fontCol.a;
+
+    // Calculate the total width required for all dots including spaces between them
+    const double CURRWIDTH = ((passSize.x + passSpacing) * CURRDOTS) - passSpacing;
+
+    // Calculate starting x-position to ensure dots stay centered within the input field
+    double xstart = password.dots.center ? ((DOTAREAWIDTH - CURRWIDTH) / 2.0) + DOTPAD : DOTPAD;
+
+    if (CURRDOTS > MAXDOTS)
+        xstart = (inputFieldBox.w + MAXDOTS * (passSize.x + passSpacing) - passSpacing - 2 * CURRWIDTH - eyeOffset) / 2.0;
+
+    if (password.eye.placement == "left" && password.allowToggle)
+        xstart += eyeOffset;
+
+    if (password.dots.rounding == -1)
+        password.dots.rounding = passSize.x / 2.0;
+    else if (password.dots.rounding == -2)
+        password.dots.rounding = rounding == -1 ? passSize.x / 2.0 : rounding * password.dots.size;
+
+    for (int i = 0; i < CURRDOTS; ++i) {
+        if (i < DOTFLOORED - MAXDOTS)
+            continue;
+
+        if (CURRDOTS != DOTFLOORED) {
+            if (i == DOTFLOORED)
+                fontCol.a *= (CURRDOTS - DOTFLOORED) * data.opacity;
+            else if (i == DOTFLOORED - MAXDOTS)
+                fontCol.a *= (1 - CURRDOTS + DOTFLOORED) * data.opacity;
+        }
+
+        Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
+        CBox     box{dotPosition, passSize};
+        if (!password.dots.format.empty()) {
+            if (!password.dots.asset) {
+                fontCol.a = DOTALPHA;
+                break;
+            }
+
+            g_pRenderer->renderTexture(box, password.dots.asset->texture, fontCol.a, password.dots.rounding);
+        } else
+            g_pRenderer->renderRect(box, fontCol, password.dots.rounding);
+
+        fontCol.a = DOTALPHA;
+    }
+
+    return false;
 }
 
 void CPasswordInputField::updatePlaceholder() {
