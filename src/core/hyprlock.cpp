@@ -709,7 +709,7 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
                 m_sPasswordState.passBuffer.pop_back();
             m_sPasswordState.passBuffer = m_sPasswordState.passBuffer.substr(0, m_sPasswordState.passBuffer.length() - 1);
         }
-    } else if (SYM == XKB_KEY_Tab) {
+    } else if (m_bCtrl && SYM == XKB_KEY_h) {
         for (auto& o : m_vOutputs) {
             const auto widgets = g_pRenderer->getOrCreateWidgetsFor(*o->m_sessionLockSurface);
 
