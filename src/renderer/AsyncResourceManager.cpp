@@ -248,7 +248,6 @@ bool CAsyncResourceManager::request(ResourceID id, const AWP<IWidget>& widget) {
     if (m_assets[id].texture) {
         // Asset already present. Dispatch the asset callback function.
         const auto& TEXTURE = m_assets[id].texture;
-        Debug::log(LOG, "onAssetUpdate {}", id);
         if (widget)
             widget->onAssetUpdate(id, TEXTURE);
 
