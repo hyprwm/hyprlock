@@ -215,17 +215,11 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
-    const bool      WAITFORASSETS = !g_pHyprlock->m_bImmediateRender && !g_pAsyncResourceGatherer->gathered;
-
-    if (!WAITFORASSETS) {
-        // render widgets
-        const auto WIDGETS = getOrCreateWidgetsFor(surf);
-        for (auto& w : WIDGETS) {
-            feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
-        }
+    // render widgets
+    const auto WIDGETS = getOrCreateWidgetsFor(surf);
+    for (auto& w : WIDGETS) {
+        feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
     }
-
-    feedback.needsFrame = feedback.needsFrame || !g_pAsyncResourceGatherer->gathered;
 
     glDisable(GL_BLEND);
 
