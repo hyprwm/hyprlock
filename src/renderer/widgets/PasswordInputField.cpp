@@ -1,4 +1,5 @@
 #include "PasswordInputField.hpp"
+#include "../AsyncResourceManager.hpp"
 #include "../Renderer.hpp"
 #include "../AsyncResourceGatherer.hpp"
 #include "../../core/hyprlock.hpp"
@@ -10,6 +11,7 @@
 #include "../../helpers/Color.hpp"
 #include <functional>
 #include <cmath>
+#include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <hyprutils/math/Vector2D.hpp>
 #include <hyprutils/string/String.hpp>
 #include <algorithm>
@@ -107,16 +109,12 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
     pos = posFromHVAlign(viewport, size->goal(), configPos, halign, valign);
 
     if (!password.dots.format.empty()) {
-        password.dots.resourceID = std::format("input:{}-{}", (uintptr_t)this, password.dots.format);
-        CAsyncResourceGatherer::SPreloadRequest request;
-        request.id                   = password.dots.resourceID;
-        request.asset                = password.dots.format;
-        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = fontFamily;
-        request.props["color"]       = colorConfig.font;
-        request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.text.size * 0.5f) * 2.f);
-
-        g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
+        Hyprgraphics::CTextResource::STextResourceData request;
+        request.text             = password.dots.format;
+        request.font             = fontFamily;
+        request.color            = colorConfig.font.asRGB();
+        request.fontSize         = (int)(std::nearbyint(configSize.y * password.text.size * 0.5f) * 2.f);
+        password.dots.resourceID = g_asyncResourceManager->requestText(request, nullptr);
     }
 
     // request the inital placeholder asset
@@ -136,10 +134,10 @@ void CPasswordInputField::reset() {
         return;
 
     if (placeholder.asset)
-        g_pAsyncResourceGatherer->unloadAsset(placeholder.asset);
+        g_asyncResourceManager->unload(placeholder.asset);
 
-    placeholder.asset = nullptr;
-    placeholder.resourceID.clear();
+    placeholder.asset      = nullptr;
+    placeholder.resourceID = 0;
     placeholder.currentText.clear();
 }
 
@@ -373,22 +371,22 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (passwordLength == 0 && !checkWaiting && !placeholder.resourceID.empty()) {
-        ASP<SPreloadedAsset> currAsset = nullptr;
+    if (passwordLength == 0 && !checkWaiting && placeholder.resourceID > 0) {
+        ASP<CTexture> currAsset = nullptr;
 
         if (!placeholder.asset)
-            placeholder.asset = g_pAsyncResourceGatherer->getAssetByID(placeholder.resourceID);
+            placeholder.asset = g_asyncResourceManager->getAssetByID(placeholder.resourceID);
 
         currAsset = placeholder.asset;
 
         if (currAsset) {
-            const Vector2D ASSETPOS = inputFieldBox.pos() + inputFieldBox.size() / 2.0 - currAsset->texture.m_vSize / 2.0;
-            const CBox     ASSETBOX{ASSETPOS, currAsset->texture.m_vSize};
+            const Vector2D ASSETPOS = inputFieldBox.pos() + inputFieldBox.size() / 2.0 - currAsset->m_vSize / 2.0;
+            const CBox     ASSETBOX{ASSETPOS, currAsset->m_vSize};
 
             // Cut the texture to the width of the input field
             glEnable(GL_SCISSOR_TEST);
             glScissor(inputFieldBox.x, inputFieldBox.y, inputFieldBox.w, inputFieldBox.h);
-            g_pRenderer->renderTexture(ASSETBOX, currAsset->texture, data.opacity * fade.a->value(), 0);
+            g_pRenderer->renderTexture(ASSETBOX, *currAsset, data.opacity * fade.a->value(), 0);
             glScissor(0, 0, viewport.x, viewport.y);
             glDisable(GL_SCISSOR_TEST);
         } else
@@ -491,10 +489,9 @@ bool CPasswordInputField::drawPasswordDots(int eyeOffset, CHyprColor fontCol, co
 void CPasswordInputField::updatePlaceholder() {
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
-            std::erase(placeholder.registeredResourceIDs, placeholder.resourceID);
-            g_pAsyncResourceGatherer->unloadAsset(placeholder.asset);
+            g_asyncResourceManager->unload(placeholder.asset);
             placeholder.asset      = nullptr;
-            placeholder.resourceID = "";
+            placeholder.resourceID = 0;
             redrawShadow           = true;
         }
         return;
@@ -513,42 +510,30 @@ void CPasswordInputField::updatePlaceholder() {
     if (!ALLOWCOLORSWAP && newText == placeholder.currentText)
         return;
 
-    const auto NEWRESOURCEID = std::format("placeholder:{}{}{}{}{}{}", newText, (uintptr_t)this, colorState.font.r, colorState.font.g, colorState.font.b, colorState.font.a);
-
-    if (placeholder.resourceID == NEWRESOURCEID)
-        return;
-
-    Debug::log(TRACE, "Updating placeholder text: {}", newText);
+    Debug::log(LOG, "Updating placeholder text: {}", newText);
     placeholder.currentText = newText;
     placeholder.asset       = nullptr;
-    placeholder.resourceID  = NEWRESOURCEID;
-
-    if (std::ranges::find(placeholder.registeredResourceIDs, placeholder.resourceID) != placeholder.registeredResourceIDs.end())
-        return;
-
-    Debug::log(TRACE, "Requesting new placeholder asset: {}", placeholder.resourceID);
-    placeholder.registeredResourceIDs.push_back(placeholder.resourceID);
 
     // query
-    CAsyncResourceGatherer::SPreloadRequest request;
-    request.id                   = placeholder.resourceID;
-    request.asset                = placeholder.currentText;
-    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = fontFamily;
-    request.props["color"]       = colorState.font;
-    request.props["font_size"]   = (int)size->value().y / 4;
-    request.callback             = [REF = m_self] {
-        if (const auto SELF = REF.lock(); SELF)
-            g_pHyprlock->renderOutput(SELF->outputStringPort);
-    };
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
+    Hyprgraphics::CTextResource::STextResourceData request;
+    request.text     = placeholder.currentText;
+    request.font     = fontFamily;
+    request.color    = colorState.font.asRGB();
+    request.fontSize = (int)size->value().y / 4;
+
+    AWP<IWidget> widget(m_self);
+    placeholder.resourceID = g_asyncResourceManager->requestText(request, widget);
+}
+
+void CPasswordInputField::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
+    ;
 }
 
 void CPasswordInputField::updateWidth() {
     double targetSizeX = configSize.x;
 
     if (passwordLength == 0 && placeholder.asset)
-        targetSizeX = placeholder.asset->texture.m_vSize.x + size->goal().y;
+        targetSizeX = placeholder.asset->m_vSize.x + size->goal().y;
 
     targetSizeX = std::max(targetSizeX, configSize.x);
 

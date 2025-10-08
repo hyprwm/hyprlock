@@ -1,10 +1,12 @@
 #include "Label.hpp"
 #include "../Renderer.hpp"
+#include "../AsyncResourceManager.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Color.hpp"
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../config/ConfigDataValues.hpp"
+#include "src/defines.hpp"
 #include <hyprlang.hpp>
 #include <stdexcept>
 
@@ -29,16 +31,12 @@ static void onTimer(AWP<CLabel> ref) {
     }
 }
 
-static void onAssetCallback(AWP<CLabel> ref) {
-    if (auto PLABEL = ref.lock(); PLABEL)
-        PLABEL->renderUpdate();
-}
-
-std::string CLabel::getUniqueResourceId() {
-    return std::string{"label:"} + std::to_string((uintptr_t)this) + ",time:" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-}
-
 void CLabel::onTimerUpdate() {
+    if (m_pendingResource) {
+        Debug::log(WARN, "Trying to update label, but a resource is still pending! Skipping update.");
+        return;
+    }
+
     std::string oldFormatted = label.formatted;
 
     label = formatString(labelPreFormat);
@@ -46,19 +44,17 @@ void CLabel::onTimerUpdate() {
     if (label.formatted == oldFormatted && !label.alwaysUpdate)
         return;
 
-    if (!pendingResourceID.empty()) {
-        Debug::log(WARN, "Trying to update label, but resource {} is still pending! Skipping update.", pendingResourceID);
-        return;
-    }
-
     // request new
-    request.id        = getUniqueResourceId();
-    pendingResourceID = request.id;
-    request.asset     = label.formatted;
+    request.text      = label.formatted;
+    m_pendingResource = true;
 
-    request.callback = [REF = m_self]() { onAssetCallback(REF); };
-
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
+    AWP<IWidget> widget(m_self);
+    if (label.cmd) {
+        // Don't increment by one to avoid clashes with multiple widget using the same label command.
+        m_dynamicRevision += label.updateEveryMs;
+        g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, widget.lock());
+    } else
+        g_asyncResourceManager->requestText(request, widget.lock());
 }
 
 void CLabel::plantTimer() {
@@ -93,17 +89,13 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 
         label = formatString(labelPreFormat);
 
-        request.id                   = getUniqueResourceId();
-        resourceID                   = request.id;
-        request.asset                = label.formatted;
-        request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-        request.props["font_family"] = fontFamily;
-        request.props["color"]       = labelColor;
-        request.props["font_size"]   = fontSize;
-        request.props["cmd"]         = label.cmd;
+        request.text     = label.formatted;
+        request.font     = fontFamily;
+        request.fontSize = fontSize;
+        request.color    = labelColor.asRGB();
 
         if (!textAlign.empty())
-            request.props["text_align"] = textAlign;
+            request.align = parseTextAlignment(textAlign);
 
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CLabel: {}", e.what()); //
@@ -113,7 +105,10 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
 
     pos = configPos; // Label size not known yet
 
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
+    if (label.cmd) {
+        resourceID = g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, nullptr);
+    } else
+        resourceID = g_asyncResourceManager->requestText(request, nullptr);
 
     plantTimer();
 }
@@ -128,16 +123,16 @@ void CLabel::reset() {
         return;
 
     if (asset)
-        g_pAsyncResourceGatherer->unloadAsset(asset);
+        g_asyncResourceManager->unload(asset);
 
-    asset = nullptr;
-    pendingResourceID.clear();
-    resourceID.clear();
+    asset             = nullptr;
+    m_pendingResource = false;
+    resourceID        = 0;
 }
 
 bool CLabel::draw(const SRenderData& data) {
     if (!asset) {
-        asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
+        asset = g_asyncResourceManager->getAssetByID(resourceID);
 
         if (!asset)
             return true;
@@ -151,32 +146,31 @@ bool CLabel::draw(const SRenderData& data) {
     shadow.draw(data);
 
     // calc pos
-    pos = posFromHVAlign(viewport, asset->texture.m_vSize, configPos, halign, valign, angle);
+    pos = posFromHVAlign(viewport, asset->m_vSize, configPos, halign, valign, angle);
 
-    CBox box = {pos.x, pos.y, asset->texture.m_vSize.x, asset->texture.m_vSize.y};
+    CBox box = {pos.x, pos.y, asset->m_vSize.x, asset->m_vSize.y};
     box.rot  = angle;
-    g_pRenderer->renderTexture(box, asset->texture, data.opacity);
+    g_pRenderer->renderTexture(box, *asset, data.opacity);
 
     return false;
 }
 
-void CLabel::renderUpdate() {
-    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
-    if (newAsset) {
-        // new asset is ready :D
-        g_pAsyncResourceGatherer->unloadAsset(asset);
-        asset             = newAsset;
-        resourceID        = pendingResourceID;
-        pendingResourceID = "";
-        updateShadow      = true;
+void CLabel::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
+    Debug::log(TRACE, "Label update for resourceID {}", id);
+    m_pendingResource = false;
+
+    if (!newAsset)
+        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", id);
+    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(newAsset);
+        Debug::log(ERR, "New image asset has an invalid texture!");
     } else {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
-        return;
+        // new asset is ready :D
+        g_asyncResourceManager->unload(asset);
+        asset        = newAsset;
+        resourceID   = id;
+        updateShadow = true;
     }
-
-    g_pHyprlock->renderOutput(outputStringPort);
 }
 
 CBox CLabel::getBoundingBoxWl() const {
@@ -184,8 +178,8 @@ CBox CLabel::getBoundingBoxWl() const {
         return CBox{};
 
     return {
-        Vector2D{pos.x, viewport.y - pos.y - asset->texture.m_vSize.y},
-        asset->texture.m_vSize,
+        Vector2D{pos.x, viewport.y - pos.y - asset->m_vSize.y},
+        asset->m_vSize,
     };
 }
 

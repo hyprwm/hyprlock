@@ -9,7 +9,6 @@
 #include "../../helpers/AnimatedVariable.hpp"
 #include "cursor-shape-v1.hpp"
 #include <hyprutils/math/Vector2D.hpp>
-#include <vector>
 #include <any>
 #include <unordered_map>
 
@@ -25,6 +24,8 @@ class CPasswordInputField : public IWidget {
 
     virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput);
     virtual bool draw(const SRenderData& data);
+    virtual void onAssetUpdate(ResourceID id, ASP<CTexture> newAsset);
+
     virtual void onHover(const Vector2D& pos);
     virtual void setCursorShape(wpCursorShapeDeviceV1Shape shape);
     virtual bool staticHover() const;
@@ -122,13 +123,11 @@ class CPasswordInputField : public IWidget {
     } fade;
 
     struct {
-        std::string              resourceID = "";
-        ASP<SPreloadedAsset>     asset      = nullptr;
+        size_t        resourceID = 0;
+        ASP<CTexture> asset      = nullptr;
 
-        std::string              currentText    = "";
-        size_t                   failedAttempts = 0;
-
-        std::vector<std::string> registeredResourceIDs;
+        std::string   currentText    = "";
+        size_t        failedAttempts = 0;
     } placeholder;
 
     struct {

@@ -3,7 +3,6 @@
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
 #include "../renderer/widgets/PasswordInputField.hpp"
-#include "../renderer/AsyncResourceGatherer.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
@@ -307,19 +306,6 @@ void CHyprlock::run() {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
             m_vOutputs.erase(outputIt);
         }
-
-        // TODO: Recreating the rendering context like this fixes an issue with nvidia graphics when reconnecting monitors.
-        // It only happens when there are no monitors left.
-        // This is either an nvidia bug (probably egl-wayland) or it is a hyprlock bug. In any case, the goal is to remove this at some point!
-        if (g_pEGL->m_isNvidia && m_vOutputs.empty()) {
-            Debug::log(LOG, "NVIDIA Workaround: destroying rendering context to avoid crash on reconnect!");
-
-            g_pEGL.reset();
-            g_pRenderer.reset();
-            g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
-            g_pRenderer = makeUnique<CRenderer>();
-            g_pRenderer->warpOpacity(1.0);
-        }
     });
 
     wl_display_roundtrip(m_sWaylandState.display);
@@ -332,60 +318,21 @@ void CHyprlock::run() {
     // gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
-    g_pRenderer              = makeUnique<CRenderer>();
-    g_pAsyncResourceGatherer = makeUnique<CAsyncResourceGatherer>();
-    g_pAuth                  = makeUnique<CAuth>();
+    g_pRenderer            = makeUnique<CRenderer>();
+    g_asyncResourceManager = makeUnique<CAsyncResourceManager>();
+    g_pAuth                = makeUnique<CAuth>();
     g_pAuth->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
-    if (!g_pHyprlock->m_bImmediateRender) {
+    g_asyncResourceManager->enqueueStaticAssets();
+    g_asyncResourceManager->enqueueScreencopyFrames();
+
+    if (!g_pHyprlock->m_bImmediateRender)
         // Gather background resources and screencopy frames before locking the screen.
         // We need to do this because as soon as we lock the screen, workspaces frames can no longer be captured. It either won't work at all, or we will capture hyprlock itself.
         // Bypass with --immediate-render (can cause the background first rendering a solid color and missing or inaccurate screencopy frames)
-        const auto MAXDELAYMS    = 2000; // 2 Seconds
-        const auto STARTGATHERTP = std::chrono::system_clock::now();
-
-        int        fdcount = 1;
-        pollfd     pollfds[2];
-        pollfds[0] = {
-            .fd     = wl_display_get_fd(m_sWaylandState.display),
-            .events = POLLIN,
-        };
-
-        if (g_pAsyncResourceGatherer->gatheredEventfd.isValid()) {
-            pollfds[1] = {
-                .fd     = g_pAsyncResourceGatherer->gatheredEventfd.get(),
-                .events = POLLIN,
-            };
-
-            fdcount++;
-        }
-
-        while (!g_pAsyncResourceGatherer->gathered) {
-            wl_display_flush(m_sWaylandState.display);
-            if (wl_display_prepare_read(m_sWaylandState.display) == 0) {
-                if (poll(pollfds, fdcount, /* 100ms timeout */ 100) < 0) {
-                    RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
-                    wl_display_cancel_read(m_sWaylandState.display);
-                    continue;
-                }
-                wl_display_read_events(m_sWaylandState.display);
-                wl_display_dispatch_pending(m_sWaylandState.display);
-            } else {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                wl_display_dispatch(m_sWaylandState.display);
-            }
-
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count() > MAXDELAYMS) {
-                Debug::log(WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
-                break;
-            }
-        }
-
-        Debug::log(LOG, "Resources gathered after {} milliseconds",
-                   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
-    }
+        g_asyncResourceManager->gatherInitialResources(m_sWaylandState.display);
 
     // Failed to lock the session
     if (!acquireSessionLock()) {
@@ -500,28 +447,7 @@ void CHyprlock::run() {
             }
         }
 
-        // do timers
-        m_sLoopState.timersMutex.lock();
-        auto timerscpy = m_vTimers;
-        m_sLoopState.timersMutex.unlock();
-
-        std::vector<ASP<CTimer>> passed;
-
-        for (auto& t : timerscpy) {
-            if (t->passed() && !t->cancelled()) {
-                t->call(t);
-                passed.push_back(t);
-            }
-
-            if (t->cancelled())
-                passed.push_back(t);
-        }
-
-        m_sLoopState.timersMutex.lock();
-        std::erase_if(m_vTimers, [passed](const auto& timer) { return std::find(passed.begin(), passed.end(), timer) != passed.end(); });
-        m_sLoopState.timersMutex.unlock();
-
-        passed.clear();
+        processTimers();
     }
 
     const auto DPY = m_sWaylandState.display;
@@ -533,7 +459,7 @@ void CHyprlock::run() {
 
     m_vOutputs.clear();
     g_pSeatManager.reset();
-    g_pAsyncResourceGatherer.reset();
+    g_asyncResourceManager.reset();
     g_pRenderer.reset();
     g_pEGL.reset();
 
@@ -923,6 +849,31 @@ ASP<CTimer> CHyprlock::addTimer(const std::chrono::system_clock::duration& timeo
     m_sLoopState.timerEvent       = true;
     m_sLoopState.timerCV.notify_all();
     return T;
+}
+
+void CHyprlock::processTimers() {
+    // do timers
+    m_sLoopState.timersMutex.lock();
+    auto timerscpy = m_vTimers;
+    m_sLoopState.timersMutex.unlock();
+
+    std::vector<ASP<CTimer>> passed;
+
+    for (auto& t : timerscpy) {
+        if (t->passed() && !t->cancelled()) {
+            t->call(t);
+            passed.push_back(t);
+        }
+
+        if (t->cancelled())
+            passed.push_back(t);
+    }
+
+    m_sLoopState.timersMutex.lock();
+    std::erase_if(m_vTimers, [passed](const auto& timer) { return std::find(passed.begin(), passed.end(), timer) != passed.end(); });
+    m_sLoopState.timersMutex.unlock();
+
+    passed.clear();
 }
 
 std::vector<ASP<CTimer>> CHyprlock::getTimers() {

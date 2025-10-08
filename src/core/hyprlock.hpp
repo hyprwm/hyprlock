@@ -8,10 +8,7 @@
 #include "linux-dmabuf-v1.hpp"
 #include "viewporter.hpp"
 #include "Output.hpp"
-#include "Seat.hpp"
-#include "CursorShape.hpp"
 #include "Timer.hpp"
-#include <memory>
 #include <vector>
 #include <condition_variable>
 #include <optional>
@@ -38,6 +35,7 @@ class CHyprlock {
     bool                       isUnlocked();
 
     ASP<CTimer>                addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force = false);
+    void                       processTimers();
 
     void                       enqueueForceUpdateTimers();
 
