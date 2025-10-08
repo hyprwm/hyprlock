@@ -306,19 +306,6 @@ void CHyprlock::run() {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
             m_vOutputs.erase(outputIt);
         }
-
-        // TODO: Recreating the rendering context like this fixes an issue with nvidia graphics when reconnecting monitors.
-        // It only happens when there are no monitors left.
-        // This is either an nvidia bug (probably egl-wayland) or it is a hyprlock bug. In any case, the goal is to remove this at some point!
-        if (g_pEGL->m_isNvidia && m_vOutputs.empty()) {
-            Debug::log(LOG, "NVIDIA Workaround: destroying rendering context to avoid crash on reconnect!");
-
-            g_pRenderer.reset();
-            g_pEGL.reset();
-            g_pEGL      = makeUnique<CEGL>(m_sWaylandState.display);
-            g_pRenderer = makeUnique<CRenderer>();
-            g_pRenderer->warpOpacity(1.0);
-        }
     });
 
     wl_display_roundtrip(m_sWaylandState.display);
