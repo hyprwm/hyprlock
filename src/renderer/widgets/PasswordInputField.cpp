@@ -1,7 +1,6 @@
 #include "PasswordInputField.hpp"
 #include "../AsyncResourceManager.hpp"
 #include "../Renderer.hpp"
-#include "../AsyncResourceGatherer.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
 #include "../../config/ConfigDataValues.hpp"
@@ -17,10 +16,10 @@
 #include <algorithm>
 #include <hyprlang.hpp>
 
-static unsigned char eye_closed_png[] = {
+static const unsigned char eye_closed_png[] = {
 #embed "icons/eye-closed.png"
 };
-static unsigned char eye_open_png[] = {
+static const unsigned char eye_open_png[] = {
 #embed "icons/eye-open.png"
 };
 
@@ -165,7 +164,6 @@ void CPasswordInputField::updateFade() {
     }
 
     const bool INPUTUSED = passwordLength > 0 || checkWaiting;
-
     if (INPUTUSED && fade.allowFadeOut)
         fade.allowFadeOut = false;
 
@@ -203,62 +201,28 @@ void CPasswordInputField::updateDots() {
 
 void CPasswordInputField::updatePassword() {
     std::string& passwordContent = g_pHyprlock->getPasswordBuffer();
-    std::string  textResourceID  = std::format("password:{}-{}", (uintptr_t)this, std::hash<std::string>{}(passwordContent));
 
-    if (passwordContent == password.text.content || checkWaiting || g_pAsyncResourceGatherer->getAssetByID(textResourceID))
+    if (passwordContent == password.text.content || checkWaiting)
         return;
 
     password.text.content = passwordContent;
 
-    CAsyncResourceGatherer::SPreloadRequest request;
+    Hyprgraphics::CTextResource::STextResourceData request;
 
-    request.id                   = textResourceID;
-    request.asset                = password.text.content;
-    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_TEXT;
-    request.props["font_family"] = fontFamily;
-    request.props["color"]       = colorConfig.font;
-    request.props["font_size"]   = (int)(std::nearbyint(configSize.y * password.text.size * 0.5f) * 2.f);
-    request.callback             = [REF = m_self]() { assetReadyCallback(REF); };
+    request.text     = password.text.content;
+    request.font     = fontFamily;
+    request.color    = colorConfig.font.asRGB();
+    request.fontSize = (int)(std::nearbyint(configSize.y * password.text.size * 0.5f) * 2.f);
 
-    password.text.pendingResourceID = textResourceID;
-
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
-}
-
-void CPasswordInputField::renderPasswordUpdate() {
-    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(password.text.pendingResourceID);
-    if (newAsset) {
-        // new asset is ready :D
-        g_pAsyncResourceGatherer->unloadAsset(password.text.asset);
-        password.text.asset             = newAsset;
-        password.text.resourceID        = password.text.pendingResourceID;
-        password.text.pendingResourceID = "";
-    } else {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", password.text.pendingResourceID);
-
-        g_pHyprlock->addTimer(std::chrono::milliseconds(10), [REF = m_self](auto, auto) { assetReadyCallback(REF); }, nullptr);
-        return;
-    }
-
-    g_pHyprlock->renderOutput(outputStringPort);
+    AWP<IWidget> widget;
+    password.text.resourceID = g_asyncResourceManager->requestText(request, widget);
 }
 
 void CPasswordInputField::updateEye() {
-    CAsyncResourceGatherer::SPreloadRequest request;
+    AWP<IWidget> widget(m_self);
 
-    password.eye.openRescourceID = std::format("eye-open:{}", (uintptr_t)this);
-    request.id                   = password.eye.openRescourceID;
-    request.image_buffer         = std::span(eye_open_png);
-    request.type                 = CAsyncResourceGatherer::eTargetType::TARGET_EMBEDDED_IMAGE;
-
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
-
-    password.eye.closedRescourceID = std::format("eye-closed:{}", (uintptr_t)this);
-    request.id                     = password.eye.closedRescourceID;
-    request.image_buffer           = std::span(eye_closed_png);
-    request.type                   = CAsyncResourceGatherer::eTargetType::TARGET_EMBEDDED_IMAGE;
-
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
+    password.eye.openRescourceID   = g_asyncResourceManager->requestImage(std::span(eye_open_png), widget);
+    password.eye.closedRescourceID = g_asyncResourceManager->requestImage(std::span(eye_closed_png), widget);
 }
 
 bool CPasswordInputField::draw(const SRenderData& data) {
@@ -271,7 +235,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     bool forceReload = false;
 
     if (passwordLength != g_pHyprlock->getPasswordBufferDisplayLen() && password.show) {
-        g_pAsyncResourceGatherer->unloadAsset(password.text.asset);
+        g_asyncResourceManager->unload(password.text.asset);
         password.text.asset = nullptr;
         password.show       = false;
     }
@@ -330,9 +294,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     if (!hiddenInputState.enabled) {
         if (!password.eye.openAsset)
-            password.eye.openAsset = g_pAsyncResourceGatherer->getAssetByID(password.eye.openRescourceID);
+            password.eye.openAsset = g_asyncResourceManager->getAssetByID(password.eye.openRescourceID);
         if (!password.eye.closedAsset)
-            password.eye.closedAsset = g_pAsyncResourceGatherer->getAssetByID(password.eye.closedRescourceID);
+            password.eye.closedAsset = g_asyncResourceManager->getAssetByID(password.eye.closedRescourceID);
 
         int    eyeOffset = 0;
         auto   eyeAsset  = password.show ? password.eye.closedAsset : password.eye.openAsset;
@@ -343,16 +307,17 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
         if (password.allowToggle && password.show) {
             if (!password.text.asset)
-                password.text.asset = g_pAsyncResourceGatherer->getAssetByID(password.text.resourceID);
+                password.text.asset = g_asyncResourceManager->getAssetByID(password.text.resourceID);
 
             if (password.text.asset)
                 drawPasswordText(eyeOffset, fontCol);
             else
                 forceReload = true;
+
         } else {
             if (!password.dots.format.empty()) {
                 if (!password.dots.asset)
-                    password.dots.asset = g_pAsyncResourceGatherer->getAssetByID(password.dots.resourceID);
+                    password.dots.asset = g_asyncResourceManager->getAssetByID(password.dots.resourceID);
 
                 if (password.dots.asset)
                     drawPasswordDots(eyeOffset, fontCol, data);
@@ -367,7 +332,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
             auto padding     = (inputFieldBox.h - eyeSize.y) / 2.0;
             auto eyePosition = inputFieldBox.pos() + (password.eye.placement == "right" ? Vector2D{inputFieldBox.w - eyeSize.x - padding, padding} : Vector2D{padding, padding});
             CBox box         = {eyePosition, eyeSize};
-            g_pRenderer->renderTexture(box, eyeAsset->texture, fontCol.a);
+            g_pRenderer->renderTexture(box, *eyeAsset, fontCol.a);
         }
     }
 
@@ -401,7 +366,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 void CPasswordInputField::drawPasswordText(int eyeOffset, CHyprColor fontCol) {
     CBox     inputFieldBox = {pos, size->value()};
 
-    Vector2D passSize  = password.text.asset->texture.m_vSize;
+    Vector2D passSize  = password.text.asset->m_vSize;
     double   padding   = (inputFieldBox.h - passSize.y) / 2.0;
     double   areaWidth = inputFieldBox.w - (padding * 2) - eyeOffset;
 
@@ -416,7 +381,7 @@ void CPasswordInputField::drawPasswordText(int eyeOffset, CHyprColor fontCol) {
 
     glEnable(GL_SCISSOR_TEST);
     glScissor(inputFieldBox.x + padding + (password.eye.placement == "left" ? eyeOffset : 0), inputFieldBox.y, areaWidth, inputFieldBox.h);
-    g_pRenderer->renderTexture(box, password.text.asset->texture, fontCol.a);
+    g_pRenderer->renderTexture(box, *password.text.asset, fontCol.a);
     glScissor(0, 0, viewport.x, viewport.y);
     glDisable(GL_SCISSOR_TEST);
 }
@@ -429,7 +394,7 @@ bool CPasswordInputField::drawPasswordDots(int eyeOffset, CHyprColor fontCol, co
     int       passSpacing = std::floor(passSize.x * password.dots.spacing);
 
     if (!password.dots.format.empty()) {
-        passSize    = password.dots.asset->texture.m_vSize;
+        passSize    = password.dots.asset->m_vSize;
         passSpacing = std::floor(passSize.x * password.dots.spacing);
     }
 
@@ -476,7 +441,7 @@ bool CPasswordInputField::drawPasswordDots(int eyeOffset, CHyprColor fontCol, co
                 break;
             }
 
-            g_pRenderer->renderTexture(box, password.dots.asset->texture, fontCol.a, password.dots.rounding);
+            g_pRenderer->renderTexture(box, *password.dots.asset, fontCol.a, password.dots.rounding);
         } else
             g_pRenderer->renderRect(box, fontCol, password.dots.rounding);
 

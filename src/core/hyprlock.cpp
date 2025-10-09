@@ -2,11 +2,11 @@
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
+#include "../renderer/AsyncResourceManager.hpp"
 #include "../renderer/widgets/PasswordInputField.hpp"
 #include "../auth/Auth.hpp"
 #include "../auth/Fingerprint.hpp"
 #include "Egl.hpp"
-#include "src/renderer/widgets/IWidget.hpp"
 #include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>

@@ -12,8 +12,6 @@
 #include <any>
 #include <unordered_map>
 
-struct SPreloadedAsset;
-
 class CPasswordInputField : public IWidget {
   public:
     CPasswordInputField() = default;
@@ -82,36 +80,34 @@ class CPasswordInputField : public IWidget {
         bool show        = false;
 
         struct {
-            float                size              = 0.25;
-            bool                 center            = false;
-            std::string          content           = "";
-            std::string          resourceID        = "";
-            std::string          pendingResourceID = "";
-            ASP<SPreloadedAsset> asset             = nullptr;
-            ASP<SPreloadedAsset> previousAsset     = nullptr;
+            float         size       = 0.25;
+            bool          center     = false;
+            std::string   content    = "";
+            size_t        resourceID = 0;
+            ASP<CTexture> asset      = nullptr;
         } text;
 
         struct {
-            PHLANIMVAR<float>    currentAmount;
-            float                size       = 0.25;
-            bool                 center     = false;
-            float                spacing    = 0;
-            int                  rounding   = 0;
-            std::string          format     = "";
-            std::string          resourceID = "";
-            ASP<SPreloadedAsset> asset      = nullptr;
+            PHLANIMVAR<float> currentAmount;
+            float             size       = 0.25;
+            bool              center     = false;
+            float             spacing    = 0;
+            int               rounding   = 0;
+            std::string       format     = "";
+            size_t            resourceID = 9;
+            ASP<CTexture>     asset      = nullptr;
         } dots;
 
         struct {
-            int                  margin    = 16;
-            double               size      = 0.25;
-            std::string          placement = "right";
-            bool                 hide      = false;
+            int           margin    = 16;
+            double        size      = 0.25;
+            std::string   placement = "right";
+            bool          hide      = false;
 
-            std::string          openRescourceID   = "";
-            ASP<SPreloadedAsset> openAsset         = nullptr;
-            std::string          closedRescourceID = "";
-            ASP<SPreloadedAsset> closedAsset       = nullptr;
+            size_t        openRescourceID   = 0;
+            ASP<CTexture> openAsset         = nullptr;
+            size_t        closedRescourceID = 9;
+            ASP<CTexture> closedAsset       = nullptr;
         } eye;
     } password;
 

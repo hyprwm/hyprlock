@@ -8,7 +8,6 @@
 #include <hyprgraphics/resource/AsyncResourceGatherer.hpp>
 #include <hyprgraphics/resource/resources/AsyncResource.hpp>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
-#include <hyprgraphics/resource/resources/ImageResource.hpp>
 #include <hyprutils/os/FileDescriptor.hpp>
 
 class CAsyncResourceManager {
@@ -31,6 +30,7 @@ class CAsyncResourceManager {
     static ResourceID resourceIDForTextCmdRequest(const CTextResource::STextResourceData& s, size_t revision);
     // Image paths may be file system links, thus this function supports a revision parameter that gets factored into the resource id.
     static ResourceID resourceIDForImageRequest(const std::string& path, size_t revision);
+    static ResourceID resourceIDForImageRequest(const std::span<const uint8_t> data);
     static ResourceID resourceIDForScreencopy(const std::string& port);
 
     struct SPreloadedTexture {
@@ -45,6 +45,7 @@ class CAsyncResourceManager {
     // Same as requestText but substitute the text with what launching sh -c request.text returns.
     ResourceID    requestTextCmd(const CTextResource::STextResourceData& params, size_t revision, const AWP<IWidget>& widget);
     ResourceID    requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget);
+    ResourceID    requestImage(const std::span<const uint8_t> data, const AWP<IWidget>& widget);
 
     ASP<CTexture> getAssetByID(ResourceID id);
 
