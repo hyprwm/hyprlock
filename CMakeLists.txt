@@ -89,16 +89,37 @@ pkg_check_modules(
   hyprutils>=0.8.0
   sdbus-c++>=2.0.0
   hyprgraphics)
-find_library(PAM_FOUND pam)
-if(PAM_FOUND)
-  message(STATUS "Found pam")
-  set(PAM_LIB ${PAM_FOUND})
-else()
-  pkg_check_modules(PAM IMPORTED_TARGET pam)
-  if(PAM_FOUND)
-    set(PAM_LIB PkgConfig::PAM)
-  else()
-    message(FATAL_ERROR "The required library libpam was not found.")
+# Try pkg-config first (check both common pkg names)
+find_package(PkgConfig QUIET)
+
+set(PAM_PKG_FOUND FALSE)
+if(PkgConfig_FOUND)
+  pkg_check_modules(PAM_PKG QUIET IMPORTED_TARGET libpam)
+  if(NOT PAM_PKG_FOUND)
+    pkg_check_modules(PAM_PKG QUIET IMPORTED_TARGET pam)
+  endif()
+  if(PAM_PKG_FOUND)
+    message(STATUS "Found PAM via pkg-config: ${PAM_PKG_NAME}")
+  endif()
+endif()
+
+# Fallback: try find_path/find_library
+if(NOT PAM_PKG_FOUND)
+  find_path(PAM_INCLUDE_DIR
+    NAMES pam_appl.h
+    PATHS /usr/include /usr/local/include /usr/include/security
+  )
+
+  find_library(PAM_LIBRARY
+    NAMES pam libpam
+    PATHS /usr/lib /usr/lib64 /usr/local/lib
+  )
+
+  if(PAM_LIBRARY)
+    message(STATUS "Found PAM library: ${PAM_LIBRARY}")
+  endif()
+  if(PAM_INCLUDE_DIR)
+    message(STATUS "Found PAM include dir: ${PAM_INCLUDE_DIR}")
   endif()
 endif()
 
@@ -106,6 +127,21 @@ file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(hyprlock ${SRCFILES})
 target_link_libraries(hyprlock PRIVATE ${PAM_LIB} rt Threads::Threads PkgConfig::deps
                                        OpenGL::EGL OpenGL::GLES3)
+
+# Final check & link to your target (must be after add_executable)
+if(PAM_PKG_FOUND)
+  # Link using pkg-config imported target (clean)
+  target_include_directories(hyprlock PRIVATE ${PAM_PKG_INCLUDE_DIRS})
+  target_link_libraries(hyprlock PRIVATE PkgConfig::${PAM_PKG_NAME})
+elseif(PAM_LIBRARY)
+  # Use explicit paths found by find_library/find_path
+  if(PAM_INCLUDE_DIR)
+    target_include_directories(hyprlock PRIVATE ${PAM_INCLUDE_DIR})
+  endif()
+  target_link_libraries(hyprlock PRIVATE ${PAM_LIBRARY})
+else()
+  message(FATAL_ERROR "libpam not found. Install the PAM development package (e.g. libpam0g-dev or pam-devel).")
+endif()
 
 # protocols
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
