@@ -12,6 +12,14 @@
 
 class COutput;
 
+enum eWidgetType : uint8_t {
+    WIDGET_PASSWORD_INPUT,
+    WIDGET_BACKGROUND,
+    WIDGET_IMAGE,
+    WIDGET_LABEL,
+    WIDGET_SHAPE,
+};
+
 class IWidget {
   public:
     struct SRenderData {
@@ -36,6 +44,7 @@ class IWidget {
     };
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos) {}
     virtual void onHover(const Vector2D& pos) {}
+    virtual bool staticHover() const;
     bool         containsPoint(const Vector2D& pos) const;
 
     struct SFormatResult {
@@ -50,6 +59,8 @@ class IWidget {
 
     void                 setHover(bool hover);
     bool                 isHovered() const;
+
+    virtual eWidgetType  getType() const = 0;
 
   private:
     bool hovered = false;

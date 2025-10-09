@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <hyprgraphics/resource/resources/ImageResource.hpp>
+#include <hyprgraphics/image/Image.hpp>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
 
@@ -37,8 +39,13 @@ ResourceID CAsyncResourceManager::resourceIDForImageRequest(const std::string& p
     return scopeResourceID(3, std::hash<std::string>{}(path) ^ (revision << 32));
 }
 
+ResourceID CAsyncResourceManager::resourceIDForImageRequest(const std::span<const uint8_t> data) {
+    auto sv = std::string_view{reinterpret_cast<const char*>(data.data()), data.size()};
+    return scopeResourceID(4, std::hash<std::string_view>{}(sv));
+}
+
 ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& port) {
-    return scopeResourceID(4, std::hash<std::string>{}(port));
+    return scopeResourceID(5, std::hash<std::string>{}(port));
 }
 
 ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
@@ -82,6 +89,21 @@ ResourceID CAsyncResourceManager::requestImage(const std::string& path, size_t r
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
     Debug::log(TRACE, "Requesting image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+    enqueue(RESOURCEID, resourceGeneric, widget);
+    return RESOURCEID;
+}
+
+ResourceID CAsyncResourceManager::requestImage(const std::span<const uint8_t> data, const AWP<IWidget>& widget) {
+    const auto RESOURCEID = resourceIDForImageRequest(data);
+    if (request(RESOURCEID, widget)) {
+        Debug::log(TRACE, "Reusing image buffer (resourceID: {})", RESOURCEID, (uintptr_t)widget.get());
+        return RESOURCEID;
+    }
+
+    auto                                 resource = makeAtomicShared<CImageResource>(data, eImageFormat::IMAGE_FORMAT_PNG);
+    CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
+
+    Debug::log(TRACE, "Requesting image (resourceID: {})", RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
