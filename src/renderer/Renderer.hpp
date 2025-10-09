@@ -7,7 +7,6 @@
 #include "../core/LockSurface.hpp"
 #include "../helpers/AnimatedVariable.hpp"
 #include "../helpers/Color.hpp"
-#include "AsyncResourceGatherer.hpp"
 #include "../config/ConfigDataValues.hpp"
 #include "widgets/IWidget.hpp"
 #include "Framebuffer.hpp"

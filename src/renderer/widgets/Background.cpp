@@ -1,7 +1,7 @@
 #include "Background.hpp"
 #include "../Renderer.hpp"
+#include "../AsyncResourceManager.hpp"
 #include "../Framebuffer.hpp"
-#include "../Shared.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../helpers/MiscFunctions.hpp"
@@ -53,26 +53,24 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
     viewport     = pOutput->getViewport();
     outputPort   = pOutput->stringPort;
     transform    = wlTransformToHyprutils(invertTransform(pOutput->transform));
-    scResourceID = CScreencopyFrame::getResourceId(pOutput);
+    scResourceID = CAsyncResourceManager::resourceIDForScreencopy(pOutput->stringPort);
 
     g_pAnimationManager->createAnimation(0.f, crossFadeProgress, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 
-    // When the initial gather of the asyncResourceGatherer is completed (ready), all DMAFrames are available.
-    // Dynamic ones are tricky, because a screencopy would copy hyprlock itself.
-    if (g_pAsyncResourceGatherer->gathered && !g_pAsyncResourceGatherer->getAssetByID(scResourceID)) {
+    if (!g_asyncResourceManager->checkIdPresent(scResourceID)) {
         Debug::log(LOG, "Missing screenshot for output {}", outputPort);
-        scResourceID = "";
+        scResourceID = 0;
     }
 
     if (isScreenshot) {
-        resourceID = scResourceID; // Fallback to solid background:color when scResourceID==""
+        resourceID = scResourceID; // Fallback to solid background:color when scResourceID==0
 
         if (!g_pHyprlock->getScreencopy()) {
             Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
-            resourceID = "";
+            resourceID = 0;
         }
     } else if (!path.empty())
-        resourceID = "background:" + path;
+        resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
 
     if (!isScreenshot && reloadTime > -1) {
         try {
@@ -94,17 +92,16 @@ void CBackground::reset() {
 }
 
 void CBackground::updatePrimaryAsset() {
-    if (asset || resourceID.empty())
+    if (asset || resourceID == 0)
         return;
 
-    asset = g_pAsyncResourceGatherer->getAssetByID(resourceID);
+    asset = g_asyncResourceManager->getAssetByID(resourceID);
     if (!asset)
         return;
 
-    const bool NEEDFB =
-        (isScreenshot || blurPasses > 0 || asset->texture.m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
+    const bool NEEDFB = (isScreenshot || blurPasses > 0 || asset->m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
     if (NEEDFB)
-        renderToFB(asset->texture, *blurredFB, blurPasses, isScreenshot);
+        renderToFB(*asset, *blurredFB, blurPasses, isScreenshot);
 }
 
 void CBackground::updatePendingAsset() {
@@ -112,21 +109,21 @@ void CBackground::updatePendingAsset() {
     if (!pendingAsset || blurPasses == 0 || pendingBlurredFB->isAllocated())
         return;
 
-    renderToFB(pendingAsset->texture, *pendingBlurredFB, blurPasses);
+    renderToFB(*pendingAsset, *pendingBlurredFB, blurPasses);
 }
 
 void CBackground::updateScAsset() {
-    if (scAsset || scResourceID.empty())
+    if (scAsset || scResourceID == 0)
         return;
 
     // path=screenshot -> scAsset = asset
-    scAsset = (asset && isScreenshot) ? asset : g_pAsyncResourceGatherer->getAssetByID(scResourceID);
+    scAsset = (asset && isScreenshot) ? asset : g_asyncResourceManager->getAssetByID(scResourceID);
     if (!scAsset)
         return;
 
     const bool NEEDSCTRANSFORM = transform != HYPRUTILS_TRANSFORM_NORMAL;
     if (NEEDSCTRANSFORM)
-        renderToFB(scAsset->texture, *transformedScFB, 0, true);
+        renderToFB(*scAsset, *transformedScFB, 0, true);
 }
 
 const CTexture& CBackground::getPrimaryAssetTex() const {
@@ -134,15 +131,15 @@ const CTexture& CBackground::getPrimaryAssetTex() const {
     if (isScreenshot && blurPasses == 0 && transformedScFB->isAllocated())
         return transformedScFB->m_cTex;
 
-    return (blurredFB->isAllocated()) ? blurredFB->m_cTex : asset->texture;
+    return (blurredFB->isAllocated()) ? blurredFB->m_cTex : *asset;
 }
 
 const CTexture& CBackground::getPendingAssetTex() const {
-    return (pendingBlurredFB->isAllocated()) ? pendingBlurredFB->m_cTex : pendingAsset->texture;
+    return (pendingBlurredFB->isAllocated()) ? pendingBlurredFB->m_cTex : *pendingAsset;
 }
 
 const CTexture& CBackground::getScAssetTex() const {
-    return (transformedScFB->isAllocated()) ? transformedScFB->m_cTex : scAsset->texture;
+    return (transformedScFB->isAllocated()) ? transformedScFB->m_cTex : *scAsset;
 }
 
 void CBackground::renderRect(CHyprColor color) {
@@ -155,11 +152,6 @@ static void onReloadTimer(AWP<CBackground> ref) {
         PBG->onReloadTimerUpdate();
         PBG->plantReloadTimer();
     }
-}
-
-static void onAssetCallback(AWP<CBackground> ref) {
-    if (auto PBG = ref.lock(); PBG)
-        PBG->startCrossFade();
 }
 
 static CBox getScaledBoxForTextureSize(const Vector2D& size, const Vector2D& viewport) {
@@ -219,14 +211,14 @@ bool CBackground::draw(const SRenderData& data) {
     updatePendingAsset();
     updateScAsset();
 
-    if (asset && asset->texture.m_iType == TEXTURE_INVALID) {
-        g_pAsyncResourceGatherer->unloadAsset(asset);
-        resourceID = "";
+    if (asset && asset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(asset);
+        resourceID = 0;
         renderRect(color);
         return false;
     }
 
-    if (!asset || resourceID.empty()) {
+    if (!asset || resourceID == 0) {
         // fade in/out with a solid color
         if (data.opacity < 1.0 && scAsset) {
             const auto& SCTEX    = getScAssetTex();
@@ -239,7 +231,7 @@ bool CBackground::draw(const SRenderData& data) {
         }
 
         renderRect(color);
-        return !asset && !resourceID.empty(); // resource not ready
+        return !asset && resourceID > 0; // resource not ready
     }
 
     const auto& TEX    = getPrimaryAssetTex();
@@ -254,6 +246,36 @@ bool CBackground::draw(const SRenderData& data) {
         g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0);
 
     return crossFadeProgress->isBeingAnimated() || data.opacity < 1.0;
+}
+
+void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
+    pendingResource = false;
+
+    if (!newAsset)
+        Debug::log(ERR, "Background asset update failed, resourceID: {} not available on update!", id);
+    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        g_asyncResourceManager->unload(newAsset);
+        Debug::log(ERR, "New background asset has an invalid texture!");
+    } else {
+        pendingAsset = newAsset;
+        crossFadeProgress->setValueAndWarp(0);
+        *crossFadeProgress = 1.0;
+
+        crossFadeProgress->setCallbackOnEnd(
+            [REF = m_self, id](auto) {
+                if (const auto PSELF = REF.lock()) {
+                    if (PSELF->asset)
+                        g_asyncResourceManager->unload(PSELF->asset);
+                    PSELF->asset        = PSELF->pendingAsset;
+                    PSELF->pendingAsset = nullptr;
+                    PSELF->resourceID   = id;
+
+                    PSELF->blurredFB->destroyBuffer();
+                    PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
+                }
+            },
+            true);
+    }
 }
 
 void CBackground::plantReloadTimer() {
@@ -288,59 +310,22 @@ void CBackground::onReloadTimerUpdate() {
             return;
 
         modificationTime = MTIME;
+        if (OLDPATH == path)
+            m_imageRevision++;
+        else
+            m_imageRevision = 0;
     } catch (std::exception& e) {
         path = OLDPATH;
         Debug::log(ERR, "{}", e.what());
         return;
     }
 
-    if (!pendingResourceID.empty())
+    if (pendingResource)
         return;
 
+    pendingResource = true;
+
     // Issue the next request
-
-    request.id        = std::string{"background:"} + path + ",time:" + std::to_string((uint64_t)modificationTime.time_since_epoch().count());
-    pendingResourceID = request.id;
-    request.asset     = path;
-    request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
-
-    request.callback = [REF = m_self]() { onAssetCallback(REF); };
-
-    g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
-}
-
-void CBackground::startCrossFade() {
-    auto newAsset = g_pAsyncResourceGatherer->getAssetByID(pendingResourceID);
-    if (newAsset) {
-        if (newAsset->texture.m_iType == TEXTURE_INVALID) {
-            g_pAsyncResourceGatherer->unloadAsset(newAsset);
-            Debug::log(ERR, "New asset had an invalid texture!");
-            pendingResourceID = "";
-        } else if (resourceID != pendingResourceID) {
-            pendingAsset = newAsset;
-            crossFadeProgress->setValueAndWarp(0);
-            *crossFadeProgress = 1.0;
-
-            crossFadeProgress->setCallbackOnEnd(
-                [REF = m_self](auto) {
-                    if (const auto PSELF = REF.lock()) {
-                        if (PSELF->asset)
-                            g_pAsyncResourceGatherer->unloadAsset(PSELF->asset);
-                        PSELF->asset             = PSELF->pendingAsset;
-                        PSELF->pendingAsset      = nullptr;
-                        PSELF->resourceID        = PSELF->pendingResourceID;
-                        PSELF->pendingResourceID = "";
-
-                        PSELF->blurredFB->destroyBuffer();
-                        PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
-                    }
-                },
-                true);
-
-            g_pHyprlock->renderOutput(outputPort);
-        }
-    } else if (!pendingResourceID.empty()) {
-        Debug::log(WARN, "Asset {} not available after the asyncResourceGatherer's callback!", pendingResourceID);
-        g_pHyprlock->addTimer(std::chrono::milliseconds(100), [REF = m_self](auto, auto) { onAssetCallback(REF); }, nullptr);
-    }
+    AWP<IWidget> widget(m_self);
+    g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }

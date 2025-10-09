@@ -2,6 +2,10 @@
 
 #include "../../defines.hpp"
 #include "../../helpers/Math.hpp"
+#include "../../core/Seat.hpp"
+#include "../Texture.hpp"
+
+#include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>
 #include <unordered_map>
 #include <any>
@@ -16,15 +20,18 @@ class IWidget {
 
     virtual ~IWidget() = default;
 
-    virtual void    configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) = 0;
-    virtual bool    draw(const SRenderData& data)                                                                = 0;
+    virtual void configure(const std::unordered_map<std::string, std::any>& prop, const SP<COutput>& pOutput) = 0;
+    virtual bool draw(const SRenderData& data)                                                                = 0;
+    // Never render within onAssetUpdate!
+    virtual void    onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) = 0;
 
     static Vector2D posFromHVAlign(const Vector2D& viewport, const Vector2D& size, const Vector2D& offset, const std::string& halign, const std::string& valign,
                                    const double& ang = 0);
     static int      roundingForBox(const CBox& box, int roundingConfig);
     static int      roundingForBorderBox(const CBox& borderBox, int roundingConfig, int thickness);
+    static Hyprgraphics::CTextResource::eTextAlignmentMode parseTextAlignment(const std::string& alignment);
 
-    virtual CBox    getBoundingBoxWl() const {
+    virtual CBox                                           getBoundingBoxWl() const {
         return CBox();
     };
     virtual void onClick(uint32_t button, bool down, const Vector2D& pos) {}

@@ -88,7 +88,7 @@ pkg_check_modules(
   gbm
   hyprutils>=0.8.0
   sdbus-c++>=2.0.0
-  hyprgraphics)
+  hyprgraphics>=0.1.6)
 # Try pkg-config first (check both common pkg names)
 find_package(PkgConfig QUIET)
 
