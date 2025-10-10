@@ -42,7 +42,7 @@ jobs:
 
       #- uses: cachix/cachix-action@v15
       #  with:
-      #    name: hyprlock
+      #    name: hyprland
       #    authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       - name: Run test VM
