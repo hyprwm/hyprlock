@@ -21,7 +21,6 @@ endif()
 
 include_directories(. "protocols/")
 
-include(CTest)
 include(GNUInstallDirs)
 
 # configure
@@ -165,16 +164,11 @@ install(
   RENAME hyprlock.conf)
 
 if(TESTS)
-  message(STATUS "building tests is enabled TESTS")
+  include(CTest)
+  message(STATUS "Building hyprlock test meta package")
 
   enable_testing()
   add_custom_target(tests)
 
   add_subdirectory(tests)
-  add_test(
-    NAME "Main Test"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests
-    COMMAND lock_tester)
-
-  add_dependencies(tests lock_tester)
 endif()

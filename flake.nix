@@ -56,8 +56,7 @@
     packages = eachSystem (system: {
       default = self.packages.${system}.hyprlock;
       inherit (pkgsFor.${system}) hyprlock;
-      inherit (pkgsDebugFor.${system}) hyprlock-debug;
-      inherit (pkgsFor.${system}) lock_tester;
+      inherit (pkgsDebugFor.${system}) hyprlock-debug hyprlock-test-meta;
     });
 
     homeManagerModules = {

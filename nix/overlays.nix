@@ -19,7 +19,6 @@ in {
     inputs.hyprutils.overlays.default
     inputs.hyprwayland-scanner.overlays.default
     inputs.self.overlays.sdbuscpp
-    inputs.self.overlays.lock_tester
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
         stdenv = prev.gcc15Stdenv;
@@ -36,17 +35,14 @@ in {
     (final: prev: {
       hyprutils = prev.hyprutils.override {debug = true;};
       hyprlock-debug = prev.hyprlock.override {debug = true;};
+      hyprlock-test-meta = prev.callPackage ./test-meta.nix {
+        stdenv = prev.gcc14Stdenv;
+        version = version + "+date=" + (mkDate (inputs.self.lastModifiedDate or "19700101")) + "_" + (inputs.self.shortRev or "dirty");
+        hyprland-protocols = final.hyprland-protocols;
+        wayland-scanner = final.wayland-scanner;
+      };
     })
   ];
-
-  lock_tester = final: prev: {
-    lock_tester = prev.callPackage ./tester.nix {
-      stdenv = prev.gcc14Stdenv;
-      version = version + "+date=" + (mkDate (inputs.self.lastModifiedDate or "19700101")) + "_" + (inputs.self.shortRev or "dirty");
-      hyprland-protocols = final.hyprland-protocols;
-      wayland-scanner = final.wayland-scanner;
-    };
-  };
 
   sdbuscpp = final: prev: {
     sdbus-cpp = prev.sdbus-cpp.overrideAttrs (self: super: {

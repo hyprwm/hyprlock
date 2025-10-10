@@ -23,10 +23,9 @@
   customStdenv = foldl' (acc: adapter: adapter acc) stdenv adapters;
 in
   customStdenv.mkDerivation (finalAttrs: {
-    pname = "lock_tester";
+    pname = "hyprlock-test-meta";
     inherit version;
 
-    #src = ../tests;
     src = cleanSourceWith {
       filter = name: _type: let
         baseName = baseNameOf (toString name);
@@ -55,6 +54,6 @@ in
       description = "Hyprlock testing utility";
       license = lib.licenses.bsd3;
       platforms = hyprlock.meta.platforms;
-      mainProgram = "lock_tester";
+      mainProgram = "wait-for-lock";
     };
   })
