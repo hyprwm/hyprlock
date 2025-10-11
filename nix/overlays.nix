@@ -34,6 +34,7 @@ in {
     # Dependencies
     (final: prev: {
       hyprutils = prev.hyprutils.override {debug = true;};
+      hyprgraphics = prev.hyprgraphics.override {debug = true;};
       hyprlock-debug = prev.hyprlock.override {debug = true;};
       hyprlock-test-meta = prev.callPackage ./test-meta.nix {
         stdenv = prev.gcc14Stdenv;
