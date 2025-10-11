@@ -89,7 +89,9 @@ in {
       _, systeminfo = machine.execute("hyprctl --instance 0 systeminfo")
       print(systeminfo)
 
-      for hyprlock_config in Path("${flake.hyprlock-test-meta}/share/hypr/configs/").iterdir():
+      test_files = [Path("${flake.hyprlock}/share/hypr/hyprlock.conf")] # also test the example configuration
+      test_files += list(Path("${flake.hyprlock-test-meta}/share/hypr/configs/").iterdir())
+      for hyprlock_config in test_files:
           print(f"Testing configuration file {hyprlock_config}")
           log_file_path = "/tmp/hyprlock_test_" + hyprlock_config.stem
 
