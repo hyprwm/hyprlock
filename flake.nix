@@ -43,7 +43,12 @@
     pkgsFor = eachSystem (system:
       import nixpkgs {
         localSystem.system = system;
-        overlays = with self.overlays; [default];
+        overlays = [self.overlays.default];
+      });
+    pkgsDebugFor = eachSystem (system:
+      import nixpkgs {
+        localSystem = system;
+        overlays = [self.overlays.hyprlock-debug];
       });
   in {
     overlays = import ./nix/overlays.nix {inherit inputs lib self;};
@@ -51,6 +56,7 @@
     packages = eachSystem (system: {
       default = self.packages.${system}.hyprlock;
       inherit (pkgsFor.${system}) hyprlock;
+      inherit (pkgsDebugFor.${system}) hyprlock-debug hyprlock-test-meta;
     });
 
     homeManagerModules = {
@@ -58,7 +64,7 @@
       hyprlock = builtins.throw "hyprlock: the flake HM module has been removed. Use the module from Home Manager upstream.";
     };
 
-    checks = eachSystem (system: self.packages.${system});
+    checks = eachSystem (system: self.packages.${system} // (import ./nix/tests/default.nix inputs pkgsFor.${system}));
 
     formatter = eachSystem (system: pkgsFor.${system}.alejandra);
   };

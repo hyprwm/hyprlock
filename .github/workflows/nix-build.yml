@@ -1,8 +1,13 @@
-name: Build
+name: Build (Nix)
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  workflow_call:
+    secrets:
+      CACHIX_AUTH_TOKEN:
+        required: false
+
 jobs:
-  nix:
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -42,7 +47,6 @@ jobs:
     #   with:
     #     name: hyprland
     #     authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
+          #
     - name: Build
-      run: nix flake check --print-build-logs --keep-going
-
+      run: nix build 'github:${{ github.repository }}?ref=${{ github.ref }}' -L --extra-substituters "https://hyprland.cachix.org"
