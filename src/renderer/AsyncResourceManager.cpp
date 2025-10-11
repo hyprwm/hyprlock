@@ -4,7 +4,6 @@
 #include "../helpers/Log.hpp"
 #include "../helpers/MiscFunctions.hpp"
 #include "../core/hyprlock.hpp"
-#include "../core/Egl.hpp"
 #include "../config/ConfigManager.hpp"
 
 #include <algorithm>
