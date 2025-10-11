@@ -82,8 +82,10 @@ in {
       machine.wait_for_unit("multi-user.target")
       # Startup Hyprland as the test compositor for hyprlock
       print("Running Hyprland")
-      _, __ = machine.execute("systemd-run -q -u hyprland --uid $(id -u alice) -p RuntimeMaxSec=60 ${envAddToSystemdRun} --setenv PATH=$PATH ${pkgs.hyprland}/bin/Hyprland -c ${flake.hyprlock-test-meta}/share/hypr/hyprland.conf")
-      _, __ = machine.execute("sleep 5")
+      machine.execute("systemd-run -q -u hyprland --uid $(id -u alice) -p RuntimeMaxSec=60 ${envAddToSystemdRun} --setenv PATH=$PATH ${pkgs.hyprland}/bin/Hyprland -c ${flake.hyprlock-test-meta}/share/hypr/hyprland.conf")
+      machine.wait_for_file("/tmp/hyprland_exec_once_notification")
+      machine.execute("sleep 1") # slack just to be save
+
       _, systeminfo = machine.execute("hyprctl --instance 0 systeminfo")
       print(systeminfo)
 
@@ -94,7 +96,7 @@ in {
           hyprlock_cmd = f"hyprlock --config {str(hyprlock_config)} -v 2>&1 >{log_file_path}; echo $? > /tmp/exit_status"
           if ${APITRACE_RECORD_PY}:
               hyprlock_cmd = f"${lib.getExe' pkgs.apitrace "apitrace"} trace --output {log_file_path}.trace --api egl {hyprlock_cmd}"
-          _, __ = machine.execute(f"hyprctl --instance 0 dispatch exec '{hyprlock_cmd}'")
+          machine.execute(f"hyprctl --instance 0 dispatch exec '{hyprlock_cmd}'")
 
           wait_for_lock_exit_status, out = machine.execute("WAYLAND_DISPLAY=wayland-1 ${flake.hyprlock-test-meta}/bin/wait-for-lock")
           print(f"Wait for lock exit code: {wait_for_lock_exit_status}")
@@ -107,7 +109,7 @@ in {
           # wrong password
           machine.send_chars("asdf\n")
 
-          _, __ = machine.execute("sleep 3") # default fail_timeout is 2 seconds
+          machine.execute("sleep 3") # default fail_timeout is 2 seconds
 
           # correct password
           machine.send_chars("abcdefghijklmnopqrstuvwxyz1234567890-=!@#$%^&*()_+[]{};':\"]\\|,./<>?`~")
@@ -126,13 +128,13 @@ in {
           machine.send_key("z")
           machine.send_chars("\n")
 
-          _, __ = machine.execute(f"waitpid {hyprlock_pid}")
+          machine.execute(f"waitpid {hyprlock_pid}")
           _, exit_status = machine.execute("cat /tmp/exit_status")
           print(f"Hyprlock exited with {exit_status}")
 
-          machine.copy_from_vm(log_file_path)
+          machine.copy_from_vm(log_file_path, "logs")
           if ${APITRACE_RECORD_PY}:
-              machine.copy_from_vm(log_file_path + ".trace")
+              machine.copy_from_vm(log_file_path + ".trace", "traces")
 
           _, out = machine.execute(f"cat {log_file_path}")
           print(f"Hyprlock log:\n{out}")

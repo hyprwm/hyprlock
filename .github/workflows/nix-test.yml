@@ -51,9 +51,16 @@ jobs:
       - name: Check exit status
         run: grep 0 result/exit_status
 
-      - name: Upload artifacts
+      - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: logs
-          path: result
+          path: result/logs
+
+      - name: Upload traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces
+          path: result/traces
