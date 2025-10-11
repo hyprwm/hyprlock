@@ -98,7 +98,7 @@ in {
               hyprlock_cmd = f"${lib.getExe' pkgs.apitrace "apitrace"} trace --output {log_file_path}.trace --api egl {hyprlock_cmd}"
           machine.execute(f"hyprctl --instance 0 dispatch exec '{hyprlock_cmd}'")
 
-          wait_for_lock_exit_status, out = machine.execute("WAYLAND_DISPLAY=wayland-1 ${flake.hyprlock-test-meta}/bin/wait-for-lock")
+          wait_for_lock_exit_status, out = machine.execute("WAYLAND_DISPLAY=wayland-1 ${lib.getExe' flake.hyprlock-test-meta "wait-for-lock"}")
           print(f"Wait for lock exit code: {wait_for_lock_exit_status}")
           if wait_for_lock_exit_status != 0:
               break

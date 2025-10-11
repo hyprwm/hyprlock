@@ -11,18 +11,10 @@
   wayland-scanner,
   version ? "git",
 }: let
-  inherit (lib.lists) flatten foldl';
   inherit (lib.sources) cleanSourceWith cleanSource;
-  inherit (lib.strings) hasSuffix cmakeBool;
-
-  adapters = flatten [
-    stdenvAdapters.useMoldLinker
-    stdenvAdapters.keepDebugInfo
-  ];
-
-  customStdenv = foldl' (acc: adapter: adapter acc) stdenv adapters;
+  inherit (lib.strings) hasSuffix;
 in
-  customStdenv.mkDerivation (finalAttrs: {
+  stdenv.mkDerivation (finalAttrs: {
     pname = "hyprlock-test-meta";
     inherit version;
 
@@ -40,20 +32,14 @@ in
       hyprwayland-scanner
       pkg-config
       wayland-scanner
-      egl-wayland
     ];
 
     buildInputs = hyprlock.buildInputs;
-
-    cmakeBuildType = "Debug";
-
-    cmakeFlags = [(cmakeBool "TESTS" true)];
 
     meta = {
       homepage = "https://github.com/hyprwm/hyprlock";
       description = "Hyprlock testing utility";
       license = lib.licenses.bsd3;
       platforms = hyprlock.meta.platforms;
-      mainProgram = "wait-for-lock";
     };
   })
