@@ -93,8 +93,8 @@ static void handlePollTerminate(int sig) {
 static char* gbm_find_render_node(drmDevice* device) {
     drmDevice* devices[64];
     char*      render_node = nullptr;
-
     int        n = drmGetDevices2(0, devices, sizeof(devices) / sizeof(devices[0]));
+
     for (int i = 0; i < n; ++i) {
         drmDevice* dev = devices[i];
         if (device && !drmDevicesEqual(device, dev)) {
@@ -105,6 +105,19 @@ static char* gbm_find_render_node(drmDevice* device) {
 
         render_node = strdup(dev->nodes[DRM_NODE_RENDER]);
         break;
+    }
+
+    /* Select any available render node in case the device does not have one */
+    if (!render_node) {
+        for (int i = 0; i < n; ++i) {
+            drmDevice* dev = devices[i];
+            if (device && drmDevicesEqual(device, dev))
+                continue;  // skip the one we already tried
+            if (dev->available_nodes & (1 << DRM_NODE_RENDER)) {
+                render_node = strdup(dev->nodes[DRM_NODE_RENDER]);
+                break;
+            }
+        }
     }
 
     drmFreeDevices(devices, n);
