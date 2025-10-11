@@ -146,8 +146,7 @@ in {
               break
 
 
-      _, out = machine.execute("hyprctl --instance 0 dispatch exit")
-      machine.wait_for_unit("hyprland", timeout=10)
+      machine.execute("hyprctl --instance 0 dispatch exit")
 
       _, exit_status = machine.execute("cat /tmp/exit_status")
       # For the github runner, just to make sure wen don't accidentally succeed
