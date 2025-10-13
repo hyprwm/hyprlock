@@ -45,8 +45,10 @@ CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, c
 
     if (graceSeconds > 0)
         m_tGraceEnds = std::chrono::system_clock::now() + std::chrono::seconds(graceSeconds);
-    else
-        m_tGraceEnds = std::chrono::system_clock::from_time_t(0);
+    else {
+        static const auto GRACE = g_pConfigManager->getValue<Hyprlang::INT>("general:grace");
+        m_tGraceEnds            = *GRACE ? std::chrono::system_clock::now() + std::chrono::seconds(*GRACE) : std::chrono::system_clock::from_time_t(0);
+    }
 
     static const auto IMMEDIATERENDER = g_pConfigManager->getValue<Hyprlang::INT>("general:immediate_render");
     m_bImmediateRender                = immediateRender || *IMMEDIATERENDER;
