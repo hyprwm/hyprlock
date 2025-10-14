@@ -21,6 +21,7 @@ class CBackground : public IWidget {
     ~CBackground();
 
     void            registerSelf(const ASP<CBackground>& self);
+    eWidgetType     getType() const;
 
     virtual void    configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
     virtual bool    draw(const SRenderData& data);

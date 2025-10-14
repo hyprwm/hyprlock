@@ -18,6 +18,10 @@ void CLabel::registerSelf(const ASP<CLabel>& self) {
     m_self = self;
 }
 
+eWidgetType CLabel::getType() const {
+    return eWidgetType::WIDGET_LABEL;
+}
+
 static void onTimer(AWP<CLabel> ref) {
     if (auto PLABEL = ref.lock(); PLABEL) {
         // update label
