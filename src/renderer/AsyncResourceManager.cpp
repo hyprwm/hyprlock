@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <functional>
 #include <hyprgraphics/resource/resources/ImageResource.hpp>
+#include <hyprgraphics/resource/resources/StaticImageResource.hpp>
 #include <hyprgraphics/image/Image.hpp>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
@@ -100,7 +101,7 @@ ResourceID CAsyncResourceManager::requestImage(const std::span<const uint8_t> da
         return RESOURCEID;
     }
 
-    auto                                 resource = makeAtomicShared<CImageResource>(data, eImageFormat::IMAGE_FORMAT_PNG);
+    auto                                 resource = makeAtomicShared<CStaticImageResource>(data, eImageFormat::IMAGE_FORMAT_PNG);
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
     Debug::log(TRACE, "Requesting image (resourceID: {})", RESOURCEID, (uintptr_t)widget.get());
