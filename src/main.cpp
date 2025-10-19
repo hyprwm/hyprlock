@@ -5,6 +5,7 @@
 #include "core/AnimationManager.hpp"
 #include <cstddef>
 #include <string_view>
+#include <sdbus-c++/sdbus-c++.h>
 
 void help() {
     std::println("Usage: hyprlock [options]\n\n"
@@ -122,6 +123,17 @@ int main(int argc, char** argv, char** envp) {
             Debug::log(NONE, "           Make sure you have a config.");
 
         return 1;
+    }
+
+    try {
+        auto connection = sdbus::createSystemBusConnection();
+        auto login      = sdbus::createProxy(*connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
+        auto preparingForSleep = login->getProperty("PreparingForSleep").onInterface(sdbus::ServiceName{"org.freedesktop.login1.Manager"}).get<bool>();
+        if (preparingForSleep) {
+            noFadeIn = true;
+        }
+    } catch (sdbus::Error& e) {
+        Debug::log(ERR, "Failed to setup dbus ({})", e.what());
     }
 
     if (noFadeIn)
