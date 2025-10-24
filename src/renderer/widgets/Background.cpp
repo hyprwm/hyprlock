@@ -72,12 +72,13 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
     } else if (!path.empty())
         resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
 
-    if (!isScreenshot && reloadTime > -1) {
+    if (!reloadCommand.empty() && reloadTime > -1) {
         try {
-            modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
+            if (!isScreenshot)
+                modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
         } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
 
-        plantReloadTimer(); // No reloads for screenshots.
+        plantReloadTimer(); // No reloads if reloadCommand is empty
     }
 }
 
