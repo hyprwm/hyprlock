@@ -326,6 +326,13 @@ void CConfigManager::init() {
     SHADOWABLE("label");
     CLICKABLE("label");
 
+    // shader widget for custom fragment shader backgrounds
+    m_config.addSpecialCategory("shader", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
+    m_config.addSpecialConfigValue("shader", "monitor", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("shader", "frag_path", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("shader", "zindex", Hyprlang::INT{-1});
+    SHADOWABLE("shader");
+
     m_config.registerHandler(&::handleSource, "source", {.allowFlags = false});
     m_config.registerHandler(&::handleBezier, "bezier", {.allowFlags = false});
     m_config.registerHandler(&::handleAnimation, "animation", {.allowFlags = false});
@@ -492,6 +499,22 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("input-field", "zindex", k.c_str())},
                 SHADOWABLE("input-field"),
+            }
+        });
+        // clang-format on
+    }
+
+    // shader widgets
+    keys = m_config.listKeysForSpecialCategory("shader");
+    for (auto& k : keys) {
+        // clang-format off
+        result.push_back(CConfigManager::SWidgetConfig{
+            .type = "shader",
+            .monitor = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("shader", "monitor", k.c_str())),
+            .values = {
+                {"frag_path", m_config.getSpecialConfigValue("shader", "frag_path", k.c_str())},
+                {"zindex", m_config.getSpecialConfigValue("shader", "zindex", k.c_str())},
+                SHADOWABLE("shader"),
             }
         });
         // clang-format on

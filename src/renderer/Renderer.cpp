@@ -17,6 +17,7 @@
 #include "widgets/Label.hpp"
 #include "widgets/Image.hpp"
 #include "widgets/Shape.hpp"
+#include "widgets/ShaderBackground.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -412,6 +413,8 @@ std::vector<ASP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSu
                 createWidget<CShape>(widgets[surf.m_outputID]);
             } else if (c.type == "image") {
                 createWidget<CImage>(widgets[surf.m_outputID]);
+            } else if (c.type == "shader") {
+                createWidget<CShaderBackground>(widgets[surf.m_outputID]);
             } else {
                 Debug::log(ERR, "Unknown widget type: {}", c.type);
                 continue;
