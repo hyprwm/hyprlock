@@ -29,6 +29,22 @@ in {
     })
   ];
 
+  hyprlock-debug = lib.composeManyExtensions [
+    self.overlays.hyprlock
+    # Dependencies
+    (final: prev: {
+      hyprutils = prev.hyprutils.override {debug = true;};
+      hyprgraphics = prev.hyprgraphics.override {debug = true;};
+      hyprlock-debug = prev.hyprlock.override {debug = true;};
+      hyprlock-test-meta = prev.callPackage ./test-meta.nix {
+        stdenv = prev.gcc14Stdenv;
+        version = version + "+date=" + (mkDate (inputs.self.lastModifiedDate or "19700101")) + "_" + (inputs.self.shortRev or "dirty");
+        hyprland-protocols = final.hyprland-protocols;
+        wayland-scanner = final.wayland-scanner;
+      };
+    })
+  ];
+
   sdbuscpp = final: prev: {
     sdbus-cpp = prev.sdbus-cpp.overrideAttrs (self: super: {
       version = "2.0.0";
