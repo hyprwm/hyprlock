@@ -19,12 +19,10 @@ class CHyprlockAnimationManager : public Hyprutils::Animation::CAnimationManager
     template <Animable VarType>
     void createAnimation(const VarType& v, PHLANIMVAR<VarType>& pav, SP<SAnimationPropertyConfig> pConfig) {
         constexpr const eAnimatedVarType EAVTYPE = typeToeAnimatedVarType<VarType>;
-        const auto                       PAV     = makeShared<CAnimatedVariable<VarType>>();
+        pav                                      = makeUnique<CAnimatedVariable<VarType>>();
 
-        PAV->create(EAVTYPE, static_cast<Hyprutils::Animation::CAnimationManager*>(this), PAV, v);
-        PAV->setConfig(pConfig);
-
-        pav = std::move(PAV);
+        pav->create(EAVTYPE, static_cast<Hyprutils::Animation::CAnimationManager*>(this), pav, v);
+        pav->setConfig(pConfig);
     }
 
     bool m_bTickScheduled = false;
