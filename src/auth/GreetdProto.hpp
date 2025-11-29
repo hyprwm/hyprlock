@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <variant>
-#include <glaze/glaze.hpp>
+#include <glaze/json.hpp>
 #include <glaze/util/string_literal.hpp>
 
 // GREETD PROTOCOL

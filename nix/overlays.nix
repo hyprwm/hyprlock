@@ -19,6 +19,7 @@ in {
     inputs.hyprutils.overlays.default
     inputs.hyprwayland-scanner.overlays.default
     inputs.self.overlays.sdbuscpp
+    inputs.self.overlays.glaze
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
         stdenv = prev.gcc15Stdenv;
@@ -28,6 +29,11 @@ in {
       };
     })
   ];
+  glaze = final: prev: {
+    glaze = prev.glaze.overrideAttrs (self: super: {
+      cmakeFlags = super.cmakeFlags ++ ["-Dglaze_ENABLE_SSL=OFF"];
+    });
+  };
 
   sdbuscpp = final: prev: {
     sdbus-cpp = prev.sdbus-cpp.overrideAttrs (self: super: {
