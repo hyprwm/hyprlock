@@ -613,7 +613,11 @@ void CHyprlock::onKey(uint32_t key, bool down) {
 void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     const auto SYM = sym;
 
-    if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_a))) {
+    static const auto PREVENTSPACE = g_pConfigManager->getValue<Hyprlang::INT>("general:prevent_space_input");
+    if (SYM == XKB_KEY_space  && *PREVENTSPACE) {
+      return;
+    }
+    else if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_a))) {
         Debug::log(LOG, "Clearing password buffer");
 
         m_sPasswordState.passBuffer = "";
