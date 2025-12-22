@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <unistd.h>
 #include <pwd.h>
-#include <security/pam_appl.h>
 #if __has_include(<security/pam_misc.h>)
 #include <security/pam_misc.h>
 #endif
@@ -106,34 +105,27 @@ void CPam::init() {
 }
 
 bool CPam::auth() {
-    const pam_conv localConv   = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
-    pam_handle_t*  handle      = nullptr;
-    auto           uidPassword = getpwuid(getuid());
-    RASSERT(uidPassword && uidPassword->pw_name, "Failed to get username (getpwuid)");
+    m_iRet = pam_authenticate(m_pHandle, 0);
 
-    int ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
-
-    if (ret != PAM_SUCCESS) {
-        m_sConversationState.failText = "pam_start failed";
-        Debug::log(ERR, "auth: pam_start failed for {}", m_sPamModule);
-        return false;
-    }
-
-    ret = pam_authenticate(handle, 0);
-    pam_end(handle, ret);
-    handle = nullptr;
-
-    m_sConversationState.waitingForPamAuth = false;
-
-    if (ret != PAM_SUCCESS) {
+    if (m_iRet != PAM_SUCCESS) {
         if (!m_sConversationState.failTextFromPam)
-            m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
+            m_sConversationState.failText = "Authentication failed";
         Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
 
+    m_iRet = pam_setcred(m_pHandle, PAM_REFRESH_CRED);
+
+    if (m_iRet != PAM_SUCCESS) {
+        if (!m_sConversationState.failTextFromPam)
+            m_sConversationState.failText = "Setting credentials failed";
+        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
+        return false;
+    }
+
+    m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.failText = "Successfully authenticated";
-    Debug::log(LOG, "auth: authenticated for {}", m_sPamModule);
+    Debug::log(LOG, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
 
     return true;
 }
@@ -171,15 +163,39 @@ bool CPam::checkWaiting() {
     return m_bBlockInput || m_sConversationState.waitingForPamAuth;
 }
 
+void CPam::clearHandle() {
+    if (m_pHandle != nullptr) {
+        pam_end(m_pHandle, m_iRet);
+    }
+
+    m_iRet = -1;
+    m_pHandle = nullptr;
+}
+
 void CPam::terminate() {
+    clearHandle();
+
     m_sConversationState.inputSubmittedCondition.notify_all();
     if (m_thread.joinable())
         m_thread.join();
 }
 
 void CPam::resetConversation() {
+    clearHandle();
+
     m_sConversationState.input             = "";
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
     m_sConversationState.failTextFromPam   = false;
+
+    auto uidPassword = getpwuid(getuid());
+    RASSERT(uidPassword && uidPassword->pw_name, "Failed to get username (getpwuid)");
+    const pam_conv localConv = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
+
+    m_iRet = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &m_pHandle);
+
+    if (m_iRet != PAM_SUCCESS) {
+        m_sConversationState.failText = "pam_start failed";
+        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
+    }
 }
