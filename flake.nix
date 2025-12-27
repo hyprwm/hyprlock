@@ -30,6 +30,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.systems.follows = "systems";
     };
+
+    hyprauth = {
+      url = "github:PointerDilemma/hyprauth";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.systems.follows = "systems";
+      inputs.hyprutils.follows = "hyprutils";
+    };
   };
 
   outputs = {

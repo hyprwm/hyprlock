@@ -8,6 +8,7 @@
   libGL,
   libxkbcommon,
   libgbm,
+  hyprauth,
   hyprgraphics,
   hyprlang,
   hyprutils,
@@ -41,6 +42,7 @@ stdenv.mkDerivation {
     libGL
     libxkbcommon
     libgbm
+    hyprauth
     hyprgraphics
     hyprlang
     hyprutils
