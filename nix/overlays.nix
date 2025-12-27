@@ -18,6 +18,7 @@ in {
     inputs.hyprlang.overlays.default
     inputs.hyprutils.overlays.default
     inputs.hyprwayland-scanner.overlays.default
+    inputs.hyprauth.overlays.default
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
         stdenv = prev.gcc15Stdenv;
