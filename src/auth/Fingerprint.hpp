@@ -33,6 +33,7 @@ class CFingerprint : public IAuthImplementation {
         bool                                abort     = false;
         bool                                done      = false;
         int                                 retries   = 0;
+        int                                 connect_attempts = 0;
         bool                                sleeping  = false;
         bool                                verifying = false;
     } m_sDBUSState;
@@ -48,6 +49,8 @@ class CFingerprint : public IAuthImplementation {
     bool        createDeviceProxy();
     void        claimDevice();
     void        startVerify(bool isRetry = false);
+    void        handleRetry(const std::string& logMessage, bool isRetry = false);
+    void        retryVerify();
     bool        stopVerify();
     bool        releaseDevice();
 };

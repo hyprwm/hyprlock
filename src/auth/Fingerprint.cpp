@@ -214,32 +214,79 @@ void CFingerprint::claimDevice() {
     });
 }
 
+void CFingerprint::retryVerify() {
+    Debug::log(LOG, "fprint: Resetting device proxy and retrying verify...");
+    m_sDBUSState.device.reset();
+    startVerify(false);
+}
+
+void CFingerprint::handleRetry(const std::string& logMessage, bool isRetry) {
+    static const auto READY_RETRIES = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:init_retries");
+    static const auto READY_WAIT_MS = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:init_retry_delay");
+
+    if (m_sDBUSState.connect_attempts < *READY_RETRIES) {
+        m_sDBUSState.connect_attempts++;
+        m_sDBUSState.verifying = false;
+
+        Debug::log(LOG, "fprint: {} - Scheduling retry {}/{} in {}ms...", 
+                   logMessage, m_sDBUSState.connect_attempts, *READY_RETRIES, *READY_WAIT_MS);
+
+        g_pHyprlock->addTimer(std::chrono::milliseconds(*READY_WAIT_MS), [](ASP<CTimer> self, void* data) { 
+            ((CFingerprint*)data)->retryVerify(); 
+        }, this);
+    } else {
+        // Pokud dojdou pokusy
+        Debug::log(WARN, "fprint: Max connection retries reached ({}), giving up.", *READY_RETRIES);
+        if (isRetry) {
+            m_sFailureReason = "Fingerprint auth disabled (failed to connect)";
+        }
+    }
+}
+
 void CFingerprint::startVerify(bool isRetry) {
     m_sDBUSState.verifying = true;
-    if (!m_sDBUSState.device) {
-        if (!createDeviceProxy())
-            return;
 
+    if (!m_sDBUSState.device) {
+        if (!createDeviceProxy()) {
+            handleRetry("Device proxy creation failed", false); // false = zatím to není retry po špatném otisku
+            return;
+        }
         claimDevice();
         return;
     }
-    auto finger = "any"; // Any finger.
-    m_sDBUSState.device->callMethodAsync("VerifyStart").onInterface(DEVICE).withArguments(finger).uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
-        if (e) {
-            Debug::log(WARN, "fprint: could not start verifying, {}", e->what());
-            if (isRetry)
-                m_sFailureReason = "Fingerprint auth disabled (failed to restart)";
 
-        } else {
-            Debug::log(LOG, "fprint: started verifying");
-            if (isRetry) {
-                m_sDBUSState.retries++;
-                m_sPrompt = "Could not match fingerprint. Try again.";
-            } else
-                m_sPrompt = m_sFingerprintReady;
-        }
-        g_pHyprlock->enqueueForceUpdateTimers();
-    });
+    auto finger = "any"; 
+
+    try {
+        m_sDBUSState.device->callMethodAsync("VerifyStart")
+            .onInterface(DEVICE)
+            .withArguments(finger)
+            .uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
+                if (e) {
+                    Debug::log(WARN, "fprint: Async callback error: {}", e->what());
+                    handleRetry("Verify failed (callback)", isRetry);
+                    return;
+                }
+
+                // Success
+                m_sDBUSState.connect_attempts = 0;
+                Debug::log(LOG, "fprint: started verifying");
+
+                if (isRetry) {
+                    m_sDBUSState.retries++;
+                    m_sPrompt = "Could not match fingerprint. Try again.";
+                } else {
+                    m_sPrompt = m_sFingerprintReady;
+                }
+                g_pHyprlock->enqueueForceUpdateTimers();
+            });
+            
+    } catch (const sdbus::Error& e) {
+        Debug::log(WARN, "fprint: CRITICAL - CallMethodAsync threw exception: {}", e.what());
+        handleRetry("Exception caught during VerifyStart", false);
+    } catch (const std::exception& e) {
+        Debug::log(ERR, "fprint: Unexpected exception during startVerify: {}", e.what());
+    }
 }
 
 bool CFingerprint::stopVerify() {
