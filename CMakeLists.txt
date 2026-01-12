@@ -86,7 +86,7 @@ pkg_check_modules(
   pangocairo
   libdrm
   gbm
-  hyprutils>=0.8.0
+  hyprutils>=0.11.0
   sdbus-c++>=2.0.0
   hyprgraphics>=0.1.6)
 find_library(PAM_FOUND NAMES pam libpam)

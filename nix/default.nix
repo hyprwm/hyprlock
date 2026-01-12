@@ -14,7 +14,7 @@
   hyprwayland-scanner,
   pam,
   pango,
-  sdbus-cpp,
+  sdbus-cpp_2,
   systemdLibs,
   wayland,
   wayland-protocols,
@@ -46,7 +46,7 @@ stdenv.mkDerivation {
     hyprutils
     pam
     pango
-    sdbus-cpp
+    sdbus-cpp_2
     systemdLibs
     wayland
     wayland-protocols
