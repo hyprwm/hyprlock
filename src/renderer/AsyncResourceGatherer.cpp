@@ -84,8 +84,8 @@ ASP<SPreloadedAsset> CAsyncResourceGatherer::getAssetByID(const std::string& id)
     return nullptr;
 }
 
-static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::path& path) {
-    auto image = CImage(path);
+static SP<CCairoSurface> getCairoSurfaceFromImageFile(const std::filesystem::path& path, const Vector2D& size = {}) {
+    auto image = (size.x > 0 && size.y > 0) ? CImage(path.string(), size) : CImage(path);
     if (!image.success()) {
         Debug::log(ERR, "Image {} could not be loaded: {}", path.string(), image.getError());
         return nullptr;
@@ -127,6 +127,12 @@ void CAsyncResourceGatherer::gather() {
             rq.type  = CAsyncResourceGatherer::TARGET_IMAGE;
             rq.asset = path;
             rq.id    = id;
+
+            // Pass size for image widgets (needed for SVG rendering)
+            if (c.type == "image" && c.values.contains("size")) {
+                const auto imgSize = std::any_cast<Hyprlang::INT>(c.values.at("size"));
+                rq.props["size"] = Vector2D{(double)imgSize, (double)imgSize};
+            }
 
             renderImage(rq);
         }
@@ -204,7 +210,8 @@ void CAsyncResourceGatherer::renderImage(const SPreloadRequest& rq) {
     target.id   = rq.id;
 
     std::filesystem::path ABSOLUTEPATH(absolutePath(rq.asset, ""));
-    const auto            CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH);
+    const Vector2D        IMGSIZE = rq.props.contains("size") ? std::any_cast<Vector2D>(rq.props.at("size")) : Vector2D{};
+    const auto            CAIROISURFACE = getCairoSurfaceFromImageFile(ABSOLUTEPATH, IMGSIZE);
 
     if (!CAIROISURFACE) {
         Debug::log(ERR, "renderImage: No cairo surface!");

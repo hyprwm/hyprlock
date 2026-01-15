@@ -64,6 +64,7 @@ void CImage::onTimerUpdate() {
     request.asset     = path;
     request.type      = CAsyncResourceGatherer::eTargetType::TARGET_IMAGE;
     request.callback  = [REF = m_self]() { onAssetCallback(REF); };
+    request.props["size"] = Vector2D{(double)size, (double)size};
 
     g_pAsyncResourceGatherer->requestAsyncAssetPreload(request);
 }
