@@ -26,6 +26,20 @@ void CBackground::registerSelf(const ASP<CBackground>& self) {
     m_self = self;
 }
 
+static std::string runAndGetPath(const std::string& reloadCommand) {
+    std::string path = spawnSync(reloadCommand);
+
+    if (path.ends_with('\0'))
+        path.pop_back();
+
+    if (path.ends_with('\n'))
+        path.pop_back();
+
+    if (path.starts_with("file://"))
+        path = path.substr(7);
+    return path;
+}
+
 void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
 
@@ -61,6 +75,9 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         Debug::log(LOG, "Missing screenshot for output {}", outputPort);
         scResourceID = 0;
     }
+
+    if (!reloadCommand.empty() && path.empty())
+        path = runAndGetPath(reloadCommand);
 
     if (isScreenshot) {
         resourceID = scResourceID; // Fallback to solid background:color when scResourceID==0
@@ -293,13 +310,7 @@ void CBackground::onReloadTimerUpdate() {
     // Path parsing and early returns
 
     if (!reloadCommand.empty()) {
-        path = spawnSync(reloadCommand);
-
-        if (path.ends_with('\n'))
-            path.pop_back();
-
-        if (path.starts_with("file://"))
-            path = path.substr(7);
+        path = runAndGetPath(reloadCommand);
 
         if (path.empty())
             return;
