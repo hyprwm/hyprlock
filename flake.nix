@@ -32,7 +32,7 @@
     };
 
     hyprauth = {
-      url = "github:PointerDilemma/hyprauth";
+      url = "github:pointerdilemma/hyprauth";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.systems.follows = "systems";
       inputs.hyprutils.follows = "hyprutils";
@@ -52,12 +52,18 @@
         localSystem.system = system;
         overlays = with self.overlays; [default];
       });
+    pkgsDebugFor = eachSystem (system:
+      import nixpkgs {
+        localSystem = system;
+        overlays = with self.overlays; [hyprlock-debug];
+      });
   in {
     overlays = import ./nix/overlays.nix {inherit inputs lib self;};
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hyprlock;
       inherit (pkgsFor.${system}) hyprlock;
+      inherit (pkgsDebugFor.${system}) hyprlock-debug;
     });
 
     homeManagerModules = {

@@ -14,15 +14,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1767727422,
-        "narHash": "sha256-+b5Ma1CF+ueTXGVfWTL/CncLqkf/qpPfGkHlDx1jasc=",
-        "owner": "PointerDilemma",
+        "lastModified": 1769174246,
+        "narHash": "sha256-fu6WdkVOPC2J4SBk2OxpozTupWhBdUIlDLlI0u1aWcw=",
+        "owner": "pointerdilemma",
         "repo": "hyprauth",
-        "rev": "070a5d34b0b0afcd088d031134880dc54fa24050",
+        "rev": "d3e79260cacbdfc17455fc1a3a8b588041632211",
         "type": "github"
       },
       "original": {
-        "owner": "PointerDilemma",
+        "owner": "pointerdilemma",
         "repo": "hyprauth",
         "type": "github"
       }
@@ -141,16 +141,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1767633561,
-        "narHash": "sha256-nCf0iTu9O+dihZ8Qdm1Vwn5+vfYG9KDAcajrAPX40QI=",
+        "lastModified": 1769109506,
+        "narHash": "sha256-LkQIKoyabNz8EqqAlTTTAcszPl3Dk7df8ctJj7Ah7kc=",
         "owner": "hyprwm",
         "repo": "hyprwire",
-        "rev": "f3b4266618ef862684ca6b090b592df37e2d7588",
+        "rev": "ee9c7e8dc2e1552d1028d18d20ea410f75512f74",
         "type": "github"
       },
       "original": {
         "owner": "hyprwm",
-        "ref": "fix-object-race",
         "repo": "hyprwire",
         "type": "github"
       }
