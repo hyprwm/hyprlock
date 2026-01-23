@@ -2,7 +2,7 @@
 #include "../AsyncResourceManager.hpp"
 #include "../Renderer.hpp"
 #include "../../core/hyprlock.hpp"
-#include "../../auth/Auth.hpp"
+#include "../../core/Auth.hpp"
 #include "../../config/ConfigDataValues.hpp"
 #include "../../config/ConfigManager.hpp"
 #include "../../helpers/Log.hpp"
@@ -182,8 +182,8 @@ bool CPasswordInputField::draw(const SRenderData& data) {
     bool forceReload = false;
 
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
-    checkWaiting   = g_pAuth->checkWaiting();
-    displayFail    = g_pAuth->m_bDisplayFailText;
+    checkWaiting   = g_auth->m_pamBusy;
+    displayFail    = g_auth->m_displayFail;
 
     updateFade();
     updateDots();
@@ -336,10 +336,10 @@ void CPasswordInputField::updatePlaceholder() {
     }
 
     // already requested a placeholder for the current fail
-    if (displayFail && placeholder.failedAttempts == g_pAuth->getFailedAttempts())
+    if (displayFail && placeholder.failedAttempts == g_auth->getFailedAttempts())
         return;
 
-    placeholder.failedAttempts = g_pAuth->getFailedAttempts();
+    placeholder.failedAttempts = g_auth->getFailedAttempts();
 
     std::string newText = (displayFail) ? formatString(configFailText).formatted : formatString(configPlaceholderText).formatted;
 

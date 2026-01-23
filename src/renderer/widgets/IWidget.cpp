@@ -1,7 +1,7 @@
 #include "IWidget.hpp"
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
-#include "../../auth/Auth.hpp"
+#include "../../core/Auth.hpp"
 #include <chrono>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <unistd.h>
@@ -9,6 +9,7 @@
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/string/VarList.hpp>
 
+using namespace Hyprauth;
 using namespace Hyprutils::String;
 
 #if defined(_LIBCPP_VERSION)
@@ -89,7 +90,7 @@ Hyprgraphics::CTextResource::eTextAlignmentMode IWidget::parseTextAlignment(cons
 
 static void replaceAllAttempts(std::string& str) {
 
-    const size_t      ATTEMPTS = g_pAuth->getFailedAttempts();
+    const size_t      ATTEMPTS = g_auth->getFailedAttempts();
     const std::string STR      = std::to_string(ATTEMPTS);
     size_t            pos      = 0;
 
@@ -221,32 +222,32 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     }
 
     if (in.contains("$FAIL")) {
-        const auto FAIL = g_pAuth->getCurrentFailText();
+        const auto FAIL = g_auth->getCurrentFailText();
         replaceInString(in, "$FAIL", FAIL);
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$PAMFAIL")) {
-        const auto FAIL = g_pAuth->getFailText(AUTH_IMPL_PAM);
-        replaceInString(in, "$PAMFAIL", FAIL.value_or(""));
+        const auto FAIL = g_auth->getFailText(HYPRAUTH_PROVIDER_PAM);
+        replaceInString(in, "$PAMFAIL", FAIL);
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$PAMPROMPT")) {
-        const auto PROMPT = g_pAuth->getPrompt(AUTH_IMPL_PAM);
-        replaceInString(in, "$PAMPROMPT", PROMPT.value_or(""));
+        const auto PROMPT = g_auth->getPromptText(HYPRAUTH_PROVIDER_PAM);
+        replaceInString(in, "$PAMPROMPT", PROMPT);
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$FPRINTFAIL")) {
-        const auto FPRINTFAIL = g_pAuth->getFailText(AUTH_IMPL_FINGERPRINT);
-        replaceInString(in, "$FPRINTFAIL", FPRINTFAIL.value_or(""));
+        const auto FPRINTFAIL = g_auth->getFailText(HYPRAUTH_PROVIDER_FPRINT);
+        replaceInString(in, "$FPRINTFAIL", FPRINTFAIL);
         result.allowForceUpdate = true;
     }
 
     if (in.contains("$FPRINTPROMPT")) {
-        const auto FPRINTPROMPT = g_pAuth->getPrompt(AUTH_IMPL_FINGERPRINT);
-        replaceInString(in, "$FPRINTPROMPT", FPRINTPROMPT.value_or(""));
+        const auto FPRINTPROMPT = g_auth->getPromptText(HYPRAUTH_PROVIDER_FPRINT);
+        replaceInString(in, "$FPRINTPROMPT", FPRINTPROMPT);
         result.allowForceUpdate = true;
     }
 

@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  stdenvAdapters,
   cmake,
   pkg-config,
   cairo,
@@ -8,6 +9,7 @@
   libGL,
   libxkbcommon,
   libgbm,
+  hyprauth,
   hyprgraphics,
   hyprlang,
   hyprutils,
@@ -19,11 +21,25 @@
   wayland,
   wayland-protocols,
   wayland-scanner,
+  debug ? false,
+  withMold ? true,
   version ? "git",
   shortRev ? "",
 }:
-stdenv.mkDerivation {
-  pname = "hyprlock";
+let
+  inherit (builtins) foldl';
+  inherit (lib.lists) flatten optional;
+  inherit (lib.strings) optionalString;
+
+  adapters = flatten [
+    (lib.optional withMold stdenvAdapters.useMoldLinker)
+    (lib.optional debug stdenvAdapters.keepDebugInfo)
+  ];
+
+  customStdenv = foldl' (acc: adapter: adapter acc) stdenv adapters;
+in
+customStdenv.mkDerivation {
+  pname = "hyprlock" + optionalString debug "-debug";
   inherit version;
 
   src = ../.;
@@ -41,6 +57,7 @@ stdenv.mkDerivation {
     libGL
     libxkbcommon
     libgbm
+    hyprauth
     hyprgraphics
     hyprlang
     hyprutils
@@ -56,6 +73,11 @@ stdenv.mkDerivation {
     HYPRLOCK_COMMIT = shortRev;
     HYPRLOCK_VERSION_COMMIT = ""; # Intentionally left empty (hyprlock --version will always print the commit)
   };
+
+  cmakeBuildType =
+    if debug
+    then "Debug"
+    else "RelWithDebInfo";
 
   meta = {
     homepage = "https://github.com/hyprwm/hyprlock";

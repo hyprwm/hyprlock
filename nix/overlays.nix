@@ -18,6 +18,7 @@ in {
     inputs.hyprlang.overlays.default
     inputs.hyprutils.overlays.default
     inputs.hyprwayland-scanner.overlays.default
+    inputs.hyprauth.overlays.default
     (final: prev: {
       hyprlock = prev.callPackage ./default.nix {
         stdenv = prev.gcc15Stdenv;
@@ -25,6 +26,17 @@ in {
         inherit (final) hyprlang;
         shortRev = self.sourceInfo.shortRev or "dirty";
       };
+    })
+  ];
+
+  hyprlock-debug = lib.composeManyExtensions [
+    self.overlays.hyprlock
+
+    (final: prev: {
+      hyprutils = prev.hyprutils.override {debug = true;};
+      hyprauth = prev.hyprauth.override {debug = true;};
+      hyprgraphics = prev.hyprgraphics.override {debug = true;};
+      hyprlock-debug = prev.hyprlock.override {debug = true;};
     })
   ];
 }

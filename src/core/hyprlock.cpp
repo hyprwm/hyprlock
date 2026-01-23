@@ -1,12 +1,11 @@
 #include "hyprlock.hpp"
+#include "Auth.hpp"
+#include "Egl.hpp"
+#include "Seat.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../renderer/Renderer.hpp"
 #include "../renderer/AsyncResourceManager.hpp"
-#include "../auth/Auth.hpp"
-#include "../auth/Fingerprint.hpp"
-#include "./Egl.hpp"
-#include "./Seat.hpp"
 #include <chrono>
 #include <hyprutils/memory/UniquePtr.hpp>
 #include <sys/wait.h>
@@ -72,7 +71,7 @@ static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
         Debug::log(LOG, "Unlocking with a SIGUSR1");
-        g_pAuth->enqueueUnlock();
+        g_pHyprlock->unlock();
     }
 }
 
@@ -320,8 +319,8 @@ void CHyprlock::run() {
 
     g_pRenderer            = makeUnique<CRenderer>();
     g_asyncResourceManager = makeUnique<CAsyncResourceManager>();
-    g_pAuth                = makeUnique<CAuth>();
-    g_pAuth->start();
+    g_auth                 = makeUnique<CAuth>();
+    g_auth->m_authenticator->start();
 
     Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
 
@@ -338,37 +337,44 @@ void CHyprlock::run() {
     if (!acquireSessionLock()) {
         m_sLoopState.timerEvent = true;
         m_sLoopState.timerCV.notify_all();
-        g_pAuth->terminate();
+        g_auth->m_authenticator->terminate();
         exit(1);
     }
-
-    const auto fingerprintAuth = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
-    const auto dbusConn        = (fingerprintAuth) ? ((CFingerprint*)fingerprintAuth.get())->getConnection() : nullptr;
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
 
-    pollfd pollfds[2];
-    pollfds[0] = {
+    std::vector<pollfd> pollfds;
+    int                 pamIdx = -1, fprintIdx = -1;
+    pollfds.emplace_back(pollfd{
         .fd     = wl_display_get_fd(m_sWaylandState.display),
         .events = POLLIN,
-    };
-    if (dbusConn) {
-        pollfds[1] = {
-            .fd     = dbusConn->getEventLoopPollData().fd,
-            .events = POLLIN,
-        };
-    }
-    size_t      fdcount = dbusConn ? 2 : 1;
+    });
 
-    std::thread pollThr([this, &pollfds, fdcount]() {
+    if (g_auth->m_pam) {
+        pamIdx = pollfds.size();
+        pollfds.emplace_back(pollfd{
+            .fd     = g_auth->m_pam->getLoopFd(),
+            .events = POLLIN,
+        });
+    }
+
+    if (g_auth->m_fprint) {
+        fprintIdx = pollfds.size();
+        pollfds.emplace_back(pollfd{
+            .fd     = g_auth->m_fprint->getLoopFd(),
+            .events = POLLIN,
+        });
+    }
+
+    std::thread pollThr([this, &pollfds]() {
         while (!m_bTerminate) {
             bool preparedToRead = wl_display_prepare_read(m_sWaylandState.display) == 0;
 
             int  events = 0;
             if (preparedToRead) {
-                events = poll(pollfds, fdcount, 5000);
+                events = poll(pollfds.data(), pollfds.size(), 5000);
 
                 if (events < 0) {
                     RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
@@ -376,7 +382,7 @@ void CHyprlock::run() {
                     continue;
                 }
 
-                for (size_t i = 0; i < fdcount; ++i) {
+                for (size_t i = 0; i < pollfds.size(); ++i) {
                     RASSERT(!(pollfds[i].revents & POLLHUP), "[core] Disconnected from pollfd id {}", i);
                 }
 
@@ -441,11 +447,11 @@ void CHyprlock::run() {
         m_sLoopState.wlDispatched = true;
         m_sLoopState.wlDispatchCV.notify_all();
 
-        if (pollfds[1].revents & POLLIN /* dbus */) {
-            while (dbusConn && dbusConn->processPendingEvent()) {
-                ;
-            }
-        }
+        if (pamIdx > 0 && pollfds[pamIdx].revents & POLLIN)
+            g_auth->m_pam->dispatchEvents();
+
+        if (fprintIdx > 0 && pollfds[fprintIdx].revents & POLLIN)
+            g_auth->m_fprint->dispatchEvents();
 
         processTimers();
     }
@@ -467,7 +473,7 @@ void CHyprlock::run() {
 
     pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
-    g_pAuth->terminate();
+    g_auth->m_authenticator->terminate();
 
     // wait for threads to exit cleanly to avoid a coredump
     pollThr.join();
@@ -578,13 +584,13 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         }
     }
 
-    if (g_pAuth->checkWaiting()) {
-        renderAllOutputs();
-        return;
-    }
+    // if (g_pAuth->checkWaiting()) {
+    //     renderAllOutputs();
+    //     return;
+    // }
 
-    if (g_pAuth->m_bDisplayFailText)
-        g_pAuth->resetDisplayFail();
+    if (g_auth->m_displayFail)
+        g_auth->resetDisplayFail();
 
     if (down) {
         m_bCapsLock = xkb_state_mod_name_is_active(g_pSeatManager->m_pXKBState, XKB_MOD_NAME_CAPS, XKB_STATE_MODS_LOCKED);
@@ -627,7 +633,7 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
             return;
         }
 
-        g_pAuth->submitInput(m_sPasswordState.passBuffer);
+        g_auth->m_authenticator->submitInput(m_sPasswordState.passBuffer);
     } else if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) {
         if (m_sPasswordState.passBuffer.length() > 0) {
             // handle utf-8

@@ -1,5 +1,32 @@
 {
   "nodes": {
+    "hyprauth": {
+      "inputs": {
+        "hyprutils": [
+          "hyprutils"
+        ],
+        "hyprwire": "hyprwire",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "systems": [
+          "systems"
+        ]
+      },
+      "locked": {
+        "lastModified": 1769174246,
+        "narHash": "sha256-fu6WdkVOPC2J4SBk2OxpozTupWhBdUIlDLlI0u1aWcw=",
+        "owner": "pointerdilemma",
+        "repo": "hyprauth",
+        "rev": "d3e79260cacbdfc17455fc1a3a8b588041632211",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pointerdilemma",
+        "repo": "hyprauth",
+        "type": "github"
+      }
+    },
     "hyprgraphics": {
       "inputs": {
         "hyprutils": [
@@ -98,6 +125,35 @@
         "type": "github"
       }
     },
+    "hyprwire": {
+      "inputs": {
+        "hyprutils": [
+          "hyprauth",
+          "hyprutils"
+        ],
+        "nixpkgs": [
+          "hyprauth",
+          "nixpkgs"
+        ],
+        "systems": [
+          "hyprauth",
+          "systems"
+        ]
+      },
+      "locked": {
+        "lastModified": 1769109506,
+        "narHash": "sha256-LkQIKoyabNz8EqqAlTTTAcszPl3Dk7df8ctJj7Ah7kc=",
+        "owner": "hyprwm",
+        "repo": "hyprwire",
+        "rev": "ee9c7e8dc2e1552d1028d18d20ea410f75512f74",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hyprwm",
+        "repo": "hyprwire",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1766070988,
@@ -116,6 +172,7 @@
     },
     "root": {
       "inputs": {
+        "hyprauth": "hyprauth",
         "hyprgraphics": "hyprgraphics",
         "hyprlang": "hyprlang",
         "hyprutils": "hyprutils",
