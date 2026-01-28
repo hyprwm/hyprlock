@@ -116,19 +116,34 @@ bool CPam::auth() {
     if (ret != PAM_SUCCESS) {
         m_sConversationState.failText = "pam_start failed";
         Debug::log(ERR, "auth: pam_start failed for {}", m_sPamModule);
+        if (handle != nullptr) {
+            pam_end(handle, ret);
+        }
         return false;
     }
 
     ret = pam_authenticate(handle, 0);
-    pam_end(handle, ret);
+
+    // Store the return value before calling pam_end
+    bool authenticated = (ret == PAM_SUCCESS);
+
+    // Always call pam_end to clean up, even if authentication failed
+    int end_ret = pam_end(handle, ret);
     handle = nullptr;
 
     m_sConversationState.waitingForPamAuth = false;
 
-    if (ret != PAM_SUCCESS) {
-        if (!m_sConversationState.failTextFromPam)
+    if (!authenticated) {
+        if (!m_sConversationState.failTextFromPam) {
             m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
+        }
         Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
+
+        // Log pam_end failure separately if it occurred
+        if (end_ret != PAM_SUCCESS) {
+            Debug::log(ERR, "auth: pam_end also failed with code {}", end_ret);
+        }
+
         return false;
     }
 
