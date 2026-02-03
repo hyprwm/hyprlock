@@ -241,7 +241,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "vibrancy", Hyprlang::FLOAT{0.1686});
     m_config.addSpecialConfigValue("background", "vibrancy_darkness", Hyprlang::FLOAT{0.05});
     m_config.addSpecialConfigValue("background", "zindex", Hyprlang::INT{-1});
-    m_config.addSpecialConfigValue("background", "reload_time", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("background", "reload_time", Hyprlang::FLOAT{-1});
     m_config.addSpecialConfigValue("background", "reload_cmd", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "crossfade_time", Hyprlang::FLOAT{-1.0});
 
@@ -272,7 +272,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "halign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "valign", Hyprlang::STRING{"center"});
     m_config.addSpecialConfigValue("image", "rotate", Hyprlang::FLOAT{0});
-    m_config.addSpecialConfigValue("image", "reload_time", Hyprlang::INT{-1});
+    m_config.addSpecialConfigValue("image", "reload_time", Hyprlang::FLOAT{-1});
     m_config.addSpecialConfigValue("image", "reload_cmd", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("image", "zindex", Hyprlang::INT{0});
     SHADOWABLE("image");

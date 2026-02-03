@@ -53,7 +53,7 @@ class CImage : public IWidget {
 
     bool                            firstRender = true;
 
-    int                             reloadTime;
+    float                           reloadTime;
     std::string                     reloadCommand;
     std::string                     onclickCommand;
 

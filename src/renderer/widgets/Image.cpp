@@ -69,10 +69,10 @@ void CImage::onTimerUpdate() {
 
 void CImage::plantTimer() {
 
-    if (reloadTime == 0) {
+    if (reloadTime == 0.0) {
         imageTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onTimer(REF); }, nullptr, true);
-    } else if (reloadTime > 0)
-        imageTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), [REF = m_self](auto, auto) { onTimer(REF); }, nullptr, false);
+    } else if (reloadTime > 0.0)
+        imageTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((uint64_t)(reloadTime * 1000.0)), [REF = m_self](auto, auto) { onTimer(REF); }, nullptr, false);
 }
 
 void CImage::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
@@ -94,7 +94,7 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
         angle     = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
 
         path           = std::any_cast<Hyprlang::STRING>(props.at("path"));
-        reloadTime     = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
+        reloadTime     = std::any_cast<Hyprlang::FLOAT>(props.at("reload_time"));
         reloadCommand  = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
         onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
     } catch (const std::bad_any_cast& e) {
@@ -106,7 +106,7 @@ void CImage::configure(const std::unordered_map<std::string, std::any>& props, c
     resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
     angle      = angle * M_PI / 180.0;
 
-    if (reloadTime > -1) {
+    if (reloadTime > -1.0) {
         try {
             modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
         } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
@@ -126,7 +126,7 @@ void CImage::reset() {
 
     imageFB.destroyBuffer();
 
-    if (asset && reloadTime > -1) // Don't unload asset if it's a static image
+    if (asset && reloadTime > -1.0) // Don't unload asset if it's a static image
         g_asyncResourceManager->unload(asset);
 
     asset             = nullptr;

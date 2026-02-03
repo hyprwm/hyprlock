@@ -40,7 +40,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         contrast          = std::any_cast<Hyprlang::FLOAT>(props.at("contrast"));
         path              = std::any_cast<Hyprlang::STRING>(props.at("path"));
         reloadCommand     = std::any_cast<Hyprlang::STRING>(props.at("reload_cmd"));
-        reloadTime        = std::any_cast<Hyprlang::INT>(props.at("reload_time"));
+        reloadTime        = std::any_cast<Hyprlang::FLOAT>(props.at("reload_time"));
 
     } catch (const std::bad_any_cast& e) {
         RASSERT(false, "Failed to construct CBackground: {}", e.what()); //
@@ -72,7 +72,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
     } else if (!path.empty())
         resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
 
-    if (!reloadCommand.empty() && reloadTime > -1) {
+    if (!reloadCommand.empty() && reloadTime > -1.0) {
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -281,10 +281,10 @@ void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
 
 void CBackground::plantReloadTimer() {
 
-    if (reloadTime == 0)
+    if (reloadTime == 0.0)
         reloadTimer = g_pHyprlock->addTimer(std::chrono::hours(1), [REF = m_self](auto, auto) { onReloadTimer(REF); }, nullptr, true);
-    else if (reloadTime > 0)
-        reloadTimer = g_pHyprlock->addTimer(std::chrono::seconds(reloadTime), [REF = m_self](auto, auto) { onReloadTimer(REF); }, nullptr, true);
+    else if (reloadTime > 0.0)
+        reloadTimer = g_pHyprlock->addTimer(std::chrono::milliseconds((uint64_t)(reloadTime * 1000.0)), [REF = m_self](auto, auto) { onReloadTimer(REF); }, nullptr, true);
 }
 
 void CBackground::onReloadTimerUpdate() {

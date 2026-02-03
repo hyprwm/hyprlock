@@ -77,7 +77,7 @@ class CBackground : public IWidget {
     bool                            isScreenshot = false;
     bool                            firstRender  = true;
 
-    int                             reloadTime = -1;
+    float                           reloadTime = -1;
     std::string                     reloadCommand;
     ASP<CTimer>                     reloadTimer;
     std::filesystem::file_time_type modificationTime;
