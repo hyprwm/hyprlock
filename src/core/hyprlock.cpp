@@ -552,6 +552,14 @@ void CHyprlock::repeatKey(xkb_keysym_t sym) {
 }
 
 void CHyprlock::onKey(uint32_t key, bool down) {
+    // Notify fingerprint of activity
+    if (g_pAuth) {
+        auto fpImpl = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
+        if (fpImpl) {
+            ((CFingerprint*)fpImpl.get())->onActivity();
+        }
+    }
+
     if (isUnlocked())
         return;
 
@@ -660,6 +668,14 @@ void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
     if (!m_focusedOutput->m_sessionLockSurface)
         return;
 
+    // Notify fingerprint of activity
+    if (g_pAuth) {
+        auto fpImpl = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
+        if (fpImpl) {
+            ((CFingerprint*)fpImpl.get())->onActivity();
+        }
+    }
+
     const auto SCALEDPOS = pos * m_focusedOutput->m_sessionLockSurface->fractionalScale;
     const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
     for (const auto& widget : widgets) {
@@ -705,6 +721,16 @@ void CHyprlock::onHover(const Vector2D& pos) {
 
     if (outputNeedsRedraw)
         m_focusedOutput->m_sessionLockSurface->render();
+}
+
+void CHyprlock::onMouseMove(const Vector2D& pos) {
+    // Notify fingerprint of activity
+    if (g_pAuth) {
+        auto fpImpl = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
+        if (fpImpl) {
+            ((CFingerprint*)fpImpl.get())->onActivity();
+        }
+    }
 }
 
 bool CHyprlock::acquireSessionLock() {
