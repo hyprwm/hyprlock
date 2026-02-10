@@ -164,6 +164,10 @@ void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
+    if(checkWaiting && configCheckText.empty()){
+        return;
+    }
+
     if (passwordLength == 0)
         dots.currentAmount->setValueAndWarp(passwordLength);
     else
@@ -342,7 +346,7 @@ void CPasswordInputField::updatePlaceholder() {
 
     std::string newText;
 
-    if(checkWaiting){
+    if(checkWaiting && !configCheckText.empty()){
        newText = formatString(configCheckText).formatted;
     }
     else{
@@ -441,8 +445,16 @@ void CPasswordInputField::updateColors() {
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CHyprColor          innerTarget = colorConfig.inner;
-    CHyprColor          fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : (checkWaiting ? colorConfig.check->m_vColors.front() : colorConfig.font);
+    CHyprColor fontTarget;
 
+    if (displayFail) {
+        fontTarget = colorConfig.fail->m_vColors.front();
+    } else if (checkWaiting) {
+        fontTarget = configCheckText.empty() ? colorConfig.font : colorConfig.check->m_vColors.front();
+    } else {
+        fontTarget = colorConfig.font;
+    }
+    
     if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {
             fontTarget = targetGrad->m_vColors.front();
