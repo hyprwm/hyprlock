@@ -303,6 +303,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "check_color", GRADIENTCONFIG("0xFF22CC88"));
     m_config.addSpecialConfigValue("input-field", "fail_color", GRADIENTCONFIG("0xFFCC2222"));
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
+    m_config.addSpecialConfigValue("input-field", "check_text", Hyprlang::STRING{"<i>$Authorizing...</i>"});
     m_config.addSpecialConfigValue("input-field", "capslock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "numlock_color", GRADIENTCONFIG(""));
     m_config.addSpecialConfigValue("input-field", "bothlock_color", GRADIENTCONFIG(""));
@@ -485,6 +486,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
+                {"check_text", m_config.getSpecialConfigValue("input-field", "check_text", k.c_str())},
                 {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
                 {"numlock_color", m_config.getSpecialConfigValue("input-field", "numlock_color", k.c_str())},
                 {"bothlock_color", m_config.getSpecialConfigValue("input-field", "bothlock_color", k.c_str())},

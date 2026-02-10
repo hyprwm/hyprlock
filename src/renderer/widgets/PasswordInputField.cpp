@@ -50,6 +50,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+        configCheckText           = std::any_cast<Hyprlang::STRING>(props.at("check_text"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -161,9 +162,6 @@ void CPasswordInputField::updateFade() {
 
 void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
-        return;
-
-    if (checkWaiting)
         return;
 
     if (passwordLength == 0)
@@ -299,7 +297,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (passwordLength == 0 && !checkWaiting && placeholder.resourceID > 0) {
+    if (passwordLength == 0 && placeholder.resourceID > 0) {
         ASP<CTexture> currAsset = nullptr;
 
         if (!placeholder.asset)
@@ -325,6 +323,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 }
 
 void CPasswordInputField::updatePlaceholder() {
+    
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
             g_asyncResourceManager->unload(placeholder.asset);
@@ -341,7 +340,14 @@ void CPasswordInputField::updatePlaceholder() {
 
     placeholder.failedAttempts = g_pAuth->getFailedAttempts();
 
-    std::string newText = (displayFail) ? formatString(configFailText).formatted : formatString(configPlaceholderText).formatted;
+    std::string newText;
+
+    if(checkWaiting){
+       newText = formatString(configCheckText).formatted;
+    }
+    else{
+        newText = (displayFail) ? formatString(configFailText).formatted : formatString(configPlaceholderText).formatted;
+    }
 
     // if the text is unchanged we don't need to do anything, unless we are swapping font color
     const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
@@ -435,7 +441,7 @@ void CPasswordInputField::updateColors() {
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CHyprColor          innerTarget = colorConfig.inner;
-    CHyprColor          fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : colorConfig.font;
+    CHyprColor          fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : (checkWaiting ? colorConfig.check->m_vColors.front() : colorConfig.font);
 
     if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {
