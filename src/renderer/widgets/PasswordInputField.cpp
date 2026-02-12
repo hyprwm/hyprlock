@@ -301,7 +301,10 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (passwordLength == 0 && placeholder.resourceID > 0) {
+    bool placeholderPasswordCondition = (passwordLength == 0 && placeholder.resourceID > 0);
+
+    if (placeholderPasswordCondition &&
+        (!checkWaiting || (checkWaiting && !configCheckText.empty()))){
         ASP<CTexture> currAsset = nullptr;
 
         if (!placeholder.asset)
