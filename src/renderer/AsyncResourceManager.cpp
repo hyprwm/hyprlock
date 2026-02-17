@@ -248,11 +248,12 @@ bool CAsyncResourceManager::request(ResourceID id, const AWP<IWidget>& widget) {
     if (m_assets[id].texture) {
         // Asset already present. Dispatch the asset callback function.
         const auto& TEXTURE = m_assets[id].texture;
-        if (widget)
-            widget->onAssetUpdate(id, TEXTURE);
+        if (auto w = widget.lock()) {
+            w->onAssetUpdate(id, TEXTURE);
 
-        // TODO: add a centalized mechanism to render in one place in the event loop to avoid duplicate render calls
-        g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->renderAllOutputs(); }, nullptr);
+            // TODO: add a centalized mechanism to render in one place in the event loop to avoid duplicate render calls
+            g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->renderAllOutputs(); }, nullptr);
+        }
     } else if (widget) {
         // Asset currently in-flight. Add the widget reference to in order for the callback to get dispatched later.
         m_resourcesMutex.lock();
@@ -279,7 +280,16 @@ void CAsyncResourceManager::enqueue(ResourceID resourceID, const ASP<IAsyncResou
     m_resourcesMutex.unlock();
 
     resource->m_events.finished.listenStatic([resourceID]() {
-        g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, void* resourceID) { g_asyncResourceManager->onResourceFinished((size_t)resourceID); }, (void*)resourceID);
+        if (!g_pHyprlock)
+            return;
+
+        g_pHyprlock->addTimer(
+            std::chrono::milliseconds(0),
+            [](auto, void* resourceID) {
+                if (g_asyncResourceManager)
+                    g_asyncResourceManager->onResourceFinished((size_t)resourceID);
+            },
+            (void*)resourceID);
     });
 }
 
@@ -331,8 +341,8 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
     m_assets[id].texture = texture;
 
     for (const auto& widget : WIDGETS) {
-        if (widget)
-            widget->onAssetUpdate(id, texture);
+        if (auto w = widget.lock())
+            w->onAssetUpdate(id, texture);
     }
 
     g_pHyprlock->renderAllOutputs();

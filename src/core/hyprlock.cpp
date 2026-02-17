@@ -452,8 +452,20 @@ void CHyprlock::run() {
 
     const auto DPY = m_sWaylandState.display;
 
+    // Wake threads so they observe m_bTerminate and exit; pending timers are dropped
     m_sLoopState.timerEvent = true;
     m_sLoopState.timerCV.notify_all();
+
+    pthread_kill(pollThr.native_handle(), SIGRTMIN);
+
+    g_pAuth->terminate();
+
+    // Wait for threads to exit before destroying globals to prevent
+    // use-after-free in timer callbacks referencing g_asyncResourceManager
+    pollThr.join();
+    timersThr.join();
+
+    // Now safe to destroy globals — no more timer callbacks can fire
     m_sWaylandState = {};
     dma             = {};
 
@@ -464,14 +476,6 @@ void CHyprlock::run() {
     g_pEGL.reset();
 
     wl_display_disconnect(DPY);
-
-    pthread_kill(pollThr.native_handle(), SIGRTMIN);
-
-    g_pAuth->terminate();
-
-    // wait for threads to exit cleanly to avoid a coredump
-    pollThr.join();
-    timersThr.join();
 
     Debug::log(LOG, "Reached the end, exiting");
 }
