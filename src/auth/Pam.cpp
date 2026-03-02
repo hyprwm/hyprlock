@@ -106,12 +106,22 @@ void CPam::init() {
 }
 
 bool CPam::auth() {
-    const pam_conv localConv   = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
-    pam_handle_t*  handle      = nullptr;
-    auto           uidPassword = getpwuid(getuid());
-    RASSERT(uidPassword && uidPassword->pw_name, "Failed to get username (getpwuid)");
+    const pam_conv localConv = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
+    pam_handle_t*  handle    = nullptr;
 
-    int ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
+    // getpwuid() returns a pointer into a static buffer that any subsequent
+    // getpw*/getpwent call from any thread (including inside PAM modules) will
+    // overwrite. Use the reentrant form and copy pw_name before calling pam_start.
+    struct passwd  pw, *result;
+    char           buf[4096];
+    if (getpwuid_r(getuid(), &pw, buf, sizeof(buf), &result) != 0 || !result) {
+        m_sConversationState.failText = "Failed to get username";
+        Debug::log(ERR, "auth: getpwuid_r failed for uid {}", getuid());
+        return false;
+    }
+    const std::string username = result->pw_name;
+
+    int ret = pam_start(m_sPamModule.c_str(), username.c_str(), &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
         m_sConversationState.failText = "pam_start failed";
