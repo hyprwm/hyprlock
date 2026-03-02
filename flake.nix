@@ -46,7 +46,7 @@
         system:
         import nixpkgs {
           localSystem.system = system;
-          overlays = with self.overlays; [ default ];
+          overlays = with self.overlays; [ hyprlock-with-deps ];
         }
       );
     in
