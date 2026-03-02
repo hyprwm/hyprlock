@@ -11,9 +11,43 @@
 #include <unordered_map>
 #include <any>
 #include <filesystem>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <vector>
+#include <chrono>
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
+}
 
 struct SPreloadedAsset;
 class COutput;
+
+struct SVideoState {
+    AVFormatContext*  formatCtx  = nullptr;
+    AVCodecContext*   codecCtx   = nullptr;
+    SwsContext*       swsCtx     = nullptr;
+    int               streamIdx  = -1;
+    int               frameW     = 0;
+    int               frameH     = 0;
+    double            timeBase   = 0.0; // seconds per PTS unit
+
+    // Frame double-buffer (main thread swaps with its m_uploadBuffer)
+    std::mutex           frameMutex;
+    std::vector<uint8_t> frameData;    // latest RGBA frame
+    bool                 hasNewFrame = false;
+
+    std::chrono::steady_clock::time_point startTime;
+
+    std::thread       decodeThread;
+    std::atomic<bool> running{false};
+
+    ~SVideoState(); // defined in .cpp so destructor sees complete ffmpeg types
+};
 
 class CBackground : public IWidget {
   public:
@@ -45,6 +79,12 @@ class CBackground : public IWidget {
 
   private:
     AWP<CBackground> m_self;
+
+    // Video background support
+    static bool isVideoFile(const std::string& path);
+    bool        openVideo(const std::string& path);
+    void        startVideoThread();
+    void        stopVideo();
 
     // if needed
     UP<CFramebuffer>                blurredFB;
@@ -82,4 +122,10 @@ class CBackground : public IWidget {
     ASP<CTimer>                     reloadTimer;
     std::filesystem::file_time_type modificationTime;
     size_t                          m_imageRevision = 0;
+
+    // Video playback state
+    bool                    m_isVideo     = false;
+    UP<SVideoState>         m_video;
+    CTexture                m_videoTexture;
+    std::vector<uint8_t>    m_uploadBuffer; // O(1) swap target for decoded frames
 };
