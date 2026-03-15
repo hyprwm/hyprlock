@@ -14,6 +14,9 @@ static const auto DEVICE        = sdbus::ServiceName{"net.reactivated.Fprint.Dev
 static const auto MANAGER       = sdbus::ServiceName{"net.reactivated.Fprint.Manager"};
 static const auto LOGIN_MANAGER = sdbus::ServiceName{"org.freedesktop.login1.Manager"};
 
+static constexpr int RECONNECT_MAX_ATTEMPTS = 20;
+static constexpr int RECONNECT_DELAY_MS     = 100;
+
 enum MatchResult {
     MATCH_INVALID = 0,
     MATCH_NO_MATCH,
@@ -104,6 +107,25 @@ std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
     return m_sDBUSState.connection;
 }
 
+void CFingerprint::scheduleRetry(const std::string& reason) {
+    if (m_sDBUSState.reconnectAttempts >= RECONNECT_MAX_ATTEMPTS) {
+        Debug::log(WARN, "fprint: max reconnect attempts reached, giving up");
+        m_sFailureReason   = "Fingerprint auth disabled (device unavailable)";
+        m_sDBUSState.abort = true;
+        m_sDBUSState.done  = true;
+        g_pAuth->enqueueFail(m_sFailureReason, AUTH_IMPL_FINGERPRINT);
+        return;
+    }
+
+    m_sDBUSState.reconnectAttempts++;
+    m_sDBUSState.device.reset();
+    m_sDBUSState.verifying = false;
+
+    Debug::log(LOG, "fprint: {} (attempt {}/{}), retrying in {}ms", reason, m_sDBUSState.reconnectAttempts, RECONNECT_MAX_ATTEMPTS, RECONNECT_DELAY_MS);
+
+    g_pHyprlock->addTimer(std::chrono::milliseconds(RECONNECT_DELAY_MS), [](ASP<CTimer> self, void* data) { ((CFingerprint*)data)->startVerify(false); }, this);
+}
+
 bool CFingerprint::createDeviceProxy() {
     auto              proxy = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, sdbus::ObjectPath{"/net/reactivated/Fprint/Manager"});
 
@@ -119,6 +141,16 @@ bool CFingerprint::createDeviceProxy() {
 
     m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) { Debug::log(LOG, "fprint: finger selected: {}", finger); });
     m_sDBUSState.device->uponSignal("VerifyStatus").onInterface(DEVICE).call([this](const std::string& result, const bool done) { handleVerifyStatus(result, done); });
+
+    // Watch for the fingerprint service disappearing (e.g. crash/restart after resume).
+    // When detected, reset state and schedule a reconnection attempt.
+    auto dbusWatcher = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.DBus"}, sdbus::ObjectPath{"/org/freedesktop/DBus"});
+    dbusWatcher->uponSignal("NameOwnerChanged").onInterface("org.freedesktop.DBus").call([this](const std::string& name, const std::string& oldOwner, const std::string& newOwner) {
+        if (name != "net.reactivated.Fprint" || !newOwner.empty() || m_sDBUSState.done || m_sDBUSState.sleeping)
+            return;
+        scheduleRetry("service disappeared");
+    });
+    m_sDBUSState.dbusWatcher = std::move(dbusWatcher);
 
     m_sDBUSState.device->uponSignal("PropertiesChanged")
         .onInterface("org.freedesktop.DBus.Properties")
@@ -209,6 +241,7 @@ void CFingerprint::claimDevice() {
             Debug::log(WARN, "fprint: could not claim device, {}", e->what());
         else {
             Debug::log(LOG, "fprint: claimed device");
+            m_sDBUSState.reconnectAttempts = 0;
             startVerify();
         }
     });
@@ -217,8 +250,10 @@ void CFingerprint::claimDevice() {
 void CFingerprint::startVerify(bool isRetry) {
     m_sDBUSState.verifying = true;
     if (!m_sDBUSState.device) {
-        if (!createDeviceProxy())
+        if (!createDeviceProxy()) {
+            scheduleRetry("device not available");
             return;
+        }
 
         claimDevice();
         return;
