@@ -76,6 +76,15 @@ void CFingerprint::init() {
         if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
             startVerify();
     });
+
+    // Watch for the fingerprint service disappearing (e.g. crash/restart after resume).
+    // When detected, reset state and schedule a reconnection attempt.
+    m_sDBUSState.dbusWatcher = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.DBus"}, sdbus::ObjectPath{"/org/freedesktop/DBus"});
+    m_sDBUSState.dbusWatcher->uponSignal("NameOwnerChanged").onInterface("org.freedesktop.DBus").call([this](const std::string& name, const std::string& oldOwner, const std::string& newOwner) {
+        if (name != "net.reactivated.Fprint" || !newOwner.empty() || m_sDBUSState.done || m_sDBUSState.sleeping)
+            return;
+        scheduleRetry("service disappeared");
+    });
 }
 
 void CFingerprint::handleInput(const std::string& input) {
@@ -141,16 +150,6 @@ bool CFingerprint::createDeviceProxy() {
 
     m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) { Debug::log(LOG, "fprint: finger selected: {}", finger); });
     m_sDBUSState.device->uponSignal("VerifyStatus").onInterface(DEVICE).call([this](const std::string& result, const bool done) { handleVerifyStatus(result, done); });
-
-    // Watch for the fingerprint service disappearing (e.g. crash/restart after resume).
-    // When detected, reset state and schedule a reconnection attempt.
-    auto dbusWatcher = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.DBus"}, sdbus::ObjectPath{"/org/freedesktop/DBus"});
-    dbusWatcher->uponSignal("NameOwnerChanged").onInterface("org.freedesktop.DBus").call([this](const std::string& name, const std::string& oldOwner, const std::string& newOwner) {
-        if (name != "net.reactivated.Fprint" || !newOwner.empty() || m_sDBUSState.done || m_sDBUSState.sleeping)
-            return;
-        scheduleRetry("service disappeared");
-    });
-    m_sDBUSState.dbusWatcher = std::move(dbusWatcher);
 
     m_sDBUSState.device->uponSignal("PropertiesChanged")
         .onInterface("org.freedesktop.DBus.Properties")
