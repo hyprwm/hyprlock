@@ -448,16 +448,14 @@ void CPasswordInputField::updateColors() {
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CHyprColor          innerTarget = colorConfig.inner;
-    CHyprColor fontTarget;
+    CHyprColor fontTarget = colorConfig.font;
 
     if (displayFail) {
         fontTarget = colorConfig.fail->m_vColors.front();
     } else if (checkWaiting) {
         fontTarget = configCheckText.empty() ? colorConfig.font : colorConfig.check->m_vColors.front();
-    } else {
-        fontTarget = colorConfig.font;
     }
-    
+
     if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {
             fontTarget = targetGrad->m_vColors.front();
