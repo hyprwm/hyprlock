@@ -450,12 +450,11 @@ void CPasswordInputField::updateColors() {
     CHyprColor          innerTarget = colorConfig.inner;
     CHyprColor fontTarget = colorConfig.font;
 
-    if (displayFail) {
+    if (displayFail)
         fontTarget = colorConfig.fail->m_vColors.front();
-    } else if (checkWaiting) {
+    else if (checkWaiting)
         fontTarget = configCheckText.empty() ? colorConfig.font : colorConfig.check->m_vColors.front();
-    }
-
+        
     if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {
             fontTarget = targetGrad->m_vColors.front();
