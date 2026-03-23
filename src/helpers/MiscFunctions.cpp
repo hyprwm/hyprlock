@@ -162,8 +162,8 @@ void spawnAsync(const std::string& cmd) {
 }
 
 std::string getUsernameForCurrentUid() {
-    const uid_t UID = getuid();
-    auto           uidPassword = getpwuid(UID);
+    const uid_t UID         = getuid();
+    auto        uidPassword = getpwuid(UID);
     if (!uidPassword || !uidPassword->pw_name) {
         Debug::log(ERR, "Failed to get username for uid {} (getpwuid)", UID);
         return "";
