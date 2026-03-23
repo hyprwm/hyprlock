@@ -50,7 +50,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
-        configCheckText           = std::any_cast<Hyprlang::STRING>(props.at("check_text"));
+        configCheckText          = std::any_cast<Hyprlang::STRING>(props.at("check_text"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -164,7 +164,7 @@ void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
-    if(checkWaiting && configCheckText.empty())
+    if (checkWaiting && configCheckText.empty())
         return;
 
     if (passwordLength == 0)
@@ -302,8 +302,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     bool placeholderPasswordCondition = (passwordLength == 0 && placeholder.resourceID > 0);
 
-    if (placeholderPasswordCondition &&
-        (!checkWaiting || (checkWaiting && !configCheckText.empty()))){
+    if (placeholderPasswordCondition && (!checkWaiting || (checkWaiting && !configCheckText.empty()))) {
         ASP<CTexture> currAsset = nullptr;
 
         if (!placeholder.asset)
@@ -329,7 +328,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 }
 
 void CPasswordInputField::updatePlaceholder() {
-    
+
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
             g_asyncResourceManager->unload(placeholder.asset);
@@ -347,10 +346,9 @@ void CPasswordInputField::updatePlaceholder() {
     std::string templateText = configPlaceholderText;
 
     if (displayFail) {
-        templateText = configFailText;
+        templateText               = configFailText;
         placeholder.failedAttempts = g_pAuth->getFailedAttempts();
-    }
-    else if (checkWaiting && !configCheckText.empty()) {
+    } else if (checkWaiting && !configCheckText.empty()) {
         templateText = configCheckText;
     }
 
@@ -448,13 +446,13 @@ void CPasswordInputField::updateColors() {
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CHyprColor          innerTarget = colorConfig.inner;
-    CHyprColor fontTarget = colorConfig.font;
+    CHyprColor          fontTarget  = colorConfig.font;
 
     if (displayFail)
         fontTarget = colorConfig.fail->m_vColors.front();
     else if (checkWaiting)
         fontTarget = configCheckText.empty() ? colorConfig.font : colorConfig.check->m_vColors.front();
-        
+
     if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {
             fontTarget = targetGrad->m_vColors.front();
