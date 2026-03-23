@@ -344,16 +344,17 @@ void CPasswordInputField::updatePlaceholder() {
     if (displayFail && placeholder.failedAttempts == g_pAuth->getFailedAttempts())
         return;
 
-    placeholder.failedAttempts = g_pAuth->getFailedAttempts();
+    std::string templateText = configPlaceholderText;
 
-    std::string newText;
+    if (displayFail) {
+        templateText = configFailText;
+        placeholder.failedAttempts = g_pAuth->getFailedAttempts();
+    }
+    else if (checkWaiting && !configCheckText.empty()) {
+        templateText = configCheckText;
+    }
 
-    if(checkWaiting && !configCheckText.empty()){
-       newText = formatString(configCheckText).formatted;
-    }
-    else{
-        newText = (displayFail) ? formatString(configFailText).formatted : formatString(configPlaceholderText).formatted;
-    }
+    const std::string newText = formatString(templateText).formatted;
 
     // if the text is unchanged we don't need to do anything, unless we are swapping font color
     const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
