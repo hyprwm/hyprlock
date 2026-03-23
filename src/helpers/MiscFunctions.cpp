@@ -1,11 +1,13 @@
-#include <filesystem>
+#include "MiscFunctions.hpp"
+#include "Log.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <fcntl.h>
-#include "MiscFunctions.hpp"
-#include "Log.hpp"
-#include <hyprutils/string/String.hpp>
+#include <filesystem>
 #include <hyprutils/os/Process.hpp>
+#include <hyprutils/string/String.hpp>
+#include <pwd.h>
 #include <unistd.h>
 
 using namespace Hyprutils::String;
@@ -157,4 +159,15 @@ void spawnAsync(const std::string& cmd) {
     CProcess proc("/bin/sh", {"-c", cmd});
     if (!proc.runAsync())
         Debug::log(ERR, "Failed to start \"{}\"", cmd);
+}
+
+std::string getUsernameForCurrentUid() {
+    const uid_t UID         = getuid();
+    auto        uidPassword = getpwuid(UID);
+    if (!uidPassword || !uidPassword->pw_name) {
+        Debug::log(ERR, "Failed to get username for uid {} (getpwuid)", UID);
+        return "";
+    }
+
+    return std::string{uidPassword->pw_name};
 }

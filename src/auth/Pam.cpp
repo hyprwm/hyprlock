@@ -1,11 +1,11 @@
 #include "Pam.hpp"
+#include "../config/ConfigManager.hpp"
 #include "../core/hyprlock.hpp"
 #include "../helpers/Log.hpp"
-#include "../config/ConfigManager.hpp"
+#include "../helpers/MiscFunctions.hpp"
 
 #include <filesystem>
 #include <unistd.h>
-#include <pwd.h>
 #include <security/pam_appl.h>
 #if __has_include(<security/pam_misc.h>)
 #include <security/pam_misc.h>
@@ -69,6 +69,8 @@ CPam::CPam() {
         m_sPamModule = "su";
     }
 
+    m_username = getUsernameForCurrentUid();
+
     m_sConversationState.waitForInput = [this]() { this->waitForInput(); };
 }
 
@@ -106,12 +108,15 @@ void CPam::init() {
 }
 
 bool CPam::auth() {
-    const pam_conv localConv   = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
-    pam_handle_t*  handle      = nullptr;
-    auto           uidPassword = getpwuid(getuid());
-    RASSERT(uidPassword && uidPassword->pw_name, "Failed to get username (getpwuid)");
+    const pam_conv localConv = {.conv = conv, .appdata_ptr = (void*)&m_sConversationState};
+    pam_handle_t*  handle    = nullptr;
 
-    int ret = pam_start(m_sPamModule.c_str(), uidPassword->pw_name, &localConv, &handle);
+    if (m_username.empty()) {
+        m_sConversationState.failText = "Username not set";
+        return false;
+    }
+
+    int ret = pam_start(m_sPamModule.c_str(), m_username.c_str(), &localConv, &handle);
 
     if (ret != PAM_SUCCESS) {
         m_sConversationState.failText = "pam_start failed";
