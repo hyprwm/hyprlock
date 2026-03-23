@@ -72,7 +72,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
     colorState.font = colorConfig.font;
 
     pos          = posFromHVAlign(viewport, configSize, pos, halign, valign);
-    dots.size    = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.size    = std::clamp(dots.size, 0.001f, 0.8f);
     dots.spacing = std::clamp(dots.spacing, -1.f, 1.f);
 
     colorConfig.caps = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
