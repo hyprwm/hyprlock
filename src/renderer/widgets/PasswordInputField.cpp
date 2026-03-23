@@ -164,9 +164,8 @@ void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
-    if(checkWaiting && configCheckText.empty()){
+    if(checkWaiting && configCheckText.empty())
         return;
-    }
 
     if (passwordLength == 0)
         dots.currentAmount->setValueAndWarp(passwordLength);
