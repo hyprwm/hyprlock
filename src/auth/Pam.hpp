@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <functional>
 #include <thread>
+#include <security/pam_appl.h>
 
 class CPam : public IAuthImplementation {
   public:
@@ -38,6 +39,7 @@ class CPam : public IAuthImplementation {
     virtual bool                       checkWaiting();
     virtual std::optional<std::string> getLastFailText();
     virtual std::optional<std::string> getLastPrompt();
+    virtual void                       clearHandle();
     virtual void                       terminate();
 
   private:
@@ -47,6 +49,8 @@ class CPam : public IAuthImplementation {
     bool                  m_bBlockInput = true;
 
     std::string           m_sPamModule;
+    int                   m_iRet = -1;
+    pam_handle_t*         m_pHandle = nullptr;
 
     bool                  auth();
     void                  resetConversation();
