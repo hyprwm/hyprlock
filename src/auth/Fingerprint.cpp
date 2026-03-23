@@ -141,6 +141,7 @@ bool CFingerprint::createDeviceProxy() {
 
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
     Debug::log(LOG, "fprint: handling status {}", result);
+    static const auto FINGERPRINTMAXRETRIES = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:max_retries");
     auto matchResult   = s_mapStringToTestType[result];
     bool authenticated = false;
     bool retry         = false;
@@ -153,7 +154,7 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_INVALID: Debug::log(WARN, "fprint: unknown status: {}", result); break;
         case MATCH_NO_MATCH:
             stopVerify();
-            if (m_sDBUSState.retries >= 3) {
+            if (m_sDBUSState.retries >= *FINGERPRINTMAXRETRIES && *FINGERPRINTMAXRETRIES > 0) {
                 m_sFailureReason = "Fingerprint auth disabled (too many failed attempts)";
             } else {
                 done                         = false;
