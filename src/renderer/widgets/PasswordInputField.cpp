@@ -68,6 +68,28 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         RASSERT(false, "Missing property for CPasswordInputField: {}", e.what()); //
     }
 
+    if (props.find("dots_text_change") != props.end()) {
+        dots.textChange = std::any_cast<Hyprlang::INT>(props.at("dots_text_change"));
+    } else {
+        dots.textChange = false;
+    }
+
+    if (!dots.textFormat.empty() && dots.textFormat.front() == '[' && dots.textFormat.back() == ']') {
+        std::string chars = dots.textFormat.substr(1, dots.textFormat.size() - 2);
+        size_t i = 0;
+        while (i < chars.size()) {
+            size_t len = 1;
+            unsigned char c = static_cast<unsigned char>(chars[i]);
+            if (c < 0x80) len = 1;
+            else if ((c & 0xE0) == 0xC0) len = 2;
+            else if ((c & 0xF0) == 0xE0) len = 3;
+            else if ((c & 0xF8) == 0xF0) len = 4;
+            else len = 1; // fallback
+            dots.possibleStrings.push_back(chars.substr(i, len));
+            i += len;
+        }
+    }
+
     configPos       = pos;
     colorState.font = colorConfig.font;
 
@@ -87,13 +109,26 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
 
     pos = posFromHVAlign(viewport, size->goal(), configPos, halign, valign);
 
-    if (!dots.textFormat.empty()) {
+    if (!dots.possibleStrings.empty()) {
+        Hyprgraphics::CTextResource::STextResourceData request;
+        request.font     = fontFamily;
+        request.color    = colorConfig.font.asRGB();
+        request.fontSize = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
+        AWP<IWidget> widget(m_self);
+        for (const auto& s : dots.possibleStrings) {
+            request.text = s;
+            size_t id = g_asyncResourceManager->requestText(request, widget);
+            dots.stringResourceIDs[s] = id;
+            dots.resourceToString[id] = s;
+        }
+    } else if (!dots.textFormat.empty()) {
         Hyprgraphics::CTextResource::STextResourceData request;
         request.text        = dots.textFormat;
         request.font        = fontFamily;
         request.color       = colorConfig.font.asRGB();
         request.fontSize    = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
-        dots.textResourceID = g_asyncResourceManager->requestText(request, nullptr);
+        AWP<IWidget> widget(m_self);
+        dots.textResourceID = g_asyncResourceManager->requestText(request, widget);
     }
 
     // request the inital placeholder asset
@@ -115,6 +150,22 @@ void CPasswordInputField::reset() {
     placeholder.asset      = nullptr;
     placeholder.resourceID = 0;
     placeholder.currentText.clear();
+
+    if (dots.textAsset)
+        g_asyncResourceManager->unload(dots.textAsset);
+
+    dots.textAsset = nullptr;
+    dots.textResourceID = 0;
+
+    for (auto& [s, asset] : dots.stringAssets) {
+        if (asset)
+            g_asyncResourceManager->unload(asset);
+    }
+    dots.stringAssets.clear();
+    dots.stringResourceIDs.clear();
+    dots.resourceToString.clear();
+    dots.possibleStrings.clear();
+    dots.currentRandomStrings.clear();
 }
 
 static void fadeOutCallback(AWP<CPasswordInputField> ref) {
@@ -170,8 +221,31 @@ void CPasswordInputField::updateDots() {
         dots.currentAmount->setValueAndWarp(passwordLength);
     else
         *dots.currentAmount = passwordLength;
-}
 
+    if (!dots.possibleStrings.empty()) {
+        if (dots.textChange) {
+            // reassign all on change
+            if (dots.currentRandomStrings.size() != passwordLength) {
+                dots.currentRandomStrings.resize(passwordLength);
+                for (size_t i = 0; i < passwordLength; ++i) {
+                    dots.currentRandomStrings[i] = dots.possibleStrings[rand() % dots.possibleStrings.size()];
+                }
+            }
+        } else {
+            // stable: only add new, keep old
+            if (dots.currentRandomStrings.size() < passwordLength) {
+                size_t oldSize = dots.currentRandomStrings.size();
+                dots.currentRandomStrings.resize(passwordLength);
+                for (size_t i = oldSize; i < passwordLength; ++i) {
+                    dots.currentRandomStrings[i] = dots.possibleStrings[rand() % dots.possibleStrings.size()];
+                }
+            } else if (dots.currentRandomStrings.size() > passwordLength) {
+                dots.currentRandomStrings.resize(passwordLength);
+            }
+        }
+    }
+
+}
 bool CPasswordInputField::draw(const SRenderData& data) {
     if (firstRender || redrawShadow) {
         firstRender  = false;
@@ -238,7 +312,20 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
         int       passSpacing = std::floor(passSize.x * dots.spacing);
 
-        if (!dots.textFormat.empty()) {
+        if (!dots.possibleStrings.empty()) {
+            // Find the max size among all assets for consistent dot size
+            Vector2D maxSize = {0, 0};
+            for (auto& [s, asset] : dots.stringAssets) {
+                if (asset) {
+                    maxSize.x = std::max(maxSize.x, asset->m_vSize.x);
+                    maxSize.y = std::max(maxSize.y, asset->m_vSize.y);
+                }
+            }
+            if (maxSize.x > 0) {
+                passSize = maxSize;
+                passSpacing = std::floor(passSize.x * dots.spacing);
+            }
+        } else if (!dots.textFormat.empty()) {
             if (!dots.textAsset)
                 dots.textAsset = g_asyncResourceManager->getAssetByID(dots.textResourceID);
 
@@ -284,7 +371,20 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
             Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
             CBox     box{dotPosition, passSize};
-            if (!dots.textFormat.empty()) {
+            if (!dots.possibleStrings.empty()) {
+                std::string s = dots.currentRandomStrings[i];
+                auto it = dots.stringAssets.find(s);
+                if (it == dots.stringAssets.end() || !it->second) {
+                    forceReload = true;
+                    fontCol.a   = DOTALPHA;
+                    break;
+                }
+                // Center the asset in the box
+                Vector2D assetSize = it->second->m_vSize;
+                Vector2D centeredPos = box.pos() + (box.size() - assetSize) / 2.0;
+                CBox assetBox{centeredPos, assetSize};
+                g_pRenderer->renderTexture(assetBox, *it->second, fontCol.a, dots.rounding);
+            } else if (!dots.textFormat.empty()) {
                 if (!dots.textAsset) {
                     forceReload = true;
                     fontCol.a   = DOTALPHA;
@@ -364,7 +464,9 @@ void CPasswordInputField::updatePlaceholder() {
 }
 
 void CPasswordInputField::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    ;
+    if (dots.resourceToString.count(id)) {
+        dots.stringAssets[dots.resourceToString[id]] = newAsset;
+    }
 }
 
 void CPasswordInputField::updateWidth() {
