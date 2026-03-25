@@ -343,7 +343,7 @@ void CPasswordInputField::updatePlaceholder() {
     if (displayFail && placeholder.failedAttempts == g_pAuth->getFailedAttempts())
         return;
 
-    std::string templateText = configPlaceholderText;
+    std::string& templateText = configPlaceholderText;
 
     if (displayFail) {
         templateText               = configFailText;
