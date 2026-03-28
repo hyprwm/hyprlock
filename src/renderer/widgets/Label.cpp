@@ -47,7 +47,7 @@ void CLabel::onTimerUpdate() {
     AWP<IWidget> widget(m_self);
     if (label.cmd) {
         // Don't increment by one to avoid clashes with multiple widget using the same label command.
-        m_dynamicRevision += label.updateEveryMs;
+        m_dynamicRevision += (label.updateEveryMs == 0) ? 1 : label.updateEveryMs;
         g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, widget.lock());
     } else
         g_asyncResourceManager->requestText(request, widget.lock());
