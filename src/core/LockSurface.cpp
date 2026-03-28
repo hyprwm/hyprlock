@@ -120,7 +120,7 @@ void CSessionLockSurface::render() {
         if (g_pHyprlock->m_bTerminate)
             return;
 
-        if (Log::logger->m_verbose) {
+        if (Log::logger->verbose()) {
             const auto POUTPUT = m_outputRef.lock();
             Log::logger->log(Log::TRACE, "[{}] frame {}, Current fps: {:.2f}", POUTPUT->stringPort, m_frames, 1000.f / (frameTime - m_lastFrameTime));
         }

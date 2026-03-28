@@ -9,7 +9,7 @@
 #include <filesystem>
 #include <glob.h>
 #include <cstring>
-#include <mutex>
+#include <format>
 
 using namespace Hyprutils::String;
 using namespace Hyprutils::Animation;
@@ -181,17 +181,40 @@ static void configHandleGradientDestroy(void** data) {
         delete reinterpret_cast<CGradientValueData*>(*data);
 }
 
-static std::string getMainConfigPath() {
-    static const auto paths = Hyprutils::Path::findConfig("hyprlock");
-    if (paths.first.has_value())
-        return paths.first.value();
+static std::expected<std::string, std::string> getMainConfigPath() {
+    static const auto PATHS = Hyprutils::Path::findConfig("hyprlock");
+    if (PATHS.first.has_value())
+        return PATHS.first.value();
     else
-        throw std::runtime_error("Could not find config in HOME, XDG_CONFIG_HOME, XDG_CONFIG_DIRS or /etc/hypr.");
+        return std::unexpected{"Could not find config in HOME, XDG_CONFIG_HOME, XDG_CONFIG_DIRS or /etc/hypr."};
 }
 
-CConfigManager::CConfigManager(std::string configPath) :
-    m_config(configPath.empty() ? getMainConfigPath().c_str() : configPath.c_str(), Hyprlang::SConfigOptions{.throwAllErrors = true, .allowMissingConfig = configPath.empty()}) {
-    configCurrentPath = configPath.empty() ? getMainConfigPath() : configPath;
+std::expected<std::string, std::string> CConfigManager::resolveConfigPath(std::optional<std::string_view> explicitPath) {
+    std::string configPath = "";
+    if (explicitPath.has_value()) {
+        configPath = explicitPath.value();
+        configPath = absolutePath(configPath, "");
+    } else {
+        auto mainConfigPath = getMainConfigPath();
+        if (!mainConfigPath.has_value())
+            return std::unexpected{mainConfigPath.error()};
+
+        configPath = mainConfigPath.value();
+    }
+
+    if (!std::filesystem::exists(configPath))
+        return std::unexpected{std::vformat("No config file at \"{}\"", std::make_format_args(configPath))};
+
+    return configPath;
+}
+
+CConfigManager::CConfigManager(const char* configPath) :
+    m_configCurrentPath(configPath), m_config(configPath,
+                                              Hyprlang::SConfigOptions{
+                                                  .throwAllErrors     = true,
+                                                  .allowMissingConfig = false,
+                                              }) {
+    ;
 }
 
 inline static constexpr auto GRADIENTCONFIG = [](const char* default_value) -> Hyprlang::CUSTOMTYPE {
@@ -533,7 +556,7 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
     std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
     memset(glob_buf.get(), 0, sizeof(glob_t));
 
-    const auto CURRENTDIR = std::filesystem::path(configCurrentPath).parent_path().string();
+    const auto CURRENTDIR = std::filesystem::path(m_configCurrentPath).parent_path().string();
 
     if (auto r = glob(absolutePath(rawpath, CURRENTDIR).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
         std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
@@ -544,7 +567,7 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
     for (size_t i = 0; i < glob_buf->gl_pathc; i++) {
         const auto PATH = absolutePath(glob_buf->gl_pathv[i], CURRENTDIR);
 
-        if (PATH.empty() || PATH == configCurrentPath) {
+        if (PATH.empty() || PATH == m_configCurrentPath) {
             Log::logger->log(Log::WARN, "source= skipping invalid path");
             continue;
         }
@@ -560,12 +583,12 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
         }
 
         // allow for nested config parsing
-        auto backupConfigPath = configCurrentPath;
-        configCurrentPath     = PATH;
+        auto backupConfigPath = m_configCurrentPath;
+        m_configCurrentPath   = PATH;
 
         m_config.parseFile(PATH.c_str());
 
-        configCurrentPath = backupConfigPath;
+        m_configCurrentPath = backupConfigPath;
     }
 
     return {};

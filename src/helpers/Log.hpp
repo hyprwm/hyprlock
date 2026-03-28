@@ -2,13 +2,14 @@
 #include "../defines.hpp"
 
 #include <format>
+#include <print>
 #include <hyprutils/cli/Logger.hpp>
 
 #define RASSERT(expr, reason, ...)                                                                                                                                                 \
     if (!(expr)) {                                                                                                                                                                 \
-        Log::logger->log(Log::CRIT, "\n==========================================================================================\nASSERTION FAILED! \n\n{}\n\nat: line {} in {}",            \
-                   std::format(reason, ##__VA_ARGS__), __LINE__,                                                                                                                   \
-                   ([]() constexpr -> std::string { return std::string(__FILE__).substr(std::string(__FILE__).find_last_of('/') + 1); })().c_str());                               \
+        Log::logger->log(Log::CRIT, "\n==========================================================================================\nASSERTION FAILED! \n\n{}\n\nat: line {} in {}", \
+                         std::format(reason, ##__VA_ARGS__), __LINE__,                                                                                                             \
+                         ([]() constexpr -> std::string { return std::string(__FILE__).substr(std::string(__FILE__).find_last_of('/') + 1); })().c_str());                         \
         std::abort();                                                                                                                                                              \
     }
 
@@ -28,10 +29,23 @@ namespace Log {
             m_logger.log(level, std::vformat(fmt.get(), std::make_format_args(args...)));
         }
 
+        void setVerbose() {
+            m_verbose = true;
+            m_logger.setLogLevel(Hyprutils::CLI::LOG_TRACE);
+        }
+
+        void setQuiet() {
+            m_quiet = true;
+        }
+
+        bool verbose() {
+            return m_verbose;
+        }
+
+      private:
         bool                    m_quiet   = false;
         bool                    m_verbose = false;
 
-      private:
         Hyprutils::CLI::CLogger m_logger;
     };
 

@@ -117,7 +117,9 @@ bool CFingerprint::createDeviceProxy() {
     Log::logger->log(Log::INFO, "fprint: using device path {}", path.c_str());
     m_sDBUSState.device = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, path);
 
-    m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) { Log::logger->log(Log::INFO, "fprint: finger selected: {}", finger); });
+    m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) {
+        Log::logger->log(Log::INFO, "fprint: finger selected: {}", finger);
+    });
     m_sDBUSState.device->uponSignal("VerifyStatus").onInterface(DEVICE).call([this](const std::string& result, const bool done) { handleVerifyStatus(result, done); });
 
     m_sDBUSState.device->uponSignal("PropertiesChanged")

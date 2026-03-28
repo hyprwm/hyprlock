@@ -35,10 +35,10 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int graceSeconds) {
+CHyprlock::CHyprlock(std::string_view wlDisplay, const bool immediateRender, const int graceSeconds) {
     setMallocThreshold();
 
-    m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : wlDisplay.c_str());
+    m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : std::string{wlDisplay}.c_str());
     RASSERT(m_sWaylandState.display, "Couldn't connect to a wayland compositor");
 
     g_pEGL = makeUnique<CEGL>(m_sWaylandState.display);

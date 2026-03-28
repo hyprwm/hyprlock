@@ -204,7 +204,8 @@ void CAsyncResourceManager::gatherInitialResources(wl_display* display) {
         gathered = m_resources.empty() && m_scFrames.empty();
     }
 
-    Log::logger->log(Log::INFO, "Resources gathered after {} milliseconds", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
+    Log::logger->log(Log::INFO, "Resources gathered after {} milliseconds",
+                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
 }
 
 bool CAsyncResourceManager::checkIdPresent(ResourceID id) {
