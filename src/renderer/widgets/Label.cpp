@@ -74,8 +74,8 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
         labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));
         halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-        angle          = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-        angle          = angle * M_PI / 180.0;
+        m_angle        = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        m_angle        = m_angle * M_PI / 180.0;
         onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
@@ -89,6 +89,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
         request.font     = fontFamily;
         request.fontSize = fontSize;
         request.color    = labelColor.asRGB();
+        m_alpha          = labelColor.a;
 
         if (!textAlign.empty())
             request.align = parseTextAlignment(textAlign);
@@ -142,11 +143,11 @@ bool CLabel::draw(const SRenderData& data) {
     shadow.draw(data);
 
     // calc pos
-    pos = posFromHVAlign(viewport, asset->m_vSize, configPos, halign, valign, angle);
+    pos = posFromHVAlign(viewport, asset->m_vSize, configPos, halign, valign, m_angle);
 
     CBox box = {pos.x, pos.y, asset->m_vSize.x, asset->m_vSize.y};
-    box.rot  = angle;
-    g_pRenderer->renderTexture(box, *asset, data.opacity);
+    box.rot  = m_angle;
+    g_pRenderer->renderTexture(box, *asset, data.opacity * m_alpha);
 
     return false;
 }
