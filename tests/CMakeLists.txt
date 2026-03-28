@@ -11,7 +11,7 @@ find_package(hyprwayland-scanner 0.4.4 REQUIRED)
 
 pkg_check_modules(wfldeps REQUIRED IMPORTED_TARGET
   hyprland-protocols>=0.6.0
-  hyprutils>=0.5.0
+  hyprutils>=0.11.0
   wayland-client
   wayland-protocols>=1.35
 )

@@ -42,10 +42,8 @@ in {
       hyprgraphics = prev.hyprgraphics.override {debug = true;};
       hyprlock-debug = prev.hyprlock.override {debug = true;};
       hyprlock-test-meta = prev.callPackage ./test-meta.nix {
-        stdenv = prev.gcc14Stdenv;
+        stdenv = prev.gcc15Stdenv;
         version = version + "+date=" + (mkDate (inputs.self.lastModifiedDate or "19700101")) + "_" + (inputs.self.shortRev or "dirty");
-        hyprland-protocols = final.hyprland-protocols;
-        wayland-scanner = final.wayland-scanner;
       };
     })
   ];
