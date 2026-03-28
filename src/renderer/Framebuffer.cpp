@@ -59,11 +59,11 @@ bool CFramebuffer::alloc(int w, int h, bool highres) {
 
         auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
-            Debug::log(ERR, "Framebuffer incomplete, couldn't create! (FB status: {})", status);
+            Log::logger->log(Log::ERR, "Framebuffer incomplete, couldn't create! (FB status: {})", status);
             abort();
         }
 
-        Debug::log(TRACE, "Framebuffer created, status {}", status);
+        Log::logger->log(Log::TRACE, "Framebuffer created, status {}", status);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -76,7 +76,7 @@ bool CFramebuffer::alloc(int w, int h, bool highres) {
 
 void CFramebuffer::addStencil() {
     if (!m_pStencilTex) {
-        Debug::log(ERR, "No stencil texture allocated.");
+        Log::logger->log(Log::ERR, "No stencil texture allocated.");
         return;
     }
 

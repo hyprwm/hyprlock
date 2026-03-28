@@ -3,31 +3,10 @@
 #include "core/hyprlock.hpp"
 #include "helpers/Log.hpp"
 #include "core/AnimationManager.hpp"
-#include <cstddef>
+
 #include <string_view>
 
-void help() {
-    std::println("Usage: hyprlock [options]\n\n"
-                 "Options:\n"
-                 "  -v, --verbose            - Enable verbose logging\n"
-                 "  -q, --quiet              - Disable logging\n"
-                 "  -c FILE, --config FILE   - Specify config file to use\n"
-                 "  --display NAME           - Specify the Wayland display to connect to\n"
-                 "  --grace SECONDS          - Set grace period in seconds before requiring authentication\n"
-                 "  --immediate-render       - Do not wait for resources before drawing the background\n"
-                 "  --no-fade-in             - Disable the fade-in animation when the lock screen appears\n"
-                 "  -V, --version            - Show version information\n"
-                 "  -h, --help               - Show this help message");
-}
-
-std::optional<std::string> parseArg(const std::vector<std::string>& args, const std::string& flag, std::size_t& i) {
-    if (i + 1 < args.size()) {
-        return args[++i];
-    } else {
-        std::println(stderr, "Error: Missing value for {} option.", flag);
-        return std::nullopt;
-    }
-}
+#include <hyprutils/cli/ArgumentParser.hpp>
 
 static void printVersion() {
     constexpr bool ISTAGGEDRELEASE = std::string_view(HYPRLOCK_COMMIT) == HYPRLOCK_VERSION_COMMIT;
@@ -38,89 +17,70 @@ static void printVersion() {
 }
 
 int main(int argc, char** argv, char** envp) {
-    std::string              configPath;
-    std::string              wlDisplay;
-    bool                     immediateRender = false;
-    bool                     noFadeIn        = false;
-    int                      graceSeconds    = 0;
+    std::vector<const char*>        args(argv, argv + argc);
 
-    std::vector<std::string> args(argv, argv + argc);
+    Hyprutils::CLI::CArgumentParser argParser(args);
 
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        const std::string arg = argv[i];
+    ASSERT(argParser.registerBoolOption("help", "h", "Show this help message").has_value());
+    ASSERT(argParser.registerBoolOption("version", "V", "Print hyprlock version, then exit").has_value());
+    ASSERT(argParser.registerBoolOption("verbose", "v", "Enable verbose logging").has_value());
+    ASSERT(argParser.registerBoolOption("quiet", "q", "Disable logging").has_value());
+    ASSERT(argParser.registerStringOption("config", "c", "Specify config file to use").has_value());
+    ASSERT(argParser.registerIntOption("grace", "g", "Seconds before authentication is required").has_value());
+    ASSERT(argParser.registerBoolOption("immediate-render", "", "Draw background immediately (Don't wait for resources)").has_value());
+    ASSERT(argParser.registerBoolOption("no-fade-in", "", "Disable the fade-in animation").has_value());
+    ASSERT(argParser.registerStringOption("display", "", "Specify the Wayland display to connect to").has_value());
+    ASSERT(argParser.registerIntOption("immediate", "", "[Deprecated] (Use \"--grace 0\" instead)").has_value());
 
-        if (arg == "--help" || arg == "-h") {
-            help();
-            return 0;
-        }
+    auto options = argParser.parse();
 
-        if (arg == "--version" || arg == "-V") {
-            printVersion();
-            return 0;
-        }
-
-        if (arg == "--verbose" || arg == "-v")
-            Debug::verbose = true;
-
-        else if (arg == "--quiet" || arg == "-q")
-            Debug::quiet = true;
-
-        else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc) {
-            if (auto value = parseArg(args, arg, i); value)
-                configPath = *value;
-            else
-                return 1;
-
-        } else if (arg == "--display" && i + 1 < (std::size_t)argc) {
-            if (auto value = parseArg(args, arg, i); value)
-                wlDisplay = *value;
-            else
-                return 1;
-
-        } else if (arg == "--grace" && i + 1 < (std::size_t)argc) {
-            if (auto value = parseArg(args, arg, i); value) {
-                try {
-                    graceSeconds = std::stoi(*value);
-                    if (graceSeconds < 0) {
-                        std::println(stderr, "Error: Grace period must be non-negative.");
-                        return 1;
-                    }
-                } catch (const std::exception&) {
-                    std::println(stderr, "Error: Invalid grace period value: {}", *value);
-                    return 1;
-                }
-            } else
-                return 1;
-
-        } else if (arg == "--immediate") {
-            graceSeconds = 0;
-            Debug::log(WARN, R"("--immediate" is deprecated. Use the "--grace" option instead.)");
-        }
-
-        else if (arg == "--immediate-render")
-            immediateRender = true;
-
-        else if (arg == "--no-fade-in")
-            noFadeIn = true;
-
-        else {
-            std::println(stderr, "Unknown option: {}", arg);
-            help();
-            return 1;
-        }
+    if (!options.has_value()) {
+        Log::logger->log(Log::ERR, "Invalid argument: {}", options.error());
+        return 1;
     }
 
-    printVersion();
+    if (argParser.getBool("help")) {
+        std::print("{}", argParser.getDescription("Hyprlock CLI Arguments", 87));
+        return 0;
+    }
+
+    if (argParser.getBool("version")) {
+        printVersion();
+        return 0;
+    }
+
+    if (argParser.getBool("verbose"))
+        Log::logger->setVerbose();
+
+    bool quiet = argParser.getBool("quiet").value_or(false);
+    if (quiet)
+        Log::logger->setQuiet();
+
+    int graceSeconds = argParser.getInt("grace").value_or(0);
+    if (argParser.getBool("immediate")) {
+        graceSeconds = 0;
+        Log::logger->log(Log::WARN, R"("--immediate" is deprecated. Use the "--grace" option instead.)");
+    }
+
+    bool immediateRender = argParser.getBool("immediate-render").value_or(false);
+    bool noFadeIn        = argParser.getBool("no-fade-in").value_or(false);
+
+    if (!quiet)
+        printVersion();
+
     g_pAnimationManager = makeUnique<CHyprlockAnimationManager>();
 
+    auto configPath = CConfigManager::resolveConfigPath(argParser.getString("config"));
+    if (!configPath.has_value()) {
+        Log::logger->log(Log::CRIT, " Config path error: {}", configPath.error());
+        return 1;
+    }
+
     try {
-        g_pConfigManager = makeUnique<CConfigManager>(configPath);
+        g_pConfigManager = makeUnique<CConfigManager>(configPath.value().c_str());
         g_pConfigManager->init();
     } catch (const std::exception& ex) {
-        Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
-        if (std::string(ex.what()).contains("File does not exist"))
-            Debug::log(NONE, "           Make sure you have a config.");
-
+        Log::logger->log(Log::CRIT, "Config threw: {}", ex.what());
         return 1;
     }
 
@@ -128,10 +88,10 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds);
+        g_pHyprlock = makeUnique<CHyprlock>(argParser.getString("display").value_or(""), immediateRender, graceSeconds);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
-        Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
+        Log::logger->log(Log::CRIT, "Hyprlock threw: {}", ex.what());
         return 1;
     }
 

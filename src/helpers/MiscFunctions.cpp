@@ -109,7 +109,7 @@ int64_t configStringToInt(const std::string& VALUE) {
 int createPoolFile(size_t size, std::string& name) {
     const auto XDGRUNTIMEDIR = getenv("XDG_RUNTIME_DIR");
     if (!XDGRUNTIMEDIR) {
-        Debug::log(CRIT, "XDG_RUNTIME_DIR not set!");
+        Log::logger->log(Log::CRIT, "XDG_RUNTIME_DIR not set!");
         return -1;
     }
 
@@ -117,7 +117,7 @@ int createPoolFile(size_t size, std::string& name) {
 
     const auto FD = mkstemp((char*)name.c_str());
     if (FD < 0) {
-        Debug::log(CRIT, "createPoolFile: fd < 0");
+        Log::logger->log(Log::CRIT, "createPoolFile: fd < 0");
         return -1;
     }
     // set cloexec
@@ -129,13 +129,13 @@ int createPoolFile(size_t size, std::string& name) {
 
     if (fcntl(FD, F_SETFD, flags | FD_CLOEXEC) == -1) {
         close(FD);
-        Debug::log(CRIT, "createPoolFile: fcntl < 0");
+        Log::logger->log(Log::CRIT, "createPoolFile: fcntl < 0");
         return -1;
     }
 
     if (ftruncate(FD, size) < 0) {
         close(FD);
-        Debug::log(CRIT, "createPoolFile: ftruncate < 0");
+        Log::logger->log(Log::CRIT, "createPoolFile: ftruncate < 0");
         return -1;
     }
 
@@ -145,12 +145,12 @@ int createPoolFile(size_t size, std::string& name) {
 std::string spawnSync(const std::string& cmd) {
     CProcess proc("/bin/sh", {"-c", cmd});
     if (!proc.runSync()) {
-        Debug::log(ERR, "Failed to run \"{}\"", cmd);
+        Log::logger->log(Log::ERR, "Failed to run \"{}\"", cmd);
         return "";
     }
 
     if (!proc.stdErr().empty())
-        Debug::log(ERR, "Shell command \"{}\" STDERR:\n{}", cmd, proc.stdErr());
+        Log::logger->log(Log::ERR, "Shell command \"{}\" STDERR:\n{}", cmd, proc.stdErr());
 
     return proc.stdOut();
 }
@@ -158,14 +158,14 @@ std::string spawnSync(const std::string& cmd) {
 void spawnAsync(const std::string& cmd) {
     CProcess proc("/bin/sh", {"-c", cmd});
     if (!proc.runAsync())
-        Debug::log(ERR, "Failed to start \"{}\"", cmd);
+        Log::logger->log(Log::ERR, "Failed to start \"{}\"", cmd);
 }
 
 std::string getUsernameForCurrentUid() {
     const uid_t UID         = getuid();
     auto        uidPassword = getpwuid(UID);
     if (!uidPassword || !uidPassword->pw_name) {
-        Debug::log(ERR, "Failed to get username for uid {} (getpwuid)", UID);
+        Log::logger->log(Log::ERR, "Failed to get username for uid {} (getpwuid)", UID);
         return "";
     }
 

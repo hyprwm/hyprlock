@@ -4,14 +4,17 @@
 
 #include <hyprlang.hpp>
 #include <optional>
-#include <vector>
+#include <expected>
+#include <string_view>
 #include <unordered_map>
+#include <vector>
 
 #include "../defines.hpp"
 
 class CConfigManager {
   public:
-    CConfigManager(std::string configPath);
+    static std::expected<std::string, std::string> resolveConfigPath(std::optional<std::string_view> explicitPath);
+    CConfigManager(const char* configPath);
     void init();
 
     template <typename T>
@@ -32,7 +35,7 @@ class CConfigManager {
     std::optional<std::string>                 handleBezier(const std::string&, const std::string&);
     std::optional<std::string>                 handleAnimation(const std::string&, const std::string&);
 
-    std::string                                configCurrentPath;
+    std::string                                m_configCurrentPath;
 
     Hyprutils::Animation::CAnimationConfigTree m_AnimationTree;
 

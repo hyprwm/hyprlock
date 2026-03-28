@@ -40,29 +40,29 @@ void CScreencopyFrame::capture(SP<COutput> pOutput) {
         m_frame = makeUnique<CSCDMAFrame>(m_sc);
 
     m_sc->setBufferDone([this](CCZwlrScreencopyFrameV1* r) {
-        Debug::log(TRACE, "[sc] wlrOnBufferDone for {}", (void*)this);
+        Log::logger->log(Log::TRACE, "[sc] wlrOnBufferDone for {}", (void*)this);
 
         if (!m_frame || !m_frame->onBufferDone() || !m_frame->m_wlBuffer) {
-            Debug::log(ERR, "[sc] Failed to create a wayland buffer for the screencopy frame");
+            Log::logger->log(Log::ERR, "[sc] Failed to create a wayland buffer for the screencopy frame");
             return;
         }
 
         m_sc->sendCopy(m_frame->m_wlBuffer->resource());
 
-        Debug::log(TRACE, "[sc] wlr frame copied");
+        Log::logger->log(Log::TRACE, "[sc] wlr frame copied");
     });
 
     m_sc->setFailed([this](CCZwlrScreencopyFrameV1* r) {
-        Debug::log(ERR, "[sc] wlrOnFailed for {}", (void*)r);
+        Log::logger->log(Log::ERR, "[sc] wlrOnFailed for {}", (void*)r);
 
         m_frame.reset();
     });
 
     m_sc->setReady([this](CCZwlrScreencopyFrameV1* r, uint32_t, uint32_t, uint32_t) {
-        Debug::log(TRACE, "[sc] wlrOnReady for {}", (void*)this);
+        Log::logger->log(Log::TRACE, "[sc] wlrOnReady for {}", (void*)this);
 
         if (!m_frame || !m_frame->onBufferReady(m_asset)) {
-            Debug::log(ERR, "[sc] Failed to bind the screencopy buffer to a texture");
+            Log::logger->log(Log::ERR, "[sc] Failed to bind the screencopy buffer to a texture");
             return;
         }
 
@@ -76,18 +76,18 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
     if (!glEGLImageTargetTexture2DOES) {
         glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
         if (!glEGLImageTargetTexture2DOES) {
-            Debug::log(ERR, "[sc] No glEGLImageTargetTexture2DOES??");
+            Log::logger->log(Log::ERR, "[sc] No glEGLImageTargetTexture2DOES??");
             return;
         }
     }
 
     if (!g_pHyprlock->dma.linuxDmabuf) {
-        Debug::log(ERR, "[sc] No DMABUF support?");
+        Log::logger->log(Log::ERR, "[sc] No DMABUF support?");
         return;
     }
 
     if (!g_pHyprlock->dma.gbmDevice) {
-        Debug::log(ERR, "[sc] No gbmDevice for DMABUF was created?");
+        Log::logger->log(Log::ERR, "[sc] No gbmDevice for DMABUF was created?");
         return;
     }
 
@@ -95,13 +95,13 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
         eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
 
     m_sc->setLinuxDmabuf([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height) {
-        Debug::log(TRACE, "[sc] wlrOnDmabuf for {}", (void*)this);
+        Log::logger->log(Log::TRACE, "[sc] wlrOnDmabuf for {}", (void*)this);
 
         m_w   = width;
         m_h   = height;
         m_fmt = format;
 
-        Debug::log(TRACE, "[sc] DMABUF format reported: {:x}", format);
+        Log::logger->log(Log::TRACE, "[sc] DMABUF format reported: {:x}", format);
     });
 
     m_sc->setBuffer([](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
@@ -120,25 +120,25 @@ bool CSCDMAFrame::onBufferDone() {
     uint32_t flags = GBM_BO_USE_RENDERING;
 
     if (!eglQueryDmaBufModifiersEXT) {
-        Debug::log(WARN, "Querying modifiers without eglQueryDmaBufModifiersEXT support");
+        Log::logger->log(Log::WARN, "Querying modifiers without eglQueryDmaBufModifiersEXT support");
         m_bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, m_w, m_h, m_fmt, flags);
     } else {
         std::array<uint64_t, 64>   mods;
         std::array<EGLBoolean, 64> externalOnly;
         int                        num = 0;
         if (!eglQueryDmaBufModifiersEXT(g_pEGL->eglDisplay, m_fmt, 64, mods.data(), externalOnly.data(), &num) || num == 0) {
-            Debug::log(WARN, "eglQueryDmaBufModifiersEXT failed, falling back to regular bo");
+            Log::logger->log(Log::WARN, "eglQueryDmaBufModifiersEXT failed, falling back to regular bo");
             m_bo = gbm_bo_create(g_pHyprlock->dma.gbmDevice, m_w, m_h, m_fmt, flags);
         } else {
-            Debug::log(LOG, "eglQueryDmaBufModifiersEXT found {} mods", num);
+            Log::logger->log(Log::INFO, "eglQueryDmaBufModifiersEXT found {} mods", num);
             std::vector<uint64_t> goodMods;
             for (int i = 0; i < num; ++i) {
                 if (externalOnly[i]) {
-                    Debug::log(TRACE, "Modifier {:x} failed test", mods[i]);
+                    Log::logger->log(Log::TRACE, "Modifier {:x} failed test", mods[i]);
                     continue;
                 }
 
-                Debug::log(TRACE, "Modifier {:x} passed test", mods[i]);
+                Log::logger->log(Log::TRACE, "Modifier {:x} passed test", mods[i]);
                 goodMods.emplace_back(mods[i]);
             }
 
@@ -147,19 +147,19 @@ bool CSCDMAFrame::onBufferDone() {
     }
 
     if (!m_bo) {
-        Debug::log(ERR, "[bo] Couldn't create a drm buffer");
+        Log::logger->log(Log::ERR, "[bo] Couldn't create a drm buffer");
         return false;
     }
 
     m_planes = gbm_bo_get_plane_count(m_bo);
-    Debug::log(LOG, "[bo] has {} plane(s)", m_planes);
+    Log::logger->log(Log::INFO, "[bo] has {} plane(s)", m_planes);
 
     m_mod = gbm_bo_get_modifier(m_bo);
-    Debug::log(LOG, "[bo] chose modifier {:x}", m_mod);
+    Log::logger->log(Log::INFO, "[bo] chose modifier {:x}", m_mod);
 
     auto params = makeShared<CCZwpLinuxBufferParamsV1>(g_pHyprlock->dma.linuxDmabuf->sendCreateParams());
     if (!params) {
-        Debug::log(ERR, "zwp_linux_dmabuf_v1_create_params failed");
+        Log::logger->log(Log::ERR, "zwp_linux_dmabuf_v1_create_params failed");
         gbm_bo_destroy(m_bo);
         return false;
     }
@@ -170,7 +170,7 @@ bool CSCDMAFrame::onBufferDone() {
         m_fd[plane]     = gbm_bo_get_fd_for_plane(m_bo, plane);
 
         if (m_fd[plane] < 0) {
-            Debug::log(ERR, "gbm_m_bo_get_fd_for_plane failed");
+            Log::logger->log(Log::ERR, "gbm_m_bo_get_fd_for_plane failed");
             params.reset();
             gbm_bo_destroy(m_bo);
             for (size_t plane_tmp = 0; plane_tmp < plane; plane_tmp++) {
@@ -186,7 +186,7 @@ bool CSCDMAFrame::onBufferDone() {
     params.reset();
 
     if (!m_wlBuffer) {
-        Debug::log(ERR, "[pw] zwp_linux_buffer_params_v1_create_immed failed");
+        Log::logger->log(Log::ERR, "[pw] zwp_linux_buffer_params_v1_create_immed failed");
         gbm_bo_destroy(m_bo);
         for (size_t plane = 0; plane < (size_t)m_planes; plane++)
             close(m_fd[plane]);
@@ -247,7 +247,7 @@ bool CSCDMAFrame::onBufferReady(ASP<CTexture> texture) {
     m_image = eglCreateImage(g_pEGL->eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attribs.data());
 
     if (m_image == EGL_NO_IMAGE) {
-        Debug::log(ERR, "Failed creating an egl image");
+        Log::logger->log(Log::ERR, "Failed creating an egl image");
         return false;
     }
 
@@ -261,16 +261,16 @@ bool CSCDMAFrame::onBufferReady(ASP<CTexture> texture) {
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "Got dma frame with size {}", texture->m_vSize);
+    Log::logger->log(Log::INFO, "Got dma frame with size {}", texture->m_vSize);
 
     return true;
 }
 
 CSCSHMFrame::CSCSHMFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
-    Debug::log(TRACE, "[sc] [shm] Creating a SHM frame");
+    Log::logger->log(Log::TRACE, "[sc] [shm] Creating a SHM frame");
 
     m_sc->setBuffer([this](CCZwlrScreencopyFrameV1* r, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
-        Debug::log(TRACE, "[sc] [shm] wlrOnBuffer for {}", (void*)this);
+        Log::logger->log(Log::TRACE, "[sc] [shm] wlrOnBuffer for {}", (void*)this);
 
         const auto SIZE = stride * height;
         m_shmFmt        = format;
@@ -283,20 +283,20 @@ CSCSHMFrame::CSCSHMFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
         const auto  FD = createPoolFile(SIZE, shmPoolFile);
 
         if (FD < 0) {
-            Debug::log(ERR, "[sc] [shm] failed to create a pool file");
+            Log::logger->log(Log::ERR, "[sc] [shm] failed to create a pool file");
             return;
         }
 
         m_shmData = mmap(nullptr, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, FD, 0);
         if (m_shmData == MAP_FAILED) {
-            Debug::log(ERR, "[sc] [shm] failed to (errno {})", strerror(errno));
+            Log::logger->log(Log::ERR, "[sc] [shm] failed to (errno {})", strerror(errno));
             close(FD);
             m_ok = false;
             return;
         }
 
         if (!g_pHyprlock->getShm()) {
-            Debug::log(ERR, "[sc] [shm] Failed to get WLShm global");
+            Log::logger->log(Log::ERR, "[sc] [shm] Failed to get WLShm global");
             close(FD);
             m_ok = false;
             return;
@@ -328,7 +328,7 @@ void CSCSHMFrame::convertBuffer() {
         switch (m_shmFmt) {
             case WL_SHM_FORMAT_ARGB8888:
             case WL_SHM_FORMAT_XRGB8888: {
-                Debug::log(LOG, "[sc] [shm] Converting ARGB to RGBA");
+                Log::logger->log(Log::INFO, "[sc] [shm] Converting ARGB to RGBA");
                 uint8_t* data = (uint8_t*)m_shmData;
 
                 for (uint32_t y = 0; y < m_h; ++y) {
@@ -348,7 +348,7 @@ void CSCSHMFrame::convertBuffer() {
             } break;
             case WL_SHM_FORMAT_ABGR8888:
             case WL_SHM_FORMAT_XBGR8888: {
-                Debug::log(LOG, "[sc] [shm] Converting ABGR to RGBA");
+                Log::logger->log(Log::INFO, "[sc] [shm] Converting ABGR to RGBA");
                 uint8_t* data = (uint8_t*)m_shmData;
 
                 for (uint32_t y = 0; y < m_h; ++y) {
@@ -370,7 +370,7 @@ void CSCSHMFrame::convertBuffer() {
             case WL_SHM_FORMAT_ARGB2101010:
             case WL_SHM_FORMAT_XRGB2101010:
             case WL_SHM_FORMAT_XBGR2101010: {
-                Debug::log(LOG, "[sc] [shm] Converting 10-bit channels to 8-bit");
+                Log::logger->log(Log::INFO, "[sc] [shm] Converting 10-bit channels to 8-bit");
                 uint8_t*   data = (uint8_t*)m_shmData;
 
                 const bool FLIP = m_shmFmt != WL_SHM_FORMAT_XBGR2101010;
@@ -391,18 +391,18 @@ void CSCSHMFrame::convertBuffer() {
                 }
             } break;
             default: {
-                Debug::log(WARN, "[sc] [shm] Unsupported format {}", m_shmFmt);
+                Log::logger->log(Log::WARN, "[sc] [shm] Unsupported format {}", m_shmFmt);
             }
         }
     } else if (BYTESPERPX == 3) {
-        Debug::log(LOG, "[sc] [shm] Converting 24 bit to 32 bit");
+        Log::logger->log(Log::INFO, "[sc] [shm] Converting 24 bit to 32 bit");
         m_convBuffer        = malloc(m_w * m_h * 4);
         const int NEWSTRIDE = m_w * 4;
         RASSERT(m_convBuffer, "malloc failed");
 
         switch (m_shmFmt) {
             case WL_SHM_FORMAT_BGR888: {
-                Debug::log(LOG, "[sc] [shm] Converting BGR to RGBA");
+                Log::logger->log(Log::INFO, "[sc] [shm] Converting BGR to RGBA");
                 for (uint32_t y = 0; y < m_h; ++y) {
                     for (uint32_t x = 0; x < m_w; ++x) {
                         struct pixel3 {
@@ -423,7 +423,7 @@ void CSCSHMFrame::convertBuffer() {
                 }
             } break;
             case WL_SHM_FORMAT_RGB888: {
-                Debug::log(LOG, "[sc] [shm] Converting RGB to RGBA");
+                Log::logger->log(Log::INFO, "[sc] [shm] Converting RGB to RGBA");
                 for (uint32_t y = 0; y < m_h; ++y) {
                     for (uint32_t x = 0; x < m_w; ++x) {
                         struct pixel3 {
@@ -444,12 +444,12 @@ void CSCSHMFrame::convertBuffer() {
                 }
             } break;
             default: {
-                Debug::log(ERR, "[sc] [shm] Unsupported format for 24bit buffer {}", m_shmFmt);
+                Log::logger->log(Log::ERR, "[sc] [shm] Unsupported format for 24bit buffer {}", m_shmFmt);
             }
         }
 
     } else {
-        Debug::log(ERR, "[sc] [shm] Unsupported bytes per pixel {}", BYTESPERPX);
+        Log::logger->log(Log::ERR, "[sc] [shm] Unsupported bytes per pixel {}", BYTESPERPX);
     }
 }
 
@@ -471,7 +471,7 @@ bool CSCSHMFrame::onBufferReady(ASP<CTexture> texture) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_w, m_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    Debug::log(LOG, "[sc] [shm] Got screenshot with size {}", texture->m_vSize);
+    Log::logger->log(Log::INFO, "[sc] [shm] Got screenshot with size {}", texture->m_vSize);
 
     return true;
 }
