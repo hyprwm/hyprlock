@@ -163,3 +163,13 @@ install(
   FILES ${CMAKE_SOURCE_DIR}/assets/example.conf
   DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/hypr
   RENAME hyprlock.conf)
+
+if(TESTS)
+  include(CTest)
+  message(STATUS "Building hyprlock test meta package")
+
+  enable_testing()
+  add_custom_target(tests)
+
+  add_subdirectory(tests)
+endif()

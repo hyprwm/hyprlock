@@ -32,39 +32,42 @@
     };
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      systems,
-      ...
-    }@inputs:
-    let
-      inherit (nixpkgs) lib;
-      eachSystem = lib.genAttrs (import systems);
-      pkgsFor = eachSystem (
-        system:
+  outputs = {
+    self,
+    nixpkgs,
+    systems,
+    ...
+  } @ inputs: let
+    inherit (nixpkgs) lib;
+    eachSystem = lib.genAttrs (import systems);
+    pkgsFor = eachSystem (
+      system:
         import nixpkgs {
           localSystem.system = system;
-          overlays = with self.overlays; [ hyprlock-with-deps ];
+          overlays = with self.overlays; [hyprlock-with-deps];
         }
-      );
-    in
-    {
-      overlays = import ./nix/overlays.nix { inherit inputs lib self; };
-
-      packages = eachSystem (system: {
-        default = self.packages.${system}.hyprlock;
-        inherit (pkgsFor.${system}) hyprlock;
+    );
+    pkgsDebugFor = eachSystem (system:
+      import nixpkgs {
+        localSystem = system;
+        overlays = with self.overlays; [hyprlock-debug hyprlock-with-deps];
       });
+  in {
+    overlays = import ./nix/overlays.nix {inherit inputs lib self;};
 
-      homeManagerModules = {
-        default = self.homeManagerModules.hyprlock;
-        hyprlock = builtins.throw "hyprlock: the flake HM module has been removed. Use the module from Home Manager upstream.";
-      };
+    packages = eachSystem (system: {
+      default = self.packages.${system}.hyprlock;
+      inherit (pkgsFor.${system}) hyprlock;
+      inherit (pkgsDebugFor.${system}) hyprlock-debug hyprlock-test-meta;
+    });
 
-      checks = eachSystem (system: self.packages.${system});
-
-      formatter = eachSystem (system: pkgsFor.${system}.nixfmt-tree);
+    homeManagerModules = {
+      default = self.homeManagerModules.hyprlock;
+      hyprlock = builtins.throw "hyprlock: the flake HM module has been removed. Use the module from Home Manager upstream.";
     };
+
+    checks = eachSystem (system: self.packages.${system} // (import ./nix/tests/default.nix inputs pkgsFor.${system}));
+
+    formatter = eachSystem (system: pkgsFor.${system}.nixfmt-tree);
+  };
 }
