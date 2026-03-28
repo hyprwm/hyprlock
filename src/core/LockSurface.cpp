@@ -33,7 +33,7 @@ CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputR
             const bool SAMESCALE = fractionalScale == scale / 120.0;
             fractionalScale      = scale / 120.0;
 
-            Debug::log(LOG, "Got fractional scale: {:.1f}%", fractionalScale * 100.F);
+            Log::logger->log(Log::INFO, "Got fractional scale: {:.1f}%", fractionalScale * 100.F);
 
             if (!SAMESCALE && readyForFrame)
                 onScaleUpdate();
@@ -43,9 +43,9 @@ CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputR
     }
 
     if (!PFRACTIONALMGR)
-        Debug::log(LOG, "No fractional-scale support! Oops, won't be able to scale!");
+        Log::logger->log(Log::INFO, "No fractional-scale support! Oops, won't be able to scale!");
     if (!PVIEWPORTER)
-        Debug::log(LOG, "No viewporter support! Oops, won't be able to scale!");
+        Log::logger->log(Log::INFO, "No viewporter support! Oops, won't be able to scale!");
 
     lockSurface = makeShared<CCExtSessionLockSurfaceV1>(g_pHyprlock->getSessionLock()->sendGetLockSurface(surface->resource(), pOutput->m_wlOutput->resource()));
     RASSERT(lockSurface, "Couldn't create ext_session_lock_surface_v1");
@@ -54,7 +54,7 @@ CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputR
 }
 
 void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
-    Debug::log(LOG, "configure with serial {}", serial_);
+    Log::logger->log(Log::INFO, "configure with serial {}", serial_);
 
     const bool SAMESERIAL = serial == serial_;
     const bool SAMESIZE   = logicalSize == size_;
@@ -78,7 +78,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     if (!SAMESERIAL)
         lockSurface->sendAckConfigure(serial);
 
-    Debug::log(LOG, "Configuring surface for logical {} and pixel {}", logicalSize, size);
+    Log::logger->log(Log::INFO, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
     surface->sendDamageBuffer(0, 0, 0xFFFF, 0xFFFF);
 
@@ -94,7 +94,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
-        Debug::log(LOG, "output {} changed, reloading widgets!", POUTPUT->stringPort);
+        Log::logger->log(Log::INFO, "output {} changed, reloading widgets!", POUTPUT->stringPort);
         g_pRenderer->reconfigureWidgetsFor(POUTPUT->m_ID);
     }
 
@@ -120,9 +120,9 @@ void CSessionLockSurface::render() {
         if (g_pHyprlock->m_bTerminate)
             return;
 
-        if (Debug::verbose) {
+        if (Log::logger->m_verbose) {
             const auto POUTPUT = m_outputRef.lock();
-            Debug::log(TRACE, "[{}] frame {}, Current fps: {:.2f}", POUTPUT->stringPort, m_frames, 1000.f / (frameTime - m_lastFrameTime));
+            Log::logger->log(Log::TRACE, "[{}] frame {}, Current fps: {:.2f}", POUTPUT->stringPort, m_frames, 1000.f / (frameTime - m_lastFrameTime));
         }
 
         m_lastFrameTime = frameTime;

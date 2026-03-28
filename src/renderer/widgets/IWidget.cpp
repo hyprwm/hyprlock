@@ -44,7 +44,7 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
     else if (halign == "right")
         pos.x += viewport.x - size.x + rot.x;
     else if (halign != "none")
-        Debug::log(ERR, "IWidget: invalid halign {}", halign);
+        Log::logger->log(Log::ERR, "IWidget: invalid halign {}", halign);
 
     if (valign == "center")
         pos.y += viewport.y / 2.0 - size.y / 2.0;
@@ -53,7 +53,7 @@ Vector2D IWidget::posFromHVAlign(const Vector2D& viewport, const Vector2D& size,
     else if (valign == "bottom")
         pos.y += 0 - rot.y;
     else if (valign != "none")
-        Debug::log(ERR, "IWidget: invalid valign {}", valign);
+        Log::logger->log(Log::ERR, "IWidget: invalid valign {}", valign);
 
     return pos;
 }
@@ -126,7 +126,7 @@ static void replaceAllLayout(std::string& str) {
             const std::string REPL = str.substr(pos + 8, str.find_first_of(']', pos) - 8 - pos);
             const CVarList    LANGS(REPL);
             if (LAYOUTIDX >= LANGS.size()) {
-                Debug::log(ERR, "Layout index {} out of bounds. Max is {}.", LAYOUTIDX, LANGS.size() - 1);
+                Log::logger->log(Log::ERR, "Layout index {} out of bounds. Max is {}.", LAYOUTIDX, LANGS.size() - 1);
                 return;
             }
 
@@ -147,7 +147,7 @@ static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
         auto name = std::getenv("TZ");
         if (name)
             pCurrentTz = std::chrono::locate_zone(name);
-    } catch (std::runtime_error&) { Debug::log(WARN, "Invalid TZ value. Falling back to current timezone!"); }
+    } catch (std::runtime_error&) { Log::logger->log(Log::WARN, "Invalid TZ value. Falling back to current timezone!"); }
 
     if (!pCurrentTz)
         pCurrentTz = std::chrono::current_zone();
@@ -158,7 +158,7 @@ static std::chrono::hh_mm_ss<std::chrono::system_clock::duration> getTime() {
     std::chrono::hh_mm_ss<std::chrono::system_clock::duration> hhmmss;
     if (!pCurrentTz) {
         if (logMissingTzOnce) {
-            Debug::log(WARN, "Current timezone unknown. Falling back to UTC!");
+            Log::logger->log(Log::WARN, "Current timezone unknown. Falling back to UTC!");
             logMissingTzOnce = false;
         }
         hhmmss = std::chrono::hh_mm_ss{TPNOW - std::chrono::floor<std::chrono::days>(TPNOW)};
@@ -190,10 +190,10 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
     char* user_gecos  = uidPassword ? uidPassword->pw_gecos : nullptr;
 
     if (!username)
-        Debug::log(ERR, "Error in formatString, username null. Errno: ", errno);
+        Log::logger->log(Log::ERR, "Error in formatString, username null. Errno: ", errno);
 
     if (!user_gecos)
-        Debug::log(WARN, "Error in formatString, user_gecos null. Errno: ", errno);
+        Log::logger->log(Log::WARN, "Error in formatString, user_gecos null. Errno: ", errno);
 
     IWidget::SFormatResult result;
     replaceInString(in, "$DESC", std::string{user_gecos ? user_gecos : ""});
@@ -263,9 +263,9 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
                     }
 
                     result.updateEveryMs = std::stoull(v.substr(7));
-                } catch (std::exception& e) { Debug::log(ERR, "Error parsing {} in cmd[]", v); }
+                } catch (std::exception& e) { Log::logger->log(Log::ERR, "Error parsing {} in cmd[]", v); }
             } else {
-                Debug::log(ERR, "Unknown prop in string format {}", v);
+                Log::logger->log(Log::ERR, "Unknown prop in string format {}", v);
             }
         }
 

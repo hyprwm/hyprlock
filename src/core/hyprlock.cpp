@@ -71,7 +71,7 @@ static void registerSignalAction(int sig, void (*handler)(int), int sa_flags = 0
 
 static void handleUnlockSignal(int sig) {
     if (sig == SIGUSR1) {
-        Debug::log(LOG, "Unlocking with a SIGUSR1");
+        Log::logger->log(Log::INFO, "Unlocking with a SIGUSR1");
         g_pAuth->enqueueUnlock();
     }
 }
@@ -116,15 +116,15 @@ gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
     char* renderNode = gbm_find_render_node(dev);
 
     if (!renderNode) {
-        Debug::log(ERR, "[core] Couldn't find a render node");
+        Log::logger->log(Log::ERR, "[core] Couldn't find a render node");
         return nullptr;
     }
 
-    Debug::log(TRACE, "[core] createGBMDevice: render node {}", renderNode);
+    Log::logger->log(Log::TRACE, "[core] createGBMDevice: render node {}", renderNode);
 
     int fd = open(renderNode, O_RDWR | O_CLOEXEC);
     if (fd < 0) {
-        Debug::log(ERR, "[core] couldn't open render node");
+        Log::logger->log(Log::ERR, "[core] couldn't open render node");
         free(renderNode);
         return nullptr;
     }
@@ -135,13 +135,13 @@ gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
 
 void CHyprlock::addDmabufListener() {
     dma.linuxDmabufFeedback->setTrancheDone([this](CCZwpLinuxDmabufFeedbackV1* r) {
-        Debug::log(TRACE, "[core] dmabufFeedbackTrancheDone");
+        Log::logger->log(Log::TRACE, "[core] dmabufFeedbackTrancheDone");
 
         dma.deviceUsed = false;
     });
 
     dma.linuxDmabufFeedback->setTrancheFormats([this](CCZwpLinuxDmabufFeedbackV1* r, wl_array* indices) {
-        Debug::log(TRACE, "[core] dmabufFeedbackTrancheFormats");
+        Log::logger->log(Log::TRACE, "[core] dmabufFeedbackTrancheFormats");
 
         if (!dma.deviceUsed || !dma.formatTable)
             return;
@@ -162,14 +162,14 @@ void CHyprlock::addDmabufListener() {
             if (*idx >= n_modifiers)
                 continue;
 
-            Debug::log(TRACE, "GPU Reports supported format {:x} with modifier {:x}", (fm_entry + *idx)->format, (fm_entry + *idx)->modifier);
+            Log::logger->log(Log::TRACE, "GPU Reports supported format {:x} with modifier {:x}", (fm_entry + *idx)->format, (fm_entry + *idx)->modifier);
 
             dma.dmabufMods.push_back({(fm_entry + *idx)->format, (fm_entry + *idx)->modifier});
         }
     });
 
     dma.linuxDmabufFeedback->setTrancheTargetDevice([this](CCZwpLinuxDmabufFeedbackV1* r, wl_array* device_arr) {
-        Debug::log(TRACE, "[core] dmabufFeedbackTrancheTargetDevice");
+        Log::logger->log(Log::TRACE, "[core] dmabufFeedbackTrancheTargetDevice");
 
         dev_t device;
         assert(device_arr->size == sizeof(device));
@@ -190,7 +190,7 @@ void CHyprlock::addDmabufListener() {
     });
 
     dma.linuxDmabufFeedback->setDone([this](CCZwpLinuxDmabufFeedbackV1* r) {
-        Debug::log(TRACE, "[core] dmabufFeedbackDone");
+        Log::logger->log(Log::TRACE, "[core] dmabufFeedbackDone");
 
         if (dma.formatTable)
             munmap(dma.formatTable, dma.formatTableSize);
@@ -200,14 +200,14 @@ void CHyprlock::addDmabufListener() {
     });
 
     dma.linuxDmabufFeedback->setFormatTable([this](CCZwpLinuxDmabufFeedbackV1* r, int fd, uint32_t size) {
-        Debug::log(TRACE, "[core] dmabufFeedbackFormatTable");
+        Log::logger->log(Log::TRACE, "[core] dmabufFeedbackFormatTable");
 
         dma.dmabufMods.clear();
 
         dma.formatTable = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
         if (dma.formatTable == MAP_FAILED) {
-            Debug::log(ERR, "[core] format table failed to mmap");
+            Log::logger->log(Log::ERR, "[core] format table failed to mmap");
             dma.formatTable     = nullptr;
             dma.formatTableSize = 0;
             return;
@@ -217,7 +217,7 @@ void CHyprlock::addDmabufListener() {
     });
 
     dma.linuxDmabufFeedback->setMainDevice([this](CCZwpLinuxDmabufFeedbackV1* r, wl_array* device_arr) {
-        Debug::log(LOG, "[core] dmabufFeedbackMainDevice");
+        Log::logger->log(Log::INFO, "[core] dmabufFeedbackMainDevice");
 
         RASSERT(!dma.gbm, "double dmabuf feedback");
 
@@ -253,11 +253,11 @@ void CHyprlock::run() {
     m_sWaylandState.registry = makeShared<CCWlRegistry>((wl_proxy*)wl_display_get_registry(m_sWaylandState.display));
     m_sWaylandState.registry->setGlobal([this](CCWlRegistry* r, uint32_t name, const char* interface, uint32_t version) {
         const std::string IFACE = interface;
-        Debug::log(LOG, "  | got iface: {} v{}", IFACE, version);
+        Log::logger->log(Log::INFO, "  | got iface: {} v{}", IFACE, version);
 
         if (IFACE == zwp_linux_dmabuf_v1_interface.name) {
             if (version < 4) {
-                Debug::log(ERR, "cannot use linux_dmabuf with ver < 4");
+                Log::logger->log(Log::ERR, "cannot use linux_dmabuf with ver < 4");
                 return;
             }
 
@@ -267,7 +267,7 @@ void CHyprlock::run() {
             addDmabufListener();
         } else if (IFACE == wl_seat_interface.name) {
             if (g_pSeatManager->registered()) {
-                Debug::log(WARN, "Hyprlock does not support multi-seat configurations. Only binding to the first seat.");
+                Log::logger->log(Log::WARN, "Hyprlock does not support multi-seat configurations. Only binding to the first seat.");
                 return;
             }
 
@@ -297,10 +297,10 @@ void CHyprlock::run() {
         else
             return;
 
-        Debug::log(LOG, "   > Bound to {} v{}", IFACE, version);
+        Log::logger->log(Log::INFO, "   > Bound to {} v{}", IFACE, version);
     });
     m_sWaylandState.registry->setGlobalRemove([this](CCWlRegistry* r, uint32_t name) {
-        Debug::log(LOG, "  | removed iface {}", name);
+        Log::logger->log(Log::INFO, "  | removed iface {}", name);
         auto outputIt = std::ranges::find_if(m_vOutputs, [id = name](const auto& other) { return other->m_ID == id; });
         if (outputIt != m_vOutputs.end()) {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
@@ -311,11 +311,11 @@ void CHyprlock::run() {
     wl_display_roundtrip(m_sWaylandState.display);
 
     if (!m_sWaylandState.sessionLock) {
-        Debug::log(CRIT, "Couldn't bind to ext-session-lock-v1, does your compositor support it?");
+        Log::logger->log(Log::CRIT, "Couldn't bind to ext-session-lock-v1, does your compositor support it?");
         exit(1);
     }
 
-    // gather info about monitors
+    // Gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
     g_pRenderer            = makeUnique<CRenderer>();
@@ -323,7 +323,7 @@ void CHyprlock::run() {
     g_pAuth                = makeUnique<CAuth>();
     g_pAuth->start();
 
-    Debug::log(LOG, "Running on {}", m_sCurrentDesktop);
+    Log::logger->log(Log::INFO, "Running on {}", m_sCurrentDesktop);
 
     g_asyncResourceManager->enqueueStaticAssets();
     g_asyncResourceManager->enqueueScreencopyFrames();
@@ -385,7 +385,7 @@ void CHyprlock::run() {
             }
 
             if (events > 0 || !preparedToRead) {
-                Debug::log(TRACE, "[core] got poll event");
+                Log::logger->log(Log::TRACE, "[core] got poll event");
                 std::unique_lock lk(m_sLoopState.eventLoopMutex);
                 m_sLoopState.event = true;
                 m_sLoopState.loopCV.notify_all();
@@ -414,7 +414,7 @@ void CHyprlock::run() {
 
             // notify main
             std::lock_guard<std::mutex> lg2(m_sLoopState.eventLoopMutex);
-            Debug::log(TRACE, "timer thread firing");
+            Log::logger->log(Log::TRACE, "timer thread firing");
             m_sLoopState.event = true;
             m_sLoopState.loopCV.notify_all();
         }
@@ -477,12 +477,12 @@ void CHyprlock::run() {
 
     wl_display_disconnect(DPY);
 
-    Debug::log(LOG, "Reached the end, exiting");
+    Log::logger->log(Log::INFO, "Reached the end, exiting");
 }
 
 void CHyprlock::unlock() {
     if (!m_bLocked) {
-        Debug::log(WARN, "Unlock called, but not locked yet. This can happen when dpms is off during the grace period.");
+        Log::logger->log(Log::WARN, "Unlock called, but not locked yet. This can happen when dpms is off during the grace period.");
         return;
     }
 
@@ -565,10 +565,10 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     }
 
     if (down && std::ranges::find(m_vPressedKeys, key) != m_vPressedKeys.end()) {
-        Debug::log(ERR, "Invalid key down event (key already pressed?)");
+        Log::logger->log(Log::ERR, "Invalid key down event (key already pressed?)");
         return;
     } else if (!down && std::ranges::find(m_vPressedKeys, key) == m_vPressedKeys.end()) {
-        Debug::log(ERR, "Invalid key down event (stray release event?)");
+        Log::logger->log(Log::ERR, "Invalid key down event (stray release event?)");
         return;
     }
 
@@ -618,16 +618,16 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     const auto SYM = sym;
 
     if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_a))) {
-        Debug::log(LOG, "Clearing password buffer");
+        Log::logger->log(Log::INFO, "Clearing password buffer");
 
         m_sPasswordState.passBuffer = "";
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
-        Debug::log(LOG, "Authenticating");
+        Log::logger->log(Log::INFO, "Authenticating");
 
         static const auto IGNOREEMPTY = g_pConfigManager->getValue<Hyprlang::INT>("general:ignore_empty_input");
 
         if (m_sPasswordState.passBuffer.empty() && *IGNOREEMPTY) {
-            Debug::log(LOG, "Ignoring empty input");
+            Log::logger->log(Log::INFO, "Ignoring empty input");
             return;
         }
 
@@ -712,10 +712,10 @@ void CHyprlock::onHover(const Vector2D& pos) {
 }
 
 bool CHyprlock::acquireSessionLock() {
-    Debug::log(LOG, "Locking session");
+    Log::logger->log(Log::INFO, "Locking session");
     m_sLockState.lock = makeShared<CCExtSessionLockV1>(m_sWaylandState.sessionLock->sendLock());
     if (!m_sLockState.lock) {
-        Debug::log(ERR, "Failed to create a lock object!");
+        Log::logger->log(Log::ERR, "Failed to create a lock object!");
         return false;
     }
 
@@ -732,7 +732,7 @@ bool CHyprlock::acquireSessionLock() {
 
     m_lockAquired = true;
 
-    // create a session lock surface for exiting outputs
+    // create a session lock surface for existing outputs
     for (auto& o : m_vOutputs) {
         if (!o->done)
             continue;
@@ -744,28 +744,28 @@ bool CHyprlock::acquireSessionLock() {
 }
 
 void CHyprlock::releaseSessionLock() {
-    Debug::log(LOG, "Unlocking session");
+    Log::logger->log(Log::INFO, "Unlocking session");
 
     if (m_bTerminate) {
-        Debug::log(ERR, "Unlock already happend?");
+        Log::logger->log(Log::ERR, "Unlock already happend?");
         return;
     }
 
     if (!m_sLockState.lock) {
-        Debug::log(ERR, "Unlock without a lock object!");
+        Log::logger->log(Log::ERR, "Unlock without a lock object!");
         return;
     }
 
     if (!m_bLocked) {
         // Would be a protocol error to allow this
-        Debug::log(ERR, "Trying to unlock the session, but never recieved the locked event!");
+        Log::logger->log(Log::ERR, "Trying to unlock the session, but never recieved the locked event!");
         return;
     }
 
     m_sLockState.lock->sendUnlockAndDestroy();
     m_sLockState.lock = nullptr;
 
-    Debug::log(LOG, "Unlocked, exiting!");
+    Log::logger->log(Log::INFO, "Unlocked, exiting!");
 
     m_bTerminate = true;
     m_bLocked    = false;
@@ -774,16 +774,16 @@ void CHyprlock::releaseSessionLock() {
 }
 
 void CHyprlock::onLockLocked() {
-    Debug::log(LOG, "onLockLocked called");
+    Log::logger->log(Log::INFO, "onLockLocked called");
 
     m_bLocked = true;
 }
 
 void CHyprlock::onLockFinished() {
-    Debug::log(LOG, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
+    Log::logger->log(Log::INFO, "onLockFinished called. Seems we got yeeten. Is another lockscreen running?");
 
     if (!m_sLockState.lock) {
-        Debug::log(ERR, "onLockFinished without a lock object!");
+        Log::logger->log(Log::ERR, "onLockFinished without a lock object!");
         return;
     }
 

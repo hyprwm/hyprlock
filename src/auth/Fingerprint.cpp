@@ -51,14 +51,14 @@ void CFingerprint::init() {
         m_sDBUSState.connection = sdbus::createSystemBusConnection();
         m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
     } catch (sdbus::Error& e) {
-        Debug::log(ERR, "fprint: Failed to setup dbus ({})", e.what());
+        Log::logger->log(Log::ERR, "fprint: Failed to setup dbus ({})", e.what());
         m_sDBUSState.connection.reset();
         return;
     }
 
     m_sDBUSState.login->getPropertyAsync("PreparingForSleep").onInterface(LOGIN_MANAGER).uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::Variant preparingForSleep) {
         if (e) {
-            Debug::log(WARN, "fprint: Failed getting value for PreparingForSleep: {}", e->what());
+            Log::logger->log(Log::WARN, "fprint: Failed getting value for PreparingForSleep: {}", e->what());
             return;
         }
         m_sDBUSState.sleeping = preparingForSleep.get<bool>();
@@ -68,7 +68,7 @@ void CFingerprint::init() {
         startVerify();
     });
     m_sDBUSState.login->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
-        Debug::log(LOG, "fprint: PrepareForSleep (start: {})", start);
+        Log::logger->log(Log::INFO, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
         if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
             startVerify();
@@ -111,13 +111,13 @@ bool CFingerprint::createDeviceProxy() {
     try {
         proxy->callMethod("GetDefaultDevice").onInterface(MANAGER).storeResultsTo(path);
     } catch (sdbus::Error& e) {
-        Debug::log(WARN, "fprint: couldn't connect to Fprint service ({})", e.what());
+        Log::logger->log(Log::WARN, "fprint: couldn't connect to Fprint service ({})", e.what());
         return false;
     }
-    Debug::log(LOG, "fprint: using device path {}", path.c_str());
+    Log::logger->log(Log::INFO, "fprint: using device path {}", path.c_str());
     m_sDBUSState.device = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, path);
 
-    m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) { Debug::log(LOG, "fprint: finger selected: {}", finger); });
+    m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) { Log::logger->log(Log::INFO, "fprint: finger selected: {}", finger); });
     m_sDBUSState.device->uponSignal("VerifyStatus").onInterface(DEVICE).call([this](const std::string& result, const bool done) { handleVerifyStatus(result, done); });
 
     m_sDBUSState.device->uponSignal("PropertiesChanged")
@@ -140,17 +140,17 @@ bool CFingerprint::createDeviceProxy() {
 }
 
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
-    Debug::log(LOG, "fprint: handling status {}", result);
+    Log::logger->log(Log::INFO, "fprint: handling status {}", result);
     auto matchResult   = s_mapStringToTestType[result];
     bool authenticated = false;
     bool retry         = false;
     if (m_sDBUSState.sleeping) {
         stopVerify();
-        Debug::log(LOG, "fprint: device suspended");
+        Log::logger->log(Log::INFO, "fprint: device suspended");
         return;
     }
     switch (matchResult) {
-        case MATCH_INVALID: Debug::log(WARN, "fprint: unknown status: {}", result); break;
+        case MATCH_INVALID: Log::logger->log(Log::WARN, "fprint: unknown status: {}", result); break;
         case MATCH_NO_MATCH:
             stopVerify();
             if (m_sDBUSState.retries >= 3) {
@@ -206,9 +206,9 @@ void CFingerprint::claimDevice() {
     const auto currentUser = ""; // Empty string means use the caller's id.
     m_sDBUSState.device->callMethodAsync("Claim").onInterface(DEVICE).withArguments(currentUser).uponReplyInvoke([this](std::optional<sdbus::Error> e) {
         if (e)
-            Debug::log(WARN, "fprint: could not claim device, {}", e->what());
+            Log::logger->log(Log::WARN, "fprint: could not claim device, {}", e->what());
         else {
-            Debug::log(LOG, "fprint: claimed device");
+            Log::logger->log(Log::INFO, "fprint: claimed device");
             startVerify();
         }
     });
@@ -226,12 +226,12 @@ void CFingerprint::startVerify(bool isRetry) {
     auto finger = "any"; // Any finger.
     m_sDBUSState.device->callMethodAsync("VerifyStart").onInterface(DEVICE).withArguments(finger).uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
         if (e) {
-            Debug::log(WARN, "fprint: could not start verifying, {}", e->what());
+            Log::logger->log(Log::WARN, "fprint: could not start verifying, {}", e->what());
             if (isRetry)
                 m_sFailureReason = "Fingerprint auth disabled (failed to restart)";
 
         } else {
-            Debug::log(LOG, "fprint: started verifying");
+            Log::logger->log(Log::INFO, "fprint: started verifying");
             if (isRetry) {
                 m_sDBUSState.retries++;
                 m_sPrompt = "Could not match fingerprint. Try again.";
@@ -249,10 +249,10 @@ bool CFingerprint::stopVerify() {
     try {
         m_sDBUSState.device->callMethod("VerifyStop").onInterface(DEVICE);
     } catch (sdbus::Error& e) {
-        Debug::log(WARN, "fprint: could not stop verifying, {}", e.what());
+        Log::logger->log(Log::WARN, "fprint: could not stop verifying, {}", e.what());
         return false;
     }
-    Debug::log(LOG, "fprint: stopped verification");
+    Log::logger->log(Log::INFO, "fprint: stopped verification");
     return true;
 }
 
@@ -262,9 +262,9 @@ bool CFingerprint::releaseDevice() {
     try {
         m_sDBUSState.device->callMethod("Release").onInterface(DEVICE);
     } catch (sdbus::Error& e) {
-        Debug::log(WARN, "fprint: could not release device, {}", e.what());
+        Log::logger->log(Log::WARN, "fprint: could not release device, {}", e.what());
         return false;
     }
-    Debug::log(LOG, "fprint: released device");
+    Log::logger->log(Log::INFO, "fprint: released device");
     return true;
 }

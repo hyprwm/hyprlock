@@ -60,10 +60,10 @@ int main(int argc, char** argv, char** envp) {
         }
 
         if (arg == "--verbose" || arg == "-v")
-            Debug::verbose = true;
+            Log::logger->m_verbose = true;
 
         else if (arg == "--quiet" || arg == "-q")
-            Debug::quiet = true;
+            Log::logger->m_quiet = true;
 
         else if ((arg == "--config" || arg == "-c") && i + 1 < (std::size_t)argc) {
             if (auto value = parseArg(args, arg, i); value)
@@ -94,7 +94,7 @@ int main(int argc, char** argv, char** envp) {
 
         } else if (arg == "--immediate") {
             graceSeconds = 0;
-            Debug::log(WARN, R"("--immediate" is deprecated. Use the "--grace" option instead.)");
+            Log::logger->log(Log::WARN, R"("--immediate" is deprecated. Use the "--grace" option instead.)");
         }
 
         else if (arg == "--immediate-render")
@@ -117,9 +117,9 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager = makeUnique<CConfigManager>(configPath);
         g_pConfigManager->init();
     } catch (const std::exception& ex) {
-        Debug::log(CRIT, "ConfigManager threw: {}", ex.what());
+        Log::logger->log(Log::CRIT, "ConfigManager threw: {}", ex.what());
         if (std::string(ex.what()).contains("File does not exist"))
-            Debug::log(NONE, "           Make sure you have a config.");
+            Log::logger->log(Log::INFO, "           Make sure you have a config.");
 
         return 1;
     }
@@ -131,7 +131,7 @@ int main(int argc, char** argv, char** envp) {
         g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
-        Debug::log(CRIT, "Hyprlock threw: {}", ex.what());
+        Log::logger->log(Log::CRIT, "Hyprlock threw: {}", ex.what());
         return 1;
     }
 

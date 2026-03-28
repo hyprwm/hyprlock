@@ -25,7 +25,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
             case PAM_PROMPT_ECHO_ON: {
                 const auto PROMPT        = std::string(msg[i]->msg);
                 const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
-                Debug::log(LOG, "PAM_PROMPT: {}", PROMPT);
+                Log::logger->log(Log::INFO, "PAM_PROMPT: {}", PROMPT);
 
                 if (PROMPTCHANGED)
                     g_pHyprlock->enqueueForceUpdateTimers();
@@ -44,9 +44,9 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
                 initialPrompt    = false;
             } break;
-            case PAM_ERROR_MSG: Debug::log(ERR, "PAM: {}", msg[i]->msg); break;
+            case PAM_ERROR_MSG: Log::logger->log(Log::ERR, "PAM: {}", msg[i]->msg); break;
             case PAM_TEXT_INFO:
-                Debug::log(LOG, "PAM: {}", msg[i]->msg);
+                Log::logger->log(Log::INFO, "PAM: {}", msg[i]->msg);
                 // Targets this log from pam_faillock: https://github.com/linux-pam/linux-pam/blob/fa3295e079dbbc241906f29bde5fb71bc4172771/modules/pam_faillock/pam_faillock.c#L417
                 if (const auto MSG = std::string(msg[i]->msg); MSG.contains("left to unlock")) {
                     CONVERSATIONSTATE->failText        = MSG;
@@ -65,7 +65,7 @@ CPam::CPam() {
     m_sPamModule                = *PAMMODULE;
 
     if (!std::filesystem::exists(std::filesystem::path("/etc/pam.d/") / m_sPamModule)) {
-        Debug::log(ERR, R"(Pam module "/etc/pam.d/{}" does not exist! Falling back to "/etc/pam.d/su")", m_sPamModule);
+        Log::logger->log(Log::ERR, R"(Pam module "/etc/pam.d/{}" does not exist! Falling back to "/etc/pam.d/su")", m_sPamModule);
         m_sPamModule = "su";
     }
 
@@ -120,7 +120,7 @@ bool CPam::auth() {
 
     if (ret != PAM_SUCCESS) {
         m_sConversationState.failText = "pam_start failed";
-        Debug::log(ERR, "auth: pam_start failed for {}", m_sPamModule);
+        Log::logger->log(Log::ERR, "auth: pam_start failed for {}", m_sPamModule);
         return false;
     }
 
@@ -133,12 +133,12 @@ bool CPam::auth() {
     if (ret != PAM_SUCCESS) {
         if (!m_sConversationState.failTextFromPam)
             m_sConversationState.failText = ret == PAM_AUTH_ERR ? "Authentication failed" : "pam_authenticate failed";
-        Debug::log(ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
+        Log::logger->log(Log::ERR, "auth: {} for {}", m_sConversationState.failText, m_sPamModule);
         return false;
     }
 
     m_sConversationState.failText = "Successfully authenticated";
-    Debug::log(LOG, "auth: authenticated for {}", m_sPamModule);
+    Log::logger->log(Log::INFO, "auth: authenticated for {}", m_sPamModule);
 
     return true;
 }
@@ -156,7 +156,7 @@ void CPam::handleInput(const std::string& input) {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
 
     if (!m_sConversationState.inputRequested)
-        Debug::log(ERR, "SubmitInput called, but the auth thread is not waiting for input!");
+        Log::logger->log(Log::ERR, "SubmitInput called, but the auth thread is not waiting for input!");
 
     m_sConversationState.input             = input;
     m_sConversationState.inputRequested    = false;

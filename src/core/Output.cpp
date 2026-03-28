@@ -9,22 +9,22 @@ void COutput::create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t _name
 
     m_wlOutput->setDescription([this](CCWlOutput* r, const char* description) {
         stringDesc = description ? std::string{description} : "";
-        Debug::log(LOG, "output {} description {}", m_ID, stringDesc);
+        Log::logger->log(Log::INFO, "output {} description {}", m_ID, stringDesc);
     });
 
     m_wlOutput->setName([this](CCWlOutput* r, const char* name) {
         stringName = std::string{name} + stringName;
         stringPort = std::string{name};
-        Debug::log(LOG, "output {} name {}", name, name);
+        Log::logger->log(Log::INFO, "output {} name {}", name, name);
     });
 
     m_wlOutput->setScale([this](CCWlOutput* r, int32_t sc) { scale = sc; });
 
     m_wlOutput->setDone([this](CCWlOutput* r) {
         done = true;
-        Debug::log(LOG, "output {} done", m_ID);
+        Log::logger->log(Log::INFO, "output {} done", m_ID);
         if (g_pHyprlock->m_lockAquired && !m_sessionLockSurface) {
-            Debug::log(LOG, "output {} creating a new lock surface", m_ID);
+            Log::logger->log(Log::INFO, "output {} creating a new lock surface", m_ID);
             createSessionLockSurface();
         }
     });
@@ -41,23 +41,23 @@ void COutput::create(WP<COutput> pSelf, SP<CCWlOutput> pWlOutput, uint32_t _name
         [this](CCWlOutput* r, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform_) {
             transform = (wl_output_transform)transform_;
 
-            Debug::log(LOG, "output {} make {} model {}", m_ID, make ? make : "", model ? model : "");
+            Log::logger->log(Log::INFO, "output {} make {} model {}", m_ID, make ? make : "", model ? model : "");
         });
 }
 
 void COutput::createSessionLockSurface() {
     if (!m_self.valid()) {
-        Debug::log(ERR, "output {} dead??", m_ID);
+        Log::logger->log(Log::ERR, "output {} dead??", m_ID);
         return;
     }
 
     if (m_sessionLockSurface) {
-        Debug::log(ERR, "output {} already has a session lock surface", m_ID);
+        Log::logger->log(Log::ERR, "output {} already has a session lock surface", m_ID);
         return;
     }
 
     if (size == Vector2D{0, 0}) {
-        Debug::log(WARN, "output {} refusing to create a lock surface with size 0x0", m_ID);
+        Log::logger->log(Log::WARN, "output {} refusing to create a lock surface with size 0x0", m_ID);
         return;
     }
 

@@ -29,7 +29,7 @@ static void onTimer(AWP<CLabel> ref) {
 
 void CLabel::onTimerUpdate() {
     if (m_pendingResource) {
-        Debug::log(WARN, "Trying to update label, but a resource is still pending! Skipping update.");
+        Log::logger->log(Log::WARN, "Trying to update label, but a resource is still pending! Skipping update.");
         return;
     }
 
@@ -152,14 +152,14 @@ bool CLabel::draw(const SRenderData& data) {
 }
 
 void CLabel::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    Debug::log(TRACE, "Label update for resourceID {}", id);
+    Log::logger->log(Log::TRACE, "Label update for resourceID {}", id);
     m_pendingResource = false;
 
     if (!newAsset)
-        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", id);
+        Log::logger->log(Log::ERR, "asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
-        Debug::log(ERR, "New image asset has an invalid texture!");
+        Log::logger->log(Log::ERR, "New image asset has an invalid texture!");
     } else {
         // new asset is ready :D
         g_asyncResourceManager->unload(asset);

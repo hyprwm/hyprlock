@@ -359,7 +359,7 @@ void CPasswordInputField::updatePlaceholder() {
     if (!ALLOWCOLORSWAP && newText == placeholder.currentText)
         return;
 
-    Debug::log(LOG, "Updating placeholder text: {}", newText);
+    Log::logger->log(Log::INFO, "Updating placeholder text: {}", newText);
     placeholder.currentText = newText;
     placeholder.asset       = nullptr;
 

@@ -130,7 +130,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             try {
                 DATA->m_fAngle = std::stoi(var.substr(0, var.find("deg"))) * (M_PI / 180.0); // radians
             } catch (...) {
-                Debug::log(WARN, "Error parsing gradient {}", V);
+                Log::logger->log(Log::WARN, "Error parsing gradient {}", V);
                 parseError = "Error parsing gradient " + V;
             }
 
@@ -139,7 +139,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
             rolling = trim(rolling.substr(LAST ? rolling.length() : SPACEPOS + 1));
 
         if (DATA->m_vColors.size() >= 10) {
-            Debug::log(WARN, "Error parsing gradient {}: max colors is 10.", V);
+            Log::logger->log(Log::WARN, "Error parsing gradient {}: max colors is 10.", V);
             parseError = "Error parsing gradient " + V + ": max colors is 10.";
             break;
         }
@@ -150,7 +150,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
         try {
             DATA->m_vColors.emplace_back(configStringToInt(var));
         } catch (std::exception& e) {
-            Debug::log(WARN, "Error parsing gradient {}", V);
+            Log::logger->log(Log::WARN, "Error parsing gradient {}", V);
             parseError = "Error parsing gradient " + V + ": " + e.what();
         }
     }
@@ -161,7 +161,7 @@ static Hyprlang::CParseResult configHandleGradientSet(const char* VALUE, void** 
     }
 
     if (DATA->m_vColors.size() == 0) {
-        Debug::log(WARN, "Error parsing gradient {}", V);
+        Log::logger->log(Log::WARN, "Error parsing gradient {}", V);
         parseError = "Error parsing gradient " + V + ": No colors?";
 
         DATA->m_vColors.emplace_back(0); // transparent
@@ -359,7 +359,7 @@ void CConfigManager::init() {
     auto result = m_config.parse();
 
     if (result.error)
-        Debug::log(ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
+        Log::logger->log(Log::ERR, "Config has errors:\n{}\nProceeding ignoring faulty entries", result.getError());
 
 #undef SHADOWABLE
 #undef CLICKABLE
@@ -527,7 +527,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
 
 std::optional<std::string> CConfigManager::handleSource(const std::string& command, const std::string& rawpath) {
     if (rawpath.length() < 2) {
-        Debug::log(ERR, "source= path garbage");
+        Log::logger->log(Log::ERR, "source= path garbage");
         return "source path " + rawpath + " bogus!";
     }
     std::unique_ptr<glob_t, void (*)(glob_t*)> glob_buf{new glob_t, [](glob_t* g) { globfree(g); }};
@@ -537,7 +537,7 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
 
     if (auto r = glob(absolutePath(rawpath, CURRENTDIR).c_str(), GLOB_TILDE, nullptr, glob_buf.get()); r != 0) {
         std::string err = std::format("source= globbing error: {}", r == GLOB_NOMATCH ? "found no match" : GLOB_ABORTED ? "read error" : "out of memory");
-        Debug::log(ERR, "{}", err);
+        Log::logger->log(Log::ERR, "{}", err);
         return err;
     }
 
@@ -545,17 +545,17 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
         const auto PATH = absolutePath(glob_buf->gl_pathv[i], CURRENTDIR);
 
         if (PATH.empty() || PATH == configCurrentPath) {
-            Debug::log(WARN, "source= skipping invalid path");
+            Log::logger->log(Log::WARN, "source= skipping invalid path");
             continue;
         }
 
         if (!std::filesystem::is_regular_file(PATH)) {
             if (std::filesystem::exists(PATH)) {
-                Debug::log(WARN, "source= skipping non-file {}", PATH);
+                Log::logger->log(Log::WARN, "source= skipping non-file {}", PATH);
                 continue;
             }
 
-            Debug::log(ERR, "source= file doesnt exist");
+            Log::logger->log(Log::ERR, "source= file doesnt exist");
             return "source file " + PATH + " doesn't exist!";
         }
 

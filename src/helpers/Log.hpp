@@ -1,21 +1,12 @@
 #pragma once
-#include <format>
-#include <string>
-#include <print>
+#include "../defines.hpp"
 
-enum eLogLevel {
-    TRACE = 0,
-    INFO,
-    LOG,
-    WARN,
-    ERR,
-    CRIT,
-    NONE
-};
+#include <format>
+#include <hyprutils/cli/Logger.hpp>
 
 #define RASSERT(expr, reason, ...)                                                                                                                                                 \
     if (!(expr)) {                                                                                                                                                                 \
-        Debug::log(CRIT, "\n==========================================================================================\nASSERTION FAILED! \n\n{}\n\nat: line {} in {}",            \
+        Log::logger->log(Log::CRIT, "\n==========================================================================================\nASSERTION FAILED! \n\n{}\n\nat: line {} in {}",            \
                    std::format(reason, ##__VA_ARGS__), __LINE__,                                                                                                                   \
                    ([]() constexpr -> std::string { return std::string(__FILE__).substr(std::string(__FILE__).find_last_of('/') + 1); })().c_str());                               \
         std::abort();                                                                                                                                                              \
@@ -23,32 +14,33 @@ enum eLogLevel {
 
 #define ASSERT(expr) RASSERT(expr, "?")
 
-namespace Debug {
-    constexpr const char* logLevelString(eLogLevel level) {
-        switch (level) {
-            case TRACE: return "TRACE"; break;
-            case INFO: return "INFO"; break;
-            case LOG: return "LOG"; break;
-            case WARN: return "WARN"; break;
-            case ERR: return "ERR"; break;
-            case CRIT: return "CRITICAL"; break;
-            default: return "??";
+namespace Log {
+    class CLogger {
+      public:
+        template <typename... Args>
+        void log(Hyprutils::CLI::eLogLevel level, std::format_string<Args...> fmt, Args&&... args) {
+            if (m_quiet)
+                return;
+
+            if (level == Hyprutils::CLI::LOG_TRACE && !m_verbose)
+                return;
+
+            m_logger.log(level, std::vformat(fmt.get(), std::make_format_args(args...)));
         }
-    }
-    inline bool quiet   = false;
-    inline bool verbose = false;
 
-    template <typename... Args>
-    void log(eLogLevel level, const std::string& fmt, Args&&... args) {
+        bool                    m_quiet   = false;
+        bool                    m_verbose = false;
 
-        if (!verbose && level == TRACE)
-            return;
+      private:
+        Hyprutils::CLI::CLogger m_logger;
+    };
 
-        if (quiet)
-            return;
+    inline UP<CLogger> logger = makeUnique<CLogger>();
 
-        if (level != NONE) {
-            std::println("[{}] {}", logLevelString(level), std::vformat(fmt, std::make_format_args(args...)));
-        }
-    }
+    //
+    inline constexpr const Hyprutils::CLI::eLogLevel WARN  = Hyprutils::CLI::LOG_WARN;
+    inline constexpr const Hyprutils::CLI::eLogLevel ERR   = Hyprutils::CLI::LOG_ERR;
+    inline constexpr const Hyprutils::CLI::eLogLevel CRIT  = Hyprutils::CLI::LOG_CRIT;
+    inline constexpr const Hyprutils::CLI::eLogLevel INFO  = Hyprutils::CLI::LOG_DEBUG;
+    inline constexpr const Hyprutils::CLI::eLogLevel TRACE = Hyprutils::CLI::LOG_TRACE;
 };
