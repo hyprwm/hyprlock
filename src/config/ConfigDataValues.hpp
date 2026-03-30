@@ -35,7 +35,7 @@ class CLayoutValueData : public ICustomConfigValueData {
     }
 
     virtual std::string toString() {
-        return std::format("{}{},{}{}", m_vValues.x, (m_sIsRelative.x) ? "%" : "px", m_vValues.y, (m_sIsRelative.y) ? "%" : "px");
+        return std::format("{}% + {}px,{}% + {}px", m_vPercentageValues.x, m_vPixelValues.x, m_vPercentageValues.y, m_vPixelValues.y);
     }
 
     static CLayoutValueData* fromAnyPv(const std::any& v) {
@@ -47,16 +47,13 @@ class CLayoutValueData : public ICustomConfigValueData {
 
     Hyprutils::Math::Vector2D getAbsolute(const Hyprutils::Math::Vector2D& viewport) {
         return {
-            (m_sIsRelative.x ? (m_vValues.x / 100) * viewport.x : m_vValues.x),
-            (m_sIsRelative.y ? (m_vValues.y / 100) * viewport.y : m_vValues.y),
+            ((m_vPercentageValues.x / 100) * viewport.x + m_vPixelValues.x),
+            ((m_vPercentageValues.y / 100) * viewport.y + m_vPixelValues.y),
         };
     }
 
-    Hyprutils::Math::Vector2D m_vValues;
-    struct {
-        bool x = false;
-        bool y = false;
-    } m_sIsRelative;
+    Hyprutils::Math::Vector2D m_vPercentageValues;
+    Hyprutils::Math::Vector2D m_vPixelValues;
 };
 
 class CGradientValueData : public ICustomConfigValueData {

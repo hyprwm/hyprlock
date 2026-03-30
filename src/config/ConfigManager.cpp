@@ -5,6 +5,7 @@
 #include "../core/AnimationManager.hpp"
 #include <hyprlang.hpp>
 #include <hyprutils/string/String.hpp>
+#include <hyprutils/string/ConstVarList.hpp>
 #include <hyprutils/path/Path.hpp>
 #include <filesystem>
 #include <glob.h>
@@ -69,27 +70,88 @@ static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** dat
         return result;
     }
 
-    auto lhs = VALUE.substr(0, SPLIT);
-    auto rhs = VALUE.substr(SPLIT + 1);
-    if (rhs.starts_with(" "))
-        rhs = rhs.substr(1);
+    CConstVarList lhs(VALUE.substr(0, SPLIT), 0, 's', true);
+    CConstVarList rhs(VALUE.substr(SPLIT + 1), 0, 's', true);
 
-    if (lhs.contains(",") || rhs.contains(",")) {
-        result.setError(std::format("too many arguments in {}", VALUE).c_str());
-        return result;
+    if (lhs.size() == 1) {
+        auto       value         = lhs[0];
+        const auto is_percentage = value.ends_with("%");
+        if (is_percentage) {
+            value = value.substr(0, value.length() - 1);
+        }
+        auto& target         = is_percentage ? DATA->m_vPercentageValues.x : DATA->m_vPixelValues.x;
+        const auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), target);
+        if (ec != std::errc() || ptr != value.data() + value.size()) {
+            result.setError(std::format("expected a number, got {}", value).c_str());
+            return result;
+        }
+    } else {
+        if (lhs[1] != "+" && lhs[1] != "-") {
+            result.setError("only supports + and -");
+            return result;
+        }
+        auto percentage = lhs[0];
+        if (percentage.ends_with("%")) {
+            percentage = percentage.substr(0, percentage.length() - 1);
+        } else {
+            result.setError(std::format("expected a percentage value, got {}", percentage).c_str());
+            return result;
+        }
+        const auto pixel = lhs[2];
+
+        if (const auto [ptr, ec] = std::from_chars(percentage.data(), percentage.data() + percentage.size(), DATA->m_vPercentageValues.x);
+            ec != std::errc() || ptr != percentage.data() + percentage.size()) {
+            result.setError(std::format("expected a number, got {}", percentage).c_str());
+            return result;
+        }
+        if (const auto [ptr, ec] = std::from_chars(pixel.data(), pixel.data() + pixel.size(), DATA->m_vPixelValues.x); ec != std::errc() || ptr != pixel.data() + pixel.size()) {
+            result.setError(std::format("expected a number, got {}", pixel).c_str());
+            return result;
+        }
+        if (lhs[1][0] == '-') {
+            DATA->m_vPixelValues.x *= -1;
+        }
     }
 
-    if (lhs.ends_with("%")) {
-        DATA->m_sIsRelative.x = true;
-        lhs.pop_back();
-    }
+    if (rhs.size() == 1) {
+        auto       value         = rhs[0];
+        const auto is_percentage = value.ends_with("%");
+        if (is_percentage) {
+            value = value.substr(0, value.length() - 1);
+        }
+        auto& target         = is_percentage ? DATA->m_vPercentageValues.y : DATA->m_vPixelValues.y;
+        const auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), target);
+        if (ec != std::errc() || ptr != value.data() + value.size()) {
+            result.setError(std::format("expected a number, got {}", value).c_str());
+            return result;
+        }
+    } else {
+        if (rhs[1] != "+" && rhs[1] != "-") {
+            result.setError("only supports + and -");
+            return result;
+        }
+        auto percentage = rhs[0];
+        if (percentage.ends_with("%")) {
+            percentage = percentage.substr(0, percentage.length() - 1);
+        } else {
+            result.setError(std::format("expected a percentage value, got {}", percentage).c_str());
+            return result;
+        }
+        const auto pixel = rhs[2];
 
-    if (rhs.ends_with("%")) {
-        DATA->m_sIsRelative.y = true;
-        rhs.pop_back();
+        if (const auto [ptr, ec] = std::from_chars(percentage.data(), percentage.data() + percentage.size(), DATA->m_vPercentageValues.y);
+            ec != std::errc() || ptr != percentage.data() + percentage.size()) {
+            result.setError(std::format("expected a number, got {}", percentage).c_str());
+            return result;
+        }
+        if (const auto [ptr, ec] = std::from_chars(pixel.data(), pixel.data() + pixel.size(), DATA->m_vPixelValues.y); ec != std::errc() || ptr != pixel.data() + pixel.size()) {
+            result.setError(std::format("expected a number, got {}", pixel).c_str());
+            return result;
+        }
+        if (rhs[1][0] == '-') {
+            DATA->m_vPixelValues.y *= -1;
+        }
     }
-
-    DATA->m_vValues = Hyprutils::Math::Vector2D{std::stof(lhs), std::stof(rhs)};
 
     return result;
 }
