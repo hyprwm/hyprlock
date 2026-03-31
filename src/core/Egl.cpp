@@ -42,27 +42,27 @@ CEGL::CEGL(wl_display* display) {
     eglDisplay               = eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
     EGLint matched           = 0;
     if (eglDisplay == EGL_NO_DISPLAY) {
-        Debug::log(CRIT, "Failed to create EGL display");
+        Log::logger->log(Log::CRIT, "Failed to create EGL display");
         goto error;
     }
 
     if (eglInitialize(eglDisplay, nullptr, nullptr) == EGL_FALSE) {
-        Debug::log(CRIT, "Failed to initialize EGL");
+        Log::logger->log(Log::CRIT, "Failed to initialize EGL");
         goto error;
     }
 
     if (!eglChooseConfig(eglDisplay, config_attribs, &eglConfig, 1, &matched)) {
-        Debug::log(CRIT, "eglChooseConfig failed");
+        Log::logger->log(Log::CRIT, "eglChooseConfig failed");
         goto error;
     }
     if (matched == 0) {
-        Debug::log(CRIT, "Failed to match an EGL config");
+        Log::logger->log(Log::CRIT, "Failed to match an EGL config");
         goto error;
     }
 
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, context_attribs);
     if (eglContext == EGL_NO_CONTEXT) {
-        Debug::log(CRIT, "Failed to create EGL context");
+        Log::logger->log(Log::CRIT, "Failed to create EGL context");
         goto error;
     }
 

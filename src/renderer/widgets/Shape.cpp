@@ -80,7 +80,7 @@ bool CShape::draw(const SRenderData& data) {
     if (!shapeFB.isAllocated()) {
         const int ROUND       = roundingForBox(shapeBox, rounding);
         const int BORDERROUND = roundingForBorderBox(borderBox, rounding, border);
-        Debug::log(LOG, "round: {}, borderround: {}", ROUND, BORDERROUND);
+        Log::logger->log(Log::INFO, "round: {}, borderround: {}", ROUND, BORDERROUND);
 
         shapeFB.alloc(borderBox.width + (borderBox.x * 2.0), borderBox.height + (borderBox.y * 2.0), true);
         g_pRenderer->pushFb(shapeFB.m_iFb);

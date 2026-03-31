@@ -72,7 +72,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
     g_pAnimationManager->createAnimation(0.f, crossFadeProgress, g_pConfigManager->m_AnimationTree.getConfig("fadeIn"));
 
     if (!g_asyncResourceManager->checkIdPresent(scResourceID)) {
-        Debug::log(LOG, "Missing screenshot for output {}", outputPort);
+        Log::logger->log(Log::INFO, "Missing screenshot for output {}", outputPort);
         scResourceID = 0;
     }
 
@@ -83,7 +83,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         resourceID = scResourceID; // Fallback to solid background:color when scResourceID==0
 
         if (!g_pHyprlock->getScreencopy()) {
-            Debug::log(ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
+            Log::logger->log(Log::ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
             resourceID = 0;
         }
     } else if (!path.empty())
@@ -93,7 +93,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
-        } catch (std::exception& e) { Debug::log(ERR, "{}", e.what()); }
+        } catch (std::exception& e) { Log::logger->log(Log::ERR, "{}", e.what()); }
 
         plantReloadTimer(); // No reloads if reloadCommand is empty
     }
@@ -270,10 +270,10 @@ void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
     pendingResource = false;
 
     if (!newAsset)
-        Debug::log(ERR, "Background asset update failed, resourceID: {} not available on update!", id);
+        Log::logger->log(Log::ERR, "Background asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
-        Debug::log(ERR, "New background asset has an invalid texture!");
+        Log::logger->log(Log::ERR, "New background asset has an invalid texture!");
     } else {
         pendingAsset = newAsset;
         crossFadeProgress->setValueAndWarp(0);
@@ -328,7 +328,7 @@ void CBackground::onReloadTimerUpdate() {
             m_imageRevision = 0;
     } catch (std::exception& e) {
         path = OLDPATH;
-        Debug::log(ERR, "{}", e.what());
+        Log::logger->log(Log::ERR, "{}", e.what());
         return;
     }
 

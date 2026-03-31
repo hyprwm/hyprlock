@@ -106,7 +106,7 @@ void CAuth::enqueueFail(const std::string& failText, eAuthImplementations implTy
     m_sCurrentFail.failSource = implType;
     m_sCurrentFail.failedAttempts++;
 
-    Debug::log(LOG, "Failed attempts: {}", m_sCurrentFail.failedAttempts);
+    Log::logger->log(Log::INFO, "Failed attempts: {}", m_sCurrentFail.failedAttempts);
 
     if (m_resetDisplayFailTimer) {
         m_resetDisplayFailTimer->cancel();

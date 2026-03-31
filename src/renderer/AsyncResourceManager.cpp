@@ -44,14 +44,14 @@ ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& por
 ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextRequest(params);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Reusing text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
+        Log::logger->log(Log::TRACE, "Reusing text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(TRACE, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
+    Log::logger->log(Log::TRACE, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -59,14 +59,14 @@ ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResource
 ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextCmdRequest(params, revision);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
+        Log::logger->log(Log::TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextCmdResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
+    Log::logger->log(Log::TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -74,14 +74,14 @@ ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResou
 ResourceID CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForImageRequest(path, revision);
     if (request(RESOURCEID, widget)) {
-        Debug::log(TRACE, "Reusing image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+        Log::logger->log(Log::TRACE, "Reusing image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CImageResource>(absolutePath(path, ""));
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Debug::log(TRACE, "Requesting image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+    Log::logger->log(Log::TRACE, "Requesting image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -126,7 +126,7 @@ void CAsyncResourceManager::enqueueScreencopyFrames() {
     });
 
     if (!BGSCREENSHOT && !FADENEEDSSC) {
-        Debug::log(LOG, "Skipping screencopy");
+        Log::logger->log(Log::INFO, "Skipping screencopy");
         return;
     }
 
@@ -140,18 +140,18 @@ void CAsyncResourceManager::enqueueScreencopyFrames() {
 
 void CAsyncResourceManager::screencopyToTexture(const CScreencopyFrame& scFrame) {
     if (!scFrame.m_ready || !m_assets.contains(scFrame.m_resourceID)) {
-        Debug::log(ERR, "Bogus call to CAsyncResourceManager::screencopyToTexture. This is a bug!");
+        Log::logger->log(Log::ERR, "Bogus call to CAsyncResourceManager::screencopyToTexture. This is a bug!");
         return;
     }
 
     m_assets[scFrame.m_resourceID].texture = scFrame.m_asset;
 
-    Debug::log(TRACE, "Done sc frame {}", scFrame.m_resourceID);
+    Log::logger->log(Log::TRACE, "Done sc frame {}", scFrame.m_resourceID);
 
     std::erase_if(m_scFrames, [&scFrame](const auto& f) { return f.get() == &scFrame; });
 
     if (m_scFrames.empty()) {
-        Debug::log(LOG, "Gathered all screencopy frames - removing dmabuf listeners");
+        Log::logger->log(Log::INFO, "Gathered all screencopy frames - removing dmabuf listeners");
         g_pHyprlock->removeDmabufListener();
     }
 }
@@ -197,14 +197,15 @@ void CAsyncResourceManager::gatherInitialResources(wl_display* display) {
         g_pHyprlock->processTimers();
 
         if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count() > MAXDELAYMS) {
-            Debug::log(WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
+            Log::logger->log(Log::WARN, "Gathering resources timed out after {} milliseconds. Backgrounds may be delayed and render `background:color` at first.", MAXDELAYMS);
             break;
         }
 
         gathered = m_resources.empty() && m_scFrames.empty();
     }
 
-    Debug::log(LOG, "Resources gathered after {} milliseconds", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
+    Log::logger->log(Log::INFO, "Resources gathered after {} milliseconds",
+                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - STARTGATHERTP).count());
 }
 
 bool CAsyncResourceManager::checkIdPresent(ResourceID id) {
@@ -219,7 +220,7 @@ void CAsyncResourceManager::unload(ASP<CTexture> texture) {
     preload->second.refs--;
 
     if (preload->second.refs == 0) {
-        Debug::log(TRACE, "Releasing resourceID: {}!", preload->first);
+        Log::logger->log(Log::TRACE, "Releasing resourceID: {}!", preload->first);
         m_assets.erase(preload->first);
     }
 }
@@ -231,7 +232,7 @@ void CAsyncResourceManager::unloadById(ResourceID id) {
     m_assets[id].refs--;
 
     if (m_assets[id].refs == 0) {
-        Debug::log(TRACE, "Releasing resourceID: {}!", id);
+        Log::logger->log(Log::TRACE, "Releasing resourceID: {}!", id);
         m_assets.erase(id);
     }
 }
@@ -258,7 +259,7 @@ bool CAsyncResourceManager::request(ResourceID id, const AWP<IWidget>& widget) {
         // Asset currently in-flight. Add the widget reference to in order for the callback to get dispatched later.
         m_resourcesMutex.lock();
         if (!m_resources.contains(id)) {
-            Debug::log(ERR, "In-flight resourceID: {} not found! This is a bug.", id);
+            Log::logger->log(Log::ERR, "In-flight resourceID: {} not found! This is a bug.", id);
             m_resourcesMutex.unlock();
             return true;
         }
@@ -274,7 +275,7 @@ void CAsyncResourceManager::enqueue(ResourceID resourceID, const ASP<IAsyncResou
 
     m_resourcesMutex.lock();
     if (m_resources.contains(resourceID))
-        Debug::log(ERR, "Resource already enqueued! This is a bug.");
+        Log::logger->log(Log::ERR, "Resource already enqueued! This is a bug.");
 
     m_resources[resourceID] = {resource, {widget}};
     m_resourcesMutex.unlock();
@@ -311,7 +312,7 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
     if (!RESOURCE || !RESOURCE->m_asset.cairoSurface)
         return;
 
-    Debug::log(TRACE, "Resource to texture id:{}", id);
+    Log::logger->log(Log::TRACE, "Resource to texture id:{}", id);
 
     const auto           texture = makeAtomicShared<CTexture>();
 
@@ -322,7 +323,7 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
     const GLint          glType        = CAIROFORMAT == CAIRO_FORMAT_RGB96F ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
     if (SURFACESTATUS != CAIRO_STATUS_SUCCESS) {
-        Debug::log(ERR, "resourceID: {} invalid ({})", id, cairo_status_to_string(SURFACESTATUS));
+        Log::logger->log(Log::ERR, "resourceID: {} invalid ({})", id, cairo_status_to_string(SURFACESTATUS));
         texture->m_iType = TEXTURE_INVALID;
     }
 
