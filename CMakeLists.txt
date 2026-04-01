@@ -88,6 +88,7 @@ pkg_check_modules(
   gbm
   hyprutils>=0.11.0
   sdbus-c++>=2.0.0
+  libsodium
   hyprgraphics>=0.1.6)
 find_library(PAM_FOUND NAMES pam libpam)
 if(PAM_FOUND)
@@ -153,8 +154,12 @@ protocolnew("stable/viewporter" "viewporter" false)
 protocolnew("staging/cursor-shape" "cursor-shape-v1" false)
 protocolnew("stable/tablet" "tablet-v2" false)
 
+# hyprlock-pwhash
+add_executable(hyprlock-pwhash "setpwhash/main.cpp")
+target_link_libraries(hyprlock-pwhash PRIVATE sodium hyprutils)
+
 # Installation
-install(TARGETS hyprlock)
+install(TARGETS hyprlock hyprlock-pwhash)
 
 install(FILES ${CMAKE_SOURCE_DIR}/pam/hyprlock
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/pam.d)
