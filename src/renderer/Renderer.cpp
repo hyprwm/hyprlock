@@ -17,6 +17,7 @@
 #include "widgets/Label.hpp"
 #include "widgets/Image.hpp"
 #include "widgets/Shape.hpp"
+#include "widgets/SessionPicker.hpp"
 
 inline const float fullVerts[] = {
     1, 0, // top right
@@ -412,6 +413,8 @@ std::vector<ASP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSu
                 createWidget<CShape>(widgets[surf.m_outputID]);
             } else if (c.type == "image") {
                 createWidget<CImage>(widgets[surf.m_outputID]);
+            } else if (c.type == "session-picker") {
+                createWidget<CSessionPicker>(widgets[surf.m_outputID]);
             } else {
                 Log::logger->log(Log::ERR, "Unknown widget type: {}", c.type);
                 continue;

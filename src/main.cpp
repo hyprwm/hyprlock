@@ -2,6 +2,7 @@
 #include "config/ConfigManager.hpp"
 #include "core/hyprlock.hpp"
 #include "helpers/Log.hpp"
+#include "helpers/MiscFunctions.hpp"
 #include "core/AnimationManager.hpp"
 
 #include <string_view>
@@ -22,6 +23,8 @@ int main(int argc, char** argv, char** envp) {
     Hyprutils::CLI::CArgumentParser argParser(args);
 
     ASSERT(argParser.registerBoolOption("help", "h", "Show this help message").has_value());
+    ASSERT(argParser.registerBoolOption("greetd", "", "Start hyprlock for session login via greetd").has_value());
+    ASSERT(argParser.registerStringOption("session-dirs", "", "DIR1:DIR2 - Additional directories containing login sessions").has_value());
     ASSERT(argParser.registerBoolOption("version", "V", "Print hyprlock version, then exit").has_value());
     ASSERT(argParser.registerBoolOption("verbose", "v", "Enable verbose logging").has_value());
     ASSERT(argParser.registerBoolOption("quiet", "q", "Disable logging").has_value());
@@ -62,8 +65,11 @@ int main(int argc, char** argv, char** envp) {
         Log::logger->log(Log::WARN, R"("--immediate" is deprecated. Use the "--grace" option instead.)");
     }
 
+    bool greetdLogin     = argParser.getBool("greetd").value_or(false);
     bool immediateRender = argParser.getBool("immediate-render").value_or(false);
     bool noFadeIn        = argParser.getBool("no-fade-in").value_or(false);
+    auto wlDisplay       = argParser.getString("display").value_or("");
+    auto sessionDirs     = argParser.getString("session-dirs").value_or("");
 
     if (!quiet)
         printVersion();
@@ -88,7 +94,7 @@ int main(int argc, char** argv, char** envp) {
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
     try {
-        g_pHyprlock = makeUnique<CHyprlock>(argParser.getString("display").value_or(""), immediateRender, graceSeconds);
+        g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds, greetdLogin, sessionDirs);
         g_pHyprlock->run();
     } catch (const std::exception& ex) {
         Log::logger->log(Log::CRIT, "Hyprlock threw: {}", ex.what());
