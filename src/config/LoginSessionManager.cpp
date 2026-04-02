@@ -142,26 +142,22 @@ void CLoginSessionManager::gather(const std::string& sessionDirs) {
 }
 
 void CLoginSessionManager::handleKeyUp() {
-    if (m_fixedDefault)
+    if (m_fixedDefault || m_loginSessions.empty())
         return;
 
-    if (m_loginSessions.size() > 1) {
-        if (m_selectedLoginSession > 0)
-            m_selectedLoginSession--;
-        else
-            m_selectedLoginSession = m_loginSessions.size() - 1;
-    }
+    if (m_selectedLoginSession > 0)
+        m_selectedLoginSession--;
+    else
+        m_selectedLoginSession = m_loginSessions.size() - 1;
 }
 
 void CLoginSessionManager::handleKeyDown() {
-    if (m_fixedDefault)
+    if (m_fixedDefault || m_loginSessions.empty())
         return;
 
-    if (m_loginSessions.size() > 1) {
-        m_selectedLoginSession++;
-        if (m_selectedLoginSession >= m_loginSessions.size())
-            m_selectedLoginSession = 0;
-    }
+    m_selectedLoginSession++;
+    if (m_selectedLoginSession >= m_loginSessions.size())
+        m_selectedLoginSession = 0;
 }
 
 void CLoginSessionManager::selectSession(size_t index) {
@@ -170,6 +166,7 @@ void CLoginSessionManager::selectSession(size_t index) {
 }
 
 const SLoginSessionConfig& CLoginSessionManager::getSelectedLoginSession() const {
+    RASSERT(m_selectedLoginSession < m_loginSessions.size(), "Internal bug: out of bounds login session index!");
     return m_loginSessions[m_selectedLoginSession];
 }
 

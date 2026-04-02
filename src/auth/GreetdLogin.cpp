@@ -155,6 +155,9 @@ void CGreetdLogin::init() {
 
         while (true) {
             waitForInput();
+            if (g_pHyprlock->m_bTerminate)
+                break;
+
             processInput();
             m_state.inputSubmitted = false;
             m_state.input.clear();
@@ -351,7 +354,9 @@ std::optional<std::string> CGreetdLogin::getLastPrompt() {
 }
 
 void CGreetdLogin::terminate() {
+    m_state.inputSubmitted = true;
     m_state.inputSubmittedCondition.notify_all();
+
     if (m_thread.joinable())
         m_thread.join();
 

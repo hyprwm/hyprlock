@@ -361,7 +361,8 @@ void CConfigManager::init() {
     m_config.addSpecialCategory("session-picker", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("session-picker", "monitor", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("session-picker", "position", LAYOUTCONFIG("0,0"));
-    m_config.addSpecialConfigValue("session-picker", "size", LAYOUTCONFIG("10%,10%"));
+    m_config.addSpecialConfigValue("session-picker", "entry_size", LAYOUTCONFIG("100,100"));
+    m_config.addSpecialConfigValue("session-picker", "font_size", Hyprlang::INT{16});
     m_config.addSpecialConfigValue("session-picker", "rounding", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("session-picker", "border_size", Hyprlang::INT{3});
     m_config.addSpecialConfigValue("session-picker", "entry_spacing", Hyprlang::FLOAT{10});
@@ -578,7 +579,8 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
             .monitor=std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("session-picker", "monitor", k.c_str())),
             .values={
                 {"position", m_config.getSpecialConfigValue("session-picker", "position", k.c_str())},
-                {"size", m_config.getSpecialConfigValue("session-picker", "size", k.c_str())},
+                {"entry_size", m_config.getSpecialConfigValue("session-picker", "entry_size", k.c_str())},
+                {"font_size", m_config.getSpecialConfigValue("session-picker", "font_size", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("session-picker", "rounding", k.c_str())},
                 {"border_size", m_config.getSpecialConfigValue("session-picker", "border_size", k.c_str())},
                 {"entry_spacing", m_config.getSpecialConfigValue("session-picker", "entry_spacing", k.c_str())},

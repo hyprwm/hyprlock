@@ -25,7 +25,7 @@ class CSessionPicker : public IWidget {
 
     void         registerSelf(const ASP<CSessionPicker>& self);
 
-    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput);
+    virtual void configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& output);
     virtual bool draw(const SRenderData& data);
     virtual void onAssetUpdate(ResourceID id, ASP<CTexture> newAsset);
     virtual CBox getBoundingBoxWl() const;
@@ -41,8 +41,10 @@ class CSessionPicker : public IWidget {
     std::vector<SSessionEntry> m_loginSessions;
 
     Vector2D                   m_viewport;
+
     Vector2D                   m_configPos;
-    Vector2D                   m_size;
+    Vector2D                   m_entrySize;
+    int                        m_fontSize;
     std::string                m_halign       = "";
     std::string                m_valign       = "";
     int                        m_rounding     = -1;

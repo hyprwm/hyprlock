@@ -13,6 +13,9 @@
 #include <stdexcept>
 
 CSessionPicker::~CSessionPicker() {
+    if (!g_asyncResourceManager)
+        return;
+
     for (auto& loginSessionEntry : m_loginSessions) {
         loginSessionEntry.m_textAsset.reset();
         g_asyncResourceManager->unloadById(loginSessionEntry.m_textResourceID);
@@ -23,14 +26,15 @@ void CSessionPicker::registerSelf(const ASP<CSessionPicker>& self) {
     m_self = self;
 }
 
-void CSessionPicker::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
-    m_viewport = pOutput->getViewport();
+void CSessionPicker::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& output) {
+    m_viewport = output->getViewport();
 
     m_shadow.configure(m_self, props, m_viewport);
 
     try {
         m_configPos                  = CLayoutValueData::fromAnyPv(props.at("position"))->getAbsolute(m_viewport);
-        m_size                       = CLayoutValueData::fromAnyPv(props.at("size"))->getAbsolute(m_viewport);
+        m_entrySize                  = CLayoutValueData::fromAnyPv(props.at("entry_size"))->getAbsolute(m_viewport);
+        m_fontSize                   = std::any_cast<Hyprlang::INT>(props.at("font_size"));
         m_rounding                   = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         m_borderSize                 = std::any_cast<Hyprlang::INT>(props.at("border_size"));
         m_entrySpacing               = std::any_cast<Hyprlang::FLOAT>(props.at("entry_spacing"));
@@ -62,8 +66,8 @@ void CSessionPicker::requestSessionEntryTexts() {
 
         request.text = LOGINSESSION.name;
         // request.font     = fontFamily;
-        // request.fontSize = fontSize; //TODO
-        request.color = m_colorConfig.text.asRGB();
+        request.fontSize = m_fontSize;
+        request.color    = m_colorConfig.text.asRGB();
 
         m_loginSessions[i] = {
             .m_loginSession   = LOGINSESSION,
@@ -80,10 +84,12 @@ void CSessionPicker::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
         newAsset->m_vSize.y,
     };
 
+    m_entrySize.x = std::max(m_entrySize.x, m_biggestEntryAssetSize.x);
+    m_entrySize.y = std::max(m_entrySize.y, m_biggestEntryAssetSize.y);
+
     for (auto& loginSessionEntry : m_loginSessions) {
-        if (loginSessionEntry.m_textResourceID == id) {
+        if (loginSessionEntry.m_textResourceID == id)
             loginSessionEntry.m_textAsset = newAsset;
-        }
     }
 }
 
@@ -93,27 +99,30 @@ bool CSessionPicker::draw(const SRenderData& data) {
 
     const size_t   SELECTEDENTRYINDEX = g_pLoginSessionManager->getSelectedLoginSessionIndex();
 
-    const double   PAD = std::abs((m_size.y - m_biggestEntryAssetSize.y) / 2);
-    const Vector2D SIZE{std::max(m_size.x, m_biggestEntryAssetSize.x + PAD), m_size.y};
+    const double   PAD = m_biggestEntryAssetSize.y / 2;
+    const Vector2D SIZE{
+        m_entrySize.x + PAD + (m_borderSize * 2),
+        ((m_entrySize.y + m_borderSize) * m_loginSessions.size() + m_borderSize) + ((m_loginSessions.size() > 1) ? m_entrySpacing * (m_loginSessions.size() - 1) : 0),
+    };
+
     m_box = CBox{
         posFromHVAlign(m_viewport, SIZE, m_configPos, m_halign, m_valign),
         SIZE,
     };
 
-    const auto ENTRYHEIGHT = m_box.h / (m_loginSessions.size() + 1);
-    const auto TOPLEFT     = m_box.pos() + Vector2D{0.0, m_box.h};
-
     for (size_t i = 0; i < m_loginSessions.size(); ++i) {
         auto&      sessionEntry = m_loginSessions[i];
 
         const CBox ENTRYBOX{
-            TOPLEFT.x,
-            TOPLEFT.y - ENTRYHEIGHT - (i * (ENTRYHEIGHT + m_entrySpacing)),
+            m_box.x,
+            (m_box.y + m_box.h) - (m_entrySize.y + 2 * m_borderSize) - (i * (m_entrySize.y + m_entrySpacing + m_borderSize)),
             m_box.w,
-            ENTRYHEIGHT,
+            m_entrySize.y + (2 * m_borderSize),
         };
 
-        const auto ENTRYROUND = roundingForBox(ENTRYBOX, m_rounding);
+        const CBox INNERBOX{ENTRYBOX.pos() + Vector2D{m_borderSize, m_borderSize}, ENTRYBOX.size() - Vector2D{2 * m_borderSize, 2 * m_borderSize}};
+
+        const auto INNERROUND = roundingForBox(INNERBOX, m_rounding);
         const bool SELECTED   = i == SELECTEDENTRYINDEX;
 
         CHyprColor entryCol;
@@ -122,23 +131,19 @@ bool CSessionPicker::draw(const SRenderData& data) {
         else
             entryCol = CHyprColor{m_colorConfig.inner.asRGB(), m_colorConfig.inner.a * data.opacity};
 
-        g_pRenderer->renderRect(ENTRYBOX, entryCol, ENTRYROUND);
-        if (m_borderSize > 0) {
-            const CBox ENTRYBORDERBOX{
-                ENTRYBOX.pos() - Vector2D{m_borderSize, m_borderSize},
-                ENTRYBOX.size() + Vector2D{2 * m_borderSize, 2 * m_borderSize},
-            };
+        g_pRenderer->renderRect(INNERBOX, entryCol, INNERROUND);
 
-            const auto ENTRYBORDERROUND = roundingForBorderBox(ENTRYBORDERBOX, m_rounding, m_borderSize);
-            g_pRenderer->renderBorder(ENTRYBORDERBOX, (SELECTED) ? m_colorConfig.selectedBorder : m_colorConfig.border, m_borderSize, ENTRYBORDERROUND, data.opacity);
+        if (m_borderSize > 0) {
+            const auto ENTRYBORDERROUND = roundingForBorderBox(ENTRYBOX, m_rounding, m_borderSize);
+            g_pRenderer->renderBorder(ENTRYBOX, (SELECTED) ? m_colorConfig.selectedBorder : m_colorConfig.border, m_borderSize, ENTRYBORDERROUND, data.opacity);
         }
 
         if (sessionEntry.m_textAsset) {
             const CBox ASSETBOXCENTERED{
-                ENTRYBOX.pos() +
+                INNERBOX.pos() +
                     Vector2D{
-                        (ENTRYBOX.size().x / 2) - (sessionEntry.m_textAsset->m_vSize.x / 2),
-                        (ENTRYBOX.size().y / 2) - (sessionEntry.m_textAsset->m_vSize.y / 2),
+                        (INNERBOX.size().x / 2) - (sessionEntry.m_textAsset->m_vSize.x / 2),
+                        (INNERBOX.size().y / 2) - (sessionEntry.m_textAsset->m_vSize.y / 2),
                     },
                 sessionEntry.m_textAsset->m_vSize,
             };
@@ -161,7 +166,6 @@ void CSessionPicker::onClick(uint32_t button, bool down, const Vector2D& pos) {
     const auto   HEIGHTPERENTRY = m_box.size().y / m_loginSessions.size();
     const size_t SELECTEDENTRY  = std::floor(DIFFERENTIAL / HEIGHTPERENTRY);
     g_pLoginSessionManager->selectSession(SELECTEDENTRY);
-    Log::logger->log(Log::INFO, "clicked on entry: DIFF {} H/E {} SEL {}", DIFFERENTIAL, HEIGHTPERENTRY, SELECTEDENTRY);
     g_pHyprlock->renderAllOutputs();
 }
 
