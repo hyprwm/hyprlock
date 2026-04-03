@@ -57,7 +57,7 @@ void CSessionPicker::configure(const std::unordered_map<std::string, std::any>& 
 }
 
 void CSessionPicker::requestSessionEntryTexts() {
-    const auto LOGINSESSIONS = g_pLoginSessionManager->getLoginSessions();
+    const auto LOGINSESSIONS = g_loginSessionManager->getLoginSessions();
 
     m_loginSessions.resize(LOGINSESSIONS.size());
     for (size_t i = 0; i < LOGINSESSIONS.size(); i++) {
@@ -97,7 +97,7 @@ bool CSessionPicker::draw(const SRenderData& data) {
     if (std::ranges::any_of(m_loginSessions, [](const auto& sessionEntry) { return sessionEntry.m_textAsset == nullptr; }))
         return false; // rely on callback
 
-    const size_t   SELECTEDENTRYINDEX = g_pLoginSessionManager->getSelectedLoginSessionIndex();
+    const size_t   SELECTEDENTRYINDEX = g_loginSessionManager->getSelectedLoginSessionIndex();
 
     const double   PAD = m_biggestEntryAssetSize.y / 2;
     const Vector2D SIZE{
@@ -165,7 +165,7 @@ void CSessionPicker::onClick(uint32_t button, bool down, const Vector2D& pos) {
     const auto   DIFFERENTIAL   = pos.y - (m_viewport.y - m_box.pos().y - m_box.size().y);
     const auto   HEIGHTPERENTRY = m_box.size().y / m_loginSessions.size();
     const size_t SELECTEDENTRY  = std::floor(DIFFERENTIAL / HEIGHTPERENTRY);
-    g_pLoginSessionManager->selectSession(SELECTEDENTRY);
+    g_loginSessionManager->selectSession(SELECTEDENTRY);
     g_pHyprlock->renderAllOutputs();
 }
 

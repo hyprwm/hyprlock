@@ -326,7 +326,7 @@ void CHyprlock::run() {
 
     g_pRenderer            = makeUnique<CRenderer>();
     g_asyncResourceManager = makeUnique<CAsyncResourceManager>();
-    g_pLoginSessionManager = makeUnique<CLoginSessionManager>();
+    g_loginSessionManager = makeUnique<CLoginSessionManager>();
     g_pAuth                = makeUnique<CAuth>(m_greetdLogin);
     g_pAuth->start();
 
@@ -336,7 +336,7 @@ void CHyprlock::run() {
     g_asyncResourceManager->enqueueScreencopyFrames();
 
     if (m_greetdLogin)
-        g_pLoginSessionManager->gather(m_greetdSessionDirs);
+        g_loginSessionManager->gather(m_greetdSessionDirs);
 
     Log::logger->log(Log::INFO, "Running on {}", m_currentDesktop);
 
@@ -656,9 +656,9 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     else if (SYM == XKB_KEY_Num_Lock)
         m_bNumLock = !m_bNumLock;
     else if (SYM == XKB_KEY_Up && m_greetdLogin)
-        g_pLoginSessionManager->handleKeyUp();
+        g_loginSessionManager->handleKeyUp();
     else if (SYM == XKB_KEY_Down && m_greetdLogin)
-        g_pLoginSessionManager->handleKeyDown();
+        g_loginSessionManager->handleKeyDown();
     else {
         char buf[16] = {0};
         int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :

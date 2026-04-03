@@ -33,4 +33,4 @@ class CLoginSessionManager {
     void                             selectDefaultSession();
 };
 
-inline UP<CLoginSessionManager> g_pLoginSessionManager;
+inline UP<CLoginSessionManager> g_loginSessionManager;

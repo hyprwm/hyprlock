@@ -220,7 +220,7 @@ void CGreetdLogin::handleResponse(const VGreetdRequest& request, const VGreetdRe
 }
 
 void CGreetdLogin::startSessionAfterSuccess() {
-    const auto                  SELECTEDSESSION = g_pLoginSessionManager->getSelectedLoginSession();
+    const auto                  SELECTEDSESSION = g_loginSessionManager->getSelectedLoginSession();
     Hyprutils::String::CVarList args(SELECTEDSESSION.exec, 0, ' ');
 
     SGreetdStartSession         startSession;
