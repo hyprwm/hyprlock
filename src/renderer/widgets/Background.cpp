@@ -7,11 +7,8 @@
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../config/ConfigManager.hpp"
-#include <algorithm>
-#include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
-#include <unordered_set>
 #include <GLES3/gl32.h>
 
 CBackground::CBackground() {
@@ -42,172 +39,6 @@ static std::string runAndGetPath(const std::string& reloadCommand) {
     return path;
 }
 
-// ── Video support ─────────────────────────────────────────────────────────────
-
-SVideoState::~SVideoState() {
-    running = false;
-    if (decodeThread.joinable())
-        decodeThread.join();
-    if (swsCtx)    sws_freeContext(swsCtx);
-    if (codecCtx)  avcodec_free_context(&codecCtx);
-    if (formatCtx) avformat_close_input(&formatCtx);
-}
-
-bool CBackground::isVideoFile(const std::string& path) {
-    static const std::unordered_set<std::string> VIDEO_EXT = {
-        ".mp4", ".mkv", ".webm", ".avi", ".mov", ".m4v",
-        ".flv", ".wmv", ".ts",  ".m2ts", ".gif"
-    };
-    auto ext = std::filesystem::path(path).extension().string();
-    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-    return VIDEO_EXT.count(ext) > 0;
-}
-
-bool CBackground::openVideo(const std::string& path) {
-    auto& v = *m_video;
-
-    if (avformat_open_input(&v.formatCtx, path.c_str(), nullptr, nullptr) < 0) {
-        Debug::log(ERR, "CBackground: avformat_open_input failed for {}", path);
-        return false;
-    }
-    if (avformat_find_stream_info(v.formatCtx, nullptr) < 0) {
-        Debug::log(ERR, "CBackground: avformat_find_stream_info failed for {}", path);
-        return false;
-    }
-
-    const AVCodec* codec = nullptr;
-    v.streamIdx = av_find_best_stream(v.formatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0);
-    if (v.streamIdx < 0 || !codec) {
-        Debug::log(ERR, "CBackground: no video stream found in {}", path);
-        return false;
-    }
-
-    v.codecCtx = avcodec_alloc_context3(codec);
-    if (!v.codecCtx) {
-        Debug::log(ERR, "CBackground: avcodec_alloc_context3 failed");
-        return false;
-    }
-
-    avcodec_parameters_to_context(v.codecCtx, v.formatCtx->streams[v.streamIdx]->codecpar);
-
-    if (avcodec_open2(v.codecCtx, codec, nullptr) < 0) {
-        Debug::log(ERR, "CBackground: avcodec_open2 failed for {}", path);
-        return false;
-    }
-
-    v.frameW   = v.codecCtx->width;
-    v.frameH   = v.codecCtx->height;
-    v.timeBase = av_q2d(v.formatCtx->streams[v.streamIdx]->time_base);
-
-    // swsCtx is created lazily per-frame via sws_getCachedContext so that
-    // we handle codecs where pix_fmt is only known after the first decode.
-    v.frameData.resize(4 * v.frameW * v.frameH);
-    Debug::log(LOG, "CBackground: opened video {} ({}x{}, timebase={:.6f})",
-               path, v.frameW, v.frameH, v.timeBase);
-    return true;
-}
-
-void CBackground::startVideoThread() {
-    auto& v    = *m_video;
-    v.running  = true;
-    v.startTime = std::chrono::steady_clock::now();
-
-    v.decodeThread = std::thread([&v]() {
-        AVPacket* pkt   = av_packet_alloc();
-        AVFrame*  frame = av_frame_alloc();
-        std::vector<uint8_t> tmpBuf(4 * v.frameW * v.frameH);
-
-        while (v.running) {
-            int ret = av_read_frame(v.formatCtx, pkt);
-
-            if (ret == AVERROR_EOF) {
-                // Flush decoder's internal buffer
-                avcodec_send_packet(v.codecCtx, nullptr);
-                while (avcodec_receive_frame(v.codecCtx, frame) == 0)
-                    av_frame_unref(frame);
-
-                // Loop: seek back to beginning
-                av_seek_frame(v.formatCtx, v.streamIdx, 0, AVSEEK_FLAG_BACKWARD);
-                avcodec_flush_buffers(v.codecCtx);
-                v.startTime = std::chrono::steady_clock::now();
-                continue;
-            }
-
-            if (ret < 0)
-                break; // unrecoverable error
-
-            if (pkt->stream_index != v.streamIdx) {
-                av_packet_unref(pkt);
-                continue;
-            }
-
-            if (avcodec_send_packet(v.codecCtx, pkt) < 0) {
-                av_packet_unref(pkt);
-                continue;
-            }
-            av_packet_unref(pkt);
-
-            while (avcodec_receive_frame(v.codecCtx, frame) == 0) {
-                if (!v.running)
-                    break;
-
-                // Lazily create / update SwsContext to match the frame's actual
-                // pixel format (some codecs only report it after the first frame).
-                v.swsCtx = sws_getCachedContext(v.swsCtx,
-                    frame->width, frame->height, (AVPixelFormat)frame->format,
-                    v.frameW, v.frameH, AV_PIX_FMT_RGBA,
-                    SWS_BILINEAR, nullptr, nullptr, nullptr);
-                if (!v.swsCtx) {
-                    av_frame_unref(frame);
-                    continue;
-                }
-
-                // sws_scale requires 4-element pointer/stride arrays even for
-                // packed formats — passing a 1-element array causes UB reads.
-                uint8_t* dst[4]    = {tmpBuf.data(), nullptr, nullptr, nullptr};
-                int      stride[4] = {4 * v.frameW,  0,       0,       0};
-                sws_scale(v.swsCtx,
-                          (const uint8_t* const*)frame->data, frame->linesize,
-                          0, frame->height, dst, stride);
-
-                // Publish frame via O(1) swap (no memcpy)
-                {
-                    std::lock_guard<std::mutex> lock(v.frameMutex);
-                    std::swap(v.frameData, tmpBuf);
-                    v.hasNewFrame = true;
-                }
-                // tmpBuf now holds old frame data and will be overwritten next iteration
-
-                // PTS-based frame pacing
-                if (frame->pts != AV_NOPTS_VALUE) {
-                    double pts_sec = frame->pts * v.timeBase;
-                    auto   target  = v.startTime +
-                        std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                            std::chrono::duration<double>(pts_sec));
-                    auto now       = std::chrono::steady_clock::now();
-                    // Safety cap: never sleep > 5 s (guards against bogus PTS values)
-                    auto maxTarget = now + std::chrono::seconds(5);
-                    if (target > now && target < maxTarget)
-                        std::this_thread::sleep_until(target);
-                }
-
-                av_frame_unref(frame);
-            }
-        }
-
-        av_packet_free(&pkt);
-        av_frame_free(&frame);
-    });
-}
-
-void CBackground::stopVideo() {
-    m_video.reset(); // ~SVideoState(): sets running=false, joins thread, frees ffmpeg
-    m_videoTexture.destroyTexture();
-    m_uploadBuffer.clear();
-    m_isVideo = false;
-}
-
-// ── End video support ─────────────────────────────────────────────────────────
 
 void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
@@ -256,28 +87,21 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             resourceID = 0;
         }
     } else if (!path.empty()) {
-        if (isVideoFile(path)) {
-            m_isVideo = true;
-            m_video   = makeUnique<SVideoState>();
-            if (!openVideo(path)) {
+        if (CVideoBackend::isVideoFile(path)) {
+            m_videoBackend = makeUnique<CVideoBackend>();
+            if (!m_videoBackend->open(path)) {
                 Debug::log(ERR, "CBackground: failed to open '{}' as video, falling back to image", path);
-                m_video.reset();
-                m_isVideo = false;
+                m_videoBackend.reset();
                 resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
             } else {
-                // Pre-size the upload buffer so it's never empty when the main
-                // thread swaps it with frameData.  An empty vector has data()==null
-                // which would propagate back to tmpBuf in the decode thread and
-                // cause "bad dst image pointers" on the third sws_scale call.
-                m_uploadBuffer.resize(4 * m_video->frameW * m_video->frameH);
-                startVideoThread();
+                m_uploadBuffer.resize(4 * m_videoBackend->frameW() * m_videoBackend->frameH());
             }
         } else {
             resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
         }
     }
 
-    if (!reloadCommand.empty() && reloadTime > -1 && !m_isVideo) {
+    if (!reloadCommand.empty() && reloadTime > -1 && !m_videoBackend) {
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -288,8 +112,11 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 }
 
 void CBackground::reset() {
-    if (m_isVideo)
-        stopVideo();
+    if (m_videoBackend) {
+        m_videoBackend.reset();
+        m_videoTexture.destroyTexture();
+        m_uploadBuffer.clear();
+    }
 
     if (reloadTimer) {
         reloadTimer->cancel();
@@ -417,18 +244,11 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 
 bool CBackground::draw(const SRenderData& data) {
     // ── Video background fast path ────────────────────────────────────────
-    if (m_isVideo && m_video) {
-        // Grab the latest decoded frame from the decode thread (O(1) swap)
-        {
-            std::lock_guard<std::mutex> lock(m_video->frameMutex);
-            if (m_video->hasNewFrame) {
-                std::swap(m_uploadBuffer, m_video->frameData);
-                m_video->hasNewFrame = false;
-            }
-        }
+    if (m_videoBackend) {
+        if (m_videoBackend->swapFrame(m_uploadBuffer)) {
+            const int W = m_videoBackend->frameW();
+            const int H = m_videoBackend->frameH();
 
-        // Upload frame to GL texture
-        if (!m_uploadBuffer.empty()) {
             if (!m_videoTexture.m_bAllocated) {
                 // First frame: allocate the GL texture
                 m_videoTexture.allocate();
@@ -437,27 +257,23 @@ bool CBackground::draw(const SRenderData& data) {
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                             m_video->frameW, m_video->frameH, 0,
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0,
                              GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
                 glBindTexture(GL_TEXTURE_2D, 0);
-                m_videoTexture.m_vSize   = {(double)m_video->frameW, (double)m_video->frameH};
+                m_videoTexture.m_vSize   = {(double)W, (double)H};
                 m_videoTexture.m_iType   = TEXTURE_RGBA;
                 m_videoTexture.m_iTarget = GL_TEXTURE_2D;
             } else {
                 glBindTexture(GL_TEXTURE_2D, m_videoTexture.m_iTexID);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-                                m_video->frameW, m_video->frameH,
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, W, H,
                                 GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
                 glBindTexture(GL_TEXTURE_2D, 0);
             }
 
-            // Re-render blur FB if requested (GPU-side only, called every new frame)
             if (blurPasses > 0)
                 renderToFB(m_videoTexture, *blurredFB, blurPasses);
         }
 
-        // Render
         if (!m_videoTexture.m_bAllocated) {
             renderRect(color); // solid colour until first frame is ready
             return true;
