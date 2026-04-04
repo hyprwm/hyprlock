@@ -23,7 +23,14 @@ in
     inputs.hyprutils.overlays.default
     inputs.hyprwayland-scanner.overlays.default
     self.overlays.hyprlock
+    self.overlays.glaze
   ];
+
+  glaze = final: prev: {
+    glaze = prev.glaze.overrideAttrs (self: super: {
+      cmakeFlags = super.cmakeFlags ++ ["-Dglaze_ENABLE_SSL=OFF"];
+    });
+  };
 
   hyprlock = final: prev: {
     hyprlock = prev.callPackage ./default.nix {

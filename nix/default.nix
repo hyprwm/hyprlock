@@ -2,8 +2,9 @@
   lib,
   stdenv,
   cmake,
-  pkg-config,
   cairo,
+  glaze,
+  pkg-config,
   libdrm,
   libGL,
   libxkbcommon,
@@ -37,6 +38,7 @@ stdenv.mkDerivation {
 
   buildInputs = [
     cairo
+    glaze
     libdrm
     libGL
     libxkbcommon
