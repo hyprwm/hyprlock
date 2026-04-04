@@ -88,7 +88,11 @@ pkg_check_modules(
   gbm
   hyprutils>=0.11.0
   sdbus-c++>=2.0.0
-  hyprgraphics>=0.1.6)
+  hyprgraphics>=0.1.6
+  libavcodec
+  libavformat
+  libavutil
+  libswscale)
 find_library(PAM_FOUND NAMES pam libpam)
 if(PAM_FOUND)
   set(PAM_LIB ${PAM_FOUND})
