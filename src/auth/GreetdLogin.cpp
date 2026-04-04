@@ -230,12 +230,8 @@ void CGreetdLogin::startSessionAfterSuccess() {
     // TODO: Is there a response for this? Should we check it?
     if (!sendGreetdRequest(m_socketFD, REQUEST))
         m_ok = false;
-    else {
-        if (g_pHyprlock->m_currentDesktop == "Hyprland")
-            spawnSync("hyprctl dispatch exit");
-        else
-            g_pAuth->enqueueUnlock();
-    }
+    else
+        g_pAuth->enqueueUnlock();
 }
 
 void CGreetdLogin::cancelSession() {

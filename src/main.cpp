@@ -93,6 +93,9 @@ int main(int argc, char** argv, char** envp) {
     if (noFadeIn)
         g_pConfigManager->m_AnimationTree.setConfigForNode("fadeIn", false, 0.f, "default");
 
+    if (greetdLogin)
+        g_pConfigManager->m_AnimationTree.setConfigForNode("fadeOut", false, 0.f, "default");
+
     try {
         g_pHyprlock = makeUnique<CHyprlock>(wlDisplay, immediateRender, graceSeconds, greetdLogin, sessionDirs);
         g_pHyprlock->run();
