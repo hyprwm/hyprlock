@@ -29,7 +29,7 @@ static void onTimer(AWP<CLabel> ref) {
 
 void CLabel::onTimerUpdate() {
     if (m_pendingResource) {
-        Debug::log(WARN, "Trying to update label, but a resource is still pending! Skipping update.");
+        Log::logger->log(Log::WARN, "Trying to update label, but a resource is still pending! Skipping update.");
         return;
     }
 
@@ -47,7 +47,7 @@ void CLabel::onTimerUpdate() {
     AWP<IWidget> widget(m_self);
     if (label.cmd) {
         // Don't increment by one to avoid clashes with multiple widget using the same label command.
-        m_dynamicRevision += label.updateEveryMs;
+        m_dynamicRevision += (label.updateEveryMs == 0) ? 1 : label.updateEveryMs;
         g_asyncResourceManager->requestTextCmd(request, m_dynamicRevision, widget.lock());
     } else
         g_asyncResourceManager->requestText(request, widget.lock());
@@ -74,8 +74,8 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
         labelPreFormat = std::any_cast<Hyprlang::STRING>(props.at("text"));
         halign         = std::any_cast<Hyprlang::STRING>(props.at("halign"));
         valign         = std::any_cast<Hyprlang::STRING>(props.at("valign"));
-        angle          = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
-        angle          = angle * M_PI / 180.0;
+        m_angle        = std::any_cast<Hyprlang::FLOAT>(props.at("rotate"));
+        m_angle        = m_angle * M_PI / 180.0;
         onclickCommand = std::any_cast<Hyprlang::STRING>(props.at("onclick"));
 
         std::string textAlign  = std::any_cast<Hyprlang::STRING>(props.at("text_align"));
@@ -89,6 +89,7 @@ void CLabel::configure(const std::unordered_map<std::string, std::any>& props, c
         request.font     = fontFamily;
         request.fontSize = fontSize;
         request.color    = labelColor.asRGB();
+        m_alpha          = labelColor.a;
 
         if (!textAlign.empty())
             request.align = parseTextAlignment(textAlign);
@@ -142,24 +143,24 @@ bool CLabel::draw(const SRenderData& data) {
     shadow.draw(data);
 
     // calc pos
-    pos = posFromHVAlign(viewport, asset->m_vSize, configPos, halign, valign, angle);
+    pos = posFromHVAlign(viewport, asset->m_vSize, configPos, halign, valign, m_angle);
 
     CBox box = {pos.x, pos.y, asset->m_vSize.x, asset->m_vSize.y};
-    box.rot  = angle;
-    g_pRenderer->renderTexture(box, *asset, data.opacity);
+    box.rot  = m_angle;
+    g_pRenderer->renderTexture(box, *asset, data.opacity * m_alpha);
 
     return false;
 }
 
 void CLabel::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    Debug::log(TRACE, "Label update for resourceID {}", id);
+    Log::logger->log(Log::TRACE, "Label update for resourceID {}", id);
     m_pendingResource = false;
 
     if (!newAsset)
-        Debug::log(ERR, "asset update failed, resourceID: {} not available on update!", id);
+        Log::logger->log(Log::ERR, "asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
-        Debug::log(ERR, "New image asset has an invalid texture!");
+        Log::logger->log(Log::ERR, "New image asset has an invalid texture!");
     } else {
         // new asset is ready :D
         g_asyncResourceManager->unload(asset);

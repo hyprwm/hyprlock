@@ -50,6 +50,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
+        configCheckText          = std::any_cast<Hyprlang::STRING>(props.at("check_text"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
@@ -72,7 +73,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
     colorState.font = colorConfig.font;
 
     pos          = posFromHVAlign(viewport, configSize, pos, halign, valign);
-    dots.size    = std::clamp(dots.size, 0.2f, 0.8f);
+    dots.size    = std::clamp(dots.size, 0.001f, 0.8f);
     dots.spacing = std::clamp(dots.spacing, -1.f, 1.f);
 
     colorConfig.caps = colorConfig.caps->m_bIsFallback ? colorConfig.fail : colorConfig.caps;
@@ -163,7 +164,7 @@ void CPasswordInputField::updateDots() {
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
-    if (checkWaiting)
+    if (checkWaiting && configCheckText.empty())
         return;
 
     if (passwordLength == 0)
@@ -299,7 +300,9 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         }
     }
 
-    if (passwordLength == 0 && !checkWaiting && placeholder.resourceID > 0) {
+    bool placeholderPasswordCondition = (passwordLength == 0 && placeholder.resourceID > 0);
+
+    if (placeholderPasswordCondition && (!checkWaiting || (checkWaiting && !configCheckText.empty()))) {
         ASP<CTexture> currAsset = nullptr;
 
         if (!placeholder.asset)
@@ -325,6 +328,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 }
 
 void CPasswordInputField::updatePlaceholder() {
+
     if (passwordLength != 0) {
         if (placeholder.asset && /* keep prompt asset cause it is likely to be used again */ displayFail) {
             g_asyncResourceManager->unload(placeholder.asset);
@@ -339,16 +343,23 @@ void CPasswordInputField::updatePlaceholder() {
     if (displayFail && placeholder.failedAttempts == g_pAuth->getFailedAttempts())
         return;
 
-    placeholder.failedAttempts = g_pAuth->getFailedAttempts();
+    std::string& templateText = configPlaceholderText;
 
-    std::string newText = (displayFail) ? formatString(configFailText).formatted : formatString(configPlaceholderText).formatted;
+    if (displayFail) {
+        templateText               = configFailText;
+        placeholder.failedAttempts = g_pAuth->getFailedAttempts();
+    } else if (checkWaiting && !configCheckText.empty()) {
+        templateText = configCheckText;
+    }
+
+    const std::string newText = formatString(templateText).formatted;
 
     // if the text is unchanged we don't need to do anything, unless we are swapping font color
     const auto ALLOWCOLORSWAP = outThick == 0 && colorConfig.swapFont;
     if (!ALLOWCOLORSWAP && newText == placeholder.currentText)
         return;
 
-    Debug::log(LOG, "Updating placeholder text: {}", newText);
+    Log::logger->log(Log::INFO, "Updating placeholder text: {}", newText);
     placeholder.currentText = newText;
     placeholder.asset       = nullptr;
 
@@ -435,7 +446,12 @@ void CPasswordInputField::updateColors() {
 
     CGradientValueData* outerTarget = colorConfig.outer;
     CHyprColor          innerTarget = colorConfig.inner;
-    CHyprColor          fontTarget  = (displayFail) ? colorConfig.fail->m_vColors.front() : colorConfig.font;
+    CHyprColor          fontTarget  = colorConfig.font;
+
+    if (displayFail)
+        fontTarget = colorConfig.fail->m_vColors.front();
+    else if (checkWaiting)
+        fontTarget = configCheckText.empty() ? colorConfig.font : colorConfig.check->m_vColors.front();
 
     if (targetGrad) {
         if (BORDERLESS && colorConfig.swapFont) {

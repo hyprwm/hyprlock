@@ -12,6 +12,7 @@
 #include <vector>
 #include <condition_variable>
 #include <optional>
+#include <string_view>
 
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
@@ -26,7 +27,7 @@ struct SDMABUFModifier {
 
 class CHyprlock {
   public:
-    CHyprlock(const std::string& wlDisplay, const bool immediateRender, const int gracePeriod);
+    CHyprlock(std::string_view wlDisplay, const bool immediateRender, const int gracePeriod);
     ~CHyprlock();
 
     void                       run();

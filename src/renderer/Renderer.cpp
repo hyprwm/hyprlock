@@ -71,7 +71,7 @@ static GLuint createProgram(const std::string& vert, const std::string& frag) {
 static void glMessageCallbackA(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
     if (type != GL_DEBUG_TYPE_ERROR)
         return;
-    Debug::log(LOG, "[gl] {}", (const char*)message);
+    Log::logger->log(Log::INFO, "[gl] {}", (const char*)message);
 }
 
 CRenderer::CRenderer() {
@@ -413,7 +413,7 @@ std::vector<ASP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSu
             } else if (c.type == "image") {
                 createWidget<CImage>(widgets[surf.m_outputID]);
             } else {
-                Debug::log(ERR, "Unknown widget type: {}", c.type);
+                Log::logger->log(Log::ERR, "Unknown widget type: {}", c.type);
                 continue;
             }
 
@@ -599,7 +599,7 @@ void CRenderer::reconfigureWidgetsFor(OUTPUTID id) {
 }
 
 void CRenderer::startFadeIn() {
-    Debug::log(LOG, "Starting fade in");
+    Log::logger->log(Log::INFO, "Starting fade in");
     *opacity = 1.f;
 
     opacity->setCallbackOnEnd([this](auto) { opacity->setConfig(g_pConfigManager->m_AnimationTree.getConfig("fadeOut")); }, true);

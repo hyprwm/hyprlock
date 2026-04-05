@@ -46,7 +46,8 @@ class CLabel : public IWidget {
     Vector2D                                       viewport;
     Vector2D                                       pos;
     Vector2D                                       configPos;
-    double                                         angle;
+    double                                         m_angle = 0;
+    double                                         m_alpha = 0;
 
     ResourceID                                     resourceID        = 0;
     bool                                           m_pendingResource = false;
