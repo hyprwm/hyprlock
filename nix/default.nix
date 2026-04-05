@@ -4,6 +4,7 @@
   cmake,
   pkg-config,
   cairo,
+  ffmpeg,
   libdrm,
   libGL,
   libxkbcommon,
@@ -37,6 +38,7 @@ stdenv.mkDerivation {
 
   buildInputs = [
     cairo
+    ffmpeg
     libdrm
     libGL
     libxkbcommon
