@@ -88,11 +88,15 @@ pkg_check_modules(
   gbm
   hyprutils>=0.11.0
   sdbus-c++>=2.0.0
-  hyprgraphics>=0.1.6
-  libavcodec
-  libavformat
-  libavutil
-  libswscale)
+  hyprgraphics>=0.1.6)
+
+option(VIDEO_BACKEND "Enable video background support via FFmpeg" ON)
+if(VIDEO_BACKEND)
+  pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET libavcodec libavformat libavutil libswscale)
+  message(STATUS "Video backend: enabled")
+else()
+  message(STATUS "Video backend: disabled")
+endif()
 find_library(PAM_FOUND NAMES pam libpam)
 if(PAM_FOUND)
   set(PAM_LIB ${PAM_FOUND})
@@ -108,9 +112,19 @@ endif()
 message(STATUS "Found pam at ${PAM_LIB}")
 
 file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS "src/*.cpp")
+
+if(NOT VIDEO_BACKEND)
+  list(FILTER SRCFILES EXCLUDE REGEX ".*/VideoBackend\\.cpp$")
+endif()
+
 add_executable(hyprlock ${SRCFILES})
 target_link_libraries(hyprlock PRIVATE ${PAM_LIB} rt Threads::Threads PkgConfig::deps
                                        OpenGL::EGL OpenGL::GLES3)
+
+if(VIDEO_BACKEND)
+  target_compile_definitions(hyprlock PRIVATE HYPRLOCK_HAS_VIDEO)
+  target_link_libraries(hyprlock PRIVATE PkgConfig::ffmpeg)
+endif()
 
 # protocols
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
