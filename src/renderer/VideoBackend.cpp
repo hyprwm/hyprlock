@@ -54,7 +54,7 @@ bool CVideoBackend::open(const std::string& path) {
     // we handle codecs where pix_fmt is only known after the first decode.
     m_frameData.resize(4 * m_frameW * m_frameH);
 
-    Log::logger->log(Log::LOG, "CVideoBackend: opened {} ({}x{}, timebase={:.6f})",
+    Log::logger->log(Log::INFO, "CVideoBackend: opened {} ({}x{}, timebase={:.6f})",
                path, m_frameW, m_frameH, m_timeBase);
 
     startDecodeThread();
