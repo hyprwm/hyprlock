@@ -4,7 +4,7 @@
   cmake,
   pkg-config,
   cairo,
-  ffmpeg,
+  ffmpeg ? null,
   libdrm,
   libGL,
   libxkbcommon,
@@ -20,6 +20,7 @@
   wayland,
   wayland-protocols,
   wayland-scanner,
+  withVideoBackend ? true,
   version ? "git",
   shortRev ? "",
 }:
@@ -38,7 +39,6 @@ stdenv.mkDerivation {
 
   buildInputs = [
     cairo
-    ffmpeg
     libdrm
     libGL
     libxkbcommon
@@ -52,12 +52,12 @@ stdenv.mkDerivation {
     systemdLibs
     wayland
     wayland-protocols
-  ];
+  ] ++ lib.optionals withVideoBackend [ ffmpeg ];
 
   cmakeFlags = lib.mapAttrsToList lib.cmakeFeature {
     HYPRLOCK_COMMIT = shortRev;
     HYPRLOCK_VERSION_COMMIT = ""; # Intentionally left empty (hyprlock --version will always print the commit)
-  };
+  } ++ lib.optional (!withVideoBackend) (lib.cmakeBool "VIDEO_BACKEND" false);
 
   meta = {
     homepage = "https://github.com/hyprwm/hyprlock";
