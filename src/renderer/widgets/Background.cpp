@@ -91,7 +91,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         if (CVideoBackend::isVideoFile(path)) {
             m_videoBackend = makeUnique<CVideoBackend>();
             if (!m_videoBackend->open(path)) {
-                Debug::log(ERR, "CBackground: failed to open '{}' as video, falling back to image", path);
+                Log::logger->log(Log::ERR, "CBackground: failed to open '{}' as video, falling back to image", path);
                 m_videoBackend.reset();
                 resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
             } else {
