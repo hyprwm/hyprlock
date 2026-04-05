@@ -18,31 +18,31 @@ bool CVideoBackend::isVideoFile(const std::string& path) {
 
 bool CVideoBackend::open(const std::string& path) {
     if (avformat_open_input(&m_formatCtx, path.c_str(), nullptr, nullptr) < 0) {
-        Debug::log(ERR, "CVideoBackend: avformat_open_input failed for {}", path);
+        Log::log(Log::ERR, "CVideoBackend: avformat_open_input failed for {}", path);
         return false;
     }
     if (avformat_find_stream_info(m_formatCtx, nullptr) < 0) {
-        Debug::log(ERR, "CVideoBackend: avformat_find_stream_info failed for {}", path);
+        Log::log(Log::ERR, "CVideoBackend: avformat_find_stream_info failed for {}", path);
         return false;
     }
 
     const AVCodec* codec = nullptr;
     m_streamIdx = av_find_best_stream(m_formatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0);
     if (m_streamIdx < 0 || !codec) {
-        Debug::log(ERR, "CVideoBackend: no video stream found in {}", path);
+        Log::log(Log::ERR, "CVideoBackend: no video stream found in {}", path);
         return false;
     }
 
     m_codecCtx = avcodec_alloc_context3(codec);
     if (!m_codecCtx) {
-        Debug::log(ERR, "CVideoBackend: avcodec_alloc_context3 failed");
+        Log::log(Log::ERR, "CVideoBackend: avcodec_alloc_context3 failed");
         return false;
     }
 
     avcodec_parameters_to_context(m_codecCtx, m_formatCtx->streams[m_streamIdx]->codecpar);
 
     if (avcodec_open2(m_codecCtx, codec, nullptr) < 0) {
-        Debug::log(ERR, "CVideoBackend: avcodec_open2 failed for {}", path);
+        Log::log(Log::ERR, "CVideoBackend: avcodec_open2 failed for {}", path);
         return false;
     }
 
@@ -54,7 +54,7 @@ bool CVideoBackend::open(const std::string& path) {
     // we handle codecs where pix_fmt is only known after the first decode.
     m_frameData.resize(4 * m_frameW * m_frameH);
 
-    Debug::log(LOG, "CVideoBackend: opened {} ({}x{}, timebase={:.6f})",
+    Log::log(Log::LOG, "CVideoBackend: opened {} ({}x{}, timebase={:.6f})",
                path, m_frameW, m_frameH, m_timeBase);
 
     startDecodeThread();
