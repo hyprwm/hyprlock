@@ -6,7 +6,9 @@
 #include "../../helpers/Color.hpp"
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
+#ifdef HYPRLOCK_HAS_VIDEO
 #include "../VideoBackend.hpp"
+#endif
 #include <hyprutils/math/Misc.hpp>
 #include <string>
 #include <unordered_map>
@@ -86,7 +88,9 @@ class CBackground : public IWidget {
     size_t                          m_imageRevision = 0;
 
     // Video playback
+#ifdef HYPRLOCK_HAS_VIDEO
     UP<CVideoBackend>       m_videoBackend;
     CTexture                m_videoTexture;
     std::vector<uint8_t>    m_uploadBuffer;
+#endif
 };

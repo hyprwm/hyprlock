@@ -87,6 +87,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             resourceID = 0;
         }
     } else if (!path.empty()) {
+#ifdef HYPRLOCK_HAS_VIDEO
         if (CVideoBackend::isVideoFile(path)) {
             m_videoBackend = makeUnique<CVideoBackend>();
             if (!m_videoBackend->open(path)) {
@@ -96,12 +97,18 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             } else {
                 m_uploadBuffer.resize(4 * m_videoBackend->frameW() * m_videoBackend->frameH());
             }
-        } else {
+        } else
+#endif
+        {
             resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
         }
     }
 
-    if (!reloadCommand.empty() && reloadTime > -1 && !m_videoBackend) {
+    if (!reloadCommand.empty() && reloadTime > -1
+#ifdef HYPRLOCK_HAS_VIDEO
+        && !m_videoBackend
+#endif
+    ) {
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -112,11 +119,13 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 }
 
 void CBackground::reset() {
+#ifdef HYPRLOCK_HAS_VIDEO
     if (m_videoBackend) {
         m_videoBackend.reset();
         m_videoTexture.destroyTexture();
         m_uploadBuffer.clear();
     }
+#endif
 
     if (reloadTimer) {
         reloadTimer->cancel();
@@ -243,6 +252,7 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 }
 
 bool CBackground::draw(const SRenderData& data) {
+#ifdef HYPRLOCK_HAS_VIDEO
     // ── Video background fast path ────────────────────────────────────────
     if (m_videoBackend) {
         if (m_videoBackend->swapFrame(m_uploadBuffer)) {
@@ -286,6 +296,7 @@ bool CBackground::draw(const SRenderData& data) {
         return true; // always request the next compositor frame
     }
     // ── End video path ────────────────────────────────────────────────────
+#endif
 
     updatePrimaryAsset();
     updatePendingAsset();
