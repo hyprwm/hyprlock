@@ -84,13 +84,21 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 
     if (!eglWindow) {
         eglWindow = wl_egl_window_create((wl_surface*)surface->resource(), size.x, size.y);
-        RASSERT(eglWindow, "Couldn't create eglWindow");
+        if (!eglWindow) {
+            Debug::log(ERR, "Couldn't create eglWindow (GPU memory pressure?), will retry on next configure");
+            readyForFrame = false;
+            return;
+        }
     } else
         wl_egl_window_resize(eglWindow, size.x, size.y, 0, 0);
 
     if (!eglSurface) {
         eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
-        RASSERT(eglSurface, "Couldn't create eglSurface");
+        if (!eglSurface) {
+            Debug::log(ERR, "Couldn't create eglSurface (GPU memory pressure?), will retry on next configure");
+            readyForFrame = false;
+            return;
+        }
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
