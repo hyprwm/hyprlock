@@ -614,6 +614,8 @@ void CHyprlock::onKey(uint32_t key, bool down) {
     renderAllOutputs();
 }
 
+
+
 void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     const auto SYM = sym;
 
@@ -632,8 +634,10 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
         }
 
         g_pAuth->submitInput(m_sPasswordState.passBuffer);
+        return;
+
     } else if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) {
-        if (m_sPasswordState.passBuffer.length() > 0) {
+        if ( !m_sPasswordState.passBuffer.empty() ) {
             // handle utf-8
             while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
                 m_sPasswordState.passBuffer.pop_back();
@@ -648,7 +652,7 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
         int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
                                     xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* already includes a nullbyte */;
 
-        if (len > 1)
+        if (len > 1 && buf[0]>=0x20) // Control character don't have any bussiness being in the password
             m_sPasswordState.passBuffer += std::string{buf, len - 1};
     }
 }
