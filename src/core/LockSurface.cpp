@@ -82,15 +82,35 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
 
     surface->sendDamageBuffer(0, 0, 0xFFFF, 0xFFFF);
 
-    if (!eglWindow) {
-        eglWindow = wl_egl_window_create((wl_surface*)surface->resource(), size.x, size.y);
-        RASSERT(eglWindow, "Couldn't create eglWindow");
-    } else
+    if (eglWindow && eglSurface) {
+        Log::logger->log(Log::INFO, "Resizing existing eglWindow");
         wl_egl_window_resize(eglWindow, size.x, size.y, 0, 0);
+    } else {
+        if (eglWindow)
+            wl_egl_window_destroy(eglWindow);
 
-    if (!eglSurface) {
+        eglWindow = wl_egl_window_create((wl_surface*)surface->resource(), size.x, size.y);
+        if (!eglWindow) {
+            // Only fails when unable to allocate the wl_egl_window structure or size x or y is <= 0.
+            Log::logger->log(Log::CRIT, "Failed to create wayland egl window");
+            readyForFrame = false;
+            return;
+        }
+
+        if (eglSurface)
+            eglDestroySurface(g_pEGL->eglDisplay, eglSurface);
+
         eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
-        RASSERT(eglSurface, "Couldn't create eglSurface");
+        if (eglSurface == EGL_NO_SURFACE) {
+            EGLint eglError = eglGetError();
+            if (eglError == EGL_BAD_ALLOC)
+                Log::logger->log(Log::CRIT, "Failed to allocate egl window surface (EGL_BAD_ALLOC, GPU memory pressure?)");
+            else
+                Log::logger->log(Log::CRIT, "Failed to create egl window surface");
+
+            readyForFrame = false;
+            return;
+        }
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
