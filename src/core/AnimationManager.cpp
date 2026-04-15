@@ -78,7 +78,9 @@ void updateGradientVariable(CAnimatedVariable<CGradientValueData>& av, const flo
 
 void CHyprlockAnimationManager::tick() {
     static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
-    for (const auto& PAV : m_vActiveAnimatedVariables) {
+    const auto        CPY = m_vActiveAnimatedVariables;
+
+    for (const auto& PAV : CPY) {
         if (!PAV || !PAV->ok())
             continue;
 
