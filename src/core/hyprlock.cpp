@@ -35,7 +35,27 @@ static void setMallocThreshold() {
 #endif
 }
 
-CHyprlock::CHyprlock(std::string_view wlDisplay, const bool immediateRender, const int graceSeconds) {
+static bool screencopyRequired() {
+    static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
+
+    const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
+    const auto        FADEOUTCFG = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
+
+    const bool        FADENEEDSSC = *ANIMATIONSENABLED &&
+        ((FADEINCFG->pValues && FADEINCFG->pValues->internalEnabled) || // fadeIn or fadeOut enabled
+         (FADEOUTCFG->pValues && FADEOUTCFG->pValues->internalEnabled));
+
+    if (FADENEEDSSC)
+        return true;
+
+    const auto BGSCREENSHOT = std::ranges::any_of(g_pConfigManager->getWidgetConfigs(), [](const auto& w) { //
+        return w.type == "background" && std::string{std::any_cast<Hyprlang::STRING>(w.values.at("path"))} == "screenshot";
+    });
+
+    return BGSCREENSHOT;
+}
+
+CHyprlock::CHyprlock(std::string_view wlDisplay, const bool immediateRender, const int graceSeconds) : m_screencopyRequired(screencopyRequired()) {
     setMallocThreshold();
 
     m_sWaylandState.display = wl_display_connect(wlDisplay.empty() ? nullptr : std::string{wlDisplay}.c_str());
@@ -134,6 +154,9 @@ gbm_device* CHyprlock::createGBMDevice(drmDevice* dev) {
 }
 
 void CHyprlock::addDmabufListener() {
+    if (!dma.linuxDmabuf || !dma.linuxDmabufFeedback)
+        return;
+
     dma.linuxDmabufFeedback->setTrancheDone([this](CCZwpLinuxDmabufFeedbackV1* r) {
         Log::logger->log(Log::TRACE, "[core] dmabufFeedbackTrancheDone");
 
@@ -256,6 +279,9 @@ void CHyprlock::run() {
         Log::logger->log(Log::INFO, "  | got iface: {} v{}", IFACE, version);
 
         if (IFACE == zwp_linux_dmabuf_v1_interface.name) {
+            if (!m_screencopyRequired)
+                return;
+
             if (version < 4) {
                 Log::logger->log(Log::ERR, "cannot use linux_dmabuf with ver < 4");
                 return;
@@ -329,7 +355,10 @@ void CHyprlock::run() {
     Log::logger->log(Log::INFO, "Running on {}", m_sCurrentDesktop);
 
     g_asyncResourceManager->enqueueStaticAssets();
-    g_asyncResourceManager->enqueueScreencopyFrames();
+    if (m_screencopyRequired)
+        g_asyncResourceManager->enqueueScreencopyFrames();
+    else
+        Log::logger->log(Log::INFO, "Skipping screencopy");
 
     if (!g_pHyprlock->m_bImmediateRender)
         // Gather background resources and screencopy frames before locking the screen.

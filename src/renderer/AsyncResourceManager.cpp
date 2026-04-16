@@ -113,24 +113,6 @@ void CAsyncResourceManager::enqueueScreencopyFrames() {
     if (g_pHyprlock->m_vOutputs.empty())
         return;
 
-    static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
-
-    const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
-    const auto        FADEOUTCFG = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");
-
-    const bool        FADENEEDSSC = *ANIMATIONSENABLED &&
-        ((FADEINCFG->pValues && FADEINCFG->pValues->internalEnabled) || // fadeIn or fadeOut enabled
-         (FADEOUTCFG->pValues && FADEOUTCFG->pValues->internalEnabled));
-
-    const auto BGSCREENSHOT = std::ranges::any_of(g_pConfigManager->getWidgetConfigs(), [](const auto& w) { //
-        return w.type == "background" && std::string{std::any_cast<Hyprlang::STRING>(w.values.at("path"))} == "screenshot";
-    });
-
-    if (!BGSCREENSHOT && !FADENEEDSSC) {
-        Log::logger->log(Log::INFO, "Skipping screencopy");
-        return;
-    }
-
     for (const auto& MON : g_pHyprlock->m_vOutputs) {
         m_scFrames.emplace_back(makeUnique<CScreencopyFrame>());
         auto* frame = m_scFrames.back().get();

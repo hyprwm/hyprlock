@@ -86,7 +86,8 @@ class CHyprlock {
     bool                             m_bNumLock  = false;
     bool                             m_bCtrl     = false;
 
-    bool                             m_bImmediateRender = false;
+    bool                             m_bImmediateRender   = false;
+    bool                             m_screencopyRequired = false;
 
     std::string                      m_sCurrentDesktop = "";
 
