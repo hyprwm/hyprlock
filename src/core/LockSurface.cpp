@@ -152,7 +152,11 @@ void CSessionLockSurface::render() {
         onCallback();
     });
 
-    eglSwapBuffers(g_pEGL->eglDisplay, eglSurface);
+    if (eglSwapBuffers(g_pEGL->eglDisplay, eglSurface) != EGL_TRUE) {
+        frameCallback.reset();
+        needsFrame = true;
+        return;
+    }
 
     needsFrame = FEEDBACK.needsFrame || g_pAnimationManager->shouldTickForNext();
 }
