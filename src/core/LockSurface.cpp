@@ -100,14 +100,8 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
         if (eglSurface)
             eglDestroySurface(g_pEGL->eglDisplay, eglSurface);
 
-        eglSurface = g_pEGL->eglCreatePlatformWindowSurfaceEXT(g_pEGL->eglDisplay, g_pEGL->eglConfig, eglWindow, nullptr);
+        eglSurface = g_pEGL->createPlatformWindowSurfaceEXT(eglWindow);
         if (eglSurface == EGL_NO_SURFACE) {
-            EGLint eglError = eglGetError();
-            if (eglError == EGL_BAD_ALLOC)
-                Log::logger->log(Log::CRIT, "Failed to allocate egl window surface (EGL_BAD_ALLOC, GPU memory pressure?)");
-            else
-                Log::logger->log(Log::CRIT, "Failed to create egl window surface");
-
             readyForFrame = false;
             return;
         }
@@ -152,7 +146,7 @@ void CSessionLockSurface::render() {
         onCallback();
     });
 
-    if (eglSwapBuffers(g_pEGL->eglDisplay, eglSurface) != EGL_TRUE) {
+    if (!g_pEGL->swapBuffers(eglSurface)) {
         frameCallback.reset();
         needsFrame = true;
         return;
