@@ -306,6 +306,9 @@ void CHyprlock::run() {
             g_pRenderer->removeWidgetsFor((*outputIt)->m_ID);
             m_vOutputs.erase(outputIt);
         }
+
+        if (m_vOutputs.empty())
+            eglReleaseThread();
     });
 
     wl_display_roundtrip(m_sWaylandState.display);

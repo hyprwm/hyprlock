@@ -5,6 +5,7 @@
 #include "../helpers/MiscFunctions.hpp"
 #include "../core/hyprlock.hpp"
 #include "../config/ConfigManager.hpp"
+#include "../core/Egl.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -313,6 +314,8 @@ void CAsyncResourceManager::onResourceFinished(ResourceID id) {
         return;
 
     Log::logger->log(Log::TRACE, "Resource to texture id:{}", id);
+
+    g_pEGL->makeCurrent(nullptr);
 
     const auto           texture = makeAtomicShared<CTexture>();
 
