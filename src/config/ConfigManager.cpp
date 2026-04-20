@@ -186,7 +186,7 @@ static std::expected<std::string, std::string> getMainConfigPath() {
     if (PATHS.first.has_value())
         return PATHS.first.value();
     else
-        return std::unexpected{"Could not find config in HOME, XDG_CONFIG_HOME, XDG_CONFIG_DIRS or /etc/hypr."};
+        return std::unexpected{"Could not find config. Searched in order: XDG_CONFIG_HOME, HOME, XDG_CONFIG_DIRS, /etc/xdg"};
 }
 
 std::expected<std::string, std::string> CConfigManager::resolveConfigPath(std::optional<std::string_view> explicitPath) {
