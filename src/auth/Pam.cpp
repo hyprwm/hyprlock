@@ -17,32 +17,28 @@
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
     const auto           CONVERSATIONSTATE = (CPam::SPamConversationState*)appdata_ptr;
     struct pam_response* pamReply          = (struct pam_response*)calloc(num_msg, sizeof(struct pam_response));
-    bool                 initialPrompt     = true;
 
     for (int i = 0; i < num_msg; ++i) {
         switch (msg[i]->msg_style) {
             case PAM_PROMPT_ECHO_OFF:
             case PAM_PROMPT_ECHO_ON: {
-                const auto PROMPT        = std::string(msg[i]->msg);
-                const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
+                const auto PROMPT = std::string(msg[i]->msg);
                 Log::logger->log(Log::INFO, "PAM_PROMPT: {}", PROMPT);
 
-                if (PROMPTCHANGED)
-                    g_pHyprlock->enqueueForceUpdateTimers();
-
-                // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
-                // When the prompt is the same as the last one, I guess our answer can be the same.
-                if (!initialPrompt && PROMPTCHANGED) {
-                    CONVERSATIONSTATE->prompt = PROMPT;
-                    CONVERSATIONSTATE->waitForInput();
-                }
+                // Update the prompt and wait for user input. Since
+                // pam_authenticate runs immediately (not after pre-collecting
+                // input), every prompt from a PAM module must block here.
+                // Non-interactive modules (face auth, FIDO2) never send
+                // prompts, so this only fires for password-based modules.
+                CONVERSATIONSTATE->prompt = PROMPT;
+                g_pHyprlock->enqueueForceUpdateTimers();
+                CONVERSATIONSTATE->waitForInput();
 
                 // Needed for unlocks via SIGUSR1
                 if (g_pHyprlock->isUnlocked())
                     return PAM_CONV_ERR;
 
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
-                initialPrompt    = false;
             } break;
             case PAM_ERROR_MSG: Log::logger->log(Log::ERR, "PAM: {}", msg[i]->msg); break;
             case PAM_TEXT_INFO:
@@ -83,9 +79,11 @@ void CPam::init() {
         while (true) {
             resetConversation();
 
-            // Initial input
-            m_sConversationState.prompt = "Password: ";
-            waitForInput();
+            // Start PAM authentication immediately. Non-interactive modules
+            // (e.g. pam_python/howdy for face recognition, FIDO2) run first
+            // without needing user input. If they succeed, we unlock instantly.
+            // If they fail, pam_unix will trigger the conv() callback which
+            // blocks for password input at that point.
 
             // For grace or SIGUSR1 unlocks
             if (g_pHyprlock->isUnlocked())
