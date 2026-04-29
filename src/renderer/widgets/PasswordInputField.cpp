@@ -107,7 +107,7 @@ void CPasswordInputField::reset() {
         fade.fadeOutTimer.reset();
     }
 
-    if (g_pHyprlock->m_bTerminate)
+    if (g_pHyprlock->isTerminating())
         return;
 
     if (placeholder.asset)
@@ -346,7 +346,7 @@ void CPasswordInputField::updatePlaceholder() {
     std::string newText = "";
 
     if (displayFail) {
-        newText               = formatString(configFailText).formatted;
+        newText                    = formatString(configFailText).formatted;
         placeholder.failedAttempts = g_pAuth->getFailedAttempts();
     } else if (checkWaiting && !configCheckText.empty())
         newText = formatString(configCheckText).formatted;

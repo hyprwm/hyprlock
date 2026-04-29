@@ -40,9 +40,9 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
                 if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
                     return;
 
-                if (!g_pHyprlock->isUnlocked() && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
+                if (!g_pHyprlock->isFadingOutOrTerminating() && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
                     Log::logger->log(Log::INFO, "In grace and cursor moved more than 5px, unlocking!");
-                    g_pHyprlock->unlock();
+                    g_pHyprlock->fadeOutAndUnlock();
                 }
             });
 

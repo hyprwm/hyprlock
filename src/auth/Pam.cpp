@@ -37,7 +37,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 }
 
                 // Needed for unlocks via SIGUSR1
-                if (g_pHyprlock->m_bTerminate)
+                if (g_pHyprlock->isFadingOutOrTerminating())
                     return PAM_CONV_ERR;
 
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
@@ -83,13 +83,13 @@ void CPam::init() {
             resetConversation();
 
             // For grace or SIGUSR1 unlocks
-            if (g_pHyprlock->m_bTerminate)
+            if (g_pHyprlock->isFadingOutOrTerminating())
                 return;
 
             const auto AUTHENTICATED = auth();
 
             // For SIGUSR1 unlocks
-            if (g_pHyprlock->m_bTerminate)
+            if (g_pHyprlock->isFadingOutOrTerminating())
                 return;
 
             if (!AUTHENTICATED)
@@ -143,7 +143,7 @@ void CPam::waitForInput() {
     m_bBlockInput                          = false;
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = true;
-    m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return !m_sConversationState.inputRequested || g_pHyprlock->m_bTerminate; });
+    m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return !m_sConversationState.inputRequested || g_pHyprlock->isFadingOutOrTerminating(); });
     m_bBlockInput = true;
 }
 

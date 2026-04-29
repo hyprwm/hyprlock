@@ -17,8 +17,8 @@ CSessionLockSurface::~CSessionLockSurface() {
         wl_egl_window_destroy(eglWindow);
 }
 
-CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) : m_outputRef(pOutput), m_outputID(pOutput->m_ID) {
-    surface = makeShared<CCWlSurface>(g_pHyprlock->getCompositor()->sendCreateSurface());
+CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) :
+    m_outputRef(pOutput), m_outputID(pOutput->m_ID), surface(makeShared<CCWlSurface>(g_pHyprlock->getCompositor()->sendCreateSurface())) {
     RASSERT(surface, "Couldn't create wl_surface");
 
     static const auto FRACTIONALSCALING = g_pConfigManager->getValue<Hyprlang::INT>("general:fractional_scaling");
@@ -131,7 +131,7 @@ void CSessionLockSurface::render() {
     const auto FEEDBACK = g_pRenderer->renderLock(*this);
     frameCallback       = makeShared<CCWlCallback>(surface->sendFrame());
     frameCallback->setDone([this](CCWlCallback* r, uint32_t frameTime) {
-        if (g_pHyprlock->m_bTerminate)
+        if (g_pHyprlock->isTerminating())
             return;
 
         if (Log::logger->verbose()) {
@@ -158,7 +158,7 @@ void CSessionLockSurface::render() {
 void CSessionLockSurface::onCallback() {
     frameCallback.reset();
 
-    if (needsFrame && !g_pHyprlock->m_bTerminate && g_pEGL) {
+    if (needsFrame && !g_pHyprlock->isTerminating() && g_pEGL) {
         needsFrame = false;
         render();
     }
