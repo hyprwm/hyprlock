@@ -32,7 +32,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
 
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
-                if (!initialPrompt && PROMPTCHANGED) {
+                if (initialPrompt || PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
                     CONVERSATIONSTATE->waitForInput();
                 }
@@ -82,10 +82,6 @@ void CPam::init() {
     m_thread = std::thread([this]() {
         while (true) {
             resetConversation();
-
-            // Initial input
-            m_sConversationState.prompt = "Password: ";
-            waitForInput();
 
             // For grace or SIGUSR1 unlocks
             if (g_pHyprlock->isUnlocked())
