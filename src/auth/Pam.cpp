@@ -27,18 +27,17 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
                 Log::logger->log(Log::INFO, "PAM_PROMPT: {}", PROMPT);
 
-                if (PROMPTCHANGED)
-                    g_pHyprlock->enqueueForceUpdateTimers();
-
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
                 if (initialPrompt || PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
+                    g_pHyprlock->enqueueForceUpdateTimers();
+
                     CONVERSATIONSTATE->waitForInput();
                 }
 
                 // Needed for unlocks via SIGUSR1
-                if (g_pHyprlock->isUnlocked())
+                if (g_pHyprlock->m_bTerminate)
                     return PAM_CONV_ERR;
 
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
@@ -84,13 +83,13 @@ void CPam::init() {
             resetConversation();
 
             // For grace or SIGUSR1 unlocks
-            if (g_pHyprlock->isUnlocked())
+            if (g_pHyprlock->m_bTerminate)
                 return;
 
             const auto AUTHENTICATED = auth();
 
             // For SIGUSR1 unlocks
-            if (g_pHyprlock->isUnlocked())
+            if (g_pHyprlock->m_bTerminate)
                 return;
 
             if (!AUTHENTICATED)
