@@ -7,7 +7,6 @@
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../config/ConfigManager.hpp"
-#include <chrono>
 #include <hyprlang.hpp>
 #include <filesystem>
 #include <GLES3/gl32.h>
@@ -39,6 +38,7 @@ static std::string runAndGetPath(const std::string& reloadCommand) {
         path = path.substr(7);
     return path;
 }
+
 
 void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
@@ -86,10 +86,29 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             Log::logger->log(Log::ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
             resourceID = 0;
         }
-    } else if (!path.empty())
-        resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
+    } else if (!path.empty()) {
+#ifdef HYPRLOCK_HAS_VIDEO
+        if (CVideoBackend::isVideoFile(path)) {
+            m_videoBackend = makeUnique<CVideoBackend>();
+            if (!m_videoBackend->open(path)) {
+                Log::logger->log(Log::ERR, "CBackground: failed to open '{}' as video, falling back to image", path);
+                m_videoBackend.reset();
+                resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
+            } else {
+                m_uploadBuffer.resize(4 * m_videoBackend->frameW() * m_videoBackend->frameH());
+            }
+        } else
+#endif
+        {
+            resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
+        }
+    }
 
-    if (!reloadCommand.empty() && reloadTime > -1) {
+    if (!reloadCommand.empty() && reloadTime > -1
+#ifdef HYPRLOCK_HAS_VIDEO
+        && !m_videoBackend
+#endif
+    ) {
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -100,6 +119,14 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 }
 
 void CBackground::reset() {
+#ifdef HYPRLOCK_HAS_VIDEO
+    if (m_videoBackend) {
+        m_videoBackend.reset();
+        m_videoTexture.destroyTexture();
+        m_uploadBuffer.clear();
+    }
+#endif
+
     if (reloadTimer) {
         reloadTimer->cancel();
         reloadTimer.reset();
@@ -225,6 +252,52 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 }
 
 bool CBackground::draw(const SRenderData& data) {
+#ifdef HYPRLOCK_HAS_VIDEO
+    // ── Video background fast path ────────────────────────────────────────
+    if (m_videoBackend) {
+        if (m_videoBackend->swapFrame(m_uploadBuffer)) {
+            const int W = m_videoBackend->frameW();
+            const int H = m_videoBackend->frameH();
+
+            if (!m_videoTexture.m_bAllocated) {
+                // First frame: allocate the GL texture
+                m_videoTexture.allocate();
+                glBindTexture(GL_TEXTURE_2D, m_videoTexture.m_iTexID);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0,
+                             GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
+                glBindTexture(GL_TEXTURE_2D, 0);
+                m_videoTexture.m_vSize   = {(double)W, (double)H};
+                m_videoTexture.m_iType   = TEXTURE_RGBA;
+                m_videoTexture.m_iTarget = GL_TEXTURE_2D;
+            } else {
+                glBindTexture(GL_TEXTURE_2D, m_videoTexture.m_iTexID);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, W, H,
+                                GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+
+            if (blurPasses > 0)
+                renderToFB(m_videoTexture, *blurredFB, blurPasses);
+        }
+
+        if (!m_videoTexture.m_bAllocated) {
+            renderRect(color); // solid colour until first frame is ready
+            return true;
+        }
+
+        const CTexture& TEX    = (blurPasses > 0 && blurredFB->isAllocated())
+                                     ? blurredFB->m_cTex : m_videoTexture;
+        const auto      TEXBOX = getScaledBoxForTextureSize(TEX.m_vSize, viewport);
+        g_pRenderer->renderTexture(TEXBOX, TEX, data.opacity);
+        return true; // always request the next compositor frame
+    }
+    // ── End video path ────────────────────────────────────────────────────
+#endif
+
     updatePrimaryAsset();
     updatePendingAsset();
     updateScAsset();
