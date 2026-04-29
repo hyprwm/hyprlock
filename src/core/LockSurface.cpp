@@ -78,6 +78,13 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     if (!SAMESERIAL)
         lockSurface->sendAckConfigure(serial);
 
+    // If we acknowledged a new configure serial but a frame callback is still pending,
+    // the compositor may withhold the callback until we commit a frame for the new serial.
+    // Reset the callback so render() can proceed immediately and commit a fresh frame,
+    // preventing a deadlock when rapid configure events arrive (e.g. during DPMS transitions).
+    if (!SAMESERIAL && frameCallback)
+        frameCallback.reset();
+
     Log::logger->log(Log::INFO, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
     surface->sendDamageBuffer(0, 0, 0xFFFF, 0xFFFF);
@@ -105,6 +112,13 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
             readyForFrame = false;
             return;
         }
+
+        // Disable vsync throttling so eglSwapBuffers never blocks waiting for
+        // wl_buffer.release. Without this, a DPMS-off monitor can stall the main
+        // thread indefinitely because the compositor never releases the buffer.
+        // Rendering rate is already governed by wl_surface.frame callbacks.
+        g_pEGL->makeCurrent(eglSurface);
+        eglSwapInterval(g_pEGL->eglDisplay, 0);
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
