@@ -89,7 +89,12 @@ static Hyprlang::CParseResult configHandleLayoutOption(const char* v, void** dat
         rhs.pop_back();
     }
 
-    DATA->m_vValues = Hyprutils::Math::Vector2D{std::stof(lhs), std::stof(rhs)};
+    try {
+        DATA->m_vValues = Hyprutils::Math::Vector2D{std::stof(lhs), std::stof(rhs)};
+    } catch (const std::exception&) {
+        result.setError(std::format("invalid layout values: {}", VALUE).c_str());
+        return result;
+    }
 
     return result;
 }
@@ -601,19 +606,21 @@ std::optional<std::string> CConfigManager::handleBezier(const std::string& comma
 
     if (ARGS[1] == "")
         return "too few arguments";
-    float p1x = std::stof(ARGS[1]);
-
     if (ARGS[2] == "")
         return "too few arguments";
-    float p1y = std::stof(ARGS[2]);
-
     if (ARGS[3] == "")
         return "too few arguments";
-    float p2x = std::stof(ARGS[3]);
-
     if (ARGS[4] == "")
         return "too few arguments";
-    float p2y = std::stof(ARGS[4]);
+
+    float p1x, p1y, p2x, p2y;
+
+    try {
+        p1x = std::stof(ARGS[1]);
+        p1y = std::stof(ARGS[2]);
+        p2x = std::stof(ARGS[3]);
+        p2y = std::stof(ARGS[4]);
+    } catch (const std::exception&) { return "invalid bezier arguments"; }
 
     if (ARGS[5] != "")
         return "too many arguments";
@@ -622,7 +629,6 @@ std::optional<std::string> CConfigManager::handleBezier(const std::string& comma
 
     return {};
 }
-
 std::optional<std::string> CConfigManager::handleAnimation(const std::string& command, const std::string& args) {
     const auto ARGS = CVarList(args);
 
