@@ -600,7 +600,7 @@ std::optional<std::string> CConfigManager::handleSource(const std::string& comma
 }
 
 std::optional<std::string> CConfigManager::handleBezier(const std::string& command, const std::string& args) {
-    const auto ARGS = CVarList(args);
+    const auto  ARGS = CVarList(args);
 
     std::string bezierName = ARGS[0];
 
@@ -620,18 +620,12 @@ std::optional<std::string> CConfigManager::handleBezier(const std::string& comma
         p1y = std::stof(ARGS[2]);
         p2x = std::stof(ARGS[3]);
         p2y = std::stof(ARGS[4]);
-    } catch (const std::exception&) {
-        return "invalid bezier arguments";
-    }
+    } catch (const std::exception&) { return "invalid bezier arguments"; }
 
     if (ARGS[5] != "")
         return "too many arguments";
 
-    g_pAnimationManager->addBezierWithName(
-        bezierName,
-        Vector2D(p1x, p1y),
-        Vector2D(p2x, p2y)
-    );
+    g_pAnimationManager->addBezierWithName(bezierName, Vector2D(p1x, p1y), Vector2D(p2x, p2y));
 
     return {};
 }
