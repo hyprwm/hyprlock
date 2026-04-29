@@ -121,7 +121,7 @@ void CImage::reset() {
         imageTimer.reset();
     }
 
-    if (g_pHyprlock->m_bTerminate)
+    if (g_pHyprlock->isTerminating())
         return;
 
     imageFB.destroyBuffer();

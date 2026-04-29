@@ -116,7 +116,7 @@ void CLabel::reset() {
         labelTimer.reset();
     }
 
-    if (g_pHyprlock->m_bTerminate)
+    if (g_pHyprlock->isTerminating())
         return;
 
     if (asset)

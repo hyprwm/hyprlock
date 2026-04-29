@@ -77,7 +77,7 @@ void CAuth::terminate() {
 }
 
 static void unlockCallback(ASP<CTimer> self, void* data) {
-    g_pHyprlock->unlock();
+    g_pHyprlock->fadeOutAndUnlock();
 }
 
 void CAuth::enqueueUnlock() {
