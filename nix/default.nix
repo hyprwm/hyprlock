@@ -6,6 +6,7 @@
   cairo,
   libdrm,
   libGL,
+  libsodium,
   libxkbcommon,
   libgbm,
   hyprgraphics,
@@ -39,6 +40,7 @@ stdenv.mkDerivation {
     cairo
     libdrm
     libGL
+    libsodium
     libxkbcommon
     libgbm
     hyprgraphics
