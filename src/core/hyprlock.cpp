@@ -22,6 +22,7 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <hyprutils/os/Process.hpp>
 #include <malloc.h>
+#include <thread>
 
 using namespace Hyprutils::OS;
 
@@ -340,10 +341,22 @@ void CHyprlock::run() {
     wl_display_roundtrip(m_sWaylandState.display);
 
     if (!m_sWaylandState.sessionLock) {
-        Log::logger->log(Log::CRIT, "Couldn't bind to ext-session-lock-v1, does your compositor support it?");
-        exit(1);
-    }
+        Log::logger->log(Log::WARN, "ext-session-lock-v1 not ready yet, retrying...");
 
+        for (int i = 0; i < 5; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+            wl_display_roundtrip(m_sWaylandState.display);
+
+            if (m_sWaylandState.sessionLock)
+                break;
+        }
+
+        if (!m_sWaylandState.sessionLock) {
+            Log::logger->log(Log::CRIT, "Couldn't bind to ext-session-lock-v1 after retries. Does your compositor support it?");
+            exit(1);
+        }
+    }
     // Gather info about monitors
     wl_display_roundtrip(m_sWaylandState.display);
 
