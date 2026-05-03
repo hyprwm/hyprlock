@@ -267,8 +267,6 @@ bool CBackground::draw(const SRenderData& data) {
 }
 
 void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    pendingResource = false;
-
     if (!newAsset)
         Log::logger->log(Log::ERR, "Background asset update failed, resourceID: {} not available on update!", id);
     else if (newAsset->m_iType == TEXTURE_INVALID) {
@@ -284,12 +282,15 @@ void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
                 if (const auto PSELF = REF.lock()) {
                     if (PSELF->asset)
                         g_asyncResourceManager->unload(PSELF->asset);
+
                     PSELF->asset        = PSELF->pendingAsset;
                     PSELF->pendingAsset = nullptr;
                     PSELF->resourceID   = id;
 
                     PSELF->blurredFB->destroyBuffer();
                     PSELF->blurredFB = std::move(PSELF->pendingBlurredFB);
+
+                    PSELF->pendingResource = false;
                 }
             },
             true);
@@ -332,8 +333,10 @@ void CBackground::onReloadTimerUpdate() {
         return;
     }
 
-    if (pendingResource)
+    if (pendingResource) {
+        Log::logger->log(Log::WARN, "Background image update still pending! - Refusing to load {}", path);
         return;
+    }
 
     pendingResource = true;
 

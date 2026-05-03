@@ -45,14 +45,14 @@ ResourceID CAsyncResourceManager::resourceIDForScreencopy(const std::string& por
 ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResourceData& params, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextRequest(params);
     if (request(RESOURCEID, widget)) {
-        Log::logger->log(Log::TRACE, "Reusing text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
+        Log::logger->log(Log::TRACE, "Reusing text resource \"{}\" (resourceID: {})", params.text, RESOURCEID);
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Log::logger->log(Log::TRACE, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID, (uintptr_t)widget.get());
+    Log::logger->log(Log::TRACE, "Requesting text resource \"{}\" (resourceID: {})", params.text, RESOURCEID);
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -60,14 +60,14 @@ ResourceID CAsyncResourceManager::requestText(const CTextResource::STextResource
 ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResourceData& params, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForTextCmdRequest(params, revision);
     if (request(RESOURCEID, widget)) {
-        Log::logger->log(Log::TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
+        Log::logger->log(Log::TRACE, "Reusing text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID);
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CTextCmdResource>(CTextResource::STextResourceData{params});
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Log::logger->log(Log::TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID, (uintptr_t)widget.get());
+    Log::logger->log(Log::TRACE, "Requesting text cmd resource \"{}\" revision {} (resourceID: {})", params.text, revision, RESOURCEID);
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
@@ -75,14 +75,14 @@ ResourceID CAsyncResourceManager::requestTextCmd(const CTextResource::STextResou
 ResourceID CAsyncResourceManager::requestImage(const std::string& path, size_t revision, const AWP<IWidget>& widget) {
     const auto RESOURCEID = resourceIDForImageRequest(path, revision);
     if (request(RESOURCEID, widget)) {
-        Log::logger->log(Log::TRACE, "Reusing image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+        Log::logger->log(Log::TRACE, "Reusing image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID);
         return RESOURCEID;
     }
 
     auto                                 resource = makeAtomicShared<CImageResource>(absolutePath(path, ""));
     CAtomicSharedPointer<IAsyncResource> resourceGeneric{resource};
 
-    Log::logger->log(Log::TRACE, "Requesting image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID, (uintptr_t)widget.get());
+    Log::logger->log(Log::TRACE, "Requesting image resource {} revision {} (resourceID: {})", path, revision, RESOURCEID);
     enqueue(RESOURCEID, resourceGeneric, widget);
     return RESOURCEID;
 }
