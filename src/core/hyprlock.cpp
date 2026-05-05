@@ -279,7 +279,8 @@ void CHyprlock::run() {
         Log::logger->log(Log::INFO, "  | got iface: {} v{}", IFACE, version);
 
         if (IFACE == zwp_linux_dmabuf_v1_interface.name) {
-            if (!m_screencopyRequired)
+            static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
+            if (!m_screencopyRequired || *SCMODE == 1)
                 return;
 
             if (version < 4) {
