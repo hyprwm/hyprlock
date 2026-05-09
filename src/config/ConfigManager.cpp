@@ -254,6 +254,10 @@ void CConfigManager::init() {
     m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
     m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
     m_config.addConfigValue("auth:fingerprint:retry_delay", Hyprlang::INT{250});
+    m_config.addConfigValue("auth:visage:enabled", Hyprlang::INT{0});
+    m_config.addConfigValue("auth:visage:ready_message", Hyprlang::STRING{"(Look at the camera to unlock)"});
+    m_config.addConfigValue("auth:visage:retry_delay", Hyprlang::INT{500});
+    m_config.addConfigValue("auth:visage:start_delay", Hyprlang::INT{2000});
 
     m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});
 
