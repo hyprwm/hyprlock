@@ -629,6 +629,9 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
+    if (g_pAuth->m_bDisplaySuccText)
+        return;
+
     if (g_pAuth->m_bDisplayFailText)
         g_pAuth->resetDisplayFail();
 

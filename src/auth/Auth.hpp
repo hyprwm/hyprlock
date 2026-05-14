@@ -51,6 +51,7 @@ class CAuth {
     void                       resetDisplayFail();
 
     // Should only be set via the main thread
+    bool m_bDisplaySuccText = false;
     bool m_bDisplayFailText = false;
 
   private:

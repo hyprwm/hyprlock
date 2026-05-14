@@ -76,12 +76,27 @@ void CAuth::terminate() {
     }
 }
 
+static void passwordSuccCallback(ASP<CTimer> self, void* data) {
+    g_pAuth->m_bDisplaySuccText = true;
+
+    g_pHyprlock->enqueueForceUpdateTimers();
+
+    g_pHyprlock->renderAllOutputs();
+}
+
 static void unlockCallback(ASP<CTimer> self, void* data) {
     g_pHyprlock->fadeOutAndUnlock();
 }
 
 void CAuth::enqueueUnlock() {
-    g_pHyprlock->addTimer(std::chrono::milliseconds(0), unlockCallback, nullptr);
+    static const auto SUCCTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:succ_timeout");
+
+    if (*SUCCTIMEOUT > 0) {
+        g_pHyprlock->addTimer(std::chrono::milliseconds(0), passwordSuccCallback, nullptr);
+        g_pHyprlock->addTimer(std::chrono::milliseconds(*SUCCTIMEOUT), unlockCallback, nullptr);
+    } else {
+        g_pHyprlock->addTimer(std::chrono::milliseconds(0), unlockCallback, nullptr);
+    }
 }
 
 static void passwordFailCallback(ASP<CTimer> self, void* data) {
