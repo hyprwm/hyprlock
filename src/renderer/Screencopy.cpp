@@ -373,7 +373,7 @@ void CSCSHMFrame::convertBuffer() {
                 Log::logger->log(Log::INFO, "[sc] [shm] Converting 10-bit channels to 8-bit");
                 uint8_t*   data = (uint8_t*)m_shmData;
 
-                const bool FLIP = m_shmFmt != WL_SHM_FORMAT_XBGR2101010;
+                const bool FLIP = m_shmFmt == WL_SHM_FORMAT_XRGB2101010 || m_shmFmt == WL_SHM_FORMAT_ARGB2101010;
 
                 for (uint32_t y = 0; y < m_h; ++y) {
                     for (uint32_t x = 0; x < m_w; ++x) {
