@@ -105,6 +105,11 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
             readyForFrame = false;
             return;
         }
+
+        // When wayland frame callbacks are used directly, eglSwapInterval should be 0,
+        // otherwise eglSwapBuffers may block under some circumstances.
+        g_pEGL->makeCurrent(eglSurface);
+        eglSwapInterval(g_pEGL->eglDisplay, 0);
     }
 
     if (readyForFrame && !(SAMESIZE && SAMESCALE)) {
