@@ -629,7 +629,7 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         return;
     }
 
-    if (g_pAuth->m_bDisplaySuccText)
+    if (g_pAuth->m_bDisplaySuccessText)
         return;
 
     if (g_pAuth->m_bDisplayFailText)

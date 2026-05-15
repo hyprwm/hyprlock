@@ -43,11 +43,11 @@ class CPasswordInputField : public IWidget {
     void                     updateInputState();
     void                     updateColors();
 
-    bool                     firstRender  = true;
-    bool                     redrawShadow = false;
-    bool                     checkWaiting = false;
-    bool                     displaySucc  = false;
-    bool                     displayFail  = false;
+    bool                     firstRender    = true;
+    bool                     redrawShadow   = false;
+    bool                     checkWaiting   = false;
+    bool                     displaySuccess = false;
+    bool                     displayFail    = false;
 
     size_t                   passwordLength = 0;
 
@@ -57,7 +57,7 @@ class CPasswordInputField : public IWidget {
     Vector2D                 configPos;
     Vector2D                 configSize;
 
-    std::string              halign, valign, configSuccText, configFailText, configCheckText, outputStringPort, configPlaceholderText, fontFamily;
+    std::string              halign, valign, configSuccessText, configFailText, configCheckText, outputStringPort, configPlaceholderText, fontFamily;
     uint64_t                 configFailTimeoutMs = 2000;
 
     int                      outThick, rounding;
@@ -99,12 +99,12 @@ class CPasswordInputField : public IWidget {
         CGradientValueData* outer = nullptr;
         CHyprColor          inner;
         CHyprColor          font;
-        CGradientValueData* succ  = nullptr;
-        CGradientValueData* fail  = nullptr;
-        CGradientValueData* check = nullptr;
-        CGradientValueData* caps  = nullptr;
-        CGradientValueData* num   = nullptr;
-        CGradientValueData* both  = nullptr;
+        CGradientValueData* success = nullptr;
+        CGradientValueData* fail    = nullptr;
+        CGradientValueData* check   = nullptr;
+        CGradientValueData* caps    = nullptr;
+        CGradientValueData* num     = nullptr;
+        CGradientValueData* both    = nullptr;
 
         CHyprColor          hiddenBase;
 

@@ -246,7 +246,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
     m_config.addConfigValue("general:screencopy_mode", Hyprlang::INT{0});
-    m_config.addConfigValue("general:succ_timeout", Hyprlang::INT{0});
+    m_config.addConfigValue("general:success_timeout", Hyprlang::INT{0});
     m_config.addConfigValue("general:fail_timeout", Hyprlang::INT{2000});
 
     m_config.addConfigValue("auth:pam:enabled", Hyprlang::INT{1});
@@ -330,9 +330,9 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "hide_input_base_color", Hyprlang::INT{0xEE00FF99});
     m_config.addSpecialConfigValue("input-field", "rounding", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("input-field", "check_color", GRADIENTCONFIG("0xFF22CC88"));
-    m_config.addSpecialConfigValue("input-field", "succ_color", GRADIENTCONFIG("0xFF22CC88"));
+    m_config.addSpecialConfigValue("input-field", "success_color", GRADIENTCONFIG("0xFF22CC88"));
     m_config.addSpecialConfigValue("input-field", "fail_color", GRADIENTCONFIG("0xFFCC2222"));
-    m_config.addSpecialConfigValue("input-field", "succ_text", Hyprlang::STRING{""});
+    m_config.addSpecialConfigValue("input-field", "success_text", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("input-field", "fail_text", Hyprlang::STRING{"<i>$FAIL</i>"});
     m_config.addSpecialConfigValue("input-field", "check_text", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("input-field", "capslock_color", GRADIENTCONFIG(""));
@@ -514,9 +514,9 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"hide_input_base_color", m_config.getSpecialConfigValue("input-field", "hide_input_base_color", k.c_str())},
                 {"rounding", m_config.getSpecialConfigValue("input-field", "rounding", k.c_str())},
                 {"check_color", m_config.getSpecialConfigValue("input-field", "check_color", k.c_str())},
-                {"succ_color", m_config.getSpecialConfigValue("input-field", "succ_color", k.c_str())},
+                {"success_color", m_config.getSpecialConfigValue("input-field", "success_color", k.c_str())},
                 {"fail_color", m_config.getSpecialConfigValue("input-field", "fail_color", k.c_str())},
-                {"succ_text", m_config.getSpecialConfigValue("input-field", "succ_text", k.c_str())},
+                {"success_text", m_config.getSpecialConfigValue("input-field", "success_text", k.c_str())},
                 {"fail_text", m_config.getSpecialConfigValue("input-field", "fail_text", k.c_str())},
                 {"check_text", m_config.getSpecialConfigValue("input-field", "check_text", k.c_str())},
                 {"capslock_color", m_config.getSpecialConfigValue("input-field", "capslock_color", k.c_str())},
