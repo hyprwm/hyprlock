@@ -158,6 +158,8 @@ void CSessionLockSurface::render() {
     }
 
     needsFrame = FEEDBACK.needsFrame || g_pAnimationManager->shouldTickForNext();
+
+    g_pHyprlock->onLockSurfaceRendered();
 }
 
 void CSessionLockSurface::onCallback() {
