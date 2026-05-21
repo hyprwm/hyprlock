@@ -25,7 +25,7 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
             case PAM_PROMPT_ECHO_ON: {
                 const auto PROMPT        = std::string(msg[i]->msg);
                 const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
-                Log::logger->log(Log::INFO, "PAM_PROMPT: {}", PROMPT);
+                Log::logger->log(Log::INFO, "PAMPROMPT: {}", PROMPT);
 
                 // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
                 // When the prompt is the same as the last one, I guess our answer can be the same.
@@ -44,14 +44,18 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 initialPrompt    = false;
             } break;
             case PAM_ERROR_MSG: Log::logger->log(Log::ERR, "PAM: {}", msg[i]->msg); break;
-            case PAM_TEXT_INFO:
+            case PAM_TEXT_INFO: {
                 Log::logger->log(Log::INFO, "PAM: {}", msg[i]->msg);
+                const auto MSG = std::string_view(msg[i]->msg);
                 // Targets this log from pam_faillock: https://github.com/linux-pam/linux-pam/blob/fa3295e079dbbc241906f29bde5fb71bc4172771/modules/pam_faillock/pam_faillock.c#L417
-                if (const auto MSG = std::string(msg[i]->msg); MSG.contains("left to unlock")) {
+                if (MSG.contains("left to unlock")) {
                     CONVERSATIONSTATE->failText        = MSG;
                     CONVERSATIONSTATE->failTextFromPam = true;
-                }
-                break;
+                // This log targets the pam_fprintd.so module (Just so $PAMPROMPT reflects what is going on)
+                // Removing this module and instead using `auth:fingerprint:enabled = true` is adviced.
+                } else if (MSG.contains("Place your finger"))
+                    CONVERSATIONSTATE->prompt = MSG;
+            } break;
         }
     }
 

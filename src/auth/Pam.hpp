@@ -44,7 +44,7 @@ class CPam : public IAuthImplementation {
     std::thread           m_thread;
     SPamConversationState m_sConversationState;
 
-    bool                  m_bBlockInput = true;
+    bool                  m_bBlockInput = false;
 
     std::string           m_sPamModule = "";
     std::string           m_username   = "";
