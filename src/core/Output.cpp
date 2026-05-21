@@ -56,11 +56,6 @@ void COutput::createSessionLockSurface() {
         return;
     }
 
-    if (size == Vector2D{0, 0}) {
-        Log::logger->log(Log::WARN, "output {} refusing to create a lock surface with size 0x0", m_ID);
-        return;
-    }
-
     m_sessionLockSurface = makeUnique<CSessionLockSurface>(m_self.lock());
 }
 

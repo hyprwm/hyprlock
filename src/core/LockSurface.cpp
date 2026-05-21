@@ -66,6 +66,15 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
     logicalSize  = size_;
     appliedScale = fractionalScale;
 
+    if (!SAMESERIAL)
+        lockSurface->sendAckConfigure(serial);
+
+    if (size_.x <= 0 || size_.y <= 0) {
+        Log::logger->log(Log::WARN, "output {} configure with zero size, waiting for valid configure", m_outputID);
+        readyForFrame = false;
+        return;
+    }
+
     if (fractional) {
         size = (size_ * fractionalScale).floor();
         viewport->sendSetDestination(logicalSize.x, logicalSize.y);
@@ -74,9 +83,6 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
         size = size_ * POUTPUT->scale;
         surface->sendSetBufferScale(POUTPUT->scale);
     }
-
-    if (!SAMESERIAL)
-        lockSurface->sendAckConfigure(serial);
 
     Log::logger->log(Log::INFO, "Configuring surface for logical {} and pixel {}", logicalSize, size);
 
@@ -92,7 +98,7 @@ void CSessionLockSurface::configure(const Vector2D& size_, uint32_t serial_) {
         eglWindow = wl_egl_window_create((wl_surface*)surface->resource(), size.x, size.y);
         if (!eglWindow) {
             // Only fails when unable to allocate the wl_egl_window structure or size x or y is <= 0.
-            Log::logger->log(Log::CRIT, "Failed to create wayland egl window");
+            Log::logger->log(Log::WARN, "Failed to create wayland egl window (size {}x{}), waiting for valid configure", size.x, size.y);
             readyForFrame = false;
             return;
         }
