@@ -37,10 +37,30 @@ static std::map<std::string, MatchResult> s_mapStringToTestType = {{"verify-no-m
                                                                    {"verify-unknown-error", MATCH_UNKNOWN_ERROR}};
 
 CFingerprint::CFingerprint() {
-    static const auto FINGERPRINTREADY   = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:ready_message");
-    m_sFingerprintReady                  = *FINGERPRINTREADY;
-    static const auto FINGERPRINTPRESENT = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:present_message");
-    m_sFingerprintPresent                = *FINGERPRINTPRESENT;
+    static const auto FINGERPRINTREADY               = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:ready_message");
+    static const auto FINGERPRINTPRESENT             = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:present_message");
+    static const auto FINGERPRINTRETRYSCAN           = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:retry_scan_message");
+    static const auto FINGERPRINTSWIPETOOSHORT       = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:swipe_too_short_message");
+    static const auto FINGERPRINTFINGERNOTCENTERED   = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:finger_not_centered_message");
+    static const auto FINGERPRINTREMOVEANDRETRY      = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:remove_and_retry_message");
+    static const auto FINGERPRINTNOMATCHRETRY        = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:no_match_retry_message");
+    static const auto FINGERPRINTNOMATCHFAIL         = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:no_match_fail_message");
+    static const auto FINGERPRINTTOOMANYATTEMPTS     = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:too_many_attempts_message");
+    static const auto FINGERPRINTUNKNOWNERROR        = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:unknown_error_message");
+    static const auto FINGERPRINTFAILEDTORESTART     = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:failed_to_restart_message");
+    static const auto FINGERPRINTDEVICEDISCONNECTED  = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:device_disconnected_message");
+    m_sFingerprintReady                              = *FINGERPRINTREADY;
+    m_sFingerprintPresent                            = *FINGERPRINTPRESENT;
+    m_sFingerprintRetryScan                          = *FINGERPRINTRETRYSCAN;
+    m_sFingerprintSwipeTooShort                      = *FINGERPRINTSWIPETOOSHORT;
+    m_sFingerprintFingerNotCentered                  = *FINGERPRINTFINGERNOTCENTERED;
+    m_sFingerprintRemoveAndRetry                     = *FINGERPRINTREMOVEANDRETRY;
+    m_sFingerprintNoMatchRetry                       = *FINGERPRINTNOMATCHRETRY;
+    m_sFingerprintNoMatchFail                        = *FINGERPRINTNOMATCHFAIL;
+    m_sFingerprintTooManyAttempts                    = *FINGERPRINTTOOMANYATTEMPTS;
+    m_sFingerprintUnknownError                       = *FINGERPRINTUNKNOWNERROR;
+    m_sFingerprintFailedToRestart                    = *FINGERPRINTFAILEDTORESTART;
+    m_sFingerprintDeviceDisconnected                 = *FINGERPRINTDEVICEDISCONNECTED;
 }
 
 CFingerprint::~CFingerprint() {
@@ -153,17 +173,17 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_NO_MATCH:
             stopVerify();
             if (m_sDBUSState.retries >= 3) {
-                m_sFailureReason = "Fingerprint auth disabled (too many failed attempts)";
+                m_sFailureReason = m_sFingerprintTooManyAttempts;
             } else {
                 done                         = false;
                 static const auto RETRYDELAY = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:retry_delay");
                 g_pHyprlock->addTimer(std::chrono::milliseconds(*RETRYDELAY), [](ASP<CTimer> self, void* data) { ((CFingerprint*)data)->startVerify(true); }, this);
-                m_sFailureReason = "Fingerprint did not match";
+                m_sFailureReason = m_sFingerprintNoMatchFail;
             }
             break;
         case MATCH_UNKNOWN_ERROR:
             stopVerify();
-            m_sFailureReason = "Fingerprint auth disabled (unknown error)";
+            m_sFailureReason = m_sFingerprintUnknownError;
             break;
         case MATCH_MATCHED:
             stopVerify();
@@ -172,22 +192,22 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             break;
         case MATCH_RETRY:
             retry     = true;
-            m_sPrompt = "Please retry fingerprint scan";
+            m_sPrompt = m_sFingerprintRetryScan;
             break;
         case MATCH_SWIPE_TOO_SHORT:
             retry     = true;
-            m_sPrompt = "Swipe too short - try again";
+            m_sPrompt = m_sFingerprintSwipeTooShort;
             break;
         case MATCH_FINGER_NOT_CENTERED:
             retry     = true;
-            m_sPrompt = "Finger not centered - try again";
+            m_sPrompt = m_sFingerprintFingerNotCentered;
             break;
         case MATCH_REMOVE_AND_RETRY:
             retry     = true;
-            m_sPrompt = "Remove your finger and try again";
+            m_sPrompt = m_sFingerprintRemoveAndRetry;
             break;
         case MATCH_DISCONNECTED:
-            m_sFailureReason   = "Fingerprint device disconnected";
+            m_sFailureReason   = m_sFingerprintDeviceDisconnected;
             m_sDBUSState.abort = true;
             break;
     }
@@ -227,13 +247,13 @@ void CFingerprint::startVerify(bool isRetry) {
         if (e) {
             Log::logger->log(Log::WARN, "fprint: could not start verifying, {}", e->what());
             if (isRetry)
-                m_sFailureReason = "Fingerprint auth disabled (failed to restart)";
+                m_sFailureReason = m_sFingerprintFailedToRestart;
 
         } else {
             Log::logger->log(Log::INFO, "fprint: started verifying");
             if (isRetry) {
                 m_sDBUSState.retries++;
-                m_sPrompt = "Could not match fingerprint. Try again.";
+                m_sPrompt = m_sFingerprintNoMatchRetry;
             } else
                 m_sPrompt = m_sFingerprintReady;
         }
