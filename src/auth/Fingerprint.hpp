@@ -15,26 +15,22 @@ class CFingerprint : public IAuthImplementation {
     virtual eAuthImplementations getImplType() {
         return AUTH_IMPL_FINGERPRINT;
     }
-    virtual void                        init();
-    virtual void                        handleInput(const std::string& input);
-    virtual bool                        checkWaiting();
-    virtual std::optional<std::string>  getLastFailText();
-    virtual std::optional<std::string>  getLastPrompt();
-    virtual void                        terminate();
-
-    std::shared_ptr<sdbus::IConnection> getConnection();
+    virtual void                       init();
+    virtual void                       handleInput(const std::string& input);
+    virtual bool                       checkWaiting();
+    virtual std::optional<std::string> getLastFailText();
+    virtual std::optional<std::string> getLastPrompt();
+    virtual void                       terminate();
 
   private:
     struct SDBUSState {
-        std::shared_ptr<sdbus::IConnection> connection;
-        std::unique_ptr<sdbus::IProxy>      login;
-        std::unique_ptr<sdbus::IProxy>      device;
+        std::unique_ptr<sdbus::IProxy> device;
 
-        bool                                abort     = false;
-        bool                                done      = false;
-        int                                 retries   = 0;
-        bool                                sleeping  = false;
-        bool                                verifying = false;
+        bool                           abort     = false;
+        bool                           done      = false;
+        int                            retries   = 0;
+        bool                           sleeping  = false;
+        bool                           verifying = false;
     } m_sDBUSState;
 
     std::string m_sFingerprintReady;

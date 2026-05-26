@@ -61,15 +61,6 @@ size_t CAuth::getFailedAttempts() {
     return m_sCurrentFail.failedAttempts;
 }
 
-SP<IAuthImplementation> CAuth::getImpl(eAuthImplementations implType) {
-    for (const auto& i : m_vImpls) {
-        if (i->getImplType() == implType)
-            return i;
-    }
-
-    return nullptr;
-}
-
 void CAuth::terminate() {
     for (const auto& i : m_vImpls) {
         i->terminate();

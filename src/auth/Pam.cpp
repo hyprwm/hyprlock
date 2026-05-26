@@ -51,8 +51,8 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 if (MSG.contains("left to unlock")) {
                     CONVERSATIONSTATE->failText        = MSG;
                     CONVERSATIONSTATE->failTextFromPam = true;
-                // This log targets the pam_fprintd.so module (Just so $PAMPROMPT reflects what is going on)
-                // Removing this module and instead using `auth:fingerprint:enabled = true` is adviced.
+                    // This log targets the pam_fprintd.so module (Just so $PAMPROMPT reflects what is going on)
+                    // Removing this module and instead using `auth:fingerprint:enabled = true` is adviced.
                 } else if (MSG.contains("Place your finger"))
                     CONVERSATIONSTATE->prompt = MSG;
             } break;

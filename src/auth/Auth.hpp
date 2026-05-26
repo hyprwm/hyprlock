@@ -41,8 +41,6 @@ class CAuth {
     std::optional<std::string> getPrompt(eAuthImplementations implType);
     size_t                     getFailedAttempts();
 
-    SP<IAuthImplementation>    getImpl(eAuthImplementations implType);
-
     void                       terminate();
 
     void                       enqueueUnlock();

@@ -1,5 +1,6 @@
 #include "Fingerprint.hpp"
 #include "../core/hyprlock.hpp"
+#include "../core/Dbus.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
 
@@ -47,27 +48,27 @@ CFingerprint::~CFingerprint() {
 }
 
 void CFingerprint::init() {
-    try {
-        m_sDBUSState.connection = sdbus::createSystemBusConnection();
-        m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
-    } catch (sdbus::Error& e) {
-        Log::logger->log(Log::ERR, "fprint: Failed to setup dbus ({})", e.what());
-        m_sDBUSState.connection.reset();
+    if (!g_dbus->m_connection || !g_dbus->m_freedesktopLogin1) {
+        Log::logger->log(Log::ERR, "fprint: Missing dbus proxy?");
         return;
     }
 
-    m_sDBUSState.login->getPropertyAsync("PreparingForSleep").onInterface(LOGIN_MANAGER).uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::Variant preparingForSleep) {
-        if (e) {
-            Log::logger->log(Log::WARN, "fprint: Failed getting value for PreparingForSleep: {}", e->what());
-            return;
-        }
-        m_sDBUSState.sleeping = preparingForSleep.get<bool>();
-        // When entering sleep, the wake signal will trigger startVerify().
-        if (m_sDBUSState.sleeping)
-            return;
-        startVerify();
-    });
-    m_sDBUSState.login->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
+    g_dbus->m_freedesktopLogin1->getPropertyAsync("PreparingForSleep")
+        .onInterface(LOGIN_MANAGER)
+        .uponReplyInvoke([this](std::optional<sdbus::Error> e, sdbus::Variant preparingForSleep) {
+            if (e) {
+                Log::logger->log(Log::WARN, "fprint: Failed getting value for PreparingForSleep: {}", e->what());
+                return;
+            }
+            m_sDBUSState.sleeping = preparingForSleep.get<bool>();
+            // When entering sleep, the wake signal will trigger startVerify().
+            if (m_sDBUSState.sleeping)
+                return;
+
+            startVerify();
+        });
+
+    g_dbus->m_freedesktopLogin1->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
         Log::logger->log(Log::INFO, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
         if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
@@ -100,12 +101,8 @@ void CFingerprint::terminate() {
         releaseDevice();
 }
 
-std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
-    return m_sDBUSState.connection;
-}
-
 bool CFingerprint::createDeviceProxy() {
-    auto              proxy = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, sdbus::ObjectPath{"/net/reactivated/Fprint/Manager"});
+    auto              proxy = sdbus::createProxy(*g_dbus->m_connection, FPRINT, sdbus::ObjectPath{"/net/reactivated/Fprint/Manager"});
 
     sdbus::ObjectPath path;
     try {
@@ -115,7 +112,7 @@ bool CFingerprint::createDeviceProxy() {
         return false;
     }
     Log::logger->log(Log::INFO, "fprint: using device path {}", path.c_str());
-    m_sDBUSState.device = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, path);
+    m_sDBUSState.device = sdbus::createProxy(*g_dbus->m_connection, FPRINT, path);
 
     m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) {
         Log::logger->log(Log::INFO, "fprint: finger selected: {}", finger);
@@ -265,8 +262,11 @@ bool CFingerprint::releaseDevice() {
         m_sDBUSState.device->callMethod("Release").onInterface(DEVICE);
     } catch (sdbus::Error& e) {
         Log::logger->log(Log::WARN, "fprint: could not release device, {}", e.what());
+        m_sDBUSState.device.reset();
         return false;
     }
+
+    m_sDBUSState.device.reset();
     Log::logger->log(Log::INFO, "fprint: released device");
     return true;
 }
