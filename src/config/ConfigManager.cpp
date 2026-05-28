@@ -254,6 +254,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
     m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
     m_config.addConfigValue("auth:fingerprint:retry_delay", Hyprlang::INT{250});
+    m_config.addConfigValue("auth:fingerprint:max_attempts", Hyprlang::INT{4});
 
     m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});
 

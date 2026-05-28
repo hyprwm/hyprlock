@@ -143,9 +143,11 @@ bool CFingerprint::createDeviceProxy() {
 
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
     Log::logger->log(Log::INFO, "fprint: handling status {}", result);
-    auto matchResult   = s_mapStringToTestType[result];
-    bool authenticated = false;
-    bool retry         = false;
+    static const auto MAXATTEMPTS   = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:max_attempts");
+    static const auto RETRYDELAY    = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:retry_delay");
+    auto              matchResult   = s_mapStringToTestType[result];
+    bool              authenticated = false;
+    bool              retry         = false;
     if (m_sDBUSState.sleeping) {
         stopVerify();
         Log::logger->log(Log::INFO, "fprint: device suspended");
@@ -155,11 +157,10 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         case MATCH_INVALID: Log::logger->log(Log::WARN, "fprint: unknown status: {}", result); break;
         case MATCH_NO_MATCH:
             stopVerify();
-            if (m_sDBUSState.retries >= 3) {
+            if (m_sDBUSState.retries >= (*MAXATTEMPTS - 1))
                 m_sFailureReason = "Fingerprint auth disabled (too many failed attempts)";
-            } else {
-                done                         = false;
-                static const auto RETRYDELAY = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:retry_delay");
+            else {
+                done = false;
                 g_pHyprlock->addTimer(std::chrono::milliseconds(*RETRYDELAY), [](ASP<CTimer> self, void* data) { ((CFingerprint*)data)->startVerify(true); }, this);
                 m_sFailureReason = "Fingerprint did not match";
             }
