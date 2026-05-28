@@ -60,6 +60,8 @@ class CHyprlock {
     bool                       passwordCheckWaiting();
     std::optional<std::string> passwordLastFailReason();
 
+    void                       notifyActivityToFingerprint();
+
     void                       renderOutput(const std::string& stringPort);
     void                       renderAllOutputs();
 

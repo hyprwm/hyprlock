@@ -40,6 +40,8 @@ CFingerprint::CFingerprint() {
     m_sFingerprintReady                  = *FINGERPRINTREADY;
     static const auto FINGERPRINTPRESENT = g_pConfigManager->getValue<Hyprlang::STRING>("auth:fingerprint:present_message");
     m_sFingerprintPresent                = *FINGERPRINTPRESENT;
+    static const auto INACTIVETIMEOUT    = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:inactive_timeout");
+    m_sInactiveTimeout                   = *INACTIVETIMEOUT;
 }
 
 CFingerprint::~CFingerprint() {
@@ -96,8 +98,61 @@ bool CFingerprint::checkWaiting() {
 }
 
 void CFingerprint::terminate() {
+    if (m_pInactivityTimer) {
+        m_pInactivityTimer->cancel();
+        m_pInactivityTimer.reset();
+    }
+
     if (!m_sDBUSState.abort)
         releaseDevice();
+}
+
+static void inactivityTimerCallback(ASP<CTimer> self, void* data) {
+    if (!g_pAuth)
+        return;
+    auto fpImpl = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
+    if (!fpImpl)
+        return;
+    ((CFingerprint*)fpImpl.get())->onInactivityTimeout();
+}
+
+void CFingerprint::setupInactivityTimer() {
+    if (m_sInactiveTimeout <= 0 || m_sDBUSState.abort || m_sDBUSState.done)
+        return;
+
+    if (m_pInactivityTimer) {
+        m_pInactivityTimer->cancel();
+        m_pInactivityTimer.reset();
+    }
+
+    m_pInactivityTimer = g_pHyprlock->addTimer(std::chrono::seconds(m_sInactiveTimeout), inactivityTimerCallback, nullptr);
+}
+
+void CFingerprint::onActivity() {
+    setupInactivityTimer();
+
+    if (!m_sDBUSState.verifying) {
+        Log::logger->log(Log::INFO, "fprint: activity detected, resuming verification");
+        startVerify();
+    }
+}
+
+void CFingerprint::onInactivityTimeout() {
+    if (m_sDBUSState.abort || m_sDBUSState.done || !m_sDBUSState.verifying)
+        return;
+
+    Log::logger->log(Log::INFO, "fprint: inactivity timeout, pausing verification");
+    stopVerify();
+    releaseDevice();
+
+    m_sDBUSState.device.reset();
+
+    // Clear the prompt text to provide user feedback
+    m_sPrompt = "";
+    g_pHyprlock->enqueueForceUpdateTimers();
+
+    m_pInactivityTimer->cancel();
+    m_pInactivityTimer.reset();
 }
 
 std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
@@ -237,8 +292,11 @@ void CFingerprint::startVerify(bool isRetry) {
             if (isRetry) {
                 m_sDBUSState.retries++;
                 m_sPrompt = "Could not match fingerprint. Try again.";
-            } else
+            } else {
                 m_sPrompt = m_sFingerprintReady;
+
+                setupInactivityTimer();
+            }
         }
         g_pHyprlock->enqueueForceUpdateTimers();
     });

@@ -655,6 +655,8 @@ void CHyprlock::onKey(uint32_t key, bool down) {
         xkb_compose_state_reset(g_pSeatManager->m_pXKBComposeState);
 
     renderAllOutputs();
+
+    notifyActivityToFingerprint();
 }
 
 void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
@@ -706,6 +708,8 @@ void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
     // TODO: add the UNLIKELY marco from Hyprland
     if (!m_focusedOutput->m_sessionLockSurface)
         return;
+
+    notifyActivityToFingerprint();
 
     const auto SCALEDPOS = pos * m_focusedOutput->m_sessionLockSurface->fractionalScale;
     const auto widgets   = g_pRenderer->getOrCreateWidgetsFor(*m_focusedOutput->m_sessionLockSurface);
@@ -925,6 +929,15 @@ void CHyprlock::enqueueForceUpdateTimers() {
             }
         },
         nullptr, false);
+}
+
+void CHyprlock::notifyActivityToFingerprint() {
+    if (!g_pAuth)
+        return;
+    auto fpImpl = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
+    if (!fpImpl)
+        return;
+    ((CFingerprint*)fpImpl.get())->onActivity();
 }
 
 SP<CCZwlrScreencopyManagerV1> CHyprlock::getScreencopy() {

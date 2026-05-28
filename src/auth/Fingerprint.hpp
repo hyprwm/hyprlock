@@ -22,6 +22,9 @@ class CFingerprint : public IAuthImplementation {
     virtual std::optional<std::string>  getLastPrompt();
     virtual void                        terminate();
 
+    void                                onActivity();
+    void                                onInactivityTimeout();
+
     std::shared_ptr<sdbus::IConnection> getConnection();
 
   private:
@@ -39,9 +42,12 @@ class CFingerprint : public IAuthImplementation {
 
     std::string m_sFingerprintReady;
     std::string m_sFingerprintPresent;
+    int         m_sInactiveTimeout;
 
     std::string m_sPrompt{""};
     std::string m_sFailureReason{""};
+
+    ASP<CTimer> m_pInactivityTimer;
 
     void        handleVerifyStatus(const std::string& result, const bool done);
 
@@ -50,4 +56,6 @@ class CFingerprint : public IAuthImplementation {
     void        startVerify(bool isRetry = false);
     bool        stopVerify();
     bool        releaseDevice();
+
+    void        setupInactivityTimer();
 };
