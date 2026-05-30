@@ -1,4 +1,5 @@
 #include "Fingerprint.hpp"
+#include "DBus.hpp"
 #include "../core/hyprlock.hpp"
 #include "../helpers/Log.hpp"
 #include "../config/ConfigManager.hpp"
@@ -47,12 +48,15 @@ CFingerprint::~CFingerprint() {
 }
 
 void CFingerprint::init() {
+    if (!initDBus()) {
+        Log::logger->log(Log::ERR, "fprint: no dbus connection; disabled");
+        return;
+    }
+
     try {
-        m_sDBUSState.connection = sdbus::createSystemBusConnection();
-        m_sDBUSState.login      = sdbus::createProxy(*m_sDBUSState.connection, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
+        m_sDBUSState.login = sdbus::createProxy(*g_dbus, sdbus::ServiceName{"org.freedesktop.login1"}, sdbus::ObjectPath{"/org/freedesktop/login1"});
     } catch (sdbus::Error& e) {
         Log::logger->log(Log::ERR, "fprint: Failed to setup dbus ({})", e.what());
-        m_sDBUSState.connection.reset();
         return;
     }
 
@@ -100,12 +104,8 @@ void CFingerprint::terminate() {
         releaseDevice();
 }
 
-std::shared_ptr<sdbus::IConnection> CFingerprint::getConnection() {
-    return m_sDBUSState.connection;
-}
-
 bool CFingerprint::createDeviceProxy() {
-    auto              proxy = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, sdbus::ObjectPath{"/net/reactivated/Fprint/Manager"});
+    auto              proxy = sdbus::createProxy(*g_dbus, FPRINT, sdbus::ObjectPath{"/net/reactivated/Fprint/Manager"});
 
     sdbus::ObjectPath path;
     try {
@@ -115,7 +115,7 @@ bool CFingerprint::createDeviceProxy() {
         return false;
     }
     Log::logger->log(Log::INFO, "fprint: using device path {}", path.c_str());
-    m_sDBUSState.device = sdbus::createProxy(*m_sDBUSState.connection, FPRINT, path);
+    m_sDBUSState.device = sdbus::createProxy(*g_dbus, FPRINT, path);
 
     m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) {
         Log::logger->log(Log::INFO, "fprint: finger selected: {}", finger);

@@ -4,7 +4,7 @@
 #include "../renderer/Renderer.hpp"
 #include "../renderer/AsyncResourceManager.hpp"
 #include "../auth/Auth.hpp"
-#include "../auth/Fingerprint.hpp"
+#include "../auth/DBus.hpp"
 #include "./Egl.hpp"
 #include "./Seat.hpp"
 #include <chrono>
@@ -375,8 +375,7 @@ void CHyprlock::run() {
         exit(1);
     }
 
-    const auto fingerprintAuth = g_pAuth->getImpl(AUTH_IMPL_FINGERPRINT);
-    const auto dbusConn        = (fingerprintAuth) ? ((CFingerprint*)fingerprintAuth.get())->getConnection() : nullptr;
+    const auto dbusConn = g_dbus;
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
