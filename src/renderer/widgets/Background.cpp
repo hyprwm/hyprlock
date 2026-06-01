@@ -11,6 +11,27 @@
 #include <hyprlang.hpp>
 #include <filesystem>
 #include <GLES3/gl32.h>
+#include <array>
+#include <algorithm>
+#include <cctype>
+
+#ifdef HYPRLOCK_WITH_MPV
+#include "../MpvVideo.hpp"
+#include <fstream>
+#endif
+
+static bool isVideoPath(const std::string& path) {
+    static constexpr std::array<std::string_view, 11> VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v", ".flv", ".wmv", ".gif", ".ts", ".m2ts"};
+
+    const auto DOT = path.find_last_of('.');
+    if (DOT == std::string::npos)
+        return false;
+
+    std::string ext = path.substr(DOT);
+    std::ranges::transform(ext, ext.begin(), [](unsigned char c) { return std::tolower(c); });
+
+    return std::ranges::any_of(VIDEO_EXTS, [&](const auto& e) { return e == ext; });
+}
 
 CBackground::CBackground() {
     blurredFB        = makeUnique<CFramebuffer>();
@@ -79,6 +100,8 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
     if (!reloadCommand.empty() && path.empty())
         path = runAndGetPath(reloadCommand);
 
+    const bool PATH_IS_VIDEO = !isScreenshot && !path.empty() && isVideoPath(path);
+
     if (isScreenshot) {
         resourceID = scResourceID; // Fallback to solid background:color when scResourceID==0
 
@@ -86,10 +109,31 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             Log::logger->log(Log::ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
             resourceID = 0;
         }
+    } else if (PATH_IS_VIDEO) {
+#ifdef HYPRLOCK_WITH_MPV
+        bool        videoLoop = true, videoMute = true;
+        std::string videoHwdec = "auto-safe";
+        try {
+            videoLoop           = std::any_cast<Hyprlang::INT>(props.at("video_loop"));
+            videoMute           = std::any_cast<Hyprlang::INT>(props.at("video_mute"));
+            videoHwdec          = std::any_cast<Hyprlang::STRING>(props.at("video_hwdec"));
+            videoFpsCap         = std::any_cast<Hyprlang::INT>(props.at("video_fps_cap"));
+            videoPauseOnBattery = std::any_cast<Hyprlang::INT>(props.at("video_pause_on_battery"));
+        } catch (const std::exception& e) { Log::logger->log(Log::ERR, "Failed to read video options for CBackground: {}", e.what()); }
+
+        m_video = makeUnique<CMpvVideo>(absolutePath(path, ""), videoLoop, videoMute, videoHwdec);
+
+        if (videoPauseOnBattery) {
+            onBatteryTimerUpdate(); // set initial pause state
+            plantBatteryTimer();
+        }
+#else
+        Log::logger->log(Log::ERR, "background path '{}' looks like a video, but hyprlock was built without libmpv support. Falling back to background color.", path);
+#endif
     } else if (!path.empty())
         resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
 
-    if (!reloadCommand.empty() && reloadTime > -1) {
+    if (!reloadCommand.empty() && reloadTime > -1 && !PATH_IS_VIDEO) {
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -104,6 +148,16 @@ void CBackground::reset() {
         reloadTimer->cancel();
         reloadTimer.reset();
     }
+
+#ifdef HYPRLOCK_WITH_MPV
+    if (batteryTimer) {
+        batteryTimer->cancel();
+        batteryTimer.reset();
+    }
+    m_video.reset(); // frees mpv + its GL objects (binds the EGL context surfacelessly first)
+    videoPaused      = false;
+    m_lastVideoFrame = {};
+#endif
 
     blurredFB->destroyBuffer();
     pendingBlurredFB->destroyBuffer();
@@ -225,6 +279,11 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 }
 
 bool CBackground::draw(const SRenderData& data) {
+#ifdef HYPRLOCK_WITH_MPV
+    if (m_video)
+        return drawVideo(data);
+#endif
+
     updatePrimaryAsset();
     updatePendingAsset();
     updateScAsset();
@@ -344,3 +403,141 @@ void CBackground::onReloadTimerUpdate() {
     AWP<IWidget> widget(m_self);
     g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }
+
+#ifdef HYPRLOCK_WITH_MPV
+
+bool CBackground::drawVideo(const SRenderData& data) {
+    updateScAsset(); // enables the crossfade-from-screenshot during the lock fade-in
+
+    // Render the solid color (and screenshot during fade-in) while there is no video frame to show yet.
+    const auto renderFallback = [&]() {
+        if (data.opacity < 1.0 && scAsset) {
+            const auto& SCTEX  = getScAssetTex();
+            const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+            g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+            CHyprColor col = color;
+            col.a *= data.opacity;
+            renderRect(col);
+            return true; // keep animating the fade
+        }
+        renderRect(color);
+        return data.opacity < 1.0;
+    };
+
+    if (m_video->failed())
+        return renderFallback();
+
+    const CTexture* videoTex = nullptr;
+    if (videoFpsCap > 0 && !videoPaused && m_video->lastFrame()) {
+        // Steady-state playback: throttle how often we advance/redraw mpv to the configured cap.
+        const auto NOW         = std::chrono::steady_clock::now();
+        const auto MININTERVAL = std::chrono::nanoseconds((int64_t)(1'000'000'000.0 / videoFpsCap));
+        if ((NOW - m_lastVideoFrame) >= MININTERVAL) {
+            videoTex         = m_video->renderFrame(viewport);
+            m_lastVideoFrame = NOW;
+        } else
+            videoTex = m_video->lastFrame();
+    } else
+        // Always render (even when paused) so mpv initializes and decodes its first frame; the mpv "pause"
+        // property freezes advancement, so a paused video simply shows a static first/last frame.
+        videoTex = m_video->renderFrame(viewport);
+
+    if (!videoTex) {
+        renderFallback();
+        return !m_video->failed(); // keep the loop alive until the first frame decodes; idle once it gave up
+    }
+
+    // Reuse the image blur path: render the video frame into blurredFB and blur it in place.
+    const CTexture* tex = videoTex;
+    if (blurPasses > 0) {
+        renderToFB(*videoTex, *blurredFB, blurPasses);
+        tex = &blurredFB->m_cTex;
+    }
+
+    const auto TEXBOX = getScaledBoxForTextureSize(tex->m_vSize, viewport);
+    if (data.opacity < 1.0 && scAsset) {
+        const auto& SCTEX = getScAssetTex();
+        g_pRenderer->renderTextureMix(TEXBOX, SCTEX, *tex, 1.0, data.opacity, 0);
+    } else
+        g_pRenderer->renderTexture(TEXBOX, *tex, 1, 0);
+
+    // Animate while actively playing; idle the render loop when paused (battery) or stopped on the last frame.
+    return !videoPaused && !m_video->ended();
+}
+
+static bool readFirstLine(const std::filesystem::path& path, std::string& out) {
+    std::ifstream f(path);
+    if (!f.is_open())
+        return false;
+    std::getline(f, out);
+    return true;
+}
+
+static bool onBatteryPower() {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+
+    const fs::path BASE = "/sys/class/power_supply";
+    if (!fs::is_directory(BASE, ec))
+        return false;
+
+    bool sawMains = false, mainsOnline = false;
+    bool sawBattery = false, batteryDischarging = false;
+
+    for (const auto& entry : fs::directory_iterator(BASE, ec)) {
+        std::string type;
+        if (!readFirstLine(entry.path() / "type", type))
+            continue;
+
+        if (type == "Mains") {
+            std::string online;
+            if (readFirstLine(entry.path() / "online", online)) {
+                sawMains = true;
+                mainsOnline |= (online == "1");
+            }
+        } else if (type == "Battery") {
+            std::string status;
+            if (readFirstLine(entry.path() / "status", status)) {
+                sawBattery = true;
+                batteryDischarging |= (status == "Discharging");
+            }
+        }
+    }
+
+    if (sawMains)
+        return !mainsOnline;
+    if (sawBattery)
+        return batteryDischarging;
+
+    return false; // no power supply info (e.g. desktop) - never pause
+}
+
+static void onBatteryTimer(AWP<CBackground> ref) {
+    if (auto PBG = ref.lock(); PBG) {
+        PBG->onBatteryTimerUpdate();
+        PBG->plantBatteryTimer();
+    }
+}
+
+void CBackground::plantBatteryTimer() {
+    batteryTimer = g_pHyprlock->addTimer(std::chrono::seconds(5), [REF = m_self](auto, auto) { onBatteryTimer(REF); }, nullptr);
+}
+
+void CBackground::onBatteryTimerUpdate() {
+    if (!m_video)
+        return;
+
+    const bool ONBATTERY = onBatteryPower();
+    if (ONBATTERY == videoPaused)
+        return;
+
+    videoPaused = ONBATTERY;
+    m_video->setPaused(ONBATTERY);
+    Log::logger->log(Log::INFO, "[mpv] video background {} (on battery: {})", ONBATTERY ? "paused" : "resumed", ONBATTERY);
+
+    // While paused, drawVideo() returns false and the per-output frame loop idles - so a plain property
+    // change won't be drawn. Kick a render so the pause/resume actually takes visible effect.
+    g_pHyprlock->renderAllOutputs();
+}
+
+#endif // HYPRLOCK_WITH_MPV

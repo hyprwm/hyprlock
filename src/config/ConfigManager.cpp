@@ -272,6 +272,12 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "reload_time", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("background", "reload_cmd", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "crossfade_time", Hyprlang::FLOAT{-1.0});
+    // Native video background (requires hyprlock built with libmpv). Active when `path` points at a video file.
+    m_config.addSpecialConfigValue("background", "video_loop", Hyprlang::INT{1});
+    m_config.addSpecialConfigValue("background", "video_mute", Hyprlang::INT{1});
+    m_config.addSpecialConfigValue("background", "video_hwdec", Hyprlang::STRING{"auto-safe"});
+    m_config.addSpecialConfigValue("background", "video_fps_cap", Hyprlang::INT{0});
+    m_config.addSpecialConfigValue("background", "video_pause_on_battery", Hyprlang::INT{0});
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
@@ -425,6 +431,11 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"reload_time", m_config.getSpecialConfigValue("background", "reload_time", k.c_str())},
                 {"reload_cmd", m_config.getSpecialConfigValue("background", "reload_cmd", k.c_str())},
                 {"crossfade_time", m_config.getSpecialConfigValue("background", "crossfade_time", k.c_str())},
+                {"video_loop", m_config.getSpecialConfigValue("background", "video_loop", k.c_str())},
+                {"video_mute", m_config.getSpecialConfigValue("background", "video_mute", k.c_str())},
+                {"video_hwdec", m_config.getSpecialConfigValue("background", "video_hwdec", k.c_str())},
+                {"video_fps_cap", m_config.getSpecialConfigValue("background", "video_fps_cap", k.c_str())},
+                {"video_pause_on_battery", m_config.getSpecialConfigValue("background", "video_pause_on_battery", k.c_str())},
             }
         });
         // clang-format on
