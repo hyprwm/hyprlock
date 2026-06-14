@@ -4,6 +4,8 @@
 #include "../../helpers/Math.hpp"
 #include "../../core/Seat.hpp"
 #include "../Texture.hpp"
+#include "../Shader.hpp"
+#include "../Framebuffer.hpp"
 
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <string>
@@ -50,6 +52,15 @@ class IWidget {
 
     void                 setHover(bool hover);
     bool                 isHovered() const;
+
+    std::string          shaderPath;
+    CShader              customShader;
+    bool                 hasCustomShader = false;
+    bool                 hasTime         = false;
+    CFramebuffer         customFB;
+    Vector2D             viewport;
+
+    void                 compileCustomShader();
 
   private:
     bool hovered = false;

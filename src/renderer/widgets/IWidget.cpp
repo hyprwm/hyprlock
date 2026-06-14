@@ -2,6 +2,11 @@
 #include "../../helpers/Log.hpp"
 #include "../../core/hyprlock.hpp"
 #include "../../auth/Auth.hpp"
+#include "../Renderer.hpp"
+#include "../Shaders.hpp"
+#include "../../helpers/MiscFunctions.hpp"
+#include <fstream>
+#include <sstream>
 #include <chrono>
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <unistd.h>
@@ -288,4 +293,78 @@ bool IWidget::isHovered() const {
 
 bool IWidget::containsPoint(const Vector2D& pos) const {
     return getBoundingBoxWl().containsPoint(pos);
+}
+
+static GLuint compileShaderSource(const GLuint& type, const std::string& src) {
+    auto shader       = glCreateShader(type);
+    auto shaderSource = src.c_str();
+    glShaderSource(shader, 1, &shaderSource, nullptr);
+    glCompileShader(shader);
+    GLint ok;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+    if (ok == GL_FALSE) {
+        char infoLog[512];
+        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
+        Log::logger->log(Log::ERR, "Custom shader compilation failed: {}", infoLog);
+        glDeleteShader(shader);
+        return 0;
+    }
+    return shader;
+}
+
+void IWidget::compileCustomShader() {
+    std::string   absPath = absolutePath(shaderPath, "");
+    std::ifstream file(absPath);
+    if (!file.is_open()) {
+        Log::logger->log(Log::ERR, "Could not open custom shader file: {}", absPath);
+        return;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string fragSource = buffer.str();
+
+    GLuint      vertCompiled = compileShaderSource(GL_VERTEX_SHADER, TEXVERTSRC);
+    GLuint      fragCompiled = compileShaderSource(GL_FRAGMENT_SHADER, fragSource);
+
+    if (!vertCompiled || !fragCompiled) {
+        Log::logger->log(Log::ERR, "Failed to compile custom shader program parts.");
+        if (vertCompiled)
+            glDeleteShader(vertCompiled);
+        if (fragCompiled)
+            glDeleteShader(fragCompiled);
+        return;
+    }
+
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vertCompiled);
+    glAttachShader(prog, fragCompiled);
+    glLinkProgram(prog);
+
+    glDetachShader(prog, vertCompiled);
+    glDetachShader(prog, fragCompiled);
+    glDeleteShader(vertCompiled);
+    glDeleteShader(fragCompiled);
+
+    GLint ok;
+    glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+    if (ok == GL_FALSE) {
+        char infoLog[512];
+        glGetProgramInfoLog(prog, 512, nullptr, infoLog);
+        Log::logger->log(Log::ERR, "Custom shader program linking failed: {}", infoLog);
+        glDeleteProgram(prog);
+        return;
+    }
+
+    customShader.program   = prog;
+    customShader.proj      = glGetUniformLocation(prog, "proj");
+    customShader.tex       = glGetUniformLocation(prog, "tex");
+    customShader.alpha     = glGetUniformLocation(prog, "alpha");
+    customShader.posAttrib = glGetAttribLocation(prog, "pos");
+    customShader.texAttrib = glGetAttribLocation(prog, "texcoord");
+
+    hasTime = glGetUniformLocation(prog, "time") != -1;
+
+    hasCustomShader = true;
+    Log::logger->log(Log::INFO, "Successfully loaded custom shader: {}", absPath);
 }
