@@ -165,9 +165,9 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             }
             break;
         case MATCH_UNKNOWN_ERROR:
-            stopVerify();
-            m_sFailureReason = "Fingerprint auth disabled (unknown error)";
-            break;
+    Log::logger->log(Log::INFO, "fprint: restarting verification after unknown error");
+    restartVerification();
+    return;
         case MATCH_MATCHED:
             stopVerify();
             authenticated = true;
@@ -269,4 +269,20 @@ bool CFingerprint::releaseDevice() {
     }
     Log::logger->log(Log::INFO, "fprint: released device");
     return true;
+}
+
+void CFingerprint::restartVerification() {
+    stopVerify();
+
+    releaseDevice();
+
+    m_sDBUSState.done      = false;
+    m_sDBUSState.abort     = false;
+    m_sDBUSState.verifying = false;
+    m_sDBUSState.retries   = 0;
+
+    m_sFailureReason.clear();
+    m_sPrompt.clear();
+
+    claimDevice();
 }
