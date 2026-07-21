@@ -405,17 +405,31 @@ void CHyprlock::run() {
                 events = poll(pollfds, fdcount, 5000);
 
                 if (events < 0) {
-                    RASSERT(errno == EINTR, "[core] Polling fds failed with {}", errno);
                     wl_display_cancel_read(m_sWaylandState.display);
+
+                    if (errno != EINTR) {
+                        Log::logger->log(Log::CRIT, "[core] Polling fds failed with {}", errno);
+                        m_bConnectionLost = true;
+                        break;
+                    }
+
                     continue;
                 }
 
                 for (size_t i = 0; i < fdcount; ++i) {
-                    RASSERT(!(pollfds[i].revents & POLLHUP), "[core] Disconnected from pollfd id {}", i);
+                    if (pollfds[i].revents & (POLLHUP | POLLERR)) {
+                        Log::logger->log(Log::CRIT, "[core] Disconnected from pollfd id {}", i);
+                        m_bConnectionLost = true;
+                    }
                 }
 
+                // read even after a disconnect: it surfaces a protocol error the
+                // compositor may have posted right before closing the connection
                 wl_display_read_events(m_sWaylandState.display);
                 m_sLoopState.wlDispatched = false;
+
+                if (m_bConnectionLost)
+                    break;
             }
 
             if (events > 0 || !preparedToRead) {
@@ -426,6 +440,24 @@ void CHyprlock::run() {
 
                 m_sLoopState.wlDispatchCV.wait_for(lk, std::chrono::milliseconds(100), [this] { return m_sLoopState.wlDispatched; });
             }
+        }
+
+        if (m_bConnectionLost) {
+            const auto ERR = wl_display_get_error(m_sWaylandState.display);
+            if (ERR == EPROTO) {
+                const wl_interface* iface = nullptr;
+                uint32_t            id    = 0;
+                const uint32_t      code  = wl_display_get_protocol_error(m_sWaylandState.display, &iface, &id);
+                Log::logger->log(Log::CRIT, "[core] Compositor posted a protocol error on {}@{}: code {}", iface ? iface->name : "?", id, code);
+            } else if (ERR != 0)
+                Log::logger->log(Log::CRIT, "[core] Compositor connection lost with {}", ERR);
+
+            // also lets the auth thread exit, same as SIGUSR1 unlocks
+            m_fadeOutOrTerminate = true;
+            m_bTerminate         = true;
+            std::lock_guard<std::mutex> lg(m_sLoopState.eventLoopMutex);
+            m_sLoopState.event = true;
+            m_sLoopState.loopCV.notify_all();
         }
     });
 
@@ -499,6 +531,13 @@ void CHyprlock::run() {
     pollThr.join();
     timersThr.join();
 
+    if (m_bConnectionLost) {
+        // the compositor is gone: drop the lock object without sending
+        // unlock_and_destroy on the dead connection
+        m_sLockState.lock.reset();
+        m_sLockState.locked = false;
+    }
+
     // Now safe to destroy globals — no more timer callbacks can fire
     m_sWaylandState = {};
     dma             = {};
@@ -512,6 +551,13 @@ void CHyprlock::run() {
     wl_display_disconnect(DPY);
 
     g_dbus.reset();
+
+    if (m_bConnectionLost) {
+        // exit nonzero so a lost compositor connection is distinguishable from a
+        // successful unlock (e.g. for supervisors respawning us on failure)
+        Log::logger->log(Log::CRIT, "Compositor connection was lost, exiting");
+        exit(1);
+    }
 
     Log::logger->log(Log::INFO, "Reached the end, exiting");
 }

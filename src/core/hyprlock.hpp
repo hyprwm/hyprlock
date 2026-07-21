@@ -123,6 +123,7 @@ class CHyprlock {
     bool m_lockAquired        = false;
     bool m_fadeOutOrTerminate = false;
     bool m_bTerminate         = false;
+    bool m_bConnectionLost    = false;
 
     struct {
         wl_display*                      display     = nullptr;
