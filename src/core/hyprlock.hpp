@@ -10,6 +10,7 @@
 #include "Output.hpp"
 #include "Timer.hpp"
 #include <vector>
+#include <atomic>
 #include <condition_variable>
 #include <optional>
 #include <string_view>
@@ -120,9 +121,9 @@ class CHyprlock {
     void        removeDmabufListener();
 
   private:
-    bool m_lockAquired        = false;
-    bool m_fadeOutOrTerminate = false;
-    bool m_bTerminate         = false;
+    bool             m_lockAquired        = false;
+    std::atomic_bool m_fadeOutOrTerminate = false;
+    std::atomic_bool m_bTerminate         = false;
 
     struct {
         wl_display*                      display     = nullptr;
