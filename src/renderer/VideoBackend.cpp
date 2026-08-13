@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <map>
+#include <optional>
 #include <unordered_set>
 
 #include <GLES3/gl32.h>
@@ -12,15 +14,82 @@
 
 extern "C" {
 #include <libavutil/display.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/pixdesc.h>
+}
+
+// (path, revision)-keyed registry so every output showing the same file
+// shares one decode pipeline. Weak entries: the backend stops when the last
+// holder releases it. acquire() and release run on the render thread only;
+// the mutex just keeps the registry safe should that ever change.
+static std::mutex                                                    s_registryMutex;
+static std::map<std::pair<std::string, size_t>, WP<CVideoBackend>>   s_registry;
+
+SP<CVideoBackend> CVideoBackend::acquire(const std::string& absPath, size_t revision, const Vector2D& viewport) {
+    // The revision is part of the key: a reload of the same path (bumped
+    // revision) must get a fresh decoder even while other outputs still hold
+    // the old one open.
+    const std::pair<std::string, size_t> KEY = {absPath, revision};
+
+    SP<CVideoBackend>                    existing;
+    {
+        std::lock_guard<std::mutex> lock(s_registryMutex);
+        if (const auto IT = s_registry.find(KEY); IT != s_registry.end())
+            existing = IT->second.lock();
+
+        if (!existing) {
+            auto backend           = SP<CVideoBackend>(new CVideoBackend());
+            backend->m_registryKey = KEY;
+            backend->open(absPath, viewport);
+            s_registry[KEY] = backend;
+            return backend;
+        }
+    }
+
+    // Outside the registry lock: growing the target re-opens the stream, which
+    // must not block acquires of unrelated paths behind a slow source.
+    existing->ensureViewport(viewport);
+    return existing;
 }
 
 CVideoBackend::~CVideoBackend() {
     stop();
+
+    std::lock_guard<std::mutex> lock(s_registryMutex);
+    if (const auto IT = s_registry.find(m_registryKey); IT != s_registry.end() && IT->second.expired())
+        s_registry.erase(IT);
+}
+
+void CVideoBackend::ensureViewport(const Vector2D& viewport) {
+    if (viewport.x <= m_viewportHint.x && viewport.y <= m_viewportHint.y)
+        return;
+
+    // The conversion target size is fixed when the stream opens, so a larger
+    // output attaching means re-opening with the union hint. Usually this
+    // happens while outputs configure at lock startup; on a hotplug of a
+    // larger monitor mid-session it costs the other outputs a brief fallback
+    // flash and restarts playback - accepted for how rare that is.
+    const Vector2D UNION = {std::max(viewport.x, m_viewportHint.x), std::max(viewport.y, m_viewportHint.y)};
+    Log::logger->log(Log::INFO, "CVideoBackend: growing conversion target for {} to {}x{}", m_path, UNION.x, UNION.y);
+
+    stop();
+    open(m_path, UNION);
+}
+
+uint64_t CVideoBackend::addFrameListener(std::function<void()> cb) {
+    std::lock_guard<std::mutex> lock(m_listenerMutex);
+    const uint64_t              TOKEN = m_nextListenerToken++;
+    m_frameListeners.emplace_back(TOKEN, std::move(cb));
+    return TOKEN;
+}
+
+void CVideoBackend::removeFrameListener(uint64_t token) {
+    std::lock_guard<std::mutex> lock(m_listenerMutex);
+    std::erase_if(m_frameListeners, [token](const auto& l) { return l.first == token; });
 }
 
 bool CVideoBackend::isVideoFile(const std::string& path) {
-    static const std::unordered_set<std::string> VIDEO_EXT = {".mp4", ".mkv", ".webm", ".avi", ".mov", ".m4v", ".flv", ".wmv", ".ts", ".m2ts", ".gif"};
+    static const std::unordered_set<std::string> VIDEO_EXT = {".mp4", ".mkv", ".webm", ".avi", ".mov", ".m4v", ".flv", ".wmv", ".ts", ".m2ts", ".gif", ".ogv", ".mpg", ".mpeg"};
 
     auto                                         ext = std::filesystem::path(path).extension().string();
     std::ranges::transform(ext, ext.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -62,11 +131,17 @@ static void premultiplyAlpha(uint8_t* px, size_t bytes) {
     }
 }
 
-void CVideoBackend::open(const std::string& path, const Vector2D& viewport, std::function<void()> onFrame) {
+void CVideoBackend::open(const std::string& path, const Vector2D& viewport) {
     m_path          = path;
     m_viewportHint  = viewport;
-    m_onFrame       = std::move(onFrame);
     m_stopRequested = false;
+
+    {
+        // Drop any frame published before a stop(): its buffer was sized for the
+        // old conversion target and must not reach the (re-)allocated texture.
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+        m_textureSerial = m_publishSerial;
+    }
 
     // The file is opened on the decode thread: avformat_open_input can block
     // indefinitely on FIFOs or dead network mounts, and this thread is the one
@@ -77,6 +152,51 @@ void CVideoBackend::open(const std::string& path, const Vector2D& viewport, std:
         if (openStream())
             decodeLoop();
     });
+}
+
+// Called by FFmpeg (on the decode thread) to pick the output pixel format.
+// Prefer the negotiated hw format; if it is not offered (e.g. the driver
+// rejected this stream after probing), fall back to software decode.
+AVPixelFormat CVideoBackend::hwGetFormat(AVCodecContext* ctx, const AVPixelFormat* fmts) {
+    auto* self = static_cast<CVideoBackend*>(ctx->opaque);
+
+    for (const AVPixelFormat* p = fmts; *p != AV_PIX_FMT_NONE; p++) {
+        if (*p == self->m_hwPixFmt)
+            return *p;
+    }
+
+    Log::logger->log(Log::WARN, "CVideoBackend: hardware pixel format not offered for {}, falling back to software decode", self->m_path);
+    self->m_hwPixFmt = AV_PIX_FMT_NONE;
+    return avcodec_default_get_format(ctx, fmts);
+}
+
+// Attach a hardware decoder if any of the codec's hw configs can create a
+// device on this machine; decoded frames are downloaded to system memory via
+// av_hwframe_transfer_data in the decode loop. All failures leave the codec
+// in plain software mode.
+void CVideoBackend::initHwDecode(const AVCodec* codec) {
+    m_hwPixFmt = AV_PIX_FMT_NONE; // reset for re-opens (viewport growth)
+
+    for (int i = 0;; i++) {
+        const AVCodecHWConfig* CFG = avcodec_get_hw_config(codec, i);
+        if (!CFG)
+            break;
+
+        if (!(CFG->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX))
+            continue;
+
+        if (av_hwdevice_ctx_create(&m_hwDeviceCtx, CFG->device_type, nullptr, nullptr, 0) < 0)
+            continue;
+
+        m_hwPixFmt                = CFG->pix_fmt;
+        m_codecCtx->hw_device_ctx = av_buffer_ref(m_hwDeviceCtx);
+        m_codecCtx->opaque        = this;
+        m_codecCtx->get_format    = &CVideoBackend::hwGetFormat;
+        Log::logger->log(Log::INFO, "CVideoBackend: hardware decode for {} via {}", m_path, av_hwdevice_get_type_name(CFG->device_type));
+        return;
+    }
+
+    Log::logger->log(Log::INFO, "CVideoBackend: no hardware decoder available for {}, using software decode", m_path);
 }
 
 bool CVideoBackend::openStream() {
@@ -107,17 +227,47 @@ bool CVideoBackend::openStream() {
         return false;
     }
 
-    m_codecCtx = avcodec_alloc_context3(codec);
-    if (!m_codecCtx) {
-        Log::logger->log(Log::ERR, "CVideoBackend: avcodec_alloc_context3 failed");
-        return false;
-    }
+    const auto BUILDCODECCTX = [this, codec]() -> bool {
+        m_codecCtx = avcodec_alloc_context3(codec);
+        if (!m_codecCtx) {
+            Log::logger->log(Log::ERR, "CVideoBackend: avcodec_alloc_context3 failed");
+            return false;
+        }
+        // Unchecked, a failure here can leave the context missing extradata
+        // (SPS/PPS) so open succeeds but every packet fails to decode.
+        if (avcodec_parameters_to_context(m_codecCtx, m_formatCtx->streams[m_streamIdx]->codecpar) < 0) {
+            Log::logger->log(Log::ERR, "CVideoBackend: avcodec_parameters_to_context failed for {}", m_path);
+            return false;
+        }
+        return true;
+    };
 
-    avcodec_parameters_to_context(m_codecCtx, m_formatCtx->streams[m_streamIdx]->codecpar);
+    if (!BUILDCODECCTX())
+        return false;
+
+    initHwDecode(codec);
 
     if (avcodec_open2(m_codecCtx, codec, nullptr) < 0) {
-        Log::logger->log(Log::ERR, "CVideoBackend: avcodec_open2 failed for {}", m_path);
-        return false;
+        if (!m_hwDeviceCtx) {
+            Log::logger->log(Log::ERR, "CVideoBackend: avcodec_open2 failed for {}", m_path);
+            return false;
+        }
+
+        // Retry in software: a hw device can exist yet still reject this
+        // particular codec/profile combination at open time. The context is
+        // rebuilt from scratch - avcodec_open2 must not run twice on one.
+        Log::logger->log(Log::WARN, "CVideoBackend: avcodec_open2 with hardware decode failed for {}, retrying in software", m_path);
+        av_buffer_unref(&m_hwDeviceCtx);
+        m_hwPixFmt = AV_PIX_FMT_NONE;
+
+        avcodec_free_context(&m_codecCtx);
+        if (!BUILDCODECCTX())
+            return false;
+
+        if (avcodec_open2(m_codecCtx, codec, nullptr) < 0) {
+            Log::logger->log(Log::ERR, "CVideoBackend: avcodec_open2 failed for {}", m_path);
+            return false;
+        }
     }
 
     m_frameW = m_codecCtx->width;
@@ -191,6 +341,13 @@ void CVideoBackend::stop() {
     }
     m_stopCV.notify_all();
 
+    {
+        // Same lost-wakeup discipline for the backpressure wait: order the
+        // store before the notify from the waiter's perspective.
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+    }
+    m_frameCV.notify_all();
+
     if (m_decodeThread.joinable())
         m_decodeThread.join();
 
@@ -201,6 +358,9 @@ void CVideoBackend::stop() {
 
     if (m_codecCtx)
         avcodec_free_context(&m_codecCtx);
+
+    if (m_hwDeviceCtx)
+        av_buffer_unref(&m_hwDeviceCtx);
 
     if (m_formatCtx)
         avformat_close_input(&m_formatCtx);
@@ -214,16 +374,18 @@ void CVideoBackend::stop() {
     }
 }
 
-bool CVideoBackend::updateTexture() {
+void CVideoBackend::updateTexture() {
     {
         std::lock_guard<std::mutex> lock(m_frameMutex);
-        if (!m_hasNewFrame)
-            return false;
+        if (m_publishSerial == m_textureSerial)
+            return;
 
         // O(1) swap, no memcpy; the decode thread reuses the swapped-out buffer
         std::swap(m_frameData, m_uploadBuffer);
-        m_hasNewFrame = false;
+        m_textureSerial = m_publishSerial;
     }
+    // Wake a decode thread parked on backpressure (display was off)
+    m_frameCV.notify_all();
 
     if (!m_texture.m_bAllocated) {
         m_texture.allocate();
@@ -241,8 +403,6 @@ bool CVideoBackend::updateTexture() {
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_frameW, m_frameH, GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
     }
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    return true;
 }
 
 void CVideoBackend::pacedWaitUntil(const std::chrono::steady_clock::time_point& tp) {
@@ -251,17 +411,72 @@ void CVideoBackend::pacedWaitUntil(const std::chrono::steady_clock::time_point& 
 }
 
 void CVideoBackend::decodeLoop() {
-    AVPacket* pkt   = av_packet_alloc();
-    AVFrame*  frame = av_frame_alloc();
+    AVPacket* pkt     = av_packet_alloc();
+    AVFrame*  frame   = av_frame_alloc();
+    AVFrame*  swFrame = av_frame_alloc(); // download target for hardware frames
     // Pre-size the tmp buffer so it's never empty when swapping with m_frameData.
     // An empty vector has data()==null which causes "bad dst image pointers" in sws_scale.
     std::vector<uint8_t> tmpBuf(4UL * m_frameW * m_frameH);
 
-    auto                 lastPublish = std::chrono::steady_clock::now();
-    m_startTime                      = lastPublish;
+    auto                 lastPublish         = std::chrono::steady_clock::now();
+    bool                 transferErrorLogged = false;
+    int64_t              framesThisPass      = 0; // frames seen since the last seek; 1 at EOF means static content
+    m_startTime                              = lastPublish;
 
     // Scale, pace and publish one decoded frame.
     const auto handleFrame = [&](AVFrame* f) {
+        framesThisPass++;
+
+        // Backpressure: the last published frame still unconsumed means no
+        // output is rendering (display off / DPMS). Park instead of decoding
+        // frames nobody sees; updateTexture() or stop() wakes us. Pacing is
+        // rebased so playback resumes where it paused instead of racing to
+        // catch up.
+        {
+            std::unique_lock<std::mutex> lock(m_frameMutex);
+            if (m_publishSerial != m_textureSerial) {
+                const auto STALLSTART = std::chrono::steady_clock::now();
+                m_frameCV.wait(lock, [this] { return m_publishSerial == m_textureSerial || m_stopRequested.load(); });
+                if (m_stopRequested)
+                    return;
+                m_startTime += std::chrono::steady_clock::now() - STALLSTART;
+            }
+        }
+
+        // Target publish time from the PTS, relative to the stream's
+        // start_time - raw PTS on e.g. MPEG-TS carry a large offset that
+        // would otherwise break pacing entirely.
+        std::optional<std::chrono::steady_clock::time_point> target;
+        if (f->pts != AV_NOPTS_VALUE) {
+            const double PTSSEC = (f->pts - m_startPts) * m_timeBase;
+            target              = m_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(PTSSEC));
+        }
+
+        // A frame more than one interval late, when something newer was
+        // published recently, is pure catch-up work: skip the conversion
+        // entirely. Only the latest frame is ever shown; without this a
+        // decoder that falls behind converts every frame at maximum speed.
+        if (target) {
+            const auto DROPNOW = std::chrono::steady_clock::now();
+            if (*target + m_frameInterval < DROPNOW && DROPNOW - lastPublish < m_frameInterval)
+                return;
+        }
+
+        // Hardware frames live in GPU memory; download to system memory for
+        // swscale. Colorspace/range props travel along via av_frame_copy_props.
+        if (m_hwPixFmt != AV_PIX_FMT_NONE && f->format == m_hwPixFmt) {
+            av_frame_unref(swFrame);
+            if (av_hwframe_transfer_data(swFrame, f, 0) < 0) {
+                if (!transferErrorLogged) {
+                    Log::logger->log(Log::ERR, "CVideoBackend: av_hwframe_transfer_data failed for {}, dropping hardware frames", m_path);
+                    transferErrorLogged = true;
+                }
+                return;
+            }
+            av_frame_copy_props(swFrame, f);
+            f = swFrame;
+        }
+
         // Lazily create/update SwsContext to match the frame's actual pixel
         // format (some codecs only report it after the first frame).
         SwsContext* prevCtx = m_swsCtx;
@@ -292,19 +507,15 @@ void CVideoBackend::decodeLoop() {
         if (m_hasAlpha)
             premultiplyAlpha(tmpBuf.data(), tmpBuf.size());
 
-        // PTS-based pacing before publish, interruptible by stop(). Timestamps are
-        // taken relative to the stream's start_time - raw PTS on e.g. MPEG-TS carry
-        // a large offset that would otherwise break pacing entirely.
+        // PTS-based pacing before publish, interruptible by stop().
         const auto NOW   = std::chrono::steady_clock::now();
         bool       paced = false;
-        if (f->pts != AV_NOPTS_VALUE) {
-            const double PTSSEC = (f->pts - m_startPts) * m_timeBase;
-            const auto   TARGET = m_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(PTSSEC));
+        if (target) {
             // Safety cap: never wait > 5s (guards against bogus PTS values)
-            if (TARGET > NOW && TARGET < NOW + std::chrono::seconds(5)) {
-                pacedWaitUntil(TARGET);
+            if (*target > NOW && *target < NOW + std::chrono::seconds(5)) {
+                pacedWaitUntil(*target);
                 paced = true;
-            } else if (TARGET <= NOW) {
+            } else if (*target <= NOW) {
                 paced = true; // behind schedule: publish immediately to catch up
             }
         }
@@ -318,13 +529,16 @@ void CVideoBackend::decodeLoop() {
         {
             std::lock_guard<std::mutex> lock(m_frameMutex);
             std::swap(m_frameData, tmpBuf);
-            m_hasNewFrame = true;
+            m_publishSerial++;
         }
         // tmpBuf now holds old frame data — overwritten next iteration
         lastPublish = std::chrono::steady_clock::now();
 
-        if (m_onFrame)
-            m_onFrame();
+        {
+            std::lock_guard<std::mutex> lock(m_listenerMutex);
+            for (const auto& [id, cb] : m_frameListeners)
+                cb();
+        }
     };
 
     while (!m_stopRequested) {
@@ -340,6 +554,14 @@ void CVideoBackend::decodeLoop() {
                 av_frame_unref(frame);
             }
 
+            // Static content (a one-frame .gif used as a wallpaper): looping
+            // would re-decode, re-upload and re-blur an identical frame for
+            // the whole session. Hold the texture and end the thread instead.
+            if (framesThisPass <= 1) {
+                Log::logger->log(Log::INFO, "CVideoBackend: {} has a single frame, holding it", m_path);
+                break;
+            }
+
             // Loop: seek back to the beginning
             if (av_seek_frame(m_formatCtx, m_streamIdx, 0, AVSEEK_FLAG_BACKWARD) < 0) {
                 Log::logger->log(Log::WARN, "CVideoBackend: {} is not seekable, cannot loop; holding the last frame", m_path);
@@ -348,16 +570,26 @@ void CVideoBackend::decodeLoop() {
 
             avcodec_flush_buffers(m_codecCtx);
 
-            // Floor the loop rate at one frame interval: a single-frame file (e.g. a
-            // static .gif) would otherwise spin read->seek->decode at 100% CPU.
+            // Floor the loop rate at one frame interval so short clips don't
+            // spin read->seek->decode at 100% CPU.
             pacedWaitUntil(lastPublish + m_frameInterval);
 
-            m_startTime = std::chrono::steady_clock::now();
+            m_startTime    = std::chrono::steady_clock::now();
+            framesThisPass = 0;
             continue;
         }
 
-        if (RET < 0)
-            break; // unrecoverable error
+        if (RET < 0) {
+            // stop() surfaces here as AVERROR_EXIT via the interrupt callback;
+            // anything else (corrupt region, I/O error on a network mount) is
+            // a real failure that freezes playback and deserves a log line.
+            if (!m_stopRequested) {
+                char errBuf[AV_ERROR_MAX_STRING_SIZE] = {0};
+                av_strerror(RET, errBuf, sizeof(errBuf));
+                Log::logger->log(Log::ERR, "CVideoBackend: av_read_frame failed for {} ({}); holding the last frame", m_path, errBuf);
+            }
+            break;
+        }
 
         if (pkt->stream_index != m_streamIdx) {
             av_packet_unref(pkt);
@@ -378,4 +610,5 @@ void CVideoBackend::decodeLoop() {
 
     av_packet_free(&pkt);
     av_frame_free(&frame);
+    av_frame_free(&swFrame);
 }

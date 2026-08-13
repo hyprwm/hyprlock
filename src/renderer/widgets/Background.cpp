@@ -104,7 +104,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 }
 
 void CBackground::reset() {
-    m_videoBackend.reset(); // joins the decode thread, frees FFmpeg + GL resources
+    stopVideo();
 
     if (reloadTimer) {
         reloadTimer->cancel();
@@ -267,11 +267,24 @@ bool CBackground::draw(const SRenderData& data) {
 }
 
 void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    if (!newAsset)
+    if (m_videoBackend) {
+        // A stale image request resolving while a video plays: the image path
+        // is inactive (draw() branches to drawVideo), and a crossfade's end
+        // callback would destroy the blurredFB the video blur reuses.
+        discardPendingImage();
+        if (newAsset)
+            g_asyncResourceManager->unload(newAsset);
+        pendingResource = false;
+        return;
+    }
+
+    if (!newAsset) {
         Log::logger->log(Log::ERR, "Background asset update failed, resourceID: {} not available on update!", id);
-    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        pendingResource = false;
+    } else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
         Log::logger->log(Log::ERR, "New background asset has an invalid texture!");
+        pendingResource = false;
     } else {
         pendingAsset = newAsset;
         crossFadeProgress->setValueAndWarp(0);
@@ -334,17 +347,20 @@ void CBackground::onReloadTimerUpdate() {
     }
 
     // Reloads may switch between image and video paths in either direction
-    m_videoBackend.reset(); // stop any previous video
     if (CVideoBackend::isVideoFile(path)) {
+        stopVideo();
         startVideo();
         return;
     }
 
+    // Refuse before tearing the video down: destroying it here would leave a
+    // solid color with nothing requested to replace it.
     if (pendingResource) {
         Log::logger->log(Log::WARN, "Background image update still pending! - Refusing to load {}", path);
         return;
     }
 
+    stopVideo();
     pendingResource = true;
 
     // Issue the next request
@@ -383,20 +399,56 @@ bool CBackground::renderFallback(const SRenderData& data) {
     return false;
 }
 
+void CBackground::discardPendingImage() {
+    if (crossFadeProgress->isBeingAnimated()) {
+        crossFadeProgress->setCallbackOnEnd(nullptr);
+        crossFadeProgress->setValueAndWarp(1.0);
+    }
+    if (pendingAsset) {
+        g_asyncResourceManager->unload(pendingAsset);
+        pendingAsset = nullptr;
+    }
+    pendingBlurredFB->destroyBuffer();
+    // pendingResource is left alone: a still-in-flight request is ignored and
+    // cleared when it resolves (see onAssetUpdate's video guard).
+}
+
 void CBackground::startVideo() {
-    m_videoBackend = makeUnique<CVideoBackend>();
+    discardPendingImage();
+
+    // One decoder per file+revision, shared with every other output showing it.
+    m_videoBackend = CVideoBackend::acquire(absolutePath(path, ""), m_imageRevision, viewport);
     // The publish callback fires on the decode thread: schedule a redraw of this output
     // on the main loop rather than polling at display refresh (same pattern as asset
     // arrival in AsyncResourceManager). Captures only the port string, so widget
     // lifetime is irrelevant.
-    m_videoBackend->open(absolutePath(path, ""), viewport,
-                         [port = outputPort] { g_pHyprlock->addTimer(std::chrono::milliseconds(0), [port](auto, auto) { g_pHyprlock->renderOutput(port); }, nullptr); });
+    m_videoListenerToken = m_videoBackend->addFrameListener(
+        [port = outputPort] { g_pHyprlock->addTimer(std::chrono::milliseconds(0), [port](auto, auto) { g_pHyprlock->renderOutput(port); }, nullptr); });
+}
+
+void CBackground::stopVideo() {
+    if (!m_videoBackend)
+        return;
+
+    // Other outputs may keep the backend alive; dropping the listener stops it
+    // from waking this output. The last release joins the decode thread and
+    // frees the FFmpeg + GL resources.
+    m_videoBackend->removeFrameListener(m_videoListenerToken);
+    m_videoBackend.reset();
+    m_videoListenerToken = 0;
+    m_videoFrameSerial   = 0;
 }
 
 bool CBackground::drawVideo(const SRenderData& data) {
     updateScAsset();
 
-    const bool NEWFRAME = m_videoBackend->updateTexture();
+    m_videoBackend->updateTexture();
+
+    // The backend is shared between outputs and only the first caller per frame
+    // uploads, so "new frame" is detected by serial, not by the upload itself.
+    const uint64_t SERIAL   = m_videoBackend->textureSerial();
+    const bool     NEWFRAME = SERIAL != m_videoFrameSerial;
+    m_videoFrameSerial      = SERIAL;
 
     if (!m_videoBackend->hasFrame()) {
         // Nothing decoded yet: solid color, crossfading from the screenshot like the image

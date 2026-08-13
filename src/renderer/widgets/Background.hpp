@@ -89,8 +89,17 @@ class CBackground : public IWidget {
     bool renderFallback(const SRenderData& data);
 
     // Video playback (no-ops via the CVideoBackend stub when built without FFmpeg)
-    void              startVideo();
-    bool              drawVideo(const SRenderData& data);
+    void startVideo();
+    void stopVideo();
+    bool drawVideo(const SRenderData& data);
 
-    UP<CVideoBackend> m_videoBackend;
+    // Video mode owns the blur FBs: kill any in-flight image transition
+    // (crossfade animation, pending asset and its FB) before entering it.
+    void              discardPendingImage();
+
+    // Shared with other outputs showing the same file; the backend stops when
+    // the last holder releases it.
+    SP<CVideoBackend> m_videoBackend;
+    uint64_t          m_videoFrameSerial   = 0;
+    uint64_t          m_videoListenerToken = 0;
 };

@@ -4,6 +4,7 @@
 #include <functional>
 
 #include "Texture.hpp"
+#include "../defines.hpp"
 
 #ifdef HYPRLOCK_HAS_VIDEO
 
@@ -21,18 +22,26 @@ extern "C" {
 }
 
 // Decodes a video file with FFmpeg on a background thread and uploads the
-// frames into a GL texture for CBackground to composite.
+// frames into a GL texture for CBackground to composite. Decoding prefers a
+// hardware decoder when one is available and falls back to software.
+//
+// One backend is shared between all outputs showing the same file: acquire()
+// hands out a refcounted instance from a path-keyed registry, and the backend
+// stops when the last holder releases it.
 //
 // Threading contract:
-//  - open(), stop(), updateTexture() and texture() must be called from the
-//    render thread; updateTexture() additionally needs the EGL context current.
-//  - open() returns immediately; the file is opened and decoded entirely on
-//    the decode thread so a slow or wedged source can never block the render
-//    thread. Failures degrade to "no frames" and are logged.
+//  - acquire(), updateTexture() and texture() must be called from the render
+//    thread; updateTexture() additionally needs the EGL context current, and
+//    releasing the last reference needs it for GL teardown.
+//  - The file is opened and decoded entirely on the decode thread so a slow
+//    or wedged source can never block the render thread. Failures degrade to
+//    "no frames" and are logged.
 //  - The decode thread owns all FFmpeg state and shares only
-//    m_frameData/m_hasNewFrame with the render thread, under m_frameMutex.
-//  - onFrame is invoked from the decode thread after each frame publish; it
-//    must be thread-safe and must not capture objects it can outlive.
+//    m_frameData and the publish/texture serial pair with the render thread,
+//    under m_frameMutex.
+//  - Frame listeners are invoked from the decode thread after each frame
+//    publish; they must be thread-safe and must not capture objects they can
+//    outlive.
 class CVideoBackend {
   public:
     ~CVideoBackend();
@@ -40,17 +49,32 @@ class CVideoBackend {
     // Returns true if the file extension is a recognised video format.
     static bool isVideoFile(const std::string& path);
 
-    // Start the decode thread for path. Frames are converted at no more than
-    // the aspect-fill size for viewport (never upscaled). onFrame fires (on
-    // the decode thread) after every published frame, e.g. to schedule a redraw.
-    void open(const std::string& path, const Vector2D& viewport, std::function<void()> onFrame);
+    // Return the backend already decoding absPath at this revision, or create
+    // one and start its decode thread. revision distinguishes reloads of the
+    // same path (overwritten file) so they get a fresh decoder even while
+    // other outputs still hold the old one. Frames are converted at no more
+    // than the aspect-fill size for the largest attached viewport (never
+    // upscaled); attaching a larger output re-opens the stream with the grown
+    // target.
+    static SP<CVideoBackend> acquire(const std::string& absPath, size_t revision, const Vector2D& viewport);
 
-    // Stop the decode thread and release all FFmpeg and GL resources.
-    void stop();
+    // Register a wake-up callback; the returned token removes it again. cb
+    // fires on the decode thread after every published frame, e.g. to
+    // schedule a redraw.
+    uint64_t addFrameListener(std::function<void()> cb);
+    void     removeFrameListener(uint64_t token);
 
     // Upload the newest decoded frame into texture(), if one is pending.
-    // Returns true if a new frame was uploaded. EGL context must be current.
-    bool updateTexture();
+    // EGL context must be current. With several outputs sharing the backend
+    // only the first caller per frame uploads; compare textureSerial() to
+    // detect the change.
+    void updateTexture();
+
+    // Monotonic id of the frame currently in texture(). Outputs compare this
+    // against their last-seen value to know when to re-blur.
+    uint64_t textureSerial() const {
+        return m_textureSerial;
+    }
 
     // Whether texture() holds at least one decoded frame.
     bool hasFrame() const {
@@ -73,20 +97,39 @@ class CVideoBackend {
     }
 
   private:
-    bool                  openStream();
-    void                  decodeLoop();
-    void                  pacedWaitUntil(const std::chrono::steady_clock::time_point& tp);
-    static int            interruptCallback(void* opaque);
+    CVideoBackend() = default;
 
-    AVFormatContext*      m_formatCtx = nullptr;
-    AVCodecContext*       m_codecCtx  = nullptr;
-    SwsContext*           m_swsCtx    = nullptr;
-    int                   m_streamIdx = -1;
-    int                   m_frameW    = 0;
-    int                   m_frameH    = 0;
-    std::string           m_path;
-    Vector2D              m_viewportHint;
-    std::function<void()> m_onFrame;
+    // Start the decode thread for path; registry-only, via acquire().
+    void                 open(const std::string& path, const Vector2D& viewport);
+    // Stop the decode thread and release all FFmpeg and GL resources.
+    // Listener registrations survive so open() can be called again.
+    void                 stop();
+    // Grow the conversion target to cover a larger attaching output.
+    void                 ensureViewport(const Vector2D& viewport);
+
+    bool                 openStream();
+    void                 initHwDecode(const AVCodec* codec);
+    void                 decodeLoop();
+    void                 pacedWaitUntil(const std::chrono::steady_clock::time_point& tp);
+    static int           interruptCallback(void* opaque);
+    static AVPixelFormat hwGetFormat(AVCodecContext* ctx, const AVPixelFormat* fmts);
+
+    AVFormatContext*     m_formatCtx   = nullptr;
+    AVCodecContext*      m_codecCtx    = nullptr;
+    SwsContext*          m_swsCtx      = nullptr;
+    AVBufferRef*         m_hwDeviceCtx = nullptr;
+    AVPixelFormat        m_hwPixFmt    = AV_PIX_FMT_NONE; // decode thread only after open
+    int                            m_streamIdx = -1;
+    int                            m_frameW    = 0;
+    int                            m_frameH    = 0;
+    std::string                    m_path;
+    std::pair<std::string, size_t> m_registryKey; // (path, revision); set once by acquire()
+    Vector2D                       m_viewportHint;
+
+    // guarded by m_listenerMutex; iterated on the decode thread per publish
+    std::mutex                                              m_listenerMutex;
+    std::vector<std::pair<uint64_t, std::function<void()>>> m_frameListeners;
+    uint64_t                                                m_nextListenerToken = 1;
 
     // decode thread only
     double                                m_timeBase = 0.0;
@@ -96,14 +139,20 @@ class CVideoBackend {
     AVColorRange                          m_lastRange      = AVCOL_RANGE_UNSPECIFIED;
     std::chrono::steady_clock::time_point m_startTime;
 
-    // shared between decode and render thread, guarded by m_frameMutex
-    std::mutex           m_frameMutex;
-    std::vector<uint8_t> m_frameData;
-    bool                 m_hasNewFrame = false;
+    // shared between decode and render thread, guarded by m_frameMutex.
+    // m_publishSerial != m_textureSerial means a frame awaits upload; the
+    // decode thread bumps the former, updateTexture() catches the latter up.
+    // textureSerial() reads m_textureSerial lock-free, which is safe on the
+    // render thread because that is the only thread writing it.
+    std::mutex              m_frameMutex;
+    std::condition_variable m_frameCV; // wakes a decode thread parked on backpressure
+    std::vector<uint8_t>    m_frameData;
+    uint64_t                m_publishSerial = 0;
+    uint64_t                m_textureSerial = 0;
 
     // render thread only
-    std::vector<uint8_t>    m_uploadBuffer;
-    CTexture                m_texture;
+    std::vector<uint8_t> m_uploadBuffer;
+    CTexture             m_texture;
 
     std::thread             m_decodeThread;
     std::atomic<int>        m_rotation{0};
@@ -124,11 +173,18 @@ class CVideoBackend {
         return false;
     }
 
-    void open(const std::string&, const Vector2D&, std::function<void()>) {}
-    void stop() {}
+    static SP<CVideoBackend> acquire(const std::string&, size_t, const Vector2D&) {
+        return SP<CVideoBackend>(new CVideoBackend());
+    }
 
-    bool updateTexture() {
-        return false;
+    uint64_t addFrameListener(std::function<void()>) {
+        return 0;
+    }
+    void removeFrameListener(uint64_t) {}
+
+    void updateTexture() {}
+    uint64_t textureSerial() const {
+        return 0;
     }
     bool hasFrame() const {
         return false;
@@ -144,6 +200,8 @@ class CVideoBackend {
     }
 
   private:
+    CVideoBackend() = default;
+
     CTexture m_texture;
 };
 
