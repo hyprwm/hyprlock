@@ -8,7 +8,9 @@
 #include "../../core/AnimationManager.hpp"
 #include "../../config/ConfigManager.hpp"
 #include <hyprlang.hpp>
+#include <array>
 #include <filesystem>
+#include <optional>
 #include <GLES3/gl32.h>
 
 CBackground::CBackground() {
@@ -38,7 +40,6 @@ static std::string runAndGetPath(const std::string& reloadCommand) {
         path = path.substr(7);
     return path;
 }
-
 
 void CBackground::configure(const std::unordered_map<std::string, std::any>& props, const SP<COutput>& pOutput) {
     reset();
@@ -90,12 +91,10 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 #ifdef HYPRLOCK_HAS_VIDEO
         if (CVideoBackend::isVideoFile(path)) {
             m_videoBackend = makeUnique<CVideoBackend>();
-            if (!m_videoBackend->open(path)) {
+            if (!m_videoBackend->open(absolutePath(path, ""))) {
                 Log::logger->log(Log::ERR, "CBackground: failed to open '{}' as video, falling back to image", path);
                 m_videoBackend.reset();
                 resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
-            } else {
-                m_uploadBuffer.resize(4 * m_videoBackend->frameW() * m_videoBackend->frameH());
             }
         } else
 #endif
@@ -120,11 +119,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 
 void CBackground::reset() {
 #ifdef HYPRLOCK_HAS_VIDEO
-    if (m_videoBackend) {
-        m_videoBackend.reset();
-        m_videoTexture.destroyTexture();
-        m_uploadBuffer.clear();
-    }
+    m_videoBackend.reset(); // joins the decode thread, frees FFmpeg + GL resources
 #endif
 
     if (reloadTimer) {
@@ -146,7 +141,7 @@ void CBackground::updatePrimaryAsset() {
 
     const bool NEEDFB = (isScreenshot || blurPasses > 0 || asset->m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
     if (NEEDFB)
-        renderToFB(*asset, *blurredFB, blurPasses, isScreenshot);
+        renderToFB(*asset, *blurredFB, blurPasses, isScreenshot ? transform : HYPRUTILS_TRANSFORM_NORMAL);
 }
 
 void CBackground::updatePendingAsset() {
@@ -168,7 +163,7 @@ void CBackground::updateScAsset() {
 
     const bool NEEDSCTRANSFORM = transform != HYPRUTILS_TRANSFORM_NORMAL;
     if (NEEDSCTRANSFORM)
-        renderToFB(*scAsset, *transformedScFB, 0, true);
+        renderToFB(*scAsset, *transformedScFB, 0, transform);
 }
 
 const CTexture& CBackground::getPrimaryAssetTex() const {
@@ -217,13 +212,13 @@ static CBox getScaledBoxForTextureSize(const Vector2D& size, const Vector2D& vie
     return texbox;
 }
 
-void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, bool applyTransform) {
+void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, eTransform tr) {
     if (firstRender)
         firstRender = false;
 
     // make it brah
     Vector2D size = tex.m_vSize;
-    if (applyTransform && transform % 2 == 1) {
+    if (tr % 2 == 1) {
         size.x = tex.m_vSize.y;
         size.y = tex.m_vSize.x;
     }
@@ -235,7 +230,7 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 
     fb.bind();
 
-    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, applyTransform ? transform : HYPRUTILS_TRANSFORM_NORMAL);
+    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, tr);
 
     if (blurPasses > 0)
         g_pRenderer->blurFB(fb,
@@ -253,49 +248,8 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 
 bool CBackground::draw(const SRenderData& data) {
 #ifdef HYPRLOCK_HAS_VIDEO
-    // ── Video background fast path ────────────────────────────────────────
-    if (m_videoBackend) {
-        if (m_videoBackend->swapFrame(m_uploadBuffer)) {
-            const int W = m_videoBackend->frameW();
-            const int H = m_videoBackend->frameH();
-
-            if (!m_videoTexture.m_bAllocated) {
-                // First frame: allocate the GL texture
-                m_videoTexture.allocate();
-                glBindTexture(GL_TEXTURE_2D, m_videoTexture.m_iTexID);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0,
-                             GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
-                glBindTexture(GL_TEXTURE_2D, 0);
-                m_videoTexture.m_vSize   = {(double)W, (double)H};
-                m_videoTexture.m_iType   = TEXTURE_RGBA;
-                m_videoTexture.m_iTarget = GL_TEXTURE_2D;
-            } else {
-                glBindTexture(GL_TEXTURE_2D, m_videoTexture.m_iTexID);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, W, H,
-                                GL_RGBA, GL_UNSIGNED_BYTE, m_uploadBuffer.data());
-                glBindTexture(GL_TEXTURE_2D, 0);
-            }
-
-            if (blurPasses > 0)
-                renderToFB(m_videoTexture, *blurredFB, blurPasses);
-        }
-
-        if (!m_videoTexture.m_bAllocated) {
-            renderRect(color); // solid colour until first frame is ready
-            return true;
-        }
-
-        const CTexture& TEX    = (blurPasses > 0 && blurredFB->isAllocated())
-                                     ? blurredFB->m_cTex : m_videoTexture;
-        const auto      TEXBOX = getScaledBoxForTextureSize(TEX.m_vSize, viewport);
-        g_pRenderer->renderTexture(TEXBOX, TEX, data.opacity);
-        return true; // always request the next compositor frame
-    }
-    // ── End video path ────────────────────────────────────────────────────
+    if (m_videoBackend)
+        return drawVideo(data);
 #endif
 
     updatePrimaryAsset();
@@ -417,3 +371,75 @@ void CBackground::onReloadTimerUpdate() {
     AWP<IWidget> widget(m_self);
     g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }
+
+#ifdef HYPRLOCK_HAS_VIDEO
+
+// Maps the video's display-matrix rotation (degrees clockwise) onto a render transform.
+// The FLIPPED family is used when sampling the top-down RGBA frame directly (hyprlock's
+// convention for image data); the NORMAL family when rendering into an FB that is itself
+// drawn with the default FLIPPED_180 later.
+// Rotation direction of both families verified against a reference player (VLC) on a
+// display-matrix-tagged file (ffmpeg -display_rotation).
+static eTransform videoTransform(int rotation, bool flippedBase) {
+    const size_t                        STEP = (((rotation / 90) % 4) + 4) % 4;
+
+    constexpr std::array<eTransform, 4> FLIPPED = {HYPRUTILS_TRANSFORM_FLIPPED_180, HYPRUTILS_TRANSFORM_FLIPPED_270, HYPRUTILS_TRANSFORM_FLIPPED, HYPRUTILS_TRANSFORM_FLIPPED_90};
+    constexpr std::array<eTransform, 4> NORMAL  = {HYPRUTILS_TRANSFORM_NORMAL, HYPRUTILS_TRANSFORM_270, HYPRUTILS_TRANSFORM_180, HYPRUTILS_TRANSFORM_90};
+
+    return flippedBase ? FLIPPED[STEP] : NORMAL[STEP];
+}
+
+bool CBackground::drawVideo(const SRenderData& data) {
+    updateScAsset();
+
+    const bool NEWFRAME = m_videoBackend->updateTexture();
+
+    if (!m_videoBackend->hasFrame()) {
+        // Nothing decoded yet: solid color, crossfading from the screenshot like the image path
+        if (data.opacity < 1.0 && scAsset) {
+            const auto& SCTEX    = getScAssetTex();
+            const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+            g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+
+            CHyprColor col = color;
+            col.a *= data.opacity;
+            renderRect(col);
+            return true;
+        }
+
+        renderRect(color);
+        // Poll until the first frame arrives; idle if the decoder died before producing one
+        return m_videoBackend->isRunning();
+    }
+
+    const int ROTATION = m_videoBackend->rotationDegrees();
+
+    // Re-blur only when a new frame arrived; otherwise blurredFB still holds the current result
+    if (NEWFRAME && blurPasses > 0)
+        renderToFB(m_videoBackend->texture(), *blurredFB, blurPasses, videoTransform(ROTATION, false));
+
+    const bool  BLURRED = blurPasses > 0 && blurredFB->isAllocated();
+    const auto& TEX     = BLURRED ? blurredFB->m_cTex : m_videoBackend->texture();
+
+    // Rotation is baked into blurredFB by renderToFB; only the direct path needs it here
+    Vector2D texSize = TEX.m_vSize;
+    if (!BLURRED && ROTATION % 180 == 90)
+        std::swap(texSize.x, texSize.y);
+
+    const auto                      TEXBOX = getScaledBoxForTextureSize(texSize, viewport);
+    const std::optional<eTransform> TR     = BLURRED ? std::optional<eTransform>{} : videoTransform(ROTATION, true);
+
+    if (data.opacity < 1.0 && scAsset) {
+        // Crossfade from the screenshot during the lock fade-in
+        const auto& SCTEX    = getScAssetTex();
+        const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+        g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+        g_pRenderer->renderTexture(TEXBOX, TEX, data.opacity, 0, TR);
+    } else
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, TR);
+
+    // Animate while the decoder runs or the fade-in is in progress; otherwise hold the last frame
+    return m_videoBackend->isRunning() || data.opacity < 1.0;
+}
+
+#endif // HYPRLOCK_HAS_VIDEO

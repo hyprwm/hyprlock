@@ -14,7 +14,6 @@
 #include <unordered_map>
 #include <any>
 #include <filesystem>
-#include <vector>
 
 struct SPreloadedAsset;
 class COutput;
@@ -41,7 +40,7 @@ class CBackground : public IWidget {
     const CTexture& getScAssetTex() const;
 
     void            renderRect(CHyprColor color);
-    void            renderToFB(const CTexture& text, CFramebuffer& fb, int passes, bool applyTransform = false);
+    void            renderToFB(const CTexture& text, CFramebuffer& fb, int passes, Hyprutils::Math::eTransform tr = Hyprutils::Math::HYPRUTILS_TRANSFORM_NORMAL);
 
     void            onReloadTimerUpdate();
     void            plantReloadTimer();
@@ -89,8 +88,8 @@ class CBackground : public IWidget {
 
     // Video playback
 #ifdef HYPRLOCK_HAS_VIDEO
-    UP<CVideoBackend>       m_videoBackend;
-    CTexture                m_videoTexture;
-    std::vector<uint8_t>    m_uploadBuffer;
+    bool              drawVideo(const SRenderData& data);
+
+    UP<CVideoBackend> m_videoBackend;
 #endif
 };
