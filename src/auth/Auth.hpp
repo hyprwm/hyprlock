@@ -7,8 +7,9 @@
 #include "../core/Timer.hpp"
 
 enum eAuthImplementations {
-    AUTH_IMPL_PAM         = 0,
-    AUTH_IMPL_FINGERPRINT = 1,
+    AUTH_IMPL_PAM          = 0,
+    AUTH_IMPL_FINGERPRINT  = 1,
+    AUTH_IMPL_SODIUMPWHASH = 2,
 };
 
 class IAuthImplementation {
