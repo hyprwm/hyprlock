@@ -7,8 +7,8 @@
 #include "../../helpers/MiscFunctions.hpp"
 #include "../../core/AnimationManager.hpp"
 #include "../../config/ConfigManager.hpp"
-#include <chrono>
 #include <hyprlang.hpp>
+#include <array>
 #include <filesystem>
 #include <GLES3/gl32.h>
 
@@ -86,8 +86,12 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             Log::logger->log(Log::ERR, "No screencopy support! path=screenshot won't work. Falling back to background color.");
             resourceID = 0;
         }
-    } else if (!path.empty())
-        resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
+    } else if (!path.empty()) {
+        if (CVideoBackend::isVideoFile(path))
+            startVideo();
+        else
+            resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
+    }
 
     if (!reloadCommand.empty() && reloadTime > -1) {
         try {
@@ -100,6 +104,8 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 }
 
 void CBackground::reset() {
+    stopVideo();
+
     if (reloadTimer) {
         reloadTimer->cancel();
         reloadTimer.reset();
@@ -119,7 +125,7 @@ void CBackground::updatePrimaryAsset() {
 
     const bool NEEDFB = (isScreenshot || blurPasses > 0 || asset->m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
     if (NEEDFB)
-        renderToFB(*asset, *blurredFB, blurPasses, isScreenshot);
+        renderToFB(*asset, *blurredFB, blurPasses, isScreenshot ? transform : HYPRUTILS_TRANSFORM_NORMAL);
 }
 
 void CBackground::updatePendingAsset() {
@@ -141,7 +147,7 @@ void CBackground::updateScAsset() {
 
     const bool NEEDSCTRANSFORM = transform != HYPRUTILS_TRANSFORM_NORMAL;
     if (NEEDSCTRANSFORM)
-        renderToFB(*scAsset, *transformedScFB, 0, true);
+        renderToFB(*scAsset, *transformedScFB, 0, transform);
 }
 
 const CTexture& CBackground::getPrimaryAssetTex() const {
@@ -190,13 +196,13 @@ static CBox getScaledBoxForTextureSize(const Vector2D& size, const Vector2D& vie
     return texbox;
 }
 
-void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, bool applyTransform) {
+void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, eTransform tr) {
     if (firstRender)
         firstRender = false;
 
     // make it brah
     Vector2D size = tex.m_vSize;
-    if (applyTransform && transform % 2 == 1) {
+    if (tr % 2 == 1) {
         size.x = tex.m_vSize.y;
         size.y = tex.m_vSize.x;
     }
@@ -208,7 +214,7 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 
     fb.bind();
 
-    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, applyTransform ? transform : HYPRUTILS_TRANSFORM_NORMAL);
+    g_pRenderer->renderTexture(TEXBOX, tex, 1.0, 0, tr);
 
     if (blurPasses > 0)
         g_pRenderer->blurFB(fb,
@@ -225,6 +231,9 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 }
 
 bool CBackground::draw(const SRenderData& data) {
+    if (m_videoBackend)
+        return drawVideo(data);
+
     updatePrimaryAsset();
     updatePendingAsset();
     updateScAsset();
@@ -237,18 +246,9 @@ bool CBackground::draw(const SRenderData& data) {
     }
 
     if (!asset || resourceID == 0) {
-        // fade in/out with a solid color
-        if (data.opacity < 1.0 && scAsset) {
-            const auto& SCTEX    = getScAssetTex();
-            const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
-            g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
-            CHyprColor col = color;
-            col.a *= data.opacity;
-            renderRect(col);
+        if (renderFallback(data))
             return true;
-        }
 
-        renderRect(color);
         return !asset && resourceID > 0; // resource not ready
     }
 
@@ -267,11 +267,24 @@ bool CBackground::draw(const SRenderData& data) {
 }
 
 void CBackground::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
-    if (!newAsset)
+    if (m_videoBackend) {
+        // A stale image request resolving while a video plays: the image path
+        // is inactive (draw() branches to drawVideo), and a crossfade's end
+        // callback would destroy the blurredFB the video blur reuses.
+        discardPendingImage();
+        if (newAsset)
+            g_asyncResourceManager->unload(newAsset);
+        pendingResource = false;
+        return;
+    }
+
+    if (!newAsset) {
         Log::logger->log(Log::ERR, "Background asset update failed, resourceID: {} not available on update!", id);
-    else if (newAsset->m_iType == TEXTURE_INVALID) {
+        pendingResource = false;
+    } else if (newAsset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(newAsset);
         Log::logger->log(Log::ERR, "New background asset has an invalid texture!");
+        pendingResource = false;
     } else {
         pendingAsset = newAsset;
         crossFadeProgress->setValueAndWarp(0);
@@ -333,14 +346,160 @@ void CBackground::onReloadTimerUpdate() {
         return;
     }
 
+    // Reloads may switch between image and video paths in either direction
+    if (CVideoBackend::isVideoFile(path)) {
+        stopVideo();
+        startVideo();
+        return;
+    }
+
+    // Refuse before tearing the video down: destroying it here would leave a
+    // solid color with nothing requested to replace it.
     if (pendingResource) {
         Log::logger->log(Log::WARN, "Background image update still pending! - Refusing to load {}", path);
         return;
     }
 
+    stopVideo();
     pendingResource = true;
 
     // Issue the next request
     AWP<IWidget> widget(m_self);
     g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
+}
+
+// Maps the video's display-matrix rotation (degrees clockwise) onto a render transform.
+// The FLIPPED family is used when sampling the top-down RGBA frame directly (hyprlock's
+// convention for image data); the NORMAL family when rendering into an FB that is itself
+// drawn with the default FLIPPED_180 later.
+// Rotation direction of both families verified against a reference player (VLC) on a
+// display-matrix-tagged file (ffmpeg -display_rotation).
+static eTransform videoTransform(int rotation, bool flippedBase) {
+    const size_t                        STEP = (((rotation / 90) % 4) + 4) % 4;
+
+    constexpr std::array<eTransform, 4> FLIPPED = {HYPRUTILS_TRANSFORM_FLIPPED_180, HYPRUTILS_TRANSFORM_FLIPPED_270, HYPRUTILS_TRANSFORM_FLIPPED, HYPRUTILS_TRANSFORM_FLIPPED_90};
+    constexpr std::array<eTransform, 4> NORMAL  = {HYPRUTILS_TRANSFORM_NORMAL, HYPRUTILS_TRANSFORM_270, HYPRUTILS_TRANSFORM_180, HYPRUTILS_TRANSFORM_90};
+
+    return flippedBase ? FLIPPED[STEP] : NORMAL[STEP];
+}
+
+bool CBackground::renderFallback(const SRenderData& data) {
+    if (data.opacity < 1.0 && scAsset) {
+        const auto& SCTEX    = getScAssetTex();
+        const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+        g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+
+        CHyprColor col = color;
+        col.a *= data.opacity;
+        renderRect(col);
+        return true;
+    }
+
+    renderRect(color);
+    return false;
+}
+
+void CBackground::discardPendingImage() {
+    if (crossFadeProgress->isBeingAnimated()) {
+        crossFadeProgress->setCallbackOnEnd(nullptr);
+        crossFadeProgress->setValueAndWarp(1.0);
+    }
+    if (pendingAsset) {
+        g_asyncResourceManager->unload(pendingAsset);
+        pendingAsset = nullptr;
+    }
+    pendingBlurredFB->destroyBuffer();
+    // pendingResource is left alone: a still-in-flight request is ignored and
+    // cleared when it resolves (see onAssetUpdate's video guard).
+}
+
+void CBackground::startVideo() {
+    discardPendingImage();
+
+    // One decoder per file+revision, shared with every other output showing it.
+    m_videoBackend = CVideoBackend::acquire(absolutePath(path, ""), m_imageRevision, viewport);
+    // The publish callback fires on the decode thread: schedule a redraw of this output
+    // on the main loop rather than polling at display refresh (same pattern as asset
+    // arrival in AsyncResourceManager). Captures only the port string, so widget
+    // lifetime is irrelevant.
+    m_videoListenerToken = m_videoBackend->addFrameListener(
+        [port = outputPort] { g_pHyprlock->addTimer(std::chrono::milliseconds(0), [port](auto, auto) { g_pHyprlock->renderOutput(port); }, nullptr); });
+}
+
+void CBackground::stopVideo() {
+    if (!m_videoBackend)
+        return;
+
+    // Other outputs may keep the backend alive; dropping the listener stops it
+    // from waking this output. The last release joins the decode thread and
+    // frees the FFmpeg + GL resources.
+    m_videoBackend->removeFrameListener(m_videoListenerToken);
+    m_videoBackend.reset();
+    m_videoListenerToken = 0;
+    m_videoFrameSerial   = 0;
+}
+
+bool CBackground::drawVideo(const SRenderData& data) {
+    updateScAsset();
+
+    m_videoBackend->updateTexture();
+
+    // The backend is shared between outputs and only the first caller per frame
+    // uploads, so "new frame" is detected by serial, not by the upload itself.
+    const uint64_t SERIAL   = m_videoBackend->textureSerial();
+    const bool     NEWFRAME = SERIAL != m_videoFrameSerial;
+    m_videoFrameSerial      = SERIAL;
+
+    if (!m_videoBackend->hasFrame()) {
+        // Nothing decoded yet: solid color, crossfading from the screenshot like the image
+        // path. The decoder's publish callback wakes us when the first frame lands, so we
+        // only keep animating here for the fade itself.
+        return renderFallback(data);
+    }
+
+    const int ROTATION = m_videoBackend->rotationDegrees();
+
+    // Re-blur only when a new frame arrived; otherwise blurredFB still holds the current result
+    if (NEWFRAME && blurPasses > 0)
+        renderToFB(m_videoBackend->texture(), *blurredFB, blurPasses, videoTransform(ROTATION, false));
+
+    const bool  BLURRED = blurPasses > 0 && blurredFB->isAllocated();
+    const auto& TEX     = BLURRED ? blurredFB->m_cTex : m_videoBackend->texture();
+
+    // Rotation is baked into blurredFB by renderToFB; the direct path applies it here
+    const eTransform TR = videoTransform(BLURRED ? 0 : ROTATION, true);
+
+    Vector2D         texSize = TEX.m_vSize;
+    if (TR % 2 == 1)
+        std::swap(texSize.x, texSize.y);
+
+    const auto TEXBOX = getScaledBoxForTextureSize(texSize, viewport);
+
+    // Frames with alpha are premultiplied by the backend; the configured background
+    // color shows through transparent regions, like the image path.
+    const bool HASALPHA = m_videoBackend->hasAlpha();
+
+    if (data.opacity < 1.0 && scAsset) {
+        // Crossfade from the screenshot during the lock fade-in
+        const auto& SCTEX    = getScAssetTex();
+        const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+        g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+
+        if (HASALPHA) {
+            CHyprColor col = color;
+            col.a *= data.opacity;
+            renderRect(col);
+        }
+
+        g_pRenderer->renderTexture(TEXBOX, TEX, data.opacity, 0, TR);
+    } else {
+        if (HASALPHA)
+            renderRect(color);
+
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, TR);
+    }
+
+    // Redraws are event-driven (decoder publish callback); only the fade-in needs
+    // the frame-callback loop to keep animating.
+    return data.opacity < 1.0;
 }

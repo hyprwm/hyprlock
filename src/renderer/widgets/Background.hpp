@@ -6,6 +6,7 @@
 #include "../../helpers/Color.hpp"
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
+#include "../VideoBackend.hpp"
 #include <hyprutils/math/Misc.hpp>
 #include <string>
 #include <unordered_map>
@@ -37,7 +38,7 @@ class CBackground : public IWidget {
     const CTexture& getScAssetTex() const;
 
     void            renderRect(CHyprColor color);
-    void            renderToFB(const CTexture& text, CFramebuffer& fb, int passes, bool applyTransform = false);
+    void            renderToFB(const CTexture& text, CFramebuffer& fb, int passes, Hyprutils::Math::eTransform tr = Hyprutils::Math::HYPRUTILS_TRANSFORM_NORMAL);
 
     void            onReloadTimerUpdate();
     void            plantReloadTimer();
@@ -82,4 +83,23 @@ class CBackground : public IWidget {
     ASP<CTimer>                     reloadTimer;
     std::filesystem::file_time_type modificationTime;
     size_t                          m_imageRevision = 0;
+
+    // Renders the lock fade-in fallback (screenshot crossfading to the solid
+    // color, or just the color). Returns true while the fade still animates.
+    bool renderFallback(const SRenderData& data);
+
+    // Video playback (no-ops via the CVideoBackend stub when built without FFmpeg)
+    void startVideo();
+    void stopVideo();
+    bool drawVideo(const SRenderData& data);
+
+    // Video mode owns the blur FBs: kill any in-flight image transition
+    // (crossfade animation, pending asset and its FB) before entering it.
+    void              discardPendingImage();
+
+    // Shared with other outputs showing the same file; the backend stops when
+    // the last holder releases it.
+    SP<CVideoBackend> m_videoBackend;
+    uint64_t          m_videoFrameSerial   = 0;
+    uint64_t          m_videoListenerToken = 0;
 };
