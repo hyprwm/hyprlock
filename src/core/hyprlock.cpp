@@ -913,6 +913,9 @@ void CHyprlock::processTimers() {
 }
 
 std::vector<ASP<CTimer>> CHyprlock::getTimers() {
+    // addTimer runs on non-main threads (PAM, resource workers, video decode),
+    // so the copy must hold the same lock they take to mutate m_vTimers.
+    std::lock_guard<std::mutex> lg(m_sLoopState.timersMutex);
     return m_vTimers;
 }
 
