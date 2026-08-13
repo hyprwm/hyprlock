@@ -1,15 +1,18 @@
 #pragma once
 
 #include <string>
+#include <functional>
+
+#include "Texture.hpp"
+
+#ifdef HYPRLOCK_HAS_VIDEO
+
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include <functional>
 #include <vector>
 #include <chrono>
-
-#include "Texture.hpp"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -37,9 +40,10 @@ class CVideoBackend {
     // Returns true if the file extension is a recognised video format.
     static bool isVideoFile(const std::string& path);
 
-    // Start the decode thread for path. onFrame fires (on the decode thread)
-    // after every published frame, e.g. to schedule a redraw.
-    void open(const std::string& path, std::function<void()> onFrame);
+    // Start the decode thread for path. Frames are converted at no more than
+    // the aspect-fill size for viewport (never upscaled). onFrame fires (on
+    // the decode thread) after every published frame, e.g. to schedule a redraw.
+    void open(const std::string& path, const Vector2D& viewport, std::function<void()> onFrame);
 
     // Stop the decode thread and release all FFmpeg and GL resources.
     void stop();
@@ -68,12 +72,6 @@ class CVideoBackend {
         return m_hasAlpha;
     }
 
-    // Whether the decode thread is still producing frames. False once it
-    // exits on an unrecoverable error or an unseekable end of stream.
-    bool isRunning() const {
-        return m_threadAlive;
-    }
-
   private:
     bool                  openStream();
     void                  decodeLoop();
@@ -87,15 +85,15 @@ class CVideoBackend {
     int                   m_frameW    = 0;
     int                   m_frameH    = 0;
     std::string           m_path;
+    Vector2D              m_viewportHint;
     std::function<void()> m_onFrame;
 
     // decode thread only
     double                                m_timeBase = 0.0;
     int64_t                               m_startPts = 0; // stream start_time, subtracted from frame PTS for pacing
-    std::chrono::duration<double>         m_frameInterval{1.0 / 30.0};
+    std::chrono::steady_clock::duration   m_frameInterval{};
     AVColorSpace                          m_lastColorspace = AVCOL_SPC_UNSPECIFIED;
     AVColorRange                          m_lastRange      = AVCOL_RANGE_UNSPECIFIED;
-    bool                                  m_alphaChecked   = false;
     std::chrono::steady_clock::time_point m_startTime;
 
     // shared between decode and render thread, guarded by m_frameMutex
@@ -111,7 +109,42 @@ class CVideoBackend {
     std::atomic<int>        m_rotation{0};
     std::atomic<bool>       m_hasAlpha{false};
     std::atomic<bool>       m_stopRequested{false};
-    std::atomic<bool>       m_threadAlive{false};
     std::mutex              m_stopMutex;
     std::condition_variable m_stopCV;
 };
+
+#else // !HYPRLOCK_HAS_VIDEO
+
+// Stub for builds without FFmpeg: isVideoFile() is statically false, so every
+// video code path in the widgets is dead and compiled out - the widgets
+// themselves need no #ifdefs.
+class CVideoBackend {
+  public:
+    static bool isVideoFile(const std::string&) {
+        return false;
+    }
+
+    void open(const std::string&, const Vector2D&, std::function<void()>) {}
+    void stop() {}
+
+    bool updateTexture() {
+        return false;
+    }
+    bool hasFrame() const {
+        return false;
+    }
+    const CTexture& texture() const {
+        return m_texture;
+    }
+    int rotationDegrees() const {
+        return 0;
+    }
+    bool hasAlpha() const {
+        return false;
+    }
+
+  private:
+    CTexture m_texture;
+};
+
+#endif // HYPRLOCK_HAS_VIDEO

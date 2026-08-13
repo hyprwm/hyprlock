@@ -4,7 +4,7 @@
   cmake,
   pkg-config,
   cairo,
-  ffmpeg ? null,
+  ffmpeg,
   libdrm,
   libGL,
   libxkbcommon,

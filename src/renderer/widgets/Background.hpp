@@ -6,9 +6,7 @@
 #include "../../helpers/Color.hpp"
 #include "../../core/Timer.hpp"
 #include "../Framebuffer.hpp"
-#ifdef HYPRLOCK_HAS_VIDEO
 #include "../VideoBackend.hpp"
-#endif
 #include <hyprutils/math/Misc.hpp>
 #include <string>
 #include <unordered_map>
@@ -86,11 +84,13 @@ class CBackground : public IWidget {
     std::filesystem::file_time_type modificationTime;
     size_t                          m_imageRevision = 0;
 
-    // Video playback
-#ifdef HYPRLOCK_HAS_VIDEO
+    // Renders the lock fade-in fallback (screenshot crossfading to the solid
+    // color, or just the color). Returns true while the fade still animates.
+    bool renderFallback(const SRenderData& data);
+
+    // Video playback (no-ops via the CVideoBackend stub when built without FFmpeg)
     void              startVideo();
     bool              drawVideo(const SRenderData& data);
 
     UP<CVideoBackend> m_videoBackend;
-#endif
 };

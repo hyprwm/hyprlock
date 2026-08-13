@@ -10,7 +10,6 @@
 #include <hyprlang.hpp>
 #include <array>
 #include <filesystem>
-#include <optional>
 #include <GLES3/gl32.h>
 
 CBackground::CBackground() {
@@ -88,14 +87,10 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
             resourceID = 0;
         }
     } else if (!path.empty()) {
-#ifdef HYPRLOCK_HAS_VIDEO
         if (CVideoBackend::isVideoFile(path))
             startVideo();
         else
-#endif
-        {
             resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
-        }
     }
 
     if (!reloadCommand.empty() && reloadTime > -1) {
@@ -109,9 +104,7 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
 }
 
 void CBackground::reset() {
-#ifdef HYPRLOCK_HAS_VIDEO
     m_videoBackend.reset(); // joins the decode thread, frees FFmpeg + GL resources
-#endif
 
     if (reloadTimer) {
         reloadTimer->cancel();
@@ -238,10 +231,8 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 }
 
 bool CBackground::draw(const SRenderData& data) {
-#ifdef HYPRLOCK_HAS_VIDEO
     if (m_videoBackend)
         return drawVideo(data);
-#endif
 
     updatePrimaryAsset();
     updatePendingAsset();
@@ -255,18 +246,9 @@ bool CBackground::draw(const SRenderData& data) {
     }
 
     if (!asset || resourceID == 0) {
-        // fade in/out with a solid color
-        if (data.opacity < 1.0 && scAsset) {
-            const auto& SCTEX    = getScAssetTex();
-            const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
-            g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
-            CHyprColor col = color;
-            col.a *= data.opacity;
-            renderRect(col);
+        if (renderFallback(data))
             return true;
-        }
 
-        renderRect(color);
         return !asset && resourceID > 0; // resource not ready
     }
 
@@ -351,17 +333,12 @@ void CBackground::onReloadTimerUpdate() {
         return;
     }
 
-#ifdef HYPRLOCK_HAS_VIDEO
     // Reloads may switch between image and video paths in either direction
+    m_videoBackend.reset(); // stop any previous video
     if (CVideoBackend::isVideoFile(path)) {
-        m_videoBackend.reset(); // stop any previous video first
         startVideo();
         return;
     }
-
-    if (m_videoBackend)
-        m_videoBackend.reset(); // video -> image switch
-#endif
 
     if (pendingResource) {
         Log::logger->log(Log::WARN, "Background image update still pending! - Refusing to load {}", path);
@@ -374,8 +351,6 @@ void CBackground::onReloadTimerUpdate() {
     AWP<IWidget> widget(m_self);
     g_asyncResourceManager->requestImage(path, m_imageRevision, widget);
 }
-
-#ifdef HYPRLOCK_HAS_VIDEO
 
 // Maps the video's display-matrix rotation (degrees clockwise) onto a render transform.
 // The FLIPPED family is used when sampling the top-down RGBA frame directly (hyprlock's
@@ -392,12 +367,30 @@ static eTransform videoTransform(int rotation, bool flippedBase) {
     return flippedBase ? FLIPPED[STEP] : NORMAL[STEP];
 }
 
+bool CBackground::renderFallback(const SRenderData& data) {
+    if (data.opacity < 1.0 && scAsset) {
+        const auto& SCTEX    = getScAssetTex();
+        const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
+        g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
+
+        CHyprColor col = color;
+        col.a *= data.opacity;
+        renderRect(col);
+        return true;
+    }
+
+    renderRect(color);
+    return false;
+}
+
 void CBackground::startVideo() {
     m_videoBackend = makeUnique<CVideoBackend>();
-    // The publish callback fires on the decode thread: schedule a redraw on the main
-    // loop rather than polling at display refresh (same pattern as asset arrival in
-    // AsyncResourceManager). Captures nothing, so widget lifetime is irrelevant.
-    m_videoBackend->open(absolutePath(path, ""), [] { g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->renderAllOutputs(); }, nullptr); });
+    // The publish callback fires on the decode thread: schedule a redraw of this output
+    // on the main loop rather than polling at display refresh (same pattern as asset
+    // arrival in AsyncResourceManager). Captures only the port string, so widget
+    // lifetime is irrelevant.
+    m_videoBackend->open(absolutePath(path, ""), viewport,
+                         [port = outputPort] { g_pHyprlock->addTimer(std::chrono::milliseconds(0), [port](auto, auto) { g_pHyprlock->renderOutput(port); }, nullptr); });
 }
 
 bool CBackground::drawVideo(const SRenderData& data) {
@@ -409,19 +402,7 @@ bool CBackground::drawVideo(const SRenderData& data) {
         // Nothing decoded yet: solid color, crossfading from the screenshot like the image
         // path. The decoder's publish callback wakes us when the first frame lands, so we
         // only keep animating here for the fade itself.
-        if (data.opacity < 1.0 && scAsset) {
-            const auto& SCTEX    = getScAssetTex();
-            const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
-            g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
-
-            CHyprColor col = color;
-            col.a *= data.opacity;
-            renderRect(col);
-            return true;
-        }
-
-        renderRect(color);
-        return false;
+        return renderFallback(data);
     }
 
     const int ROTATION = m_videoBackend->rotationDegrees();
@@ -433,13 +414,14 @@ bool CBackground::drawVideo(const SRenderData& data) {
     const bool  BLURRED = blurPasses > 0 && blurredFB->isAllocated();
     const auto& TEX     = BLURRED ? blurredFB->m_cTex : m_videoBackend->texture();
 
-    // Rotation is baked into blurredFB by renderToFB; only the direct path needs it here
-    Vector2D texSize = TEX.m_vSize;
-    if (!BLURRED && ROTATION % 180 == 90)
+    // Rotation is baked into blurredFB by renderToFB; the direct path applies it here
+    const eTransform TR = videoTransform(BLURRED ? 0 : ROTATION, true);
+
+    Vector2D         texSize = TEX.m_vSize;
+    if (TR % 2 == 1)
         std::swap(texSize.x, texSize.y);
 
-    const auto                      TEXBOX = getScaledBoxForTextureSize(texSize, viewport);
-    const std::optional<eTransform> TR     = BLURRED ? std::optional<eTransform>{} : videoTransform(ROTATION, true);
+    const auto TEXBOX = getScaledBoxForTextureSize(texSize, viewport);
 
     // Frames with alpha are premultiplied by the backend; the configured background
     // color shows through transparent regions, like the image path.
@@ -469,5 +451,3 @@ bool CBackground::drawVideo(const SRenderData& data) {
     // the frame-callback loop to keep animating.
     return data.opacity < 1.0;
 }
-
-#endif // HYPRLOCK_HAS_VIDEO

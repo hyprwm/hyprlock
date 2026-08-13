@@ -62,11 +62,11 @@ static void premultiplyAlpha(uint8_t* px, size_t bytes) {
     }
 }
 
-void CVideoBackend::open(const std::string& path, std::function<void()> onFrame) {
+void CVideoBackend::open(const std::string& path, const Vector2D& viewport, std::function<void()> onFrame) {
     m_path          = path;
+    m_viewportHint  = viewport;
     m_onFrame       = std::move(onFrame);
     m_stopRequested = false;
-    m_threadAlive   = true;
 
     // The file is opened on the decode thread: avformat_open_input can block
     // indefinitely on FIFOs or dead network mounts, and this thread is the one
@@ -76,8 +76,6 @@ void CVideoBackend::open(const std::string& path, std::function<void()> onFrame)
 
         if (openStream())
             decodeLoop();
-
-        m_threadAlive = false;
     });
 }
 
@@ -140,7 +138,7 @@ bool CVideoBackend::openStream() {
     if (fr.num <= 0 || fr.den <= 0)
         fr = STREAM->r_frame_rate;
     const double IVAL = (fr.num > 0 && fr.den > 0) ? av_q2d(av_inv_q(fr)) : 1.0 / 30.0;
-    m_frameInterval   = std::chrono::duration<double>(std::clamp(IVAL, 1.0 / 240.0, 1.0));
+    m_frameInterval   = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(std::clamp(IVAL, 1.0 / 240.0, 1.0)));
 
     // Display-matrix rotation (typical for phone footage)
     if (const auto* SD = av_packet_side_data_get(STREAM->codecpar->coded_side_data, STREAM->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
@@ -150,6 +148,20 @@ bool CVideoBackend::openStream() {
             // av_display_rotation_get returns degrees counterclockwise; we want clockwise
             const int ROT = (((int)std::lround(-THETA) % 360) + 360) % 360;
             m_rotation    = (ROT / 90) * 90;
+        }
+    }
+
+    // Cap the conversion target at the aspect-fill size for the output: converting,
+    // premultiplying, uploading and blurring pixels the screen cannot show costs
+    // bandwidth on every frame (a 4K clip on a 1080p output pays ~4x). Never upscale.
+    if (m_viewportHint.x > 0 && m_viewportHint.y > 0) {
+        const bool   SWAPPED = m_rotation % 180 == 90;
+        const double DISPW   = SWAPPED ? m_frameH : m_frameW;
+        const double DISPH   = SWAPPED ? m_frameW : m_frameH;
+        const double SCALE   = std::max(m_viewportHint.x / DISPW, m_viewportHint.y / DISPH);
+        if (SCALE < 1.0) {
+            m_frameW = std::max(1, (int)std::lround(m_frameW * SCALE));
+            m_frameH = std::max(1, (int)std::lround(m_frameH * SCALE));
         }
     }
 
@@ -264,12 +276,11 @@ void CVideoBackend::decodeLoop() {
             const int* COEFFS  = sws_getCoefficients(swsColorspaceFor(f->colorspace, f->height));
             // May fail for conversions that don't support it; swscale then keeps its defaults
             sws_setColorspaceDetails(m_swsCtx, COEFFS, SRCFULL, sws_getCoefficients(SWS_CS_DEFAULT), 1 /* full-range RGB out */, 0, 1 << 16, 1 << 16);
-        }
 
-        if (!m_alphaChecked) {
+            // Alpha depends only on the pixel format, and a format change is exactly
+            // what recreates the sws context - re-derive it here.
             const auto* DESC = av_pix_fmt_desc_get((AVPixelFormat)f->format);
             m_hasAlpha       = DESC && (DESC->flags & AV_PIX_FMT_FLAG_ALPHA);
-            m_alphaChecked   = true;
         }
 
         // sws_scale requires 4-element pointer/stride arrays even for
@@ -298,7 +309,7 @@ void CVideoBackend::decodeLoop() {
             }
         }
         if (!paced) // PTS-less or bogus-PTS frames: pace at the container frame rate instead of spinning
-            pacedWaitUntil(lastPublish + std::chrono::duration_cast<std::chrono::steady_clock::duration>(m_frameInterval));
+            pacedWaitUntil(lastPublish + m_frameInterval);
 
         if (m_stopRequested)
             return;
@@ -339,7 +350,7 @@ void CVideoBackend::decodeLoop() {
 
             // Floor the loop rate at one frame interval: a single-frame file (e.g. a
             // static .gif) would otherwise spin read->seek->decode at 100% CPU.
-            pacedWaitUntil(lastPublish + std::chrono::duration_cast<std::chrono::steady_clock::duration>(m_frameInterval));
+            pacedWaitUntil(lastPublish + m_frameInterval);
 
             m_startTime = std::chrono::steady_clock::now();
             continue;
