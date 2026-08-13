@@ -139,6 +139,12 @@ bool CFingerprint::createDeviceProxy() {
 }
 
 void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
+
+    // Some fingerprint drivers (e.g. ELAN Match-on-Chip)
+    // report verify-unknown-error after an idle timeout.
+    // Recover by recreating the verification session instead
+    // of permanently disabling fingerprint authentication.
+
     Log::logger->log(Log::INFO, "fprint: handling status {}", result);
     auto matchResult   = s_mapStringToTestType[result];
     bool authenticated = false;
@@ -162,9 +168,9 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
             }
             break;
         case MATCH_UNKNOWN_ERROR:
-            stopVerify();
-            m_sFailureReason = "Fingerprint auth disabled (unknown error)";
-            break;
+            Log::logger->log(Log::INFO, "fprint: restarting verification after unknown error");
+            restartVerification();
+            return;
         case MATCH_MATCHED:
             stopVerify();
             authenticated = true;
@@ -269,4 +275,18 @@ bool CFingerprint::releaseDevice() {
     m_sDBUSState.device.reset();
     Log::logger->log(Log::INFO, "fprint: released device");
     return true;
+}
+
+void CFingerprint::restartVerification() {
+    if (!stopVerify())
+        Log::logger->log(Log::WARN, "fprint: failed to stop verification during restart");
+
+    if (!releaseDevice()) {
+        Log::logger->log(Log::WARN, "fprint: failed to release device during restart");
+        return;
+    }
+
+    m_sDBUSState.done = false;
+
+    claimDevice();
 }
