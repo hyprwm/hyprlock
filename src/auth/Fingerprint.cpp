@@ -71,8 +71,20 @@ void CFingerprint::init() {
     g_dbus->m_freedesktopLogin1->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
         Log::logger->log(Log::INFO, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
-        if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
-            startVerify();
+        if (m_sDBUSState.sleeping)
+            return;
+
+        // Some readers power down during sleep and re-enumerate on resume, and
+        // fprintd may have been restarted, so the pre-sleep claim (and even the
+        // device object path) may no longer exist. Release whatever we held —
+        // ignoring failures — and rebuild the proxy so startVerify() re-queries
+        // the device and claims it again.
+        if (m_sDBUSState.device) {
+            stopVerify();
+            releaseDevice();
+            m_sDBUSState.device.reset();
+        }
+        startVerify();
     });
 }
 
