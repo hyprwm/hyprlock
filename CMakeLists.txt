@@ -92,7 +92,9 @@ pkg_check_modules(
 
 option(VIDEO_BACKEND "Enable video background support via FFmpeg" ON)
 if(VIDEO_BACKEND)
-  pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET libavcodec libavformat libavutil libswscale)
+  # >= FFmpeg 6.1: av_packet_side_data_get / codecpar coded_side_data
+  pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET libavcodec>=60.31 libavformat>=60.16
+                    libavutil>=58.29 libswscale>=7.5)
   message(STATUS "Video backend: enabled")
 else()
   message(STATUS "Video backend: disabled")

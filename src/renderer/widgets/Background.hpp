@@ -88,6 +88,7 @@ class CBackground : public IWidget {
 
     // Video playback
 #ifdef HYPRLOCK_HAS_VIDEO
+    void              startVideo();
     bool              drawVideo(const SRenderData& data);
 
     UP<CVideoBackend> m_videoBackend;

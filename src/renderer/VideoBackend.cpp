@@ -8,9 +8,11 @@
 #include <unordered_set>
 
 #include <GLES3/gl32.h>
+#include <pthread.h>
 
 extern "C" {
 #include <libavutil/display.h>
+#include <libavutil/pixdesc.h>
 }
 
 CVideoBackend::~CVideoBackend() {
@@ -46,9 +48,40 @@ static int swsColorspaceFor(AVColorSpace space, int height) {
     }
 }
 
-bool CVideoBackend::open(const std::string& path) {
-    m_path = path;
+// hyprlock's renderer blends premultiplied (GL_ONE, GL_ONE_MINUS_SRC_ALPHA), but
+// swscale outputs straight alpha - premultiply so transparent GIFs/videos composite
+// like the cairo image path does.
+static void premultiplyAlpha(uint8_t* px, size_t bytes) {
+    for (size_t i = 0; i < bytes; i += 4) {
+        const uint32_t A = px[i + 3];
+        if (A == 255)
+            continue;
+        px[i]     = px[i] * A / 255;
+        px[i + 1] = px[i + 1] * A / 255;
+        px[i + 2] = px[i + 2] * A / 255;
+    }
+}
 
+void CVideoBackend::open(const std::string& path, std::function<void()> onFrame) {
+    m_path          = path;
+    m_onFrame       = std::move(onFrame);
+    m_stopRequested = false;
+    m_threadAlive   = true;
+
+    // The file is opened on the decode thread: avformat_open_input can block
+    // indefinitely on FIFOs or dead network mounts, and this thread is the one
+    // that renders the lock screen. Failures degrade to the background color.
+    m_decodeThread = std::thread([this]() {
+        pthread_setname_np(pthread_self(), "video-decode");
+
+        if (openStream())
+            decodeLoop();
+
+        m_threadAlive = false;
+    });
+}
+
+bool CVideoBackend::openStream() {
     m_formatCtx = avformat_alloc_context();
     if (!m_formatCtx) {
         Log::logger->log(Log::ERR, "CVideoBackend: avformat_alloc_context failed");
@@ -59,20 +92,20 @@ bool CVideoBackend::open(const std::string& path) {
     m_formatCtx->interrupt_callback.opaque   = this;
 
     // Frees and nulls m_formatCtx on failure
-    if (avformat_open_input(&m_formatCtx, path.c_str(), nullptr, nullptr) < 0) {
-        Log::logger->log(Log::ERR, "CVideoBackend: avformat_open_input failed for {}", path);
+    if (avformat_open_input(&m_formatCtx, m_path.c_str(), nullptr, nullptr) < 0) {
+        Log::logger->log(Log::ERR, "CVideoBackend: avformat_open_input failed for {}", m_path);
         return false;
     }
 
     if (avformat_find_stream_info(m_formatCtx, nullptr) < 0) {
-        Log::logger->log(Log::ERR, "CVideoBackend: avformat_find_stream_info failed for {}", path);
+        Log::logger->log(Log::ERR, "CVideoBackend: avformat_find_stream_info failed for {}", m_path);
         return false;
     }
 
     const AVCodec* codec = nullptr;
     m_streamIdx          = av_find_best_stream(m_formatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0);
     if (m_streamIdx < 0 || !codec) {
-        Log::logger->log(Log::ERR, "CVideoBackend: no video stream found in {}", path);
+        Log::logger->log(Log::ERR, "CVideoBackend: no video stream found in {}", m_path);
         return false;
     }
 
@@ -85,16 +118,31 @@ bool CVideoBackend::open(const std::string& path) {
     avcodec_parameters_to_context(m_codecCtx, m_formatCtx->streams[m_streamIdx]->codecpar);
 
     if (avcodec_open2(m_codecCtx, codec, nullptr) < 0) {
-        Log::logger->log(Log::ERR, "CVideoBackend: avcodec_open2 failed for {}", path);
+        Log::logger->log(Log::ERR, "CVideoBackend: avcodec_open2 failed for {}", m_path);
         return false;
     }
 
-    m_frameW   = m_codecCtx->width;
-    m_frameH   = m_codecCtx->height;
-    m_timeBase = av_q2d(m_formatCtx->streams[m_streamIdx]->time_base);
+    m_frameW = m_codecCtx->width;
+    m_frameH = m_codecCtx->height;
+
+    if (m_frameW <= 0 || m_frameH <= 0) {
+        Log::logger->log(Log::ERR, "CVideoBackend: {} reports no valid dimensions ({}x{})", m_path, m_frameW, m_frameH);
+        return false;
+    }
+
+    const auto* STREAM = m_formatCtx->streams[m_streamIdx];
+
+    m_timeBase = av_q2d(STREAM->time_base);
+    m_startPts = STREAM->start_time != AV_NOPTS_VALUE ? STREAM->start_time : 0;
+
+    // Fallback pacing interval for PTS-less frames and the loop-seek floor
+    AVRational fr = STREAM->avg_frame_rate;
+    if (fr.num <= 0 || fr.den <= 0)
+        fr = STREAM->r_frame_rate;
+    const double IVAL = (fr.num > 0 && fr.den > 0) ? av_q2d(av_inv_q(fr)) : 1.0 / 30.0;
+    m_frameInterval   = std::chrono::duration<double>(std::clamp(IVAL, 1.0 / 240.0, 1.0));
 
     // Display-matrix rotation (typical for phone footage)
-    const auto* STREAM = m_formatCtx->streams[m_streamIdx];
     if (const auto* SD = av_packet_side_data_get(STREAM->codecpar->coded_side_data, STREAM->codecpar->nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX);
         SD && SD->size >= 9 * sizeof(int32_t)) {
         const double THETA = av_display_rotation_get((const int32_t*)SD->data);
@@ -105,20 +153,30 @@ bool CVideoBackend::open(const std::string& path) {
         }
     }
 
-    // swsCtx is created lazily per-frame via sws_getCachedContext so that
-    // we handle codecs where pix_fmt is only known after the first decode.
-    const size_t FRAMEBYTES = 4UL * m_frameW * m_frameH;
-    m_frameData.resize(FRAMEBYTES);
-    m_uploadBuffer.resize(FRAMEBYTES);
+    // Size the shared buffers under the frame mutex so the render thread's first
+    // updateTexture() is ordered after this. swsCtx is created lazily per-frame via
+    // sws_getCachedContext so we handle codecs where pix_fmt is only known after
+    // the first decode.
+    {
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+        const size_t                FRAMEBYTES = 4UL * m_frameW * m_frameH;
+        m_frameData.resize(FRAMEBYTES);
+        m_uploadBuffer.resize(FRAMEBYTES);
+    }
 
-    Log::logger->log(Log::INFO, "CVideoBackend: opened {} ({}x{}, timebase={:.6f}, rotation={})", path, m_frameW, m_frameH, m_timeBase, m_rotation);
-
-    startDecodeThread();
+    Log::logger->log(Log::INFO, "CVideoBackend: opened {} ({}x{}, timebase={:.6f}, start_pts={}, rotation={})", m_path, m_frameW, m_frameH, m_timeBase, m_startPts,
+                     m_rotation.load());
     return true;
 }
 
 void CVideoBackend::stop() {
-    m_stopRequested = true;
+    {
+        // The store must happen under the lock: a plain store + notify can slip
+        // between the decode thread's predicate check and its wait, and the lost
+        // wakeup then stalls this join until the wait times out.
+        std::lock_guard<std::mutex> lock(m_stopMutex);
+        m_stopRequested = true;
+    }
     m_stopCV.notify_all();
 
     if (m_decodeThread.joinable())
@@ -175,100 +233,138 @@ bool CVideoBackend::updateTexture() {
     return true;
 }
 
-void CVideoBackend::startDecodeThread() {
-    m_stopRequested = false;
-    m_threadAlive   = true;
-    m_startTime     = std::chrono::steady_clock::now();
+void CVideoBackend::pacedWaitUntil(const std::chrono::steady_clock::time_point& tp) {
+    std::unique_lock<std::mutex> lock(m_stopMutex);
+    m_stopCV.wait_until(lock, tp, [this] { return m_stopRequested.load(); });
+}
 
-    m_decodeThread = std::thread([this]() {
-        AVPacket* pkt   = av_packet_alloc();
-        AVFrame*  frame = av_frame_alloc();
-        // Pre-size the tmp buffer so it's never empty when swapping with m_frameData.
-        // An empty vector has data()==null which causes "bad dst image pointers" in sws_scale.
-        std::vector<uint8_t> tmpBuf(4UL * m_frameW * m_frameH);
+void CVideoBackend::decodeLoop() {
+    AVPacket* pkt   = av_packet_alloc();
+    AVFrame*  frame = av_frame_alloc();
+    // Pre-size the tmp buffer so it's never empty when swapping with m_frameData.
+    // An empty vector has data()==null which causes "bad dst image pointers" in sws_scale.
+    std::vector<uint8_t> tmpBuf(4UL * m_frameW * m_frameH);
 
-        while (!m_stopRequested) {
-            const int RET = av_read_frame(m_formatCtx, pkt);
+    auto                 lastPublish = std::chrono::steady_clock::now();
+    m_startTime                      = lastPublish;
 
-            if (RET == AVERROR_EOF) {
-                // Loop: seek back to the beginning
-                if (av_seek_frame(m_formatCtx, m_streamIdx, 0, AVSEEK_FLAG_BACKWARD) < 0) {
-                    Log::logger->log(Log::WARN, "CVideoBackend: {} is not seekable, cannot loop; holding the last frame", m_path);
-                    break;
-                }
+    // Scale, pace and publish one decoded frame.
+    const auto handleFrame = [&](AVFrame* f) {
+        // Lazily create/update SwsContext to match the frame's actual pixel
+        // format (some codecs only report it after the first frame).
+        SwsContext* prevCtx = m_swsCtx;
+        m_swsCtx = sws_getCachedContext(m_swsCtx, f->width, f->height, (AVPixelFormat)f->format, m_frameW, m_frameH, AV_PIX_FMT_RGBA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+        if (!m_swsCtx)
+            return;
 
-                avcodec_flush_buffers(m_codecCtx);
-                m_startTime = std::chrono::steady_clock::now();
-                continue;
-            }
-
-            if (RET < 0)
-                break; // unrecoverable error
-
-            if (pkt->stream_index != m_streamIdx) {
-                av_packet_unref(pkt);
-                continue;
-            }
-
-            if (avcodec_send_packet(m_codecCtx, pkt) < 0) {
-                av_packet_unref(pkt);
-                continue;
-            }
-            av_packet_unref(pkt);
-
-            while (!m_stopRequested && avcodec_receive_frame(m_codecCtx, frame) == 0) {
-                // Lazily create/update SwsContext to match the frame's actual pixel
-                // format (some codecs only report it after the first frame).
-                SwsContext* prevCtx = m_swsCtx;
-                m_swsCtx = sws_getCachedContext(m_swsCtx, frame->width, frame->height, (AVPixelFormat)frame->format, m_frameW, m_frameH, AV_PIX_FMT_RGBA, SWS_BILINEAR, nullptr,
-                                                nullptr, nullptr);
-                if (!m_swsCtx) {
-                    av_frame_unref(frame);
-                    continue;
-                }
-
-                if (m_swsCtx != prevCtx || frame->colorspace != m_lastColorspace || frame->color_range != m_lastRange) {
-                    m_lastColorspace   = frame->colorspace;
-                    m_lastRange        = frame->color_range;
-                    const int  SRCFULL = frame->color_range == AVCOL_RANGE_JPEG ? 1 : 0;
-                    const int* COEFFS  = sws_getCoefficients(swsColorspaceFor(frame->colorspace, frame->height));
-                    // May fail for conversions that don't support it; swscale then keeps its defaults
-                    sws_setColorspaceDetails(m_swsCtx, COEFFS, SRCFULL, sws_getCoefficients(SWS_CS_DEFAULT), 1 /* full-range RGB out */, 0, 1 << 16, 1 << 16);
-                }
-
-                // sws_scale requires 4-element pointer/stride arrays even for
-                // packed formats — passing a 1-element array causes UB reads.
-                uint8_t* dst[4]    = {tmpBuf.data(), nullptr, nullptr, nullptr};
-                int      stride[4] = {4 * m_frameW, 0, 0, 0};
-                sws_scale(m_swsCtx, (const uint8_t* const*)frame->data, frame->linesize, 0, frame->height, dst, stride);
-
-                // Publish the frame via O(1) swap (no memcpy)
-                {
-                    std::lock_guard<std::mutex> lock(m_frameMutex);
-                    std::swap(m_frameData, tmpBuf);
-                    m_hasNewFrame = true;
-                }
-                // tmpBuf now holds old frame data — overwritten next iteration
-
-                // PTS-based frame pacing, interruptible by stop()
-                if (frame->pts != AV_NOPTS_VALUE) {
-                    const double PTSSEC = frame->pts * m_timeBase;
-                    const auto   TARGET = m_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(PTSSEC));
-                    const auto   NOW    = std::chrono::steady_clock::now();
-                    // Safety cap: never wait > 5s (guards against bogus PTS values)
-                    if (TARGET > NOW && TARGET < NOW + std::chrono::seconds(5)) {
-                        std::unique_lock<std::mutex> lock(m_stopMutex);
-                        m_stopCV.wait_until(lock, TARGET, [this] { return m_stopRequested.load(); });
-                    }
-                }
-
-                av_frame_unref(frame);
-            }
+        if (m_swsCtx != prevCtx || f->colorspace != m_lastColorspace || f->color_range != m_lastRange) {
+            m_lastColorspace   = f->colorspace;
+            m_lastRange        = f->color_range;
+            const int  SRCFULL = f->color_range == AVCOL_RANGE_JPEG ? 1 : 0;
+            const int* COEFFS  = sws_getCoefficients(swsColorspaceFor(f->colorspace, f->height));
+            // May fail for conversions that don't support it; swscale then keeps its defaults
+            sws_setColorspaceDetails(m_swsCtx, COEFFS, SRCFULL, sws_getCoefficients(SWS_CS_DEFAULT), 1 /* full-range RGB out */, 0, 1 << 16, 1 << 16);
         }
 
-        av_packet_free(&pkt);
-        av_frame_free(&frame);
+        if (!m_alphaChecked) {
+            const auto* DESC = av_pix_fmt_desc_get((AVPixelFormat)f->format);
+            m_hasAlpha       = DESC && (DESC->flags & AV_PIX_FMT_FLAG_ALPHA);
+            m_alphaChecked   = true;
+        }
 
-        m_threadAlive = false;
-    });
+        // sws_scale requires 4-element pointer/stride arrays even for
+        // packed formats — passing a 1-element array causes UB reads.
+        uint8_t* dst[4]    = {tmpBuf.data(), nullptr, nullptr, nullptr};
+        int      stride[4] = {4 * m_frameW, 0, 0, 0};
+        sws_scale(m_swsCtx, (const uint8_t* const*)f->data, f->linesize, 0, f->height, dst, stride);
+
+        if (m_hasAlpha)
+            premultiplyAlpha(tmpBuf.data(), tmpBuf.size());
+
+        // PTS-based pacing before publish, interruptible by stop(). Timestamps are
+        // taken relative to the stream's start_time - raw PTS on e.g. MPEG-TS carry
+        // a large offset that would otherwise break pacing entirely.
+        const auto NOW   = std::chrono::steady_clock::now();
+        bool       paced = false;
+        if (f->pts != AV_NOPTS_VALUE) {
+            const double PTSSEC = (f->pts - m_startPts) * m_timeBase;
+            const auto   TARGET = m_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(PTSSEC));
+            // Safety cap: never wait > 5s (guards against bogus PTS values)
+            if (TARGET > NOW && TARGET < NOW + std::chrono::seconds(5)) {
+                pacedWaitUntil(TARGET);
+                paced = true;
+            } else if (TARGET <= NOW) {
+                paced = true; // behind schedule: publish immediately to catch up
+            }
+        }
+        if (!paced) // PTS-less or bogus-PTS frames: pace at the container frame rate instead of spinning
+            pacedWaitUntil(lastPublish + std::chrono::duration_cast<std::chrono::steady_clock::duration>(m_frameInterval));
+
+        if (m_stopRequested)
+            return;
+
+        // Publish the frame via O(1) swap (no memcpy)
+        {
+            std::lock_guard<std::mutex> lock(m_frameMutex);
+            std::swap(m_frameData, tmpBuf);
+            m_hasNewFrame = true;
+        }
+        // tmpBuf now holds old frame data — overwritten next iteration
+        lastPublish = std::chrono::steady_clock::now();
+
+        if (m_onFrame)
+            m_onFrame();
+    };
+
+    while (!m_stopRequested) {
+        const int RET = av_read_frame(m_formatCtx, pkt);
+
+        if (RET == AVERROR_EOF) {
+            // Drain the decoder's reorder tail before seeking: B-frame streams hold
+            // several frames internally, and clips shorter than that delay would
+            // otherwise never display a single frame.
+            avcodec_send_packet(m_codecCtx, nullptr);
+            while (!m_stopRequested && avcodec_receive_frame(m_codecCtx, frame) == 0) {
+                handleFrame(frame);
+                av_frame_unref(frame);
+            }
+
+            // Loop: seek back to the beginning
+            if (av_seek_frame(m_formatCtx, m_streamIdx, 0, AVSEEK_FLAG_BACKWARD) < 0) {
+                Log::logger->log(Log::WARN, "CVideoBackend: {} is not seekable, cannot loop; holding the last frame", m_path);
+                break;
+            }
+
+            avcodec_flush_buffers(m_codecCtx);
+
+            // Floor the loop rate at one frame interval: a single-frame file (e.g. a
+            // static .gif) would otherwise spin read->seek->decode at 100% CPU.
+            pacedWaitUntil(lastPublish + std::chrono::duration_cast<std::chrono::steady_clock::duration>(m_frameInterval));
+
+            m_startTime = std::chrono::steady_clock::now();
+            continue;
+        }
+
+        if (RET < 0)
+            break; // unrecoverable error
+
+        if (pkt->stream_index != m_streamIdx) {
+            av_packet_unref(pkt);
+            continue;
+        }
+
+        if (avcodec_send_packet(m_codecCtx, pkt) < 0) {
+            av_packet_unref(pkt);
+            continue;
+        }
+        av_packet_unref(pkt);
+
+        while (!m_stopRequested && avcodec_receive_frame(m_codecCtx, frame) == 0) {
+            handleFrame(frame);
+            av_frame_unref(frame);
+        }
+    }
+
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
 }

@@ -89,25 +89,16 @@ void CBackground::configure(const std::unordered_map<std::string, std::any>& pro
         }
     } else if (!path.empty()) {
 #ifdef HYPRLOCK_HAS_VIDEO
-        if (CVideoBackend::isVideoFile(path)) {
-            m_videoBackend = makeUnique<CVideoBackend>();
-            if (!m_videoBackend->open(absolutePath(path, ""))) {
-                Log::logger->log(Log::ERR, "CBackground: failed to open '{}' as video, falling back to image", path);
-                m_videoBackend.reset();
-                resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
-            }
-        } else
+        if (CVideoBackend::isVideoFile(path))
+            startVideo();
+        else
 #endif
         {
             resourceID = g_asyncResourceManager->requestImage(path, m_imageRevision, nullptr);
         }
     }
 
-    if (!reloadCommand.empty() && reloadTime > -1
-#ifdef HYPRLOCK_HAS_VIDEO
-        && !m_videoBackend
-#endif
-    ) {
+    if (!reloadCommand.empty() && reloadTime > -1) {
         try {
             if (!isScreenshot)
                 modificationTime = std::filesystem::last_write_time(absolutePath(path, ""));
@@ -360,6 +351,18 @@ void CBackground::onReloadTimerUpdate() {
         return;
     }
 
+#ifdef HYPRLOCK_HAS_VIDEO
+    // Reloads may switch between image and video paths in either direction
+    if (CVideoBackend::isVideoFile(path)) {
+        m_videoBackend.reset(); // stop any previous video first
+        startVideo();
+        return;
+    }
+
+    if (m_videoBackend)
+        m_videoBackend.reset(); // video -> image switch
+#endif
+
     if (pendingResource) {
         Log::logger->log(Log::WARN, "Background image update still pending! - Refusing to load {}", path);
         return;
@@ -389,13 +392,23 @@ static eTransform videoTransform(int rotation, bool flippedBase) {
     return flippedBase ? FLIPPED[STEP] : NORMAL[STEP];
 }
 
+void CBackground::startVideo() {
+    m_videoBackend = makeUnique<CVideoBackend>();
+    // The publish callback fires on the decode thread: schedule a redraw on the main
+    // loop rather than polling at display refresh (same pattern as asset arrival in
+    // AsyncResourceManager). Captures nothing, so widget lifetime is irrelevant.
+    m_videoBackend->open(absolutePath(path, ""), [] { g_pHyprlock->addTimer(std::chrono::milliseconds(0), [](auto, auto) { g_pHyprlock->renderAllOutputs(); }, nullptr); });
+}
+
 bool CBackground::drawVideo(const SRenderData& data) {
     updateScAsset();
 
     const bool NEWFRAME = m_videoBackend->updateTexture();
 
     if (!m_videoBackend->hasFrame()) {
-        // Nothing decoded yet: solid color, crossfading from the screenshot like the image path
+        // Nothing decoded yet: solid color, crossfading from the screenshot like the image
+        // path. The decoder's publish callback wakes us when the first frame lands, so we
+        // only keep animating here for the fade itself.
         if (data.opacity < 1.0 && scAsset) {
             const auto& SCTEX    = getScAssetTex();
             const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
@@ -408,8 +421,7 @@ bool CBackground::drawVideo(const SRenderData& data) {
         }
 
         renderRect(color);
-        // Poll until the first frame arrives; idle if the decoder died before producing one
-        return m_videoBackend->isRunning();
+        return false;
     }
 
     const int ROTATION = m_videoBackend->rotationDegrees();
@@ -429,17 +441,33 @@ bool CBackground::drawVideo(const SRenderData& data) {
     const auto                      TEXBOX = getScaledBoxForTextureSize(texSize, viewport);
     const std::optional<eTransform> TR     = BLURRED ? std::optional<eTransform>{} : videoTransform(ROTATION, true);
 
+    // Frames with alpha are premultiplied by the backend; the configured background
+    // color shows through transparent regions, like the image path.
+    const bool HASALPHA = m_videoBackend->hasAlpha();
+
     if (data.opacity < 1.0 && scAsset) {
         // Crossfade from the screenshot during the lock fade-in
         const auto& SCTEX    = getScAssetTex();
         const auto  SCTEXBOX = getScaledBoxForTextureSize(SCTEX.m_vSize, viewport);
         g_pRenderer->renderTexture(SCTEXBOX, SCTEX, 1, 0, HYPRUTILS_TRANSFORM_FLIPPED_180);
-        g_pRenderer->renderTexture(TEXBOX, TEX, data.opacity, 0, TR);
-    } else
-        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, TR);
 
-    // Animate while the decoder runs or the fade-in is in progress; otherwise hold the last frame
-    return m_videoBackend->isRunning() || data.opacity < 1.0;
+        if (HASALPHA) {
+            CHyprColor col = color;
+            col.a *= data.opacity;
+            renderRect(col);
+        }
+
+        g_pRenderer->renderTexture(TEXBOX, TEX, data.opacity, 0, TR);
+    } else {
+        if (HASALPHA)
+            renderRect(color);
+
+        g_pRenderer->renderTexture(TEXBOX, TEX, 1, 0, TR);
+    }
+
+    // Redraws are event-driven (decoder publish callback); only the fade-in needs
+    // the frame-callback loop to keep animating.
+    return data.opacity < 1.0;
 }
 
 #endif // HYPRLOCK_HAS_VIDEO
