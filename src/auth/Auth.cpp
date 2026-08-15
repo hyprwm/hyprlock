@@ -68,7 +68,19 @@ void CAuth::terminate() {
 }
 
 static void unlockCallback(ASP<CTimer> self, void* data) {
-    g_pHyprlock->fadeOutAndUnlock();
+    static const auto SUCCESSTIMEOUT = g_pConfigManager->getValue<Hyprlang::INT>("general:success_timeout");
+
+    if (!g_pAuth->m_bDisplaySuccessText && *SUCCESSTIMEOUT > 0) {
+        g_pAuth->m_bDisplaySuccessText = true;
+
+        g_pHyprlock->enqueueForceUpdateTimers();
+
+        g_pHyprlock->renderAllOutputs();
+
+        g_pHyprlock->addTimer(std::chrono::milliseconds(*SUCCESSTIMEOUT), unlockCallback, nullptr);
+    } else {
+        g_pHyprlock->fadeOutAndUnlock();
+    }
 }
 
 void CAuth::enqueueUnlock() {

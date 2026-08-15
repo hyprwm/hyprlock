@@ -49,12 +49,14 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
         rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
+        configSuccessText        = std::any_cast<Hyprlang::STRING>(props.at("success_text"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
         configCheckText          = std::any_cast<Hyprlang::STRING>(props.at("check_text"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
         colorConfig.outer        = CGradientValueData::fromAnyPv(props.at("outer_color"));
         colorConfig.inner        = std::any_cast<Hyprlang::INT>(props.at("inner_color"));
         colorConfig.font         = std::any_cast<Hyprlang::INT>(props.at("font_color"));
+        colorConfig.success      = CGradientValueData::fromAnyPv(props.at("success_color"));
         colorConfig.fail         = CGradientValueData::fromAnyPv(props.at("fail_color"));
         colorConfig.check        = CGradientValueData::fromAnyPv(props.at("check_color"));
         colorConfig.both         = CGradientValueData::fromAnyPv(props.at("bothlock_color"));
@@ -184,6 +186,7 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
     passwordLength = g_pHyprlock->getPasswordBufferDisplayLen();
     checkWaiting   = g_pAuth->checkWaiting();
+    displaySuccess = g_pAuth->m_bDisplaySuccessText;
     displayFail    = g_pAuth->m_bDisplayFailText;
 
     updateFade();
@@ -348,7 +351,9 @@ void CPasswordInputField::updatePlaceholder() {
     if (displayFail) {
         newText                    = formatString(configFailText).formatted;
         placeholder.failedAttempts = g_pAuth->getFailedAttempts();
-    } else if (checkWaiting && !configCheckText.empty())
+    } else if (displaySuccess && !configSuccessText.empty())
+        newText = formatString(configSuccessText).formatted;
+    else if (checkWaiting && !configCheckText.empty())
         newText = formatString(configCheckText).formatted;
     else
         newText = formatString(configPlaceholderText).formatted;
@@ -440,6 +445,8 @@ void CPasswordInputField::updateColors() {
 
     if (checkWaiting)
         targetGrad = colorConfig.check;
+    else if (displaySuccess)
+        targetGrad = colorConfig.success;
     else if (displayFail && passwordLength == 0)
         targetGrad = colorConfig.fail;
 
@@ -447,7 +454,9 @@ void CPasswordInputField::updateColors() {
     CHyprColor          innerTarget = colorConfig.inner;
     CHyprColor          fontTarget  = colorConfig.font;
 
-    if (displayFail)
+    if (displaySuccess)
+        fontTarget = colorConfig.success->m_vColors.front();
+    else if (displayFail)
         fontTarget = colorConfig.fail->m_vColors.front();
     else if (checkWaiting)
         fontTarget = configCheckText.empty() ? colorConfig.font : colorConfig.check->m_vColors.front();

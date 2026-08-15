@@ -112,6 +112,7 @@ void CPam::init() {
             if (!AUTHENTICATED)
                 g_pAuth->enqueueFail(m_sConversationState.failText, AUTH_IMPL_PAM);
             else {
+                m_bBlockInput = false;
                 g_pAuth->enqueueUnlock();
                 return;
             }
