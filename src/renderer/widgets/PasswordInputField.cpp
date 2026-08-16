@@ -12,10 +12,26 @@
 #include <hyprgraphics/resource/resources/TextResource.hpp>
 #include <hyprutils/math/Vector2D.hpp>
 #include <hyprutils/string/String.hpp>
+#include <hyprutils/string/VarList.hpp>
 #include <algorithm>
 #include <hyprlang.hpp>
 
 using namespace Hyprutils::String;
+
+// Used for `dots_random_text` when no `dots_text_format` is given.
+static std::vector<std::string> alphanumericDotTexts() {
+    std::vector<std::string> texts;
+    texts.reserve(62);
+
+    for (char c = '0'; c <= '9'; ++c)
+        texts.emplace_back(1, c);
+    for (char c = 'a'; c <= 'z'; ++c)
+        texts.emplace_back(1, c);
+    for (char c = 'A'; c <= 'Z'; ++c)
+        texts.emplace_back(1, c);
+
+    return texts;
+}
 
 CPasswordInputField::~CPasswordInputField() {
     reset();
@@ -44,6 +60,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         dots.center              = std::any_cast<Hyprlang::INT>(props.at("dots_center"));
         dots.rounding            = std::any_cast<Hyprlang::INT>(props.at("dots_rounding"));
         dots.textFormat          = std::any_cast<Hyprlang::STRING>(props.at("dots_text_format"));
+        dots.randomText          = std::any_cast<Hyprlang::INT>(props.at("dots_random_text"));
         fadeOnEmpty              = std::any_cast<Hyprlang::INT>(props.at("fade_on_empty"));
         fadeTimeoutMs            = std::any_cast<Hyprlang::INT>(props.at("fade_timeout"));
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
@@ -88,13 +105,33 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
 
     pos = posFromHVAlign(viewport, size->goal(), configPos, halign, valign);
 
-    if (!dots.textFormat.empty()) {
+    std::vector<std::string> dotTexts;
+    if (dots.randomText) {
+        // Every comma separated entry of `dots_text_format` is one character to randomly pick from.
+        const CVarList ENTRIES(dots.textFormat, 0, ',', true);
+        for (const auto& entry : ENTRIES) {
+            if (!entry.empty())
+                dotTexts.emplace_back(entry);
+        }
+
+        if (dotTexts.empty())
+            dotTexts = alphanumericDotTexts();
+    } else if (!dots.textFormat.empty())
+        dotTexts.emplace_back(dots.textFormat);
+
+    if (!dotTexts.empty()) {
         Hyprgraphics::CTextResource::STextResourceData request;
-        request.text        = dots.textFormat;
-        request.font        = fontFamily;
-        request.color       = colorConfig.font.asRGB();
-        request.fontSize    = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
-        dots.textResourceID = g_asyncResourceManager->requestText(request, nullptr);
+        request.font     = fontFamily;
+        request.color    = colorConfig.font.asRGB();
+        request.fontSize = (int)(std::nearbyint(configSize.y * dots.size * 0.5f) * 2.f);
+
+        dots.textResourceIDs.reserve(dotTexts.size());
+        for (const auto& text : dotTexts) {
+            request.text = text;
+            dots.textResourceIDs.emplace_back(g_asyncResourceManager->requestText(request, nullptr));
+        }
+
+        dots.textAssets.resize(dots.textResourceIDs.size(), nullptr);
     }
 
     // request the inital placeholder asset
@@ -116,6 +153,14 @@ void CPasswordInputField::reset() {
     placeholder.asset      = nullptr;
     placeholder.resourceID = 0;
     placeholder.currentText.clear();
+
+    for (const auto& id : dots.textResourceIDs)
+        g_asyncResourceManager->unloadById(id);
+
+    dots.textResourceIDs.clear();
+    dots.textAssets.clear();
+    dots.randomIndices.clear();
+    dots.lastLength = 0;
 }
 
 static void fadeOutCallback(AWP<CPasswordInputField> ref) {
@@ -161,6 +206,18 @@ void CPasswordInputField::updateFade() {
 }
 
 void CPasswordInputField::updateDots() {
+    // Pick a character for every newly typed dot. Entries past passwordLength are kept around,
+    // because removed dots are still rendered while they animate out.
+    if (dots.randomText && !dots.textResourceIDs.empty() && passwordLength > dots.lastLength) {
+        if (dots.randomIndices.size() < passwordLength)
+            dots.randomIndices.resize(passwordLength, 0);
+
+        for (size_t i = dots.lastLength; i < passwordLength; ++i)
+            dots.randomIndices[i] = rand() % dots.textResourceIDs.size();
+    }
+
+    dots.lastLength = passwordLength;
+
     if (dots.currentAmount->goal() == passwordLength)
         return;
 
@@ -239,14 +296,28 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         Vector2D  passSize{RECTPASSSIZE, RECTPASSSIZE};
         int       passSpacing = std::floor(passSize.x * dots.spacing);
 
-        if (!dots.textFormat.empty()) {
-            if (!dots.textAsset)
-                dots.textAsset = g_asyncResourceManager->getAssetByID(dots.textResourceID);
+        const bool USETEXT   = !dots.textResourceIDs.empty();
+        bool       textReady = USETEXT;
 
-            if (!dots.textAsset)
+        if (USETEXT) {
+            // Every dot occupies the same cell, sized to fit the widest character.
+            Vector2D maxSize;
+            for (size_t i = 0; i < dots.textAssets.size(); ++i) {
+                if (!dots.textAssets[i])
+                    dots.textAssets[i] = g_asyncResourceManager->getAssetByID(dots.textResourceIDs[i]);
+
+                if (!dots.textAssets[i]) {
+                    textReady = false;
+                    continue;
+                }
+
+                maxSize = Vector2D{std::max(maxSize.x, dots.textAssets[i]->m_vSize.x), std::max(maxSize.y, dots.textAssets[i]->m_vSize.y)};
+            }
+
+            if (!textReady)
                 forceReload = true;
             else {
-                passSize    = dots.textAsset->m_vSize;
+                passSize    = maxSize;
                 passSpacing = std::floor(passSize.x * dots.spacing);
             }
         }
@@ -285,14 +356,20 @@ bool CPasswordInputField::draw(const SRenderData& data) {
 
             Vector2D dotPosition = inputFieldBox.pos() + Vector2D{xstart + (i * (passSize.x + passSpacing)), (inputFieldBox.h / 2.0) - (passSize.y / 2.0)};
             CBox     box{dotPosition, passSize};
-            if (!dots.textFormat.empty()) {
-                if (!dots.textAsset) {
-                    forceReload = true;
-                    fontCol.a   = DOTALPHA;
+            if (USETEXT) {
+                if (!textReady) {
+                    fontCol.a = DOTALPHA;
                     break;
                 }
 
-                g_pRenderer->renderTexture(box, *dots.textAsset, fontCol.a, dots.rounding);
+                const size_t TEXTIDX = (dots.randomText && (size_t)i < dots.randomIndices.size()) ? dots.randomIndices[i] : 0;
+                const auto&  ASSET   = dots.textAssets[std::min(TEXTIDX, dots.textAssets.size() - 1)];
+
+                // Center the character in its cell, as characters may differ in size.
+                CBox textBox{dotPosition + (passSize - ASSET->m_vSize) / 2.0, ASSET->m_vSize};
+                // dots.rounding is derived from the cell, clamp it so it can't cut into narrower characters.
+                const int TEXTROUND = std::min<double>(dots.rounding, std::min(ASSET->m_vSize.x, ASSET->m_vSize.y) / 2.0);
+                g_pRenderer->renderTexture(textBox, *ASSET, fontCol.a, TEXTROUND);
             } else
                 g_pRenderer->renderRect(box, fontCol, dots.rounding);
 
