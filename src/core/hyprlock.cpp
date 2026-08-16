@@ -100,15 +100,38 @@ static void handleUnlockSignal(int sig) {
     }
 }
 
+// Self-pipe for SIGUSR2. Running the force update inside the handler is not
+// async-signal-safe: it takes m_sLoopState.timersMutex, allocates, and re-enters
+// widget code on whichever thread the signal happened to interrupt. If that
+// thread was inside malloc or already held the mutex, the handler blocks on a
+// lock only it could release and hyprlock deadlocks. Short of that, the callbacks
+// race the main loop's resource handling, which surfaces as "resource is still
+// pending! Skipping update" and silently dropped label updates.
+//
+// write() is async-signal-safe, so the handler only nudges the poll loop and the
+// work happens on the main thread through enqueueForceUpdateTimers().
+static int g_forceUpdatePipe[2] = {-1, -1};
+
 static void handleForceUpdateSignal(int sig) {
-    if (sig == SIGUSR2) {
-        for (auto& t : g_pHyprlock->getTimers()) {
-            if (t->canForceUpdate()) {
-                t->call(t);
-                t->cancel();
-            }
-        }
+    if (sig == SIGUSR2 && g_forceUpdatePipe[1] >= 0) {
+        const uint8_t ONE = 1;
+        // Nothing useful to do on failure: a full pipe already means a wakeup is
+        // pending, which is exactly what we were about to ask for.
+        (void)!write(g_forceUpdatePipe[1], &ONE, 1);
     }
+}
+
+// Drains the self-pipe. Returns true if a force update was requested.
+static bool takeForceUpdateRequest() {
+    if (g_forceUpdatePipe[0] < 0)
+        return false;
+
+    uint8_t buf[64];
+    bool    requested = false;
+    while (read(g_forceUpdatePipe[0], buf, sizeof(buf)) > 0) {
+        requested = true;
+    }
+    return requested;
 }
 
 static void handlePollTerminate(int sig) {
@@ -383,18 +406,38 @@ void CHyprlock::run() {
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
     registerSignalAction(SIGRTMIN, handlePollTerminate);
 
-    pollfd pollfds[2];
-    pollfds[0] = {
+    if (pipe(g_forceUpdatePipe) == 0) {
+        for (int fd : g_forceUpdatePipe) {
+            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+            fcntl(fd, F_SETFD, fcntl(fd, F_GETFD, 0) | FD_CLOEXEC);
+        }
+    } else
+        Log::logger->log(Log::ERR, "[core] failed to create the force-update pipe, SIGUSR2 will be slow to take effect");
+
+    pollfd pollfds[3];
+    size_t fdcount  = 0;
+    int    dbusIdx  = -1;
+    int    forceIdx = -1;
+
+    pollfds[fdcount++] = {
         .fd     = wl_display_get_fd(m_sWaylandState.display),
         .events = POLLIN,
     };
     if (g_dbus->m_connection) {
-        pollfds[1] = {
+        dbusIdx            = fdcount;
+        pollfds[fdcount++] = {
             .fd     = g_dbus->m_connection->getEventLoopPollData().fd,
             .events = POLLIN,
         };
     }
-    size_t      fdcount = g_dbus->m_connection ? 2 : 1;
+    if (g_forceUpdatePipe[0] >= 0) {
+        forceIdx           = fdcount;
+        pollfds[fdcount++] = {
+            .fd     = g_forceUpdatePipe[0],
+            .events = POLLIN,
+        };
+    }
+    (void)forceIdx;
 
     std::thread pollThr([this, &pollfds, fdcount]() {
         while (!m_bTerminate) {
@@ -475,11 +518,17 @@ void CHyprlock::run() {
         m_sLoopState.wlDispatched = true;
         m_sLoopState.wlDispatchCV.notify_all();
 
-        if (pollfds[1].revents & POLLIN /* dbus */) {
+        if (dbusIdx >= 0 && (pollfds[dbusIdx].revents & POLLIN) /* dbus */) {
             while (g_dbus->m_connection && g_dbus->m_connection->processPendingEvent()) {
                 ;
             }
         }
+
+        // Deliberately not gated on revents: draining is cheap and idempotent,
+        // and revents is written by the poll thread, so reading it from here is
+        // inherently racy. If a byte is there, someone sent SIGUSR2.
+        if (takeForceUpdateRequest())
+            enqueueForceUpdateTimers();
 
         processTimers();
     }
