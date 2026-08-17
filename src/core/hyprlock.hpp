@@ -58,6 +58,7 @@ class CHyprlock {
     void                       handleKeySym(xkb_keysym_t sym, bool compose);
     void                       onPasswordCheckTimer();
     void                       clearPasswordBuffer();
+    void                       onLockSurfaceRendered();
     bool                       passwordCheckWaiting();
     std::optional<std::string> passwordLastFailReason();
 
@@ -125,6 +126,10 @@ class CHyprlock {
     std::atomic_bool m_fadeOutOrTerminate = false;
     std::atomic_bool m_bTerminate         = false;
 
+    void enqueuePendingAutoSubmit(size_t expectedDisplayLen);
+    void cancelPendingAutoSubmit();
+    void submitPendingAutoSubmit();
+
     struct {
         wl_display*                      display     = nullptr;
         SP<CCWlRegistry>                 registry    = nullptr;
@@ -146,6 +151,14 @@ class CHyprlock {
         size_t      failedAttempts  = 0;
         bool        displayFailText = false;
     } m_sPasswordState;
+
+    struct {
+        ASP<CTimer> fallbackTimer      = nullptr;
+        size_t      expectedBufferLen  = 0;
+        size_t      expectedDisplayLen = 0;
+        size_t      rendersUntilSubmit = 0;
+        bool        pending            = false;
+    } m_sAutoSubmitState;
 
     struct {
         std::mutex              timersMutex;

@@ -542,6 +542,8 @@ bool CHyprlock::isLockAquired() {
 }
 
 void CHyprlock::clearPasswordBuffer() {
+    cancelPendingAutoSubmit();
+
     if (m_sPasswordState.passBuffer.empty())
         return;
 
@@ -666,9 +668,12 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     if (SYM == XKB_KEY_Escape || (m_bCtrl && (SYM == XKB_KEY_u || SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_a))) {
         Log::logger->log(Log::INFO, "Clearing password buffer");
 
+        cancelPendingAutoSubmit();
         m_sPasswordState.passBuffer = "";
     } else if (SYM == XKB_KEY_Return || SYM == XKB_KEY_KP_Enter) {
         Log::logger->log(Log::INFO, "Authenticating");
+
+        cancelPendingAutoSubmit();
 
         static const auto IGNOREEMPTY = g_pConfigManager->getValue<Hyprlang::INT>("general:ignore_empty_input");
 
@@ -679,6 +684,8 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
 
         g_pAuth->submitInput(m_sPasswordState.passBuffer);
     } else if (SYM == XKB_KEY_BackSpace || SYM == XKB_KEY_Delete) {
+        cancelPendingAutoSubmit();
+
         if (m_sPasswordState.passBuffer.length() > 0) {
             // handle utf-8
             while ((m_sPasswordState.passBuffer.back() & 0xc0) == 0x80)
@@ -694,9 +701,73 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
         int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
                                     xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* already includes a nullbyte */;
 
-        if (len > 1)
+        if (len > 1) {
             m_sPasswordState.passBuffer += std::string{buf, len - 1};
+
+            static const auto AUTOSUBMITAFTER = g_pConfigManager->getValue<Hyprlang::INT>("general:auto_submit_after");
+            if (*AUTOSUBMITAFTER > 0 && getPasswordBufferDisplayLen() == static_cast<size_t>(*AUTOSUBMITAFTER))
+                enqueuePendingAutoSubmit(getPasswordBufferDisplayLen());
+        }
     }
+}
+
+void CHyprlock::enqueuePendingAutoSubmit(size_t expectedDisplayLen) {
+    if (m_sAutoSubmitState.pending)
+        return;
+
+    const auto READYOUTPUTS = std::ranges::count_if(m_vOutputs, [](const auto& output) { return output && output->m_sessionLockSurface && output->m_sessionLockSurface->readyForFrame; });
+
+    m_sAutoSubmitState.pending            = true;
+    m_sAutoSubmitState.expectedBufferLen  = m_sPasswordState.passBuffer.length();
+    m_sAutoSubmitState.expectedDisplayLen = expectedDisplayLen;
+    // The first render after a new character only moves the dot animation target.
+    // Wait for follow-up renders so the final dot is actually visible before auth clears the buffer.
+    m_sAutoSubmitState.rendersUntilSubmit = std::max<size_t>(1, READYOUTPUTS) * 3;
+    m_sAutoSubmitState.fallbackTimer      = addTimer(std::chrono::milliseconds(500), [this](ASP<CTimer> self, void* data) { submitPendingAutoSubmit(); }, nullptr);
+}
+
+void CHyprlock::cancelPendingAutoSubmit() {
+    if (m_sAutoSubmitState.fallbackTimer) {
+        m_sAutoSubmitState.fallbackTimer->cancel();
+        m_sAutoSubmitState.fallbackTimer.reset();
+    }
+
+    m_sAutoSubmitState.pending            = false;
+    m_sAutoSubmitState.expectedBufferLen  = 0;
+    m_sAutoSubmitState.expectedDisplayLen = 0;
+    m_sAutoSubmitState.rendersUntilSubmit = 0;
+}
+
+void CHyprlock::submitPendingAutoSubmit() {
+    if (!m_sAutoSubmitState.pending)
+        return;
+
+    const auto EXPECTEDBUFFERLEN  = m_sAutoSubmitState.expectedBufferLen;
+    const auto EXPECTEDDISPLAYLEN = m_sAutoSubmitState.expectedDisplayLen;
+
+    cancelPendingAutoSubmit();
+
+    if (m_sPasswordState.passBuffer.length() != EXPECTEDBUFFERLEN || getPasswordBufferDisplayLen() != EXPECTEDDISPLAYLEN)
+        return;
+
+    Log::logger->log(Log::INFO, "Auto-submitting password");
+    g_pAuth->submitInput(m_sPasswordState.passBuffer);
+}
+
+void CHyprlock::onLockSurfaceRendered() {
+    if (!m_sAutoSubmitState.pending)
+        return;
+
+    if (m_sPasswordState.passBuffer.length() != m_sAutoSubmitState.expectedBufferLen || getPasswordBufferDisplayLen() != m_sAutoSubmitState.expectedDisplayLen) {
+        cancelPendingAutoSubmit();
+        return;
+    }
+
+    if (m_sAutoSubmitState.rendersUntilSubmit > 0)
+        --m_sAutoSubmitState.rendersUntilSubmit;
+
+    if (m_sAutoSubmitState.rendersUntilSubmit == 0)
+        submitPendingAutoSubmit();
 }
 
 void CHyprlock::onClick(uint32_t button, bool down, const Vector2D& pos) {
