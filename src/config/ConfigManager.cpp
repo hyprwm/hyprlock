@@ -253,6 +253,16 @@ void CConfigManager::init() {
     m_config.addConfigValue("auth:fingerprint:enabled", Hyprlang::INT{0});
     m_config.addConfigValue("auth:fingerprint:ready_message", Hyprlang::STRING{"(Scan fingerprint to unlock)"});
     m_config.addConfigValue("auth:fingerprint:present_message", Hyprlang::STRING{"Scanning fingerprint"});
+    m_config.addConfigValue("auth:fingerprint:retry_scan_message", Hyprlang::STRING{"Please retry fingerprint scan"});
+    m_config.addConfigValue("auth:fingerprint:swipe_too_short_message", Hyprlang::STRING{"Swipe too short - try again"});
+    m_config.addConfigValue("auth:fingerprint:finger_not_centered_message", Hyprlang::STRING{"Finger not centered - try again"});
+    m_config.addConfigValue("auth:fingerprint:remove_and_retry_message", Hyprlang::STRING{"Remove your finger and try again"});
+    m_config.addConfigValue("auth:fingerprint:no_match_retry_message", Hyprlang::STRING{"Could not match fingerprint. Try again."});
+    m_config.addConfigValue("auth:fingerprint:no_match_fail_message", Hyprlang::STRING{"Fingerprint did not match"});
+    m_config.addConfigValue("auth:fingerprint:too_many_attempts_message", Hyprlang::STRING{"Fingerprint auth disabled (too many failed attempts)"});
+    m_config.addConfigValue("auth:fingerprint:unknown_error_message", Hyprlang::STRING{"Fingerprint auth disabled (unknown error)"});
+    m_config.addConfigValue("auth:fingerprint:failed_to_restart_message", Hyprlang::STRING{"Fingerprint auth disabled (failed to restart)"});
+    m_config.addConfigValue("auth:fingerprint:device_disconnected_message", Hyprlang::STRING{"Fingerprint device disconnected"});
     m_config.addConfigValue("auth:fingerprint:retry_delay", Hyprlang::INT{250});
 
     m_config.addConfigValue("animations:enabled", Hyprlang::INT{1});

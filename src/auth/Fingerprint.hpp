@@ -35,6 +35,16 @@ class CFingerprint : public IAuthImplementation {
 
     std::string m_sFingerprintReady;
     std::string m_sFingerprintPresent;
+    std::string m_sFingerprintRetryScan;
+    std::string m_sFingerprintSwipeTooShort;
+    std::string m_sFingerprintFingerNotCentered;
+    std::string m_sFingerprintRemoveAndRetry;
+    std::string m_sFingerprintNoMatchRetry;
+    std::string m_sFingerprintNoMatchFail;
+    std::string m_sFingerprintTooManyAttempts;
+    std::string m_sFingerprintUnknownError;
+    std::string m_sFingerprintFailedToRestart;
+    std::string m_sFingerprintDeviceDisconnected;
 
     std::string m_sPrompt{""};
     std::string m_sFailureReason{""};
