@@ -110,8 +110,9 @@ CSCDMAFrame::CSCDMAFrame(SP<CCZwlrScreencopyFrameV1> sc) : m_sc(sc) {
 }
 
 CSCDMAFrame::~CSCDMAFrame() {
-    if (g_pEGL)
-        eglDestroyImage(g_pEGL->eglDisplay, m_image);
+    // operator bool() only tests impl_base*, not _data — use get() to check the actual CEGL is alive
+    if (auto* egl = g_pEGL.get(); egl && m_image != EGL_NO_IMAGE)
+        eglDestroyImage(egl->eglDisplay, m_image);
 
     // leaks bo and stuff but lives throughout so for now who cares
 }

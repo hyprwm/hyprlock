@@ -530,7 +530,7 @@ void CHyprlock::fadeOutAndUnlock() {
 }
 
 bool CHyprlock::isFadingOutOrTerminating() {
-    return m_fadeOutOrTerminate;
+    return m_fadeOutOrTerminate || m_bTerminate;
 }
 
 bool CHyprlock::isTerminating() {

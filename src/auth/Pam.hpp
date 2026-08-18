@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include <functional>
@@ -19,10 +20,11 @@ class CPam : public IAuthImplementation {
         std::mutex              inputMutex;
         std::condition_variable inputSubmittedCondition;
 
-        bool                    waitingForPamAuth = false;
-        bool                    inputRequested    = false;
-        bool                    failTextFromPam   = false;
-        std::function<void()>   waitForInput      = []() {};
+        bool                    waitingForPamAuth  = false;
+        bool                    inputRequested     = false;
+        bool                    failTextFromPam    = false;
+        std::atomic_bool        terminateRequested = false;
+        std::function<void()>   waitForInput       = []() {};
     };
 
     CPam();

@@ -12,12 +12,25 @@
 #endif
 
 #include <cstring>
+#include <cstdlib>
 #include <thread>
 
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
     const auto           CONVERSATIONSTATE = (CPam::SPamConversationState*)appdata_ptr;
     struct pam_response* pamReply          = (struct pam_response*)calloc(num_msg, sizeof(struct pam_response));
     bool                 initialPrompt     = true;
+
+    *resp = nullptr;
+
+    if (!pamReply)
+        return PAM_BUF_ERR;
+
+    const auto abortConversation = [&]() {
+        for (int i = 0; i < num_msg; ++i)
+            free(pamReply[i].resp);
+        free(pamReply);
+        return PAM_CONV_ERR;
+    };
 
     for (int i = 0; i < num_msg; ++i) {
         switch (msg[i]->msg_style) {
@@ -37,8 +50,8 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 }
 
                 // Needed for unlocks via SIGUSR1
-                if (g_pHyprlock->isFadingOutOrTerminating())
-                    return PAM_CONV_ERR;
+                if (CONVERSATIONSTATE->terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
+                    return abortConversation();
 
                 pamReply[i].resp = strdup(CONVERSATIONSTATE->input.c_str());
                 initialPrompt    = false;
@@ -78,7 +91,7 @@ CPam::CPam() {
 }
 
 CPam::~CPam() {
-    ;
+    terminate();
 }
 
 void CPam::init() {
@@ -87,13 +100,13 @@ void CPam::init() {
             resetConversation();
 
             // For grace or SIGUSR1 unlocks
-            if (g_pHyprlock->isFadingOutOrTerminating())
+            if (m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
                 return;
 
             const auto AUTHENTICATED = auth();
 
             // For SIGUSR1 unlocks
-            if (g_pHyprlock->isFadingOutOrTerminating())
+            if (m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
                 return;
 
             if (!AUTHENTICATED)
@@ -147,7 +160,8 @@ void CPam::waitForInput() {
     m_bBlockInput                          = false;
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = true;
-    m_sConversationState.inputSubmittedCondition.wait(lk, [this] { return !m_sConversationState.inputRequested || g_pHyprlock->isFadingOutOrTerminating(); });
+    m_sConversationState.inputSubmittedCondition.wait(
+        lk, [this] { return !m_sConversationState.inputRequested || m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating(); });
     m_bBlockInput = true;
 }
 
@@ -176,6 +190,11 @@ bool CPam::checkWaiting() {
 }
 
 void CPam::terminate() {
+    {
+        std::lock_guard<std::mutex> lg(m_sConversationState.inputMutex);
+        m_sConversationState.terminateRequested = true;
+    }
+
     m_sConversationState.inputSubmittedCondition.notify_all();
     if (m_thread.joinable())
         m_thread.join();
@@ -186,5 +205,5 @@ void CPam::resetConversation() {
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
     m_sConversationState.failTextFromPam   = false;
-    m_bBlockInput = false;
+    m_bBlockInput                          = false;
 }

@@ -27,7 +27,7 @@ in
 
   hyprlock = final: prev: {
     hyprlock = prev.callPackage ./default.nix {
-      stdenv = prev.gcc15Stdenv;
+      stdenv = prev.gcc16Stdenv;
       version =
         version
         + "+date="
