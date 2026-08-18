@@ -11,9 +11,14 @@
 #include <unordered_map>
 #include <any>
 #include <filesystem>
+#include <chrono>
 
 struct SPreloadedAsset;
 class COutput;
+
+#ifdef HYPRLOCK_WITH_MPV
+class CMpvVideo;
+#endif
 
 class CBackground : public IWidget {
   public:
@@ -42,6 +47,12 @@ class CBackground : public IWidget {
     void            onReloadTimerUpdate();
     void            plantReloadTimer();
     void            startCrossFade();
+
+#ifdef HYPRLOCK_WITH_MPV
+    bool            drawVideo(const SRenderData& data);
+    void            plantBatteryTimer();
+    void            onBatteryTimerUpdate();
+#endif
 
   private:
     AWP<CBackground> m_self;
@@ -82,4 +93,13 @@ class CBackground : public IWidget {
     ASP<CTimer>                     reloadTimer;
     std::filesystem::file_time_type modificationTime;
     size_t                          m_imageRevision = 0;
+
+#ifdef HYPRLOCK_WITH_MPV
+    UP<CMpvVideo>                         m_video;
+    int                                   videoFpsCap         = 0;
+    bool                                  videoPauseOnBattery = false;
+    bool                                  videoPaused         = false;
+    std::chrono::steady_clock::time_point m_lastVideoFrame{};
+    ASP<CTimer>                           batteryTimer;
+#endif
 };

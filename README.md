@@ -7,6 +7,7 @@ Hyprland's simple, yet multi-threaded and GPU-accelerated screen locking utility
  - Fully GPU accelerated
  - Multi-threaded resource acquisition
  - Blurred screenshot as the background
+ - Native animated video backgrounds (mp4, mkv, webm, …) via libmpv (optional)
  - Native fingerprint support (using libfprint's dbus interface)
  - Some of Hyprland's eyecandy: gradient borders, blur, animations, shadows, etc.
  - and more...
@@ -35,6 +36,7 @@ You need the following dependencies
 - hyprlang
 - hyprutils
 - hyprwayland-scanner
+- libmpv (optional, enables native video backgrounds)
 - mesa (required is libgbm, libdrm and the opengl runtime)
 - pam
 - pango
