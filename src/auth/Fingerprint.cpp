@@ -71,8 +71,8 @@ void CFingerprint::init() {
     g_dbus->m_freedesktopLogin1->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
         Log::logger->log(Log::INFO, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
-        if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
-            startVerify();
+        if (!m_sDBUSState.sleeping)
+            restartAfterSleep();
     });
 }
 
@@ -201,12 +201,67 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
         m_sDBUSState.done = true;
 }
 
+void CFingerprint::restartAfterSleep() {
+    // After suspend the reader may have dropped off the bus and re-enumerated
+    // (usbfs handles do not survive a suspend power loss), which invalidates
+    // our claim and possibly the device object itself. Rebuild the session
+    // from scratch instead of trusting stale state.
+    Log::logger->log(Log::INFO, "fprint: rebuilding session after sleep");
+
+    if (m_sDBUSState.verifying)
+        stopVerify(); // best effort, the old session may be dead
+
+    if (m_sDBUSState.device)
+        releaseDevice(); // best effort, resets the proxy either way
+
+    m_sDBUSState.done      = false;
+    m_sDBUSState.abort     = false;
+    m_sDBUSState.retries   = 0;
+    m_sDBUSState.verifying = false;
+    m_iVerifyRetries       = 0;
+
+    scheduleVerifyRetry();
+}
+
+void CFingerprint::scheduleVerifyRetry(bool recreateDevice) {
+    static constexpr int  MAX_VERIFY_RETRIES = 10;
+    static constexpr auto RETRY_INTERVAL     = std::chrono::milliseconds(500);
+
+    if (m_iVerifyRetries++ >= MAX_VERIFY_RETRIES) {
+        Log::logger->log(Log::WARN, "fprint: device did not come back, giving up");
+        m_sFailureReason = "Fingerprint auth disabled (device unavailable)";
+        g_pAuth->enqueueFail(m_sFailureReason, AUTH_IMPL_FINGERPRINT);
+        return;
+    }
+
+    m_bRecreateDeviceOnRetry = m_bRecreateDeviceOnRetry || recreateDevice;
+
+    g_pHyprlock->addTimer(
+        RETRY_INTERVAL,
+        [](ASP<CTimer> self, void* data) {
+            auto* fprint = (CFingerprint*)data;
+            if (fprint->m_sDBUSState.sleeping || fprint->m_sDBUSState.verifying || fprint->m_sDBUSState.done)
+                return;
+            if (fprint->m_bRecreateDeviceOnRetry) {
+                // Deferred from a device callback: safe to drop the proxy here.
+                fprint->m_bRecreateDeviceOnRetry = false;
+                fprint->m_sDBUSState.device.reset();
+            }
+            fprint->startVerify();
+        },
+        this);
+}
+
 void CFingerprint::claimDevice() {
     const auto currentUser = ""; // Empty string means use the caller's id.
     m_sDBUSState.device->callMethodAsync("Claim").onInterface(DEVICE).withArguments(currentUser).uponReplyInvoke([this](std::optional<sdbus::Error> e) {
-        if (e)
+        if (e) {
             Log::logger->log(Log::WARN, "fprint: could not claim device, {}", e->what());
-        else {
+            // The device object may be stale (e.g. the reader re-enumerated
+            // during suspend) - drop the proxy and retry from scratch.
+            m_sDBUSState.verifying = false;
+            scheduleVerifyRetry(/* recreateDevice */ true);
+        } else {
             Log::logger->log(Log::INFO, "fprint: claimed device");
             startVerify();
         }
@@ -216,8 +271,11 @@ void CFingerprint::claimDevice() {
 void CFingerprint::startVerify(bool isRetry) {
     m_sDBUSState.verifying = true;
     if (!m_sDBUSState.device) {
-        if (!createDeviceProxy())
+        if (!createDeviceProxy()) {
+            m_sDBUSState.verifying = false;
+            scheduleVerifyRetry();
             return;
+        }
 
         claimDevice();
         return;
@@ -226,8 +284,11 @@ void CFingerprint::startVerify(bool isRetry) {
     m_sDBUSState.device->callMethodAsync("VerifyStart").onInterface(DEVICE).withArguments(finger).uponReplyInvoke([this, isRetry](std::optional<sdbus::Error> e) {
         if (e) {
             Log::logger->log(Log::WARN, "fprint: could not start verifying, {}", e->what());
+            m_sDBUSState.verifying = false;
             if (isRetry)
                 m_sFailureReason = "Fingerprint auth disabled (failed to restart)";
+            else
+                scheduleVerifyRetry(/* recreateDevice */ true);
 
         } else {
             Log::logger->log(Log::INFO, "fprint: started verifying");

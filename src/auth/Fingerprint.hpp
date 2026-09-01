@@ -41,6 +41,11 @@ class CFingerprint : public IAuthImplementation {
 
     void        handleVerifyStatus(const std::string& result, const bool done);
 
+    void        restartAfterSleep();
+    void        scheduleVerifyRetry(bool recreateDevice = false);
+    int         m_iVerifyRetries         = 0;
+    bool        m_bRecreateDeviceOnRetry = false;
+
     bool        createDeviceProxy();
     void        claimDevice();
     void        startVerify(bool isRetry = false);
