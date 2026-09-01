@@ -99,6 +99,9 @@ bool CFingerprint::checkWaiting() {
 void CFingerprint::terminate() {
     if (!m_sDBUSState.abort)
         releaseDevice();
+
+    // The proxy borrows the bus connection and must not outlive it.
+    m_sDBUSState.device.reset();
 }
 
 bool CFingerprint::createDeviceProxy() {
