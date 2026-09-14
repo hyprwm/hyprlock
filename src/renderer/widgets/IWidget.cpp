@@ -183,6 +183,24 @@ static std::string getTime12h() {
         (HRS < 12 ? " AM" : " PM");
 }
 
+static std::string getHours24h() {
+    const auto HHMMSS = getTime();
+    const auto HRS    = HHMMSS.hours().count();
+    return (HRS < 10 ? "0" : "") + std::to_string(HRS);
+}
+
+static std::string getHours12h() {
+    const auto HHMMSS = getTime();
+    const auto HRS    = HHMMSS.hours().count();
+    return (HRS == 12 || HRS == 0 ? "12" : (HRS % 12 < 10 ? "0" : "") + std::to_string(HRS % 12));
+}
+
+static std::string getMinutes() {
+    const auto HHMMSS = getTime();
+    const auto MINS   = HHMMSS.minutes().count();
+    return (MINS < 10 ? "0" : "") + std::to_string(MINS);
+}
+
 IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     auto  uidPassword = getpwuid(getuid());
@@ -207,6 +225,21 @@ IWidget::SFormatResult IWidget::formatString(std::string in) {
 
     if (in.contains("$TIME")) {
         replaceInString(in, "$TIME", getTime24h());
+        result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+    
+    if (in.contains("$HOURS12")) {
+        replaceInString(in, "$HOURS12", getHours12h());
+        result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+
+    if (in.contains("$HOURS")) {
+        replaceInString(in, "$HOURS", getHours24h());
+        result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
+    }
+
+    if (in.contains("$MINUTES")) {
+        replaceInString(in, "$MINUTES", getMinutes());
         result.updateEveryMs = result.updateEveryMs != 0 && result.updateEveryMs < 1000 ? result.updateEveryMs : 1000;
     }
 
