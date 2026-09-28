@@ -36,7 +36,7 @@ static void setMallocThreshold() {
 #endif
 }
 
-static bool screencopyRequired() {
+static bool screencopyRequired(bool clientFade = true) {
     static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
 
     const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
@@ -46,7 +46,7 @@ static bool screencopyRequired() {
         ((FADEINCFG->pValues && FADEINCFG->pValues->internalEnabled) || // fadeIn or fadeOut enabled
          (FADEOUTCFG->pValues && FADEOUTCFG->pValues->internalEnabled));
 
-    if (FADENEEDSSC)
+    if (clientFade && FADENEEDSSC)
         return true;
 
     const auto BGSCREENSHOT = std::ranges::any_of(g_pConfigManager->getWidgetConfigs(), [](const auto& w) { //
@@ -283,19 +283,11 @@ void CHyprlock::run() {
         Log::logger->log(Log::INFO, "  | got iface: {} v{}", IFACE, version);
 
         if (IFACE == zwp_linux_dmabuf_v1_interface.name) {
-            static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
-            if (!m_screencopyRequired || *SCMODE == 1)
-                return;
-
-            if (version < 4) {
-                Log::logger->log(Log::ERR, "cannot use linux_dmabuf with ver < 4");
-                return;
-            }
-
-            dma.linuxDmabuf         = makeShared<CCZwpLinuxDmabufV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &zwp_linux_dmabuf_v1_interface, 4));
-            dma.linuxDmabufFeedback = makeShared<CCZwpLinuxDmabufFeedbackV1>(dma.linuxDmabuf->sendGetDefaultFeedback());
-
-            addDmabufListener();
+            // Defer binding until all globals are known: compositor fade may
+            // eliminate the need for screencopy regardless of registry order.
+            m_sWaylandState.dmabufName    = name;
+            m_sWaylandState.dmabufVersion = version;
+            return;
         } else if (IFACE == wl_seat_interface.name) {
             if (g_pSeatManager->registered()) {
                 Log::logger->log(Log::WARN, "Hyprlock does not support multi-seat configurations. Only binding to the first seat.");
@@ -320,7 +312,13 @@ void CHyprlock::run() {
                 makeShared<CCWpFractionalScaleManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wp_fractional_scale_manager_v1_interface, 1));
         else if (IFACE == wp_viewporter_interface.name)
             m_sWaylandState.viewporter = makeShared<CCWpViewporter>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &wp_viewporter_interface, 1));
-        else if (IFACE == zwlr_screencopy_manager_v1_interface.name)
+        else if (IFACE == hyprland_surface_manager_v1_interface.name) {
+            static const auto COMPOSITORFADE = g_pConfigManager->getValue<Hyprlang::INT>("general:compositor_fade");
+            if (!*COMPOSITORFADE)
+                return;
+            m_sWaylandState.hyprlandSurface =
+                makeShared<CCHyprlandSurfaceManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &hyprland_surface_manager_v1_interface, 1));
+        } else if (IFACE == zwlr_screencopy_manager_v1_interface.name)
             m_sWaylandState.screencopy =
                 makeShared<CCZwlrScreencopyManagerV1>((wl_proxy*)wl_registry_bind((wl_registry*)r->resource(), name, &zwlr_screencopy_manager_v1_interface, 3));
         else if (IFACE == wl_shm_interface.name)
@@ -349,7 +347,27 @@ void CHyprlock::run() {
         exit(1);
     }
 
-    // Gather info about monitors
+    if (m_sWaylandState.hyprlandSurface) {
+        // Fade the live compositor scene instead of a captured desktop frame.
+        // An explicit background:path=screenshot still needs its image.
+        m_screencopyRequired = screencopyRequired(false);
+        Log::logger->log(Log::INFO, "Compositor fade enabled: surface content and live blur share one animation");
+    } else if (*g_pConfigManager->getValue<Hyprlang::INT>("general:compositor_fade"))
+        Log::logger->log(Log::WARN, "Compositor fade unavailable; using the standard client-side fade");
+
+    static const auto SCMODE = g_pConfigManager->getValue<Hyprlang::INT>("general:screencopy_mode");
+    if (m_screencopyRequired && *SCMODE != 1 && m_sWaylandState.dmabufVersion) {
+        if (m_sWaylandState.dmabufVersion < 4)
+            Log::logger->log(Log::ERR, "cannot use linux_dmabuf with ver < 4");
+        else {
+            dma.linuxDmabuf = makeShared<CCZwpLinuxDmabufV1>(
+                (wl_proxy*)wl_registry_bind((wl_registry*)m_sWaylandState.registry->resource(), m_sWaylandState.dmabufName, &zwp_linux_dmabuf_v1_interface, 4));
+            dma.linuxDmabufFeedback = makeShared<CCZwpLinuxDmabufFeedbackV1>(dma.linuxDmabuf->sendGetDefaultFeedback());
+            addDmabufListener();
+        }
+    }
+
+    // Gather monitor information and dmabuf feedback, if needed.
     wl_display_roundtrip(m_sWaylandState.display);
 
     g_pRenderer            = makeUnique<CRenderer>();
@@ -868,6 +886,10 @@ SP<CCWpFractionalScaleManagerV1> CHyprlock::getFractionalMgr() {
 
 SP<CCWpViewporter> CHyprlock::getViewporter() {
     return m_sWaylandState.viewporter;
+}
+
+SP<CCHyprlandSurfaceManagerV1> CHyprlock::getHyprlandSurfaceMgr() {
+    return m_sWaylandState.hyprlandSurface;
 }
 
 size_t CHyprlock::getPasswordBufferLen() {

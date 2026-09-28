@@ -5,6 +5,7 @@
 #include "ext-session-lock-v1.hpp"
 #include "viewporter.hpp"
 #include "fractional-scale-v1.hpp"
+#include "hyprland-surface-v1.hpp"
 #include "../helpers/Math.hpp"
 #include <wayland-egl.h>
 #include <EGL/egl.h>
@@ -39,9 +40,10 @@ class CSessionLockSurface {
     Vector2D                      size;
     Vector2D                      logicalSize;
     float                         appliedScale;
-    EGLSurface                    eglSurface = nullptr;
-    SP<CCWpFractionalScaleV1>     fractional = nullptr;
-    SP<CCWpViewport>              viewport   = nullptr;
+    EGLSurface                    eglSurface      = nullptr;
+    SP<CCWpFractionalScaleV1>     fractional      = nullptr;
+    SP<CCWpViewport>              viewport        = nullptr;
+    SP<CCHyprlandSurfaceV1>       hyprlandSurface = nullptr;
 
     bool                          needsFrame = false;
 
