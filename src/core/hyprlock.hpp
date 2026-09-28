@@ -7,6 +7,7 @@
 #include "wlr-screencopy-unstable-v1.hpp"
 #include "linux-dmabuf-v1.hpp"
 #include "viewporter.hpp"
+#include "hyprland-surface-v1.hpp"
 #include "Output.hpp"
 #include "Timer.hpp"
 #include <vector>
@@ -73,6 +74,7 @@ class CHyprlock {
     wl_display*                      getDisplay();
     SP<CCWpFractionalScaleManagerV1> getFractionalMgr();
     SP<CCWpViewporter>               getViewporter();
+    SP<CCHyprlandSurfaceManagerV1>   getHyprlandSurfaceMgr();
     SP<CCZwlrScreencopyManagerV1>    getScreencopy();
     SP<CCWlShm>                      getShm();
 
@@ -126,14 +128,17 @@ class CHyprlock {
     std::atomic_bool m_bTerminate         = false;
 
     struct {
-        wl_display*                      display     = nullptr;
-        SP<CCWlRegistry>                 registry    = nullptr;
-        SP<CCExtSessionLockManagerV1>    sessionLock = nullptr;
-        SP<CCWlCompositor>               compositor  = nullptr;
-        SP<CCWpFractionalScaleManagerV1> fractional  = nullptr;
-        SP<CCWpViewporter>               viewporter  = nullptr;
-        SP<CCZwlrScreencopyManagerV1>    screencopy  = nullptr;
-        SP<CCWlShm>                      shm         = nullptr;
+        wl_display*                      display         = nullptr;
+        SP<CCWlRegistry>                 registry        = nullptr;
+        SP<CCExtSessionLockManagerV1>    sessionLock     = nullptr;
+        SP<CCWlCompositor>               compositor      = nullptr;
+        SP<CCWpFractionalScaleManagerV1> fractional      = nullptr;
+        SP<CCWpViewporter>               viewporter      = nullptr;
+        SP<CCHyprlandSurfaceManagerV1>   hyprlandSurface = nullptr;
+        SP<CCZwlrScreencopyManagerV1>    screencopy      = nullptr;
+        SP<CCWlShm>                      shm             = nullptr;
+        uint32_t                         dmabufName      = 0;
+        uint32_t                         dmabufVersion   = 0;
     } m_sWaylandState;
 
     struct {

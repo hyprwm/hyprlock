@@ -151,6 +151,7 @@ make_directory(${CMAKE_SOURCE_DIR}/protocols) # we don't ship any custom ones so
 protocolwayland()
 
 protocolnew("protocols" "wlr-screencopy-unstable-v1" true)
+protocolnew("protocols" "hyprland-surface-v1" true)
 protocolnew("staging/ext-session-lock" "ext-session-lock-v1" false)
 protocolnew("stable/linux-dmabuf" "linux-dmabuf-v1" false)
 protocolnew("staging/fractional-scale" "fractional-scale-v1" false)
