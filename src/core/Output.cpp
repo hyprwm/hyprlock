@@ -56,6 +56,13 @@ void COutput::createSessionLockSurface() {
         return;
     }
 
+    // The lock object is gone once the session is unlocked or the compositor sent `finished`,
+    // but wl_output events can still be dispatched afterwards (e.g. during the roundtrip in releaseSessionLock).
+    if (!g_pHyprlock->getSessionLock()) {
+        Log::logger->log(Log::INFO, "output {} has no session lock to create a lock surface for", m_ID);
+        return;
+    }
+
     m_sessionLockSurface = makeUnique<CSessionLockSurface>(m_self.lock());
 }
 
