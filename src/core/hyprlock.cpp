@@ -77,7 +77,8 @@ CHyprlock::CHyprlock(std::string_view wlDisplay, const bool immediateRender, con
     m_sCurrentDesktop         = SZCURRENTD;
 
     static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
-    g_dbus                              = makeUnique<CDbus>(*ENABLEFINGERPRINT);
+    static const auto ENABLEVISAGE      = g_pConfigManager->getValue<Hyprlang::INT>("auth:visage:enabled");
+    g_dbus                              = makeUnique<CDbus>(*ENABLEFINGERPRINT || *ENABLEVISAGE);
 }
 
 CHyprlock::~CHyprlock() {
