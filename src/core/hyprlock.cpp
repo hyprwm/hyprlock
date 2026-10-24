@@ -38,6 +38,10 @@ static void setMallocThreshold() {
 
 static bool screencopyRequired() {
     static const auto ANIMATIONSENABLED = g_pConfigManager->getValue<Hyprlang::INT>("animations:enabled");
+    static const auto DISABLESC = g_pConfigManager->getValue<Hyprlang::INT>("general:disable_screencopy");
+
+    if (*DISABLESC)
+        return false;
 
     const auto        FADEINCFG  = g_pConfigManager->m_AnimationTree.getConfig("fadeIn");
     const auto        FADEOUTCFG = g_pConfigManager->m_AnimationTree.getConfig("fadeOut");

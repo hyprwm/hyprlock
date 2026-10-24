@@ -247,6 +247,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
     m_config.addConfigValue("general:screencopy_mode", Hyprlang::INT{0});
     m_config.addConfigValue("general:fail_timeout", Hyprlang::INT{2000});
+    m_config.addConfigValue("general:disable_screencopy", Hyprlang::INT{0});
 
     m_config.addConfigValue("auth:pam:enabled", Hyprlang::INT{1});
     m_config.addConfigValue("auth:pam:module", Hyprlang::STRING{"hyprlock"});
