@@ -690,12 +690,21 @@ void CHyprlock::handleKeySym(xkb_keysym_t sym, bool composed) {
     } else if (SYM == XKB_KEY_Num_Lock) {
         m_bNumLock = !m_bNumLock;
     } else {
-        char buf[16] = {0};
-        int  len     = (composed) ? xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf, sizeof(buf)) /* nullbyte */ + 1 :
-                                    xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* already includes a nullbyte */;
-
-        if (len > 1)
-            m_sPasswordState.passBuffer += std::string{buf, len - 1};
+        if (composed) {
+            // returns the full length (excl. nullbyte) even if the buffer is too small
+            const int LEN = xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, nullptr, 0);
+            if (LEN > 0) {
+                std::string buf(LEN + 1, '\0');
+                xkb_compose_state_get_utf8(g_pSeatManager->m_pXKBComposeState, buf.data(), buf.size());
+                buf.resize(LEN);
+                m_sPasswordState.passBuffer += buf;
+            }
+        } else {
+            char      buf[16] = {0};
+            const int LEN     = xkb_keysym_to_utf8(SYM, buf, sizeof(buf)) /* includes a nullbyte */;
+            if (LEN > 1)
+                m_sPasswordState.passBuffer += std::string{buf, LEN - 1};
+        }
     }
 }
 
