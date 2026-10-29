@@ -13,7 +13,33 @@
 static const auto FPRINT        = sdbus::ServiceName{"net.reactivated.Fprint"};
 static const auto DEVICE        = sdbus::ServiceName{"net.reactivated.Fprint.Device"};
 static const auto MANAGER       = sdbus::ServiceName{"net.reactivated.Fprint.Manager"};
+static const auto LOGIN_SERVICE = sdbus::ServiceName{"org.freedesktop.login1"};
 static const auto LOGIN_MANAGER = sdbus::ServiceName{"org.freedesktop.login1.Manager"};
+
+static bool       isSignalFromService(const sdbus::ServiceName& service) {
+    // Unicast signals bypass bus-side match rules; the proxy's well-known sender match is not authentication.
+    try {
+        const auto message = g_dbus->m_connection->getCurrentlyProcessedMessage();
+        const auto sender  = message.getSender();
+        if (!sender || !*sender) {
+            Log::logger->log(Log::WARN, "fprint: ignoring signal with no sender");
+            return false;
+        }
+
+        auto        proxy = sdbus::createProxy(*g_dbus->m_connection, sdbus::ServiceName{"org.freedesktop.DBus"}, sdbus::ObjectPath{"/org/freedesktop/DBus"});
+        std::string owner;
+        proxy->callMethod("GetNameOwner").onInterface("org.freedesktop.DBus").withArguments(service).storeResultsTo(owner);
+        if (owner != sender) {
+            Log::logger->log(Log::WARN, "fprint: ignoring signal from sender {} which does not own {}", sender, service.c_str());
+            return false;
+        }
+
+        return true;
+    } catch (const sdbus::Error& e) {
+        Log::logger->log(Log::WARN, "fprint: ignoring signal, could not resolve owner of {} ({})", service.c_str(), e.what());
+        return false;
+    }
+}
 
 enum MatchResult {
     MATCH_INVALID = 0,
@@ -69,6 +95,8 @@ void CFingerprint::init() {
         });
 
     g_dbus->m_freedesktopLogin1->uponSignal("PrepareForSleep").onInterface(LOGIN_MANAGER).call([this](bool start) {
+        if (!isSignalFromService(LOGIN_SERVICE))
+            return;
         Log::logger->log(Log::INFO, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
         if (!m_sDBUSState.sleeping && !m_sDBUSState.verifying)
@@ -115,14 +143,20 @@ bool CFingerprint::createDeviceProxy() {
     m_sDBUSState.device = sdbus::createProxy(*g_dbus->m_connection, FPRINT, path);
 
     m_sDBUSState.device->uponSignal("VerifyFingerSelected").onInterface(DEVICE).call([](const std::string& finger) {
+        if (!isSignalFromService(FPRINT))
+            return;
         Log::logger->log(Log::INFO, "fprint: finger selected: {}", finger);
     });
-    m_sDBUSState.device->uponSignal("VerifyStatus").onInterface(DEVICE).call([this](const std::string& result, const bool done) { handleVerifyStatus(result, done); });
+    m_sDBUSState.device->uponSignal("VerifyStatus").onInterface(DEVICE).call([this](const std::string& result, const bool done) {
+        if (!isSignalFromService(FPRINT))
+            return;
+        handleVerifyStatus(result, done);
+    });
 
     m_sDBUSState.device->uponSignal("PropertiesChanged")
         .onInterface("org.freedesktop.DBus.Properties")
         .call([this](const std::string& interface, const std::map<std::string, sdbus::Variant>& properties) {
-            if (interface != DEVICE || m_sDBUSState.done)
+            if (!isSignalFromService(FPRINT) || interface != DEVICE || m_sDBUSState.done)
                 return;
 
             try {
