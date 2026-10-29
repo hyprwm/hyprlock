@@ -38,6 +38,7 @@ class CHyprlock {
     bool                       isFadingOutOrTerminating();
     bool                       isTerminating();
     bool                       isLockAquired();
+    bool                       isLocked();
 
     ASP<CTimer>                addTimer(const std::chrono::system_clock::duration& timeout, std::function<void(ASP<CTimer> self, void* data)> cb_, void* data, bool force = false);
     void                       processTimers();
@@ -122,6 +123,7 @@ class CHyprlock {
 
   private:
     bool             m_lockAquired        = false;
+    bool             m_unlockPending      = false;
     std::atomic_bool m_fadeOutOrTerminate = false;
     std::atomic_bool m_bTerminate         = false;
 

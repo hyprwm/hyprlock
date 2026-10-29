@@ -37,7 +37,8 @@ void CSeatManager::registerSeat(SP<CCWlSeat> seat) {
                 if (!*HIDECURSOR)
                     g_pHyprlock->onHover(g_pHyprlock->m_vMouseLocation);
 
-                if (std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
+                // Like onKey: grace input only counts once the session is locked.
+                if (!g_pHyprlock->isLocked() || std::chrono::system_clock::now() > g_pHyprlock->m_tGraceEnds)
                     return;
 
                 if (!g_pHyprlock->isFadingOutOrTerminating() && g_pHyprlock->m_vLastEnterCoords.distance({wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y)}) > 5) {
