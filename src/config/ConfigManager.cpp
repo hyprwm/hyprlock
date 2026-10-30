@@ -240,6 +240,8 @@ void CConfigManager::init() {
 
 #define CLICKABLE(name) m_config.addSpecialConfigValue(name, "onclick", Hyprlang::STRING{""});
 
+#define SHADERABLE(name) m_config.addSpecialConfigValue(name, "attach_shader", Hyprlang::STRING{""});
+
     m_config.addConfigValue("general:text_trim", Hyprlang::INT{1});
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
@@ -272,6 +274,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("background", "reload_time", Hyprlang::INT{-1});
     m_config.addSpecialConfigValue("background", "reload_cmd", Hyprlang::STRING{""});
     m_config.addSpecialConfigValue("background", "crossfade_time", Hyprlang::FLOAT{-1.0});
+    SHADERABLE("background");
 
     m_config.addSpecialCategory("shape", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("shape", "monitor", Hyprlang::STRING{""});
@@ -288,6 +291,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("shape", "zindex", Hyprlang::INT{0});
     SHADOWABLE("shape");
     CLICKABLE("shape");
+    SHADERABLE("shape");
 
     m_config.addSpecialCategory("image", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("image", "monitor", Hyprlang::STRING{""});
@@ -305,6 +309,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("image", "zindex", Hyprlang::INT{0});
     SHADOWABLE("image");
     CLICKABLE("image");
+    SHADERABLE("image");
 
     m_config.addSpecialCategory("input-field", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("input-field", "monitor", Hyprlang::STRING{""});
@@ -339,6 +344,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("input-field", "swap_font_color", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("input-field", "zindex", Hyprlang::INT{0});
     SHADOWABLE("input-field");
+    SHADERABLE("input-field");
 
     m_config.addSpecialCategory("label", Hyprlang::SSpecialCategoryOptions{.key = nullptr, .anonymousKeyBased = true});
     m_config.addSpecialConfigValue("label", "monitor", Hyprlang::STRING{""});
@@ -354,6 +360,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("label", "zindex", Hyprlang::INT{0});
     SHADOWABLE("label");
     CLICKABLE("label");
+    SHADERABLE("label");
 
     m_config.registerHandler(&::handleSource, "source", {.allowFlags = false});
     m_config.registerHandler(&::handleBezier, "bezier", {.allowFlags = false});
@@ -400,8 +407,10 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
     {"shadow_size", m_config.getSpecialConfigValue(name, "shadow_size", k.c_str())}, {"shadow_passes", m_config.getSpecialConfigValue(name, "shadow_passes", k.c_str())},          \
         {"shadow_color", m_config.getSpecialConfigValue(name, "shadow_color", k.c_str())}, {"shadow_boost", m_config.getSpecialConfigValue(name, "shadow_boost", k.c_str())}
 
-#define CLICKABLE(name)                                                                                                                                                            \
-    { "onclick", m_config.getSpecialConfigValue(name, "onclick", k.c_str()) }
+#define CLICKABLE(name) {"onclick", m_config.getSpecialConfigValue(name, "onclick", k.c_str())}
+
+#define SHADERABLE_VAL(name)                                                                                                                                                       \
+    { "attach_shader", m_config.getSpecialConfigValue(name, "attach_shader", k.c_str()) }
 
     //
     auto keys = m_config.listKeysForSpecialCategory("background");
@@ -425,6 +434,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"reload_time", m_config.getSpecialConfigValue("background", "reload_time", k.c_str())},
                 {"reload_cmd", m_config.getSpecialConfigValue("background", "reload_cmd", k.c_str())},
                 {"crossfade_time", m_config.getSpecialConfigValue("background", "crossfade_time", k.c_str())},
+                SHADERABLE_VAL("background"),
             }
         });
         // clang-format on
@@ -451,6 +461,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"zindex", m_config.getSpecialConfigValue("shape", "zindex", k.c_str())},
                 SHADOWABLE("shape"),
                 CLICKABLE("shape"),
+                SHADERABLE_VAL("shape"),
             }
         });
         // clang-format on
@@ -478,6 +489,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"zindex", m_config.getSpecialConfigValue("image", "zindex", k.c_str())},
                 SHADOWABLE("image"),
                 CLICKABLE("image"),
+                SHADERABLE_VAL("image"),
             }
         });
         // clang-format on
@@ -521,6 +533,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"swap_font_color", m_config.getSpecialConfigValue("input-field", "swap_font_color", k.c_str())},
                 {"zindex", m_config.getSpecialConfigValue("input-field", "zindex", k.c_str())},
                 SHADOWABLE("input-field"),
+                SHADERABLE_VAL("input-field"),
             }
         });
         // clang-format on
@@ -545,6 +558,7 @@ std::vector<CConfigManager::SWidgetConfig> CConfigManager::getWidgetConfigs() {
                 {"zindex", m_config.getSpecialConfigValue("label", "zindex", k.c_str())},
                 SHADOWABLE("label"),
                 CLICKABLE("label"),
+                SHADERABLE_VAL("label"),
             }
         });
         // clang-format on

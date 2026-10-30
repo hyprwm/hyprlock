@@ -76,6 +76,8 @@ static void glMessageCallbackA(GLenum source, GLenum type, GLuint id, GLenum sev
 }
 
 CRenderer::CRenderer() {
+    firstFullFrameTime = std::chrono::system_clock::now();
+
     g_pEGL->makeCurrent(nullptr);
 
     glEnable(GL_DEBUG_OUTPUT);
@@ -219,7 +221,28 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     // render widgets
     const auto WIDGETS = getOrCreateWidgetsFor(surf);
     for (auto& w : WIDGETS) {
-        feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
+        if (w->hasCustomShader && w->customShader.program != 0) {
+            if (!w->customFB.isAllocated() || w->customFB.m_vSize != w->viewport) {
+                w->customFB.alloc(w->viewport.x, w->viewport.y, true);
+            }
+
+            pushFb(w->customFB.m_iFb);
+
+            glClearColor(0.0, 0.0, 0.0, 0.0);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            bool needsFrame = w->draw({opacity->value()});
+
+            popFb();
+
+            CBox viewportBox = {0, 0, w->viewport.x, w->viewport.y};
+            renderTextureWithShader(viewportBox, w->customFB.m_cTex, w->customShader, opacity->value(), 0, HYPRUTILS_TRANSFORM_NORMAL);
+
+            bool hasTime = w->hasTime;
+            feedback.needsFrame = hasTime || needsFrame || feedback.needsFrame;
+        } else {
+            feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
+        }
     }
 
     glDisable(GL_BLEND);
@@ -334,6 +357,44 @@ void CRenderer::renderTexture(const CBox& box, const CTexture& tex, float a, int
     glBindTexture(tex.m_iTarget, 0);
 }
 
+void CRenderer::renderTextureWithShader(const CBox& box, const CTexture& tex, CShader& shader, float a, int rounding, std::optional<eTransform> tr) {
+    const auto ROUNDEDBOX = box.copy().round();
+    Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
+    Mat3x3     glMatrix   = projection.copy().multiply(matrix);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(tex.m_iTarget, tex.m_iTexID);
+
+    glUseProgram(shader.program);
+
+    glUniformMatrix3fv(shader.proj, 1, GL_TRUE, glMatrix.getMatrix().data());
+    glUniform1i(shader.tex, 0);
+    glUniform1f(shader.alpha, a);
+
+    // Set standard time and resolution uniforms if they exist in the custom shader
+    float elapsed = std::chrono::duration<float>(std::chrono::system_clock::now() - firstFullFrameTime).count();
+    GLint timeLoc = shader.getUniformLocation("time");
+    if (timeLoc != -1)
+        glUniform1f(timeLoc, elapsed);
+
+    GLint resLoc = shader.getUniformLocation("resolution");
+    if (resLoc != -1)
+        glUniform2f(resLoc, ROUNDEDBOX.width, ROUNDEDBOX.height);
+
+    glVertexAttribPointer(shader.posAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+    glVertexAttribPointer(shader.texAttrib, 2, GL_FLOAT, GL_FALSE, 0, fullVerts);
+
+    glEnableVertexAttribArray(shader.posAttrib);
+    glEnableVertexAttribArray(shader.texAttrib);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glDisableVertexAttribArray(shader.posAttrib);
+    glDisableVertexAttribArray(shader.texAttrib);
+
+    glBindTexture(tex.m_iTarget, 0);
+}
+
 void CRenderer::renderTextureMix(const CBox& box, const CTexture& tex, const CTexture& tex2, float a, float mixFactor, int rounding, std::optional<eTransform> tr) {
     const auto ROUNDEDBOX = box.copy().round();
     Mat3x3     matrix     = projMatrix.projectBox(ROUNDEDBOX, tr.value_or(HYPRUTILS_TRANSFORM_FLIPPED_180), box.rot);
@@ -418,7 +479,15 @@ std::vector<ASP<IWidget>>& CRenderer::getOrCreateWidgetsFor(const CSessionLockSu
                 continue;
             }
 
-            widgets[surf.m_outputID].back()->configure(c.values, POUTPUT);
+            auto& w = widgets[surf.m_outputID].back();
+            w->viewport = POUTPUT->getViewport();
+            if (c.values.contains("attach_shader")) {
+                w->shaderPath = std::any_cast<Hyprlang::STRING>(c.values.at("attach_shader"));
+                if (!w->shaderPath.empty()) {
+                    w->compileCustomShader();
+                }
+            }
+            w->configure(c.values, POUTPUT);
         }
     }
 
