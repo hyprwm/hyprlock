@@ -358,8 +358,6 @@ void CHyprlock::run() {
 
     g_pRenderer            = makeUnique<CRenderer>();
     g_asyncResourceManager = makeUnique<CAsyncResourceManager>();
-    g_pAuth                = makeUnique<CAuth>();
-    g_pAuth->start();
 
     Log::logger->log(Log::INFO, "Running on {}", m_sCurrentDesktop);
 
@@ -379,9 +377,13 @@ void CHyprlock::run() {
     if (!acquireSessionLock()) {
         m_sLoopState.timerEvent = true;
         m_sLoopState.timerCV.notify_all();
-        g_pAuth->terminate();
+        if (g_pAuth)
+            g_pAuth->terminate();
         exit(1);
     }
+
+    g_pAuth = makeUnique<CAuth>();
+    g_pAuth->start();
 
     registerSignalAction(SIGUSR1, handleUnlockSignal, SA_RESTART);
     registerSignalAction(SIGUSR2, handleForceUpdateSignal);
@@ -496,7 +498,8 @@ void CHyprlock::run() {
 
     pthread_kill(pollThr.native_handle(), SIGRTMIN);
 
-    g_pAuth->terminate();
+    if (g_pAuth)
+        g_pAuth->terminate();
 
     // Wait for threads to exit before destroying globals to prevent
     // use-after-free in timer callbacks referencing g_asyncResourceManager
@@ -843,7 +846,7 @@ void CHyprlock::onLockFinished() {
         // This does not mean the session gets unlocked! That is ultimately the responsiblity of the compositor.
         m_sLockState.lock->sendUnlockAndDestroy();
     else
-        m_sLockState.lock.reset();
+        m_sLockState.lock->sendDestroy();
 
     m_sLockState.lock   = nullptr;
     m_sLockState.locked = false;
