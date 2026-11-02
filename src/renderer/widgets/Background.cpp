@@ -15,7 +15,6 @@
 CBackground::CBackground() {
     blurredFB        = makeUnique<CFramebuffer>();
     pendingBlurredFB = makeUnique<CFramebuffer>();
-    transformedScFB  = makeUnique<CFramebuffer>();
 }
 
 CBackground::~CBackground() {
@@ -119,7 +118,7 @@ void CBackground::updatePrimaryAsset() {
 
     const bool NEEDFB = (isScreenshot || blurPasses > 0 || asset->m_vSize != viewport || transform != HYPRUTILS_TRANSFORM_NORMAL) && (!blurredFB->isAllocated() || firstRender);
     if (NEEDFB)
-        renderToFB(*asset, *blurredFB, blurPasses, isScreenshot);
+        renderToFB(*asset, *blurredFB, blurPasses);
 }
 
 void CBackground::updatePendingAsset() {
@@ -130,25 +129,7 @@ void CBackground::updatePendingAsset() {
     renderToFB(*pendingAsset, *pendingBlurredFB, blurPasses);
 }
 
-void CBackground::updateScAsset() {
-    if (scAsset || scResourceID == 0)
-        return;
-
-    // path=screenshot -> scAsset = asset
-    scAsset = (asset && isScreenshot) ? asset : g_asyncResourceManager->getAssetByID(scResourceID);
-    if (!scAsset)
-        return;
-
-    const bool NEEDSCTRANSFORM = transform != HYPRUTILS_TRANSFORM_NORMAL;
-    if (NEEDSCTRANSFORM)
-        renderToFB(*scAsset, *transformedScFB, 0, true);
-}
-
 const CTexture& CBackground::getPrimaryAssetTex() const {
-    // This case is only for background:path=screenshot with blurPasses=0
-    if (isScreenshot && blurPasses == 0 && transformedScFB->isAllocated())
-        return transformedScFB->m_cTex;
-
     return (blurredFB->isAllocated()) ? blurredFB->m_cTex : *asset;
 }
 
@@ -157,7 +138,7 @@ const CTexture& CBackground::getPendingAssetTex() const {
 }
 
 const CTexture& CBackground::getScAssetTex() const {
-    return (transformedScFB->isAllocated()) ? transformedScFB->m_cTex : *scAsset;
+    return *scAsset;
 }
 
 void CBackground::renderRect(CHyprColor color) {
@@ -227,7 +208,6 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
 bool CBackground::draw(const SRenderData& data) {
     updatePrimaryAsset();
     updatePendingAsset();
-    updateScAsset();
 
     if (asset && asset->m_iType == TEXTURE_INVALID) {
         g_asyncResourceManager->unload(asset);
