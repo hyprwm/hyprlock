@@ -194,6 +194,12 @@ void CBackground::renderToFB(const CTexture& tex, CFramebuffer& fb, int passes, 
     if (firstRender)
         firstRender = false;
 
+    // Newer Hyprland already hands out screencopy frames in the output's
+    // transformed orientation; rotating those again turns a portrait monitor
+    // sideways. Skip the 90/270 rotation when the frame already matches.
+    if (applyTransform && transform % 2 == 1 && (tex.m_vSize.x < tex.m_vSize.y) == (viewport.x < viewport.y))
+        applyTransform = false;
+
     // make it brah
     Vector2D size = tex.m_vSize;
     if (applyTransform && transform % 2 == 1) {
