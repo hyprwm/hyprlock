@@ -30,7 +30,6 @@ class CBackground : public IWidget {
 
     void            updatePrimaryAsset();
     void            updatePendingAsset();
-    void            updateScAsset();
 
     const CTexture& getPrimaryAssetTex() const;
     const CTexture& getPendingAssetTex() const;
@@ -49,7 +48,6 @@ class CBackground : public IWidget {
     // if needed
     UP<CFramebuffer>                blurredFB;
     UP<CFramebuffer>                pendingBlurredFB;
-    UP<CFramebuffer>                transformedScFB;
 
     int                             blurSize          = 10;
     int                             blurPasses        = 3;
