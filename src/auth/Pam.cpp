@@ -14,6 +14,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <thread>
+#include <chrono>
 
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
     const auto           CONVERSATIONSTATE = (CPam::SPamConversationState*)appdata_ptr;
@@ -109,9 +110,21 @@ void CPam::init() {
             if (m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
                 return;
 
-            if (!AUTHENTICATED)
+            if (!AUTHENTICATED) {
                 g_pAuth->enqueueFail(m_sConversationState.failText, AUTH_IMPL_PAM);
-            else {
+
+                // Without a username every retry fails the same way.
+                if (m_username.empty())
+                    return;
+
+                // PAM failed without ever asking for input (pam_start failure, pam_deny, ...).
+                // Back off on the condition variable so terminate() can still wake us.
+                if (!m_sConversationState.conversationStarted) {
+                    std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
+                    m_sConversationState.inputSubmittedCondition.wait_for(lk, std::chrono::seconds(1),
+                                                                          [this] { return m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating(); });
+                }
+            } else {
                 g_pAuth->enqueueUnlock();
                 return;
             }
@@ -157,9 +170,10 @@ bool CPam::auth() {
 
 void CPam::waitForInput() {
     std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
-    m_bBlockInput                          = false;
-    m_sConversationState.waitingForPamAuth = false;
-    m_sConversationState.inputRequested    = true;
+    m_bBlockInput                            = false;
+    m_sConversationState.waitingForPamAuth   = false;
+    m_sConversationState.conversationStarted = true;
+    m_sConversationState.inputRequested      = true;
     m_sConversationState.inputSubmittedCondition.wait(
         lk, [this] { return !m_sConversationState.inputRequested || m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating(); });
     m_bBlockInput = true;
@@ -201,9 +215,10 @@ void CPam::terminate() {
 }
 
 void CPam::resetConversation() {
-    m_sConversationState.input             = "";
-    m_sConversationState.waitingForPamAuth = false;
-    m_sConversationState.inputRequested    = false;
-    m_sConversationState.failTextFromPam   = false;
-    m_bBlockInput                          = false;
+    m_sConversationState.input               = "";
+    m_sConversationState.waitingForPamAuth   = false;
+    m_sConversationState.inputRequested      = false;
+    m_sConversationState.failTextFromPam     = false;
+    m_sConversationState.conversationStarted = false;
+    m_bBlockInput                            = false;
 }
