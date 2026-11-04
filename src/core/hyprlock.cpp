@@ -461,7 +461,6 @@ void CHyprlock::run() {
     });
 
     m_sLoopState.event = true; // let it process once
-    g_pRenderer->startFadeIn();
 
     while (!m_bTerminate) {
         std::unique_lock lk(m_sLoopState.eventRequestMutex);
@@ -830,6 +829,7 @@ void CHyprlock::onLockLocked() {
     Log::logger->log(Log::INFO, "onLockLocked called");
 
     m_sLockState.locked = true;
+    g_pRenderer->startFadeIn();
 }
 
 void CHyprlock::onLockFinished() {
