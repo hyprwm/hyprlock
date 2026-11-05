@@ -9,6 +9,7 @@
 enum eAuthImplementations {
     AUTH_IMPL_PAM         = 0,
     AUTH_IMPL_FINGERPRINT = 1,
+    AUTH_IMPL_VISAGE      = 2,
 };
 
 class IAuthImplementation {
