@@ -244,6 +244,7 @@ void CConfigManager::init() {
     m_config.addConfigValue("general:hide_cursor", Hyprlang::INT{0});
     m_config.addConfigValue("general:ignore_empty_input", Hyprlang::INT{0});
     m_config.addConfigValue("general:immediate_render", Hyprlang::INT{0});
+    m_config.addConfigValue("general:compositor_fade", Hyprlang::INT{0});
     m_config.addConfigValue("general:fractional_scaling", Hyprlang::INT{2});
     m_config.addConfigValue("general:screencopy_mode", Hyprlang::INT{0});
     m_config.addConfigValue("general:fail_timeout", Hyprlang::INT{2000});

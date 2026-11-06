@@ -216,10 +216,16 @@ CRenderer::SRenderFeedback CRenderer::renderLock(const CSessionLockSurface& surf
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     SRenderFeedback feedback;
+    // Surface-wide opacity also fades the compositor's backdrop blur. Render
+    // widgets at full global opacity to avoid applying the fade twice.
+    const float WIDGETOPACITY = surf.hyprlandSurface ? 1.F : opacity->value();
+    if (surf.hyprlandSurface)
+        surf.hyprlandSurface->sendSetOpacity(wl_fixed_from_double(std::clamp(opacity->value(), 0.F, 1.F)));
+
     // render widgets
     const auto WIDGETS = getOrCreateWidgetsFor(surf);
     for (auto& w : WIDGETS) {
-        feedback.needsFrame = w->draw({opacity->value()}) || feedback.needsFrame;
+        feedback.needsFrame = w->draw({WIDGETOPACITY}) || feedback.needsFrame;
     }
 
     glDisable(GL_BLEND);

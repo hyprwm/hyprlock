@@ -21,6 +21,9 @@ CSessionLockSurface::CSessionLockSurface(const SP<COutput>& pOutput) :
     m_outputRef(pOutput), m_outputID(pOutput->m_ID), surface(makeShared<CCWlSurface>(g_pHyprlock->getCompositor()->sendCreateSurface())) {
     RASSERT(surface, "Couldn't create wl_surface");
 
+    if (const auto manager = g_pHyprlock->getHyprlandSurfaceMgr())
+        hyprlandSurface = makeShared<CCHyprlandSurfaceV1>(manager->sendGetHyprlandSurface(surface->resource()));
+
     static const auto FRACTIONALSCALING = g_pConfigManager->getValue<Hyprlang::INT>("general:fractional_scaling");
     const auto        ENABLE_FSV1       = *FRACTIONALSCALING == 1 || /* auto enable */ (*FRACTIONALSCALING == 2);
     const auto        PFRACTIONALMGR    = g_pHyprlock->getFractionalMgr();
