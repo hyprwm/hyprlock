@@ -96,6 +96,20 @@ CPam::~CPam() {
 
 void CPam::init() {
     m_thread = std::thread([this]() {
+        // If a grace period is active, delay PAM initialisation until it expires.
+        // Without this, modules such as pam_u2f immediately issue a FIDO2 challenge
+        // and light up the security key even though the user can still unlock via
+        // mouse/keyboard movement during grace — leaving the key stuck waiting for a
+        // touch that is never needed.
+        const auto GRACE_END = g_pHyprlock->m_tGraceEnds;
+        if (GRACE_END > std::chrono::system_clock::now()) {
+            Log::logger->log(Log::INFO, "PAM: grace period active, delaying auth start until grace expires");
+            std::unique_lock<std::mutex> lk(m_sConversationState.inputMutex);
+            m_sConversationState.inputSubmittedCondition.wait_until(lk, GRACE_END, [this] {
+                return m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating();
+            });
+        }
+
         while (true) {
             resetConversation();
 
