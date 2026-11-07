@@ -26,11 +26,12 @@ class CFingerprint : public IAuthImplementation {
     struct SDBUSState {
         std::unique_ptr<sdbus::IProxy> device;
 
-        bool                           abort     = false;
-        bool                           done      = false;
-        int                            retries   = 0;
-        bool                           sleeping  = false;
-        bool                           verifying = false;
+        bool                           abort        = false;
+        bool                           done         = false;
+        int                            retries      = 0;
+        bool                           sleeping     = false;
+        bool                           verifying    = false;
+        int                            startRetries = 0;
     } m_sDBUSState;
 
     std::string m_sFingerprintReady;
