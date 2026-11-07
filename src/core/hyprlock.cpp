@@ -542,12 +542,14 @@ void CHyprlock::run() {
 }
 
 void CHyprlock::fadeOutAndUnlock() {
-    m_fadeOutOrTerminate = true;
-
     if (!m_sLockState.locked) {
-        Log::logger->log(Log::WARN, "Unlock called, but not locked yet. This can happen when dpms is off during the grace period.");
+        // Unlocking now would be a protocol error. Replay the request in onLockLocked.
+        Log::logger->log(Log::WARN, "Unlock called, but not locked yet. Deferring until the locked event. This can happen when dpms is off during the grace period.");
+        m_unlockPending = true;
         return;
     }
+
+    m_fadeOutOrTerminate = true;
 
     g_pRenderer->startFadeOut(true);
 
@@ -564,6 +566,10 @@ bool CHyprlock::isTerminating() {
 
 bool CHyprlock::isLockAquired() {
     return m_lockAquired;
+}
+
+bool CHyprlock::isLocked() {
+    return m_sLockState.locked;
 }
 
 void CHyprlock::clearPasswordBuffer() {
@@ -848,6 +854,11 @@ void CHyprlock::onLockLocked() {
     Log::logger->log(Log::INFO, "onLockLocked called");
 
     m_sLockState.locked = true;
+
+    if (m_unlockPending) {
+        m_unlockPending = false;
+        fadeOutAndUnlock();
+    }
 }
 
 void CHyprlock::onLockFinished() {
