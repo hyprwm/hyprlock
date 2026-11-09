@@ -20,11 +20,12 @@ class CPam : public IAuthImplementation {
         std::mutex              inputMutex;
         std::condition_variable inputSubmittedCondition;
 
-        bool                    waitingForPamAuth  = false;
-        bool                    inputRequested     = false;
-        bool                    failTextFromPam    = false;
-        std::atomic_bool        terminateRequested = false;
-        std::function<void()>   waitForInput       = []() {};
+        bool                    waitingForPamAuth   = false;
+        bool                    inputRequested      = false;
+        bool                    failTextFromPam     = false;
+        bool                    conversationStarted = false;
+        std::atomic_bool        terminateRequested  = false;
+        std::function<void()>   waitForInput        = []() {};
     };
 
     CPam();
