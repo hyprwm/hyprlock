@@ -113,6 +113,17 @@ add_executable(hyprlock ${SRCFILES})
 target_link_libraries(hyprlock PRIVATE ${PAM_LIB} rt Threads::Threads PkgConfig::deps
                                        OpenGL::EGL OpenGL::GLES3)
 
+# Optional: libmpv enables native animated video backgrounds.
+# When absent, hyprlock builds exactly as before and video paths fall back to the background color.
+pkg_check_modules(mpv IMPORTED_TARGET mpv)
+if(mpv_FOUND)
+  message(STATUS "libmpv found (${mpv_VERSION}) - video background support enabled")
+  target_link_libraries(hyprlock PRIVATE PkgConfig::mpv)
+  target_compile_definitions(hyprlock PRIVATE HYPRLOCK_WITH_MPV)
+else()
+  message(STATUS "libmpv not found - video background support disabled")
+endif()
+
 # protocols
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
 message(STATUS "Found wayland-protocols at ${WAYLAND_PROTOCOLS_DIR}")
