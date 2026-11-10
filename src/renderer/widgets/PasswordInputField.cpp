@@ -49,6 +49,7 @@ void CPasswordInputField::configure(const std::unordered_map<std::string, std::a
         hiddenInputState.enabled = std::any_cast<Hyprlang::INT>(props.at("hide_input"));
         rounding                 = std::any_cast<Hyprlang::INT>(props.at("rounding"));
         configPlaceholderText    = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text"));
+        placeholder.align        = std::any_cast<Hyprlang::STRING>(props.at("placeholder_text_align"));
         configFailText           = std::any_cast<Hyprlang::STRING>(props.at("fail_text"));
         configCheckText          = std::any_cast<Hyprlang::STRING>(props.at("check_text"));
         fontFamily               = std::any_cast<Hyprlang::STRING>(props.at("font_family"));
@@ -311,8 +312,14 @@ bool CPasswordInputField::draw(const SRenderData& data) {
         currAsset = placeholder.asset;
 
         if (currAsset) {
-            const Vector2D ASSETPOS = inputFieldBox.pos() + inputFieldBox.size() / 2.0 - currAsset->m_vSize / 2.0;
-            const CBox     ASSETBOX{ASSETPOS, currAsset->m_vSize};
+            Vector2D assetPos = inputFieldBox.pos() + inputFieldBox.size() / 2.0 - currAsset->m_vSize / 2.0;
+
+            if (placeholder.align == "left")
+                assetPos.x = inputFieldBox.x + inputFieldBox.h / 2.0;
+            else if (placeholder.align == "right")
+                assetPos.x = inputFieldBox.x + inputFieldBox.w - currAsset->m_vSize.x - inputFieldBox.h / 2.0;
+
+            const CBox ASSETBOX{assetPos, currAsset->m_vSize};
 
             // Cut the texture to the width of the input field
             glEnable(GL_SCISSOR_TEST);
