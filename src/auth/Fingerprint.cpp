@@ -99,7 +99,7 @@ void CFingerprint::init() {
             return;
         Log::logger->log(Log::INFO, "fprint: PrepareForSleep (start: {})", start);
         m_sDBUSState.sleeping = start;
-        if (start) {
+        if (m_sDBUSState.sleeping) {
             // The sensor may lose power during sleep, and fprintd can go away (restart, idle exit,
             // a pre-suspend stop) without ever sending VerifyStatus. That would leave `verifying`
             // set and block the restart on wake forever, so drop the session and the claim now.
