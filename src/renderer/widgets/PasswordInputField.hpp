@@ -12,6 +12,7 @@
 #include <vector>
 #include <any>
 #include <unordered_map>
+#include <map>
 
 struct SPreloadedAsset;
 
@@ -70,6 +71,12 @@ class CPasswordInputField : public IWidget {
         size_t            textResourceID = 0;
         std::string       textFormat     = "";
         ASP<CTexture>     textAsset      = nullptr;
+        std::vector<std::string> possibleStrings;
+        std::map<std::string, size_t> stringResourceIDs;
+        std::map<std::string, ASP<CTexture>> stringAssets;
+        std::map<size_t, std::string> resourceToString;
+        std::vector<std::string> currentRandomStrings;
+        bool textChange = false;
     } dots;
 
     struct {
