@@ -62,14 +62,20 @@ class CPasswordInputField : public IWidget {
     int                      outThick, rounding;
 
     struct {
-        PHLANIMVAR<float> currentAmount;
-        bool              center         = false;
-        float             size           = 0;
-        float             spacing        = 0;
-        int               rounding       = 0;
-        size_t            textResourceID = 0;
-        std::string       textFormat     = "";
-        ASP<CTexture>     textAsset      = nullptr;
+        PHLANIMVAR<float>          currentAmount;
+        bool                       center     = false;
+        float                      size       = 0;
+        float                      spacing    = 0;
+        int                        rounding   = 0;
+        std::string                textFormat = "";
+        bool                       randomText = false;
+        // One entry per character the dots can be rendered with.
+        // Holds a single entry when `dots_text_format` is used without `dots_random_text`, and is empty for plain dots.
+        std::vector<ResourceID>    textResourceIDs;
+        std::vector<ASP<CTexture>> textAssets;
+        // Index into textResourceIDs/textAssets for every already typed character, so the chosen glyphs don't change every frame.
+        std::vector<size_t>        randomIndices;
+        size_t                     lastLength = 0;
     } dots;
 
     struct {
