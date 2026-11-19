@@ -84,6 +84,7 @@ class CPasswordInputField : public IWidget {
         ASP<CTexture> asset      = nullptr;
 
         std::string   currentText    = "";
+        std::string   align          = "center";
         size_t        failedAttempts = 0;
     } placeholder;
 
