@@ -1,6 +1,7 @@
 #include "Auth.hpp"
 #include "Pam.hpp"
 #include "Fingerprint.hpp"
+#include "Visage.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../core/hyprlock.hpp"
 #include "src/helpers/Log.hpp"
@@ -15,6 +16,9 @@ CAuth::CAuth() {
     static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
     if (*ENABLEFINGERPRINT)
         m_vImpls.emplace_back(makeShared<CFingerprint>());
+    static const auto ENABLEVISAGE = g_pConfigManager->getValue<Hyprlang::INT>("auth:visage:enabled");
+    if (*ENABLEVISAGE)
+        m_vImpls.emplace_back(makeShared<CVisage>());
 
     RASSERT(!m_vImpls.empty(), "At least one authentication method must be enabled!");
 }
