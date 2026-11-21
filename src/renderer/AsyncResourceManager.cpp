@@ -196,6 +196,9 @@ bool CAsyncResourceManager::checkIdPresent(ResourceID id) {
 }
 
 void CAsyncResourceManager::unload(ASP<CTexture> texture) {
+    if (!texture)
+        return;
+
     auto preload = std::ranges::find_if(m_assets, [texture](const auto& a) { return a.second.texture == texture; });
     if (preload == m_assets.end())
         return;
