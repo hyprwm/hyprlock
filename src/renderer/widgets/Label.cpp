@@ -119,8 +119,8 @@ void CLabel::reset() {
     if (g_pHyprlock->isTerminating())
         return;
 
-    if (asset)
-        g_asyncResourceManager->unload(asset);
+    if (resourceID != 0)
+        g_asyncResourceManager->unloadById(resourceID);
 
     asset             = nullptr;
     m_pendingResource = false;
@@ -163,7 +163,8 @@ void CLabel::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
         Log::logger->log(Log::ERR, "New image asset has an invalid texture!");
     } else {
         // new asset is ready :D
-        g_asyncResourceManager->unload(asset);
+        if (resourceID != 0)
+            g_asyncResourceManager->unloadById(resourceID);
         asset        = newAsset;
         resourceID   = id;
         updateShadow = true;

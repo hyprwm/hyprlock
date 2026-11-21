@@ -126,8 +126,8 @@ void CImage::reset() {
 
     imageFB.destroyBuffer();
 
-    if (asset && reloadTime > -1) // Don't unload asset if it's a static image
-        g_asyncResourceManager->unload(asset);
+    if (resourceID != 0 && reloadTime > -1) // Don't unload asset if it's a static image
+        g_asyncResourceManager->unloadById(resourceID);
 
     asset             = nullptr;
     m_pendingResource = false;
@@ -218,7 +218,8 @@ void CImage::onAssetUpdate(ResourceID id, ASP<CTexture> newAsset) {
         g_asyncResourceManager->unload(newAsset);
         Log::logger->log(Log::ERR, "New image asset has an invalid texture!");
     } else {
-        g_asyncResourceManager->unload(asset);
+        if (resourceID != 0)
+            g_asyncResourceManager->unloadById(resourceID);
         imageFB.destroyBuffer();
 
         asset       = newAsset;
