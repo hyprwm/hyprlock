@@ -238,9 +238,13 @@ void CFingerprint::handleVerifyStatus(const std::string& result, bool done) {
 void CFingerprint::claimDevice() {
     const auto currentUser = ""; // Empty string means use the caller's id.
     m_sDBUSState.device->callMethodAsync("Claim").onInterface(DEVICE).withArguments(currentUser).uponReplyInvoke([this](std::optional<sdbus::Error> e) {
-        if (e)
+        if (e) {
             Log::logger->log(Log::WARN, "fprint: could not claim device, {}", e->what());
-        else {
+            
+            // A previous hyprlock instance might still hold the reader for a moment after unlocking.
+            if (e->getName() == "net.reactivated.Fprint.Error.AlreadyInUse" && m_sDBUSState.claimRetries++ < 10 && !g_pHyprlock->isFadingOutOrTerminating())
+                g_pHyprlock->addTimer(std::chrono::milliseconds(500), [](ASP<CTimer> self, void* data) { ((CFingerprint*)data)->claimDevice(); }, this);
+        } else {
             Log::logger->log(Log::INFO, "fprint: claimed device");
             startVerify();
         }

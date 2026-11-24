@@ -23,6 +23,11 @@ class CPam : public IAuthImplementation {
         bool                    waitingForPamAuth  = false;
         bool                    inputRequested     = false;
         bool                    failTextFromPam    = false;
+        // Don't call pam_authenticate until the user submits something.
+        // Used when another auth method can unlock in parallel, so that unlocking via that
+        // method never aborts a live PAM conversation (which pam_unix counts as a failure).
+        bool                    deferStart         = false;
+        bool                    inputPreSubmitted  = false;
         std::atomic_bool        terminateRequested = false;
         std::function<void()>   waitForInput       = []() {};
     };
