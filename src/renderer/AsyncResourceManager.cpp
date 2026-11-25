@@ -257,8 +257,6 @@ bool CAsyncResourceManager::request(ResourceID id, const AWP<IWidget>& widget) {
 }
 
 void CAsyncResourceManager::enqueue(ResourceID resourceID, const ASP<IAsyncResource>& resource, const AWP<IWidget>& widget) {
-    m_gatherer.enqueue(resource);
-
     m_resourcesMutex.lock();
     if (m_resources.contains(resourceID))
         Log::logger->log(Log::ERR, "Resource already enqueued! This is a bug.");
@@ -266,6 +264,11 @@ void CAsyncResourceManager::enqueue(ResourceID resourceID, const ASP<IAsyncResou
     m_resources[resourceID] = {resource, {widget}};
     m_resourcesMutex.unlock();
 
+    // Register the listener *before* handing the resource to the gatherer thread.
+    // The gatherer may render and emit `finished` immediately; CSignal::emit is a
+    // no-op with no listeners and listenStatic is not retroactive, so a listener
+    // attached afterwards misses the event and the widget stays pending forever
+    // ("Trying to update label, but a resource is still pending!").
     resource->m_events.finished.listenStatic([resourceID]() {
         if (!g_pHyprlock)
             return;
@@ -278,6 +281,8 @@ void CAsyncResourceManager::enqueue(ResourceID resourceID, const ASP<IAsyncResou
             },
             (void*)resourceID);
     });
+
+    m_gatherer.enqueue(resource);
 }
 
 void CAsyncResourceManager::onResourceFinished(ResourceID id) {
