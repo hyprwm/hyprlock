@@ -51,14 +51,20 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
                 Log::logger->log(Log::INFO, "PAMPROMPT: {}", PROMPT);
 
-                // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
-                // When the prompt is the same as the last one, I guess our answer can be the same.
-                if (initialPrompt && CONVERSATIONSTATE->inputPreSubmitted) {
-                    // Input was collected before pam_start, answer the first prompt with it.
-                    CONVERSATIONSTATE->prompt            = PROMPT;
-                    CONVERSATIONSTATE->inputPreSubmitted = false;
+                // Only reuse pre-submitted input for the prompt it was collected for
+                const bool FIRSTOTPTRANSACTION = !CONVERSATIONSTATE->firstPromptSeen;
+                const bool REUSEPRESUBMITTED =
+                    FIRSTOTPTRANSACTION && CONVERSATIONSTATE->inputPreSubmitted && (CONVERSATIONSTATE->firstPrompt.empty() || PROMPT == CONVERSATIONSTATE->preSubmittedPrompt);
+                if (FIRSTOTPTRANSACTION) {
+                    CONVERSATIONSTATE->firstPromptSeen = true;
+                    CONVERSATIONSTATE->firstPrompt     = PROMPT;
+                }
+                CONVERSATIONSTATE->inputPreSubmitted = false;
+
+                if (REUSEPRESUBMITTED) {
+                    CONVERSATIONSTATE->prompt = PROMPT;
                     g_pHyprlock->enqueueForceUpdateTimers();
-                } else if (initialPrompt || PROMPTCHANGED) {                
+                } else if (initialPrompt || PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
                     g_pHyprlock->enqueueForceUpdateTimers();
 
@@ -119,8 +125,12 @@ void CPam::init() {
             resetConversation();
 
             if (m_sConversationState.deferStart) {
-                if (m_sConversationState.prompt.empty())
-                    m_sConversationState.prompt = "Password: ";
+                // Show the prompt the next transaction will start with, not whatever the last one was (e.g. an OTP challenge).
+                m_sConversationState.prompt = m_sConversationState.firstPrompt.empty() ? "Password: " : m_sConversationState.firstPrompt;
+                g_pHyprlock->enqueueForceUpdateTimers();
+                waitForInput();
+                m_sConversationState.preSubmittedPrompt = m_sConversationState.prompt;
+                m_sConversationState.inputPreSubmitted  = true;
                 waitForInput();
                 m_sConversationState.inputPreSubmitted = true;
             }
@@ -234,5 +244,6 @@ void CPam::resetConversation() {
     m_sConversationState.inputRequested    = false;
     m_sConversationState.failTextFromPam   = false;
     m_sConversationState.inputPreSubmitted = false;
+    m_sConversationState.firstPromptSeen   = false;
     m_bBlockInput                          = false;
 }
