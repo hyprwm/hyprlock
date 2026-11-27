@@ -131,8 +131,6 @@ void CPam::init() {
                 waitForInput();
                 m_sConversationState.preSubmittedPrompt = m_sConversationState.prompt;
                 m_sConversationState.inputPreSubmitted  = true;
-                waitForInput();
-                m_sConversationState.inputPreSubmitted = true;
             }
 
             // For grace, SIGUSR1 or fingerprint unlocks
