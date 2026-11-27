@@ -62,8 +62,8 @@ size_t CAuth::getFailedAttempts() {
 }
 
 void CAuth::terminate() {
-    for (const auto& i : m_vImpls) {
-        i->terminate();
+    for (auto it = m_vImpls.rbegin(); it != m_vImpls.rend(); ++it) {
+        (*it)->terminate();
     }
 }
 

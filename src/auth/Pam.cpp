@@ -14,6 +14,17 @@
 #include <cstring>
 #include <cstdlib>
 #include <thread>
+#include <chrono>
+
+// Called by libpam instead of its own failure sleep.
+// Skip the sleep when tearing down, so that terminate(), and the release of
+// other auth methods (like the fingerprint reader), isn't held up by a failure delay.
+static void failDelay(int status, unsigned int usecDelay, void* appdata_ptr) {
+    const auto CONVERSATIONSTATE = sc<CPam::SPamConversationState*>(appdata_ptr);
+    if (status == PAM_SUCCESS || !CONVERSATIONSTATE || CONVERSATIONSTATE->terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
+        return;
+    std::this_thread::sleep_for(std::chrono::microseconds(usecDelay));
+}
 
 int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp, void* appdata_ptr) {
     const auto           CONVERSATIONSTATE = (CPam::SPamConversationState*)appdata_ptr;
@@ -40,9 +51,20 @@ int conv(int num_msg, const struct pam_message** msg, struct pam_response** resp
                 const auto PROMPTCHANGED = PROMPT != CONVERSATIONSTATE->prompt;
                 Log::logger->log(Log::INFO, "PAMPROMPT: {}", PROMPT);
 
-                // Some pam configurations ask for the password twice for whatever reason (Fedora su for example)
-                // When the prompt is the same as the last one, I guess our answer can be the same.
-                if (initialPrompt || PROMPTCHANGED) {
+                // Only reuse pre-submitted input for the prompt it was collected for
+                const bool FIRSTOTPTRANSACTION = !CONVERSATIONSTATE->firstPromptSeen;
+                const bool REUSEPRESUBMITTED =
+                    FIRSTOTPTRANSACTION && CONVERSATIONSTATE->inputPreSubmitted && (CONVERSATIONSTATE->firstPrompt.empty() || PROMPT == CONVERSATIONSTATE->preSubmittedPrompt);
+                if (FIRSTOTPTRANSACTION) {
+                    CONVERSATIONSTATE->firstPromptSeen = true;
+                    CONVERSATIONSTATE->firstPrompt     = PROMPT;
+                }
+                CONVERSATIONSTATE->inputPreSubmitted = false;
+
+                if (REUSEPRESUBMITTED) {
+                    CONVERSATIONSTATE->prompt = PROMPT;
+                    g_pHyprlock->enqueueForceUpdateTimers();
+                } else if (initialPrompt || PROMPTCHANGED) {
                     CONVERSATIONSTATE->prompt = PROMPT;
                     g_pHyprlock->enqueueForceUpdateTimers();
 
@@ -88,6 +110,9 @@ CPam::CPam() {
     m_username = getUsernameForCurrentUid();
 
     m_sConversationState.waitForInput = [this]() { this->waitForInput(); };
+
+    static const auto ENABLEFINGERPRINT = g_pConfigManager->getValue<Hyprlang::INT>("auth:fingerprint:enabled");
+    m_sConversationState.deferStart     = *ENABLEFINGERPRINT;
 }
 
 CPam::~CPam() {
@@ -99,7 +124,16 @@ void CPam::init() {
         while (true) {
             resetConversation();
 
-            // For grace or SIGUSR1 unlocks
+            if (m_sConversationState.deferStart) {
+                // Show the prompt the next transaction will start with, not whatever the last one was (e.g. an OTP challenge).
+                m_sConversationState.prompt = m_sConversationState.firstPrompt.empty() ? "Password: " : m_sConversationState.firstPrompt;
+                g_pHyprlock->enqueueForceUpdateTimers();
+                waitForInput();
+                m_sConversationState.preSubmittedPrompt = m_sConversationState.prompt;
+                m_sConversationState.inputPreSubmitted  = true;
+            }
+
+            // For grace, SIGUSR1 or fingerprint unlocks
             if (m_sConversationState.terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
                 return;
 
@@ -135,6 +169,9 @@ bool CPam::auth() {
         Log::logger->log(Log::ERR, "auth: pam_start failed for {}", m_sPamModule);
         return false;
     }
+
+    // static_cast doesnt work here, so have to use rc. i dunno why, but it works
+    pam_set_item(handle, PAM_FAIL_DELAY, rc<const void*>(&failDelay));
 
     ret = pam_authenticate(handle, 0);
     pam_end(handle, ret);
@@ -205,5 +242,7 @@ void CPam::resetConversation() {
     m_sConversationState.waitingForPamAuth = false;
     m_sConversationState.inputRequested    = false;
     m_sConversationState.failTextFromPam   = false;
+    m_sConversationState.inputPreSubmitted = false;
+    m_sConversationState.firstPromptSeen   = false;
     m_bBlockInput                          = false;
 }

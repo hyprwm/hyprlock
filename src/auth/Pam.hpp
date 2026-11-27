@@ -20,11 +20,20 @@ class CPam : public IAuthImplementation {
         std::mutex              inputMutex;
         std::condition_variable inputSubmittedCondition;
 
-        bool                    waitingForPamAuth  = false;
-        bool                    inputRequested     = false;
-        bool                    failTextFromPam    = false;
-        std::atomic_bool        terminateRequested = false;
-        std::function<void()>   waitForInput       = []() {};
+        bool                    waitingForPamAuth = false;
+        bool                    inputRequested    = false;
+        bool                    failTextFromPam   = false;
+        // Don't call pam_authenticate until the user submits something.
+        // Used when another auth method can unlock in parallel, so that unlocking via that
+        // method never aborts a live PAM conversation (which pam_unix counts as a failure).
+        bool                  deferStart         = false;
+        bool                  inputPreSubmitted  = false;
+        std::string           preSubmittedPrompt = ""; // prompt that was shown when the pre-submitted input was collected
+        std::string           firstPrompt        = ""; // first prompt of the most recent transaction
+        bool                  firstPromptSeen    = false;
+
+        std::atomic_bool      terminateRequested = false;
+        std::function<void()> waitForInput       = []() {};
     };
 
     CPam();
