@@ -20,7 +20,7 @@
 // Skip the sleep when tearing down, so that terminate(), and the release of
 // other auth methods (like the fingerprint reader), isn't held up by a failure delay.
 static void failDelay(int status, unsigned int usecDelay, void* appdata_ptr) {
-    const auto CONVERSATIONSTATE = (CPam::SPamConversationState*)appdata_ptr;
+    const auto CONVERSATIONSTATE = sc<CPam::SPamConversationState*>(appdata_ptr);
     if (status == PAM_SUCCESS || !CONVERSATIONSTATE || CONVERSATIONSTATE->terminateRequested || g_pHyprlock->isFadingOutOrTerminating())
         return;
     std::this_thread::sleep_for(std::chrono::microseconds(usecDelay));
@@ -172,7 +172,8 @@ bool CPam::auth() {
         return false;
     }
 
-    pam_set_item(handle, PAM_FAIL_DELAY, (const void*)failDelay);
+    // static_cast doesnt work here, so have to use rc. i dunno why, but it works
+    pam_set_item(handle, PAM_FAIL_DELAY, rc<const void*>(&failDelay));
 
     ret = pam_authenticate(handle, 0);
     pam_end(handle, ret);
